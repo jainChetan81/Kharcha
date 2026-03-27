@@ -36,3 +36,4 @@ personal expense tracking app for ios.
 - functional components only
 - tanstack query for all data fetching
 - tanstack form for all forms
+- never run pnpm commands directly. instead tell the user which command to run and wait for them to confirm the result before proceeding.
