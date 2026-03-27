@@ -190,38 +190,66 @@ export function getMonthlySummary(yearMonth: string) {
   );
 }
 
+export function getAllCategories() {
+  return db.getAllAsync<Category>("SELECT * FROM categories");
+}
+
 export function getCategoriesByType(type: "income" | "expense") {
   return db.getAllAsync<Category>("SELECT * FROM categories WHERE type = ?", [
     type,
   ]);
 }
 
+export function getAllSources() {
+  return db.getAllAsync<Source>("SELECT * FROM sources");
+}
+
 export function getTransactionsPaginated(
   limit = 10,
   offset = 0,
-  type?: "income" | "expense" | "all",
+  filters?: {
+    type?: "income" | "expense" | "all";
+    categoryId?: number | null;
+    sourceId?: number | null;
+    dateFrom?: string | null;
+    dateTo?: string | null;
+  },
 ) {
-  const filterByType = type && type !== "all";
-  if (filterByType) {
-    return db.getAllAsync<TransactionRow>(
-      `SELECT t.*, c.name as category_name, s.name as source_name
-       FROM transactions t
-       LEFT JOIN categories c ON t.category_id = c.id
-       LEFT JOIN sources s ON t.source_id = s.id
-       WHERE t.type = ?
-       ORDER BY t.date DESC, t.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [type, limit, offset],
-    );
+  const where: string[] = [];
+  const params: (string | number)[] = [];
+
+  if (filters?.type && filters.type !== "all") {
+    where.push("t.type = ?");
+    params.push(filters.type);
   }
+  if (filters?.categoryId) {
+    where.push("t.category_id = ?");
+    params.push(filters.categoryId);
+  }
+  if (filters?.sourceId) {
+    where.push("t.source_id = ?");
+    params.push(filters.sourceId);
+  }
+  if (filters?.dateFrom) {
+    where.push("t.date >= ?");
+    params.push(filters.dateFrom);
+  }
+  if (filters?.dateTo) {
+    where.push("t.date <= ?");
+    params.push(`${filters.dateTo} 23:59`);
+  }
+
+  const whereClause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+
   return db.getAllAsync<TransactionRow>(
     `SELECT t.*, c.name as category_name, s.name as source_name
      FROM transactions t
      LEFT JOIN categories c ON t.category_id = c.id
      LEFT JOIN sources s ON t.source_id = s.id
+     ${whereClause}
      ORDER BY t.date DESC, t.created_at DESC
      LIMIT ? OFFSET ?`,
-    [limit, offset],
+    [...params, limit, offset],
   );
 }
 

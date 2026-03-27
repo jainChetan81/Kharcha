@@ -153,7 +153,7 @@ export default function HomeScreen() {
             style={{ marginTop: -44, marginBottom: 8 }}
           >
             <View
-              className="h-[60px] w-[60px] items-center justify-center rounded-full bg-primary"
+              className="h-[52px] w-[52px] items-center justify-center rounded-full bg-primary"
               style={{
                 elevation: 8,
                 shadowColor: "#7c3aed",
@@ -162,7 +162,7 @@ export default function HomeScreen() {
                 shadowOffset: { width: 0, height: 4 },
               }}
             >
-              <Icon as={Plus} className="size-7 text-primary-foreground" />
+              <Icon as={Plus} className="size-6 text-primary-foreground" />
             </View>
           </Pressable>
           <Pressable
