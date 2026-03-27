@@ -280,4 +280,48 @@ export function deleteTransaction(id: number) {
   return db.runAsync("DELETE FROM transactions WHERE id = ?", [id]);
 }
 
+export function addCategory(name: string, type: "income" | "expense") {
+  return db.runAsync(
+    "INSERT INTO categories (name, type, is_default) VALUES (?, ?, 0)",
+    [name, type],
+  );
+}
+
+export function deleteCategory(id: number) {
+  return db.runAsync("DELETE FROM categories WHERE id = ? AND is_default = 0", [
+    id,
+  ]);
+}
+
+export function addSource(name: string) {
+  return db.runAsync("INSERT INTO sources (name, is_default) VALUES (?, 0)", [
+    name,
+  ]);
+}
+
+export function deleteSource(id: number) {
+  return db.runAsync("DELETE FROM sources WHERE id = ? AND is_default = 0", [
+    id,
+  ]);
+}
+
+export function clearAllTransactions() {
+  return db.runAsync("DELETE FROM transactions");
+}
+
+export function getDataStats() {
+  return db.getFirstAsync<{
+    total_transactions: number;
+    total_categories: number;
+    total_sources: number;
+    first_transaction_date: string | null;
+  }>(`
+    SELECT
+      (SELECT COUNT(*) FROM transactions) as total_transactions,
+      (SELECT COUNT(*) FROM categories) as total_categories,
+      (SELECT COUNT(*) FROM sources) as total_sources,
+      (SELECT MIN(date) FROM transactions) as first_transaction_date
+  `);
+}
+
 export default db;
