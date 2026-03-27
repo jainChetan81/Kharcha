@@ -13,7 +13,9 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.chetanjain.kharcha",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
@@ -31,6 +33,13 @@
       "expo-router",
       "expo-sqlite",
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a5f4eef2-324f-4113-833a-08722062b934"
+      }
+    },
+    "owner": "jainchetan81"
   }
 }
