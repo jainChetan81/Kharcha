@@ -9,7 +9,7 @@
     "web": "expo start --web",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
+    "format": "biome check --write .",
     "typecheck": "tsc --noEmit",
     "quality": "pnpm lint && pnpm typecheck"
   },

@@ -132,16 +132,36 @@ async function seedTransactions() {
 
   await db.execAsync(`
     INSERT INTO transactions (type, amount, merchant, category_id, source_id, date, note) VALUES
-      ('expense', 450,   'Swiggy',          1, 2, date('now'),           null),
-      ('expense', 1200,  'Uber',            2, 2, date('now'),           null),
-      ('expense', 2800,  'DMart',           3, 1, date('now', '-1 day'), null),
-      ('income',  85000, 'Salary',          8, 4, date('now', '-1 day'), 'March salary'),
-      ('expense', 649,   'Netflix',         5, 3, date('now', '-2 days'), null),
-      ('expense', 350,   'Starbucks',       1, 2, date('now', '-2 days'), null),
-      ('expense', 1800,  'Electricity',     4, 2, date('now', '-3 days'), 'March bill'),
-      ('income',  15000, 'Freelance gig',   9, 4, date('now', '-4 days'), 'Logo design'),
-      ('expense', 3200,  'Amazon',          3, 3, date('now', '-5 days'), 'Headphones'),
-      ('expense', 1500,  'Gym',             6, 2, date('now', '-6 days'), 'Monthly fee');
+      ('expense', 450,   'Swiggy',          1, 2, date('now'),             null),
+      ('expense', 1200,  'Uber',            2, 2, date('now'),             null),
+      ('expense', 120,   'Chai Point',      1, 2, date('now'),             null),
+      ('expense', 2800,  'DMart',           3, 1, date('now', '-1 day'),   null),
+      ('income',  85000, 'Salary',          8, null, date('now', '-1 day'), 'March salary'),
+      ('expense', 250,   'Auto',            2, 1, date('now', '-1 day'),   null),
+      ('expense', 649,   'Netflix',         5, 3, date('now', '-2 days'),  null),
+      ('expense', 350,   'Starbucks',       1, 2, date('now', '-2 days'),  null),
+      ('expense', 199,   'Spotify',         5, 3, date('now', '-2 days'),  null),
+      ('expense', 1800,  'Electricity',     4, 2, date('now', '-3 days'),  'March bill'),
+      ('expense', 500,   'Zomato',          1, 2, date('now', '-3 days'),  null),
+      ('expense', 150,   'Tea Trails',      1, 1, date('now', '-3 days'),  null),
+      ('income',  15000, 'Freelance gig',   9, null, date('now', '-4 days'), 'Logo design'),
+      ('expense', 3200,  'Amazon',          3, 3, date('now', '-5 days'),  'Headphones'),
+      ('expense', 800,   'Flipkart',        3, 3, date('now', '-5 days'),  'Phone case'),
+      ('expense', 1500,  'Gym',             6, 2, date('now', '-6 days'),  'Monthly fee'),
+      ('expense', 400,   'Pharmacy',        6, 1, date('now', '-6 days'),  null),
+      ('expense', 2200,  'Myntra',          3, 3, date('now', '-7 days'),  'Shoes'),
+      ('expense', 180,   'Metro',           2, 2, date('now', '-7 days'),  null),
+      ('income',  5000,  'Refund',          10, null, date('now', '-7 days'), 'Amazon refund'),
+      ('expense', 950,   'BigBasket',       1, 2, date('now', '-8 days'),  null),
+      ('expense', 1200,  'Ola',             2, 2, date('now', '-8 days'),  null),
+      ('expense', 350,   'McDonald',        1, 1, date('now', '-9 days'),  null),
+      ('expense', 2500,  'Croma',           3, 3, date('now', '-9 days'),  'USB cable'),
+      ('expense', 600,   'Dominos',         1, 2, date('now', '-10 days'), null),
+      ('expense', 1100,  'Gas Bill',        4, 2, date('now', '-10 days'), null),
+      ('income',  8000,  'Side project',    9, null, date('now', '-11 days'), 'Website fix'),
+      ('expense', 450,   'Rapido',          2, 2, date('now', '-12 days'), null),
+      ('expense', 3500,  'Water purifier',  4, 3, date('now', '-13 days'), 'AMC renewal'),
+      ('expense', 280,   'Dunzo',           1, 2, date('now', '-14 days'), null);
   `);
 }
 
@@ -176,6 +196,35 @@ export function getCategoriesByType(type: "income" | "expense") {
   ]);
 }
 
+export function getTransactionsPaginated(
+  limit = 10,
+  offset = 0,
+  type?: "income" | "expense" | "all",
+) {
+  const filterByType = type && type !== "all";
+  if (filterByType) {
+    return db.getAllAsync<TransactionRow>(
+      `SELECT t.*, c.name as category_name, s.name as source_name
+       FROM transactions t
+       LEFT JOIN categories c ON t.category_id = c.id
+       LEFT JOIN sources s ON t.source_id = s.id
+       WHERE t.type = ?
+       ORDER BY t.date DESC, t.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [type, limit, offset],
+    );
+  }
+  return db.getAllAsync<TransactionRow>(
+    `SELECT t.*, c.name as category_name, s.name as source_name
+     FROM transactions t
+     LEFT JOIN categories c ON t.category_id = c.id
+     LEFT JOIN sources s ON t.source_id = s.id
+     ORDER BY t.date DESC, t.created_at DESC
+     LIMIT ? OFFSET ?`,
+    [limit, offset],
+  );
+}
+
 export function insertTransaction(params: {
   type: "income" | "expense";
   amount: number;
@@ -197,6 +246,10 @@ export function insertTransaction(params: {
       params.note,
     ],
   );
+}
+
+export function deleteTransaction(id: number) {
+  return db.runAsync("DELETE FROM transactions WHERE id = ?", [id]);
 }
 
 export default db;

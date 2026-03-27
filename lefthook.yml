@@ -1,6 +1,9 @@
 pre-commit:
   commands:
-    biome:
+    format:
       glob: "*.{js,ts,jsx,tsx}"
-      run: pnpm biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      run: pnpm biome format --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
       stage_fixed: true
+    lint:
+      glob: "*.{js,ts,jsx,tsx}"
+      run: pnpm biome check --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}

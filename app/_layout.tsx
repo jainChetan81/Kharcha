@@ -83,12 +83,10 @@ export default function RootLayout() {
       .finally(() => SplashScreen.hideAsync());
   }, []);
 
-  if (!dbReady) return null;
-
   return (
     <QueryClientProvider client={queryClient}>
       <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }} />
+      {dbReady ? <Stack screenOptions={{ headerShown: false }} /> : null}
       <Toast config={toastConfig} position="top" topOffset={60} />
     </QueryClientProvider>
   );

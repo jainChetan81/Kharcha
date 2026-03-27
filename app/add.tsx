@@ -17,13 +17,17 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import {
+  DATE_DISPLAY_FORMAT,
+  DATE_TIME_FORMAT,
+  QUERY_KEYS,
+} from "@/lib/constants";
 import db, {
-  type Category,
   getCategoriesByType,
   insertTransaction,
   type Source,
 } from "@/lib/db";
-import { cn, DATE_DISPLAY_FORMAT, DATE_TIME_FORMAT, isIOS } from "@/lib/utils";
+import { cn, isIOS } from "@/lib/utils";
 
 function FieldError({ errors }: { errors: string[] }) {
   if (errors.length === 0) return null;
@@ -83,12 +87,12 @@ export default function AddTransaction() {
   const [activeType, setActiveType] = useState<"income" | "expense">("expense");
 
   const { data: categories = [] } = useQuery({
-    queryKey: ["categories", activeType],
+    queryKey: [QUERY_KEYS.CATEGORIES, activeType],
     queryFn: () => getCategoriesByType(activeType),
   });
 
   const { data: sources = [] } = useQuery({
-    queryKey: ["sources"],
+    queryKey: [QUERY_KEYS.SOURCES],
     queryFn: () => db.getAllAsync<Source>("SELECT * FROM sources"),
   });
 
@@ -113,9 +117,11 @@ export default function AddTransaction() {
           date: value.date,
           note: value.note || null,
         });
-        await queryClient.invalidateQueries({ queryKey: ["transactions"] });
         await queryClient.invalidateQueries({
-          queryKey: ["monthly-summary"],
+          queryKey: [QUERY_KEYS.TRANSACTIONS],
+        });
+        await queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
         });
         Toast.show({
           type: "success",
