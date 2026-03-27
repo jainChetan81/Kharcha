@@ -101,9 +101,17 @@ const buttonTextVariants = cva(
 
 type ButtonProps = React.ComponentProps<typeof Pressable> &
   React.RefAttributes<typeof Pressable> &
-  VariantProps<typeof buttonVariants>;
+  VariantProps<typeof buttonVariants> & {
+    disableRipple?: boolean;
+  };
 
-function Button({ className, variant, size, ...props }: ButtonProps) {
+function Button({
+  className,
+  variant,
+  size,
+  disableRipple = false,
+  ...props
+}: ButtonProps) {
   return (
     <TextClassContext.Provider value={buttonTextVariants({ variant, size })}>
       <Pressable
@@ -113,6 +121,11 @@ function Button({ className, variant, size, ...props }: ButtonProps) {
           className,
         )}
         role="button"
+        android_ripple={
+          disableRipple
+            ? null
+            : { color: "rgba(255,255,255,0.2)", borderless: false }
+        }
         {...props}
       />
     </TextClassContext.Provider>

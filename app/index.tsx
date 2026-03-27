@@ -1,32 +1,27 @@
 import { useQuery } from "@tanstack/react-query";
-import { format, isToday, isYesterday, parseISO } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
 import { router } from "expo-router";
-import { Platform, Pressable, ScrollView, View } from "react-native";
+import { Clock, House, Plus, Settings, User } from "lucide-react-native";
+import { Pressable, ScrollView, View } from "react-native";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import {
   getMonthlySummary,
   getRecentTransactions,
   type TransactionRow,
 } from "@/lib/db";
-
-const CATEGORY_ICONS: Record<string, string> = {
-  food: "🛒",
-  transport: "🚕",
-  shopping: "🛍️",
-  utilities: "⚡",
-  entertainment: "🎬",
-  health: "🏋️",
-  salary: "💰",
-  freelance: "💼",
-  other: "📦",
-};
+import { cn, isIOS } from "@/lib/utils";
 
 function formatINR(n: number) {
   return `₹${n.toLocaleString("en-IN")}`;
 }
 
+function parseDate(dateStr: string): Date {
+  return new Date(dateStr.replace(" ", "T"));
+}
+
 function getDateLabel(dateStr: string): string {
-  const date = parseISO(dateStr);
+  const date = parseDate(dateStr);
   if (isToday(date)) return "Today";
   if (isYesterday(date)) return "Yesterday";
   return format(date, "MMM d");
@@ -46,50 +41,26 @@ function groupByDate(transactions: TransactionRow[]) {
   return groups;
 }
 
-function SummaryCard({
-  label,
-  amount,
-  icon,
-  bg,
-}: {
-  label: string;
-  amount: string;
-  icon: string;
-  bg: string;
-}) {
-  return (
-    <View className={`flex-1 rounded-2xl p-4 ${bg}`}>
-      <View className="flex-row items-center gap-1.5">
-        <Text className="text-sm">{icon}</Text>
-        <Text className="text-sm font-medium text-white/80">{label}</Text>
-      </View>
-      <Text className="mt-2 text-xl font-bold text-white">{amount}</Text>
-    </View>
-  );
-}
-
 function TransactionItem({ item }: { item: TransactionRow }) {
   const isIncome = item.type === "income";
-  const icon =
-    CATEGORY_ICONS[item.category_name ?? ""] ?? (isIncome ? "💰" : "📦");
   return (
-    <View className="mb-2.5 flex-row items-center rounded-2xl bg-white p-4">
-      <View
-        className={`h-12 w-12 items-center justify-center rounded-xl ${isIncome ? "bg-green-50" : "bg-slate-100"}`}
-      >
-        <Text className="text-2xl">{icon}</Text>
+    <View className="mb-2 flex-row items-center rounded-2xl border border-border bg-card p-4">
+      <View className="h-10 w-10 items-center justify-center rounded-xl bg-muted">
+        <Text className="text-sm font-semibold text-muted-foreground">
+          {(item.category_name ?? "?")[0].toUpperCase()}
+        </Text>
       </View>
-      <View className="ml-3.5 flex-1">
-        <Text className="text-base font-semibold text-slate-800">
+      <View className="ml-3 flex-1">
+        <Text className="text-sm font-semibold text-foreground">
           {item.merchant || item.category_name || item.type}
         </Text>
-        <Text className="mt-0.5 text-xs capitalize text-slate-400">
+        <Text className="mt-0.5 text-xs capitalize text-muted-foreground">
           {item.category_name ?? "uncategorized"}
           {item.source_name ? ` · ${item.source_name}` : ""}
         </Text>
       </View>
       <Text
-        className={`text-base font-bold ${isIncome ? "text-green-600" : "text-slate-800"}`}
+        className={`text-sm font-bold ${isIncome ? "text-positive" : "text-negative"}`}
       >
         {isIncome ? "+" : "-"}
         {formatINR(item.amount)}
@@ -107,7 +78,7 @@ function DateGroup({
 }) {
   return (
     <View className="mb-4">
-      <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+      <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </Text>
       {items.map((item) => (
@@ -133,131 +104,122 @@ export default function HomeScreen() {
   const income = summary?.total_income ?? 0;
   const expenses = summary?.total_expenses ?? 0;
   const balance = income - expenses;
-  const budgetLimit = 20000;
-  const budgetPercent = Math.min(
-    Math.round((expenses / budgetLimit) * 100),
-    100,
-  );
   const grouped = groupByDate(transactions);
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="flex-1 bg-background">
       {/* Header */}
       <View
-        className="bg-slate-900 px-6 pb-7"
-        style={{ paddingTop: Platform.OS === "ios" ? 60 : 48 }}
+        className={cn("bg-background px-6 pb-6", isIOS ? "pt-[60px]" : "pt-12")}
       >
         <View className="flex-row items-center justify-between">
           <View>
-            <Text className="text-lg font-bold text-white">Hello, Chetan</Text>
-            <Text className="mt-0.5 text-sm text-slate-400">
+            <Text className="text-lg font-bold text-foreground">
+              Hello, Chetan
+            </Text>
+            <Text className="mt-0.5 text-sm text-muted-foreground">
               {format(new Date(), "MMMM yyyy")}
             </Text>
           </View>
-          <View className="h-10 w-10 items-center justify-center rounded-full bg-indigo-500">
-            <Text className="text-base font-bold text-white">CJ</Text>
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-primary">
+            <Text className="text-sm font-bold text-primary-foreground">
+              CJ
+            </Text>
           </View>
         </View>
 
         {/* Balance */}
-        <View className="mt-6 items-center rounded-2xl bg-slate-800 p-5">
-          <Text className="text-xs font-medium uppercase tracking-widest text-slate-400">
+        <View className="mt-5 items-center rounded-2xl border border-border bg-card p-5">
+          <Text className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             Total Balance
           </Text>
-          <Text className="mt-1 text-4xl font-extrabold text-white">
+          <Text className="mt-1 text-4xl font-extrabold text-foreground">
             {formatINR(balance)}
           </Text>
-
-          {/* Budget bar */}
-          <View className="mt-4 w-full">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-xs text-slate-400">Monthly budget</Text>
-              <Text className="text-xs font-semibold text-slate-300">
-                {formatINR(expenses)} / {formatINR(budgetLimit)}
-              </Text>
-            </View>
-            <View className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-700">
-              <View
-                className={`h-full rounded-full ${budgetPercent > 80 ? "bg-red-400" : "bg-indigo-400"}`}
-                style={{ width: `${budgetPercent}%` }}
-              />
-            </View>
-          </View>
         </View>
 
         {/* Summary Cards */}
-        <View className="mt-4 flex-row gap-3">
-          <SummaryCard
-            label="Income"
-            amount={formatINR(income)}
-            icon="↓"
-            bg="bg-green-600"
-          />
-          <SummaryCard
-            label="Spent"
-            amount={formatINR(expenses)}
-            icon="↑"
-            bg="bg-red-500"
-          />
+        <View className="mt-3 flex-row gap-3">
+          <View className="flex-1 rounded-2xl border border-border bg-card p-4">
+            <Text className="text-xs text-muted-foreground">Income</Text>
+            <Text className="mt-1.5 text-xl font-bold text-positive">
+              {formatINR(income)}
+            </Text>
+          </View>
+          <View className="flex-1 rounded-2xl border border-border bg-card p-4">
+            <Text className="text-xs text-muted-foreground">Spent</Text>
+            <Text className="mt-1.5 text-xl font-bold text-negative">
+              {formatINR(expenses)}
+            </Text>
+          </View>
         </View>
       </View>
 
       {/* Transactions */}
-      <View className="flex-1 px-5 pt-5">
-        <View className="mb-3 flex-row items-center justify-between">
-          <Text className="text-lg font-bold text-slate-900">
-            Recent Transactions
-          </Text>
-        </View>
+      <View className="flex-1 px-5 pt-4">
+        <Text className="mb-3 text-sm font-semibold text-muted-foreground">
+          Recent Transactions
+        </Text>
 
         <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-          {grouped.length === 0 ? (
-            <View className="items-center py-16">
-              <Text className="text-base text-slate-400">
-                No transactions yet
-              </Text>
-              <Text className="mt-1 text-sm text-slate-300">
-                Tap + to add your first one
-              </Text>
-            </View>
-          ) : (
-            grouped.map((group) => (
-              <DateGroup
-                key={group.label}
-                label={group.label}
-                items={group.items}
-              />
-            ))
-          )}
+          {grouped.map((group) => (
+            <DateGroup
+              key={group.label}
+              label={group.label}
+              items={group.items}
+            />
+          ))}
           <View className="h-6" />
         </ScrollView>
       </View>
 
       {/* Bottom Nav */}
       <View
-        className="flex-row items-center justify-around border-t border-slate-100 bg-white px-4 pt-3"
-        style={{ paddingBottom: Platform.OS === "ios" ? 28 : 12 }}
+        className={cn(
+          "border-t border-border bg-card pt-2.5",
+          isIOS ? "pb-7" : "pb-3.5",
+        )}
       >
-        <View className="items-center gap-1">
-          <Text className="text-xl">🏠</Text>
-          <Text className="text-xs font-bold text-indigo-500">Home</Text>
-        </View>
-        <View className="items-center gap-1">
-          <Text className="text-xl">📊</Text>
-          <Text className="text-xs font-medium text-slate-400">Stats</Text>
-        </View>
-        <Pressable className="-mt-8" onPress={() => router.push("/add")}>
-          <View className="h-14 w-14 items-center justify-center rounded-full bg-indigo-500 shadow-lg shadow-indigo-500/40">
-            <Text className="text-3xl font-semibold text-white">+</Text>
+        <View className="flex-row items-center justify-around">
+          <View className="items-center gap-1">
+            <Icon as={House} className="size-5 text-primary" />
+            <Text className="text-[11px] font-semibold text-primary">Home</Text>
           </View>
-        </Pressable>
-        <View className="items-center gap-1">
-          <Text className="text-xl">🔔</Text>
-          <Text className="text-xs font-medium text-slate-400">Alerts</Text>
-        </View>
-        <View className="items-center gap-1">
-          <Text className="text-xl">⚙️</Text>
-          <Text className="text-xs font-medium text-slate-400">Settings</Text>
+          <View className="items-center gap-1">
+            <Icon as={Clock} className="size-5 text-muted-foreground" />
+            <Text className="text-[11px] font-medium text-muted-foreground">
+              History
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => router.push("/add")}
+            style={{ marginTop: -44, marginBottom: 8 }}
+          >
+            <View
+              className="h-[60px] w-[60px] items-center justify-center rounded-full bg-primary"
+              style={{
+                elevation: 8,
+                shadowColor: "#7c3aed",
+                shadowOpacity: 0.4,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 4 },
+              }}
+            >
+              <Icon as={Plus} className="size-7 text-primary-foreground" />
+            </View>
+          </Pressable>
+          <View className="items-center gap-1">
+            <Icon as={Settings} className="size-5 text-muted-foreground" />
+            <Text className="text-[11px] font-medium text-muted-foreground">
+              Settings
+            </Text>
+          </View>
+          <View className="items-center gap-1">
+            <Icon as={User} className="size-5 text-muted-foreground" />
+            <Text className="text-[11px] font-medium text-muted-foreground">
+              Profile
+            </Text>
+          </View>
         </View>
       </View>
     </View>

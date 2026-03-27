@@ -4,7 +4,12 @@ const db = SQLite.openDatabaseSync("kharcha.db");
 
 // --- Types ---
 
-export type Category = { id: number; name: string; is_default: number };
+export type Category = {
+  id: number;
+  name: string;
+  type: "income" | "expense";
+  is_default: number;
+};
 export type Source = { id: number; name: string; is_default: number };
 export type TransactionRow = {
   id: number;
@@ -31,6 +36,7 @@ export async function initDB() {
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'expense',
       is_default INTEGER DEFAULT 0
     );
 
@@ -53,33 +59,58 @@ export async function initDB() {
     );
   `);
 
-  // Migration: add type column for existing tables created before this change
-  const cols = await db.getAllAsync<{ name: string }>(
+  // Migration: add type column to transactions if missing
+  const txCols = await db.getAllAsync<{ name: string }>(
     "PRAGMA table_info(transactions)",
   );
-  if (!cols.some((c) => c.name === "type")) {
+  if (!txCols.some((c) => c.name === "type")) {
     await db.execAsync(
       "ALTER TABLE transactions ADD COLUMN type TEXT NOT NULL DEFAULT 'expense'",
     );
   }
 
+  // Migration: add type column to categories if missing
+  const catCols = await db.getAllAsync<{ name: string }>(
+    "PRAGMA table_info(categories)",
+  );
+  if (!catCols.some((c) => c.name === "type")) {
+    await db.execAsync(
+      "ALTER TABLE categories ADD COLUMN type TEXT NOT NULL DEFAULT 'expense'",
+    );
+    // Update existing income categories
+    await db.execAsync(
+      "UPDATE categories SET type = 'income' WHERE name IN ('salary', 'freelance')",
+    );
+    // Seed missing income categories for existing databases
+    await db.execAsync(`
+      INSERT INTO categories (name, type, is_default) VALUES
+        ('refunds', 'income', 1),
+        ('investments', 'income', 1),
+        ('other', 'income', 1);
+    `);
+  }
+
   await seedDefaults();
+  await seedTransactions();
 }
 
 async function seedDefaults() {
   const categories = await db.getAllAsync("SELECT * FROM categories");
   if (categories.length === 0) {
     await db.execAsync(`
-      INSERT INTO categories (name, is_default) VALUES
-        ('food', 1),
-        ('transport', 1),
-        ('shopping', 1),
-        ('utilities', 1),
-        ('entertainment', 1),
-        ('health', 1),
-        ('salary', 1),
-        ('freelance', 1),
-        ('other', 1);
+      INSERT INTO categories (name, type, is_default) VALUES
+        ('food', 'expense', 1),
+        ('transport', 'expense', 1),
+        ('shopping', 'expense', 1),
+        ('utilities', 'expense', 1),
+        ('entertainment', 'expense', 1),
+        ('health', 'expense', 1),
+        ('other', 'expense', 1),
+        ('salary', 'income', 1),
+        ('freelance', 'income', 1),
+        ('refunds', 'income', 1),
+        ('investments', 'income', 1),
+        ('other', 'income', 1);
     `);
   }
 
@@ -93,6 +124,25 @@ async function seedDefaults() {
         ('debit card', 1);
     `);
   }
+}
+
+async function seedTransactions() {
+  const existing = await db.getAllAsync("SELECT * FROM transactions");
+  if (existing.length > 0) return;
+
+  await db.execAsync(`
+    INSERT INTO transactions (type, amount, merchant, category_id, source_id, date, note) VALUES
+      ('expense', 450,   'Swiggy',          1, 2, date('now'),           null),
+      ('expense', 1200,  'Uber',            2, 2, date('now'),           null),
+      ('expense', 2800,  'DMart',           3, 1, date('now', '-1 day'), null),
+      ('income',  85000, 'Salary',          8, 4, date('now', '-1 day'), 'March salary'),
+      ('expense', 649,   'Netflix',         5, 3, date('now', '-2 days'), null),
+      ('expense', 350,   'Starbucks',       1, 2, date('now', '-2 days'), null),
+      ('expense', 1800,  'Electricity',     4, 2, date('now', '-3 days'), 'March bill'),
+      ('income',  15000, 'Freelance gig',   9, 4, date('now', '-4 days'), 'Logo design'),
+      ('expense', 3200,  'Amazon',          3, 3, date('now', '-5 days'), 'Headphones'),
+      ('expense', 1500,  'Gym',             6, 2, date('now', '-6 days'), 'Monthly fee');
+  `);
 }
 
 // --- Queries ---
@@ -118,6 +168,12 @@ export function getMonthlySummary(yearMonth: string) {
      WHERE strftime('%Y-%m', date) = ?`,
     [yearMonth],
   );
+}
+
+export function getCategoriesByType(type: "income" | "expense") {
+  return db.getAllAsync<Category>("SELECT * FROM categories WHERE type = ?", [
+    type,
+  ]);
 }
 
 export function insertTransaction(params: {
