@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import {
+  editScreen,
   PAGE_SIZE,
   QUERY_KEYS,
   TRANSACTION_TYPE,
@@ -353,6 +354,7 @@ export default function HistoryScreen() {
               <TransactionItem
                 item={item.data}
                 showTime
+                onPress={(id) => router.push(editScreen(id))}
                 onDelete={confirmDelete}
                 isDeleting={deletingId === item.data.id}
               />

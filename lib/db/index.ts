@@ -1,8 +1,14 @@
+import { and, count, desc, eq, gte, lte, min, sql } from "drizzle-orm";
+import { drizzle, type ExpoSQLiteDatabase } from "drizzle-orm/expo-sqlite";
 import * as SQLite from "expo-sqlite";
+import { categories, sources, transactions } from "./schema";
 
-const db = SQLite.openDatabaseSync("kharcha.db");
+// --- DB Setup ---
 
-// --- Types ---
+const expo = SQLite.openDatabaseSync("kharcha.db");
+const db: ExpoSQLiteDatabase = drizzle(expo);
+
+// --- Types (kept for backward compat) ---
 
 export type Category = {
   id: number;
@@ -32,7 +38,8 @@ export type MonthlySummary = {
 // --- Init ---
 
 export async function initDB() {
-  await db.execAsync(`
+  // Create tables using raw SQL for CREATE IF NOT EXISTS
+  await expo.execAsync(`
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -60,29 +67,27 @@ export async function initDB() {
   `);
 
   // Migration: add type column to transactions if missing
-  const txCols = await db.getAllAsync<{ name: string }>(
+  const txCols = await expo.getAllAsync<{ name: string }>(
     "PRAGMA table_info(transactions)",
   );
   if (!txCols.some((c) => c.name === "type")) {
-    await db.execAsync(
+    await expo.execAsync(
       "ALTER TABLE transactions ADD COLUMN type TEXT NOT NULL DEFAULT 'expense'",
     );
   }
 
   // Migration: add type column to categories if missing
-  const catCols = await db.getAllAsync<{ name: string }>(
+  const catCols = await expo.getAllAsync<{ name: string }>(
     "PRAGMA table_info(categories)",
   );
   if (!catCols.some((c) => c.name === "type")) {
-    await db.execAsync(
+    await expo.execAsync(
       "ALTER TABLE categories ADD COLUMN type TEXT NOT NULL DEFAULT 'expense'",
     );
-    // Update existing income categories
-    await db.execAsync(
+    await expo.execAsync(
       "UPDATE categories SET type = 'income' WHERE name IN ('salary', 'freelance')",
     );
-    // Seed missing income categories for existing databases
-    await db.execAsync(`
+    await expo.execAsync(`
       INSERT INTO categories (name, type, is_default) VALUES
         ('refunds', 'income', 1),
         ('investments', 'income', 1),
@@ -95,42 +100,41 @@ export async function initDB() {
 }
 
 async function seedDefaults() {
-  const categories = await db.getAllAsync("SELECT * FROM categories");
-  if (categories.length === 0) {
-    await db.execAsync(`
-      INSERT INTO categories (name, type, is_default) VALUES
-        ('food', 'expense', 1),
-        ('transport', 'expense', 1),
-        ('shopping', 'expense', 1),
-        ('utilities', 'expense', 1),
-        ('entertainment', 'expense', 1),
-        ('health', 'expense', 1),
-        ('other', 'expense', 1),
-        ('salary', 'income', 1),
-        ('freelance', 'income', 1),
-        ('refunds', 'income', 1),
-        ('investments', 'income', 1),
-        ('other', 'income', 1);
-    `);
+  const existing = await db.select().from(categories).limit(1);
+  if (existing.length === 0) {
+    await db.insert(categories).values([
+      { name: "food", type: "expense", is_default: 1 },
+      { name: "transport", type: "expense", is_default: 1 },
+      { name: "shopping", type: "expense", is_default: 1 },
+      { name: "utilities", type: "expense", is_default: 1 },
+      { name: "entertainment", type: "expense", is_default: 1 },
+      { name: "health", type: "expense", is_default: 1 },
+      { name: "other", type: "expense", is_default: 1 },
+      { name: "salary", type: "income", is_default: 1 },
+      { name: "freelance", type: "income", is_default: 1 },
+      { name: "refunds", type: "income", is_default: 1 },
+      { name: "investments", type: "income", is_default: 1 },
+      { name: "other", type: "income", is_default: 1 },
+    ]);
   }
 
-  const sources = await db.getAllAsync("SELECT * FROM sources");
-  if (sources.length === 0) {
-    await db.execAsync(`
-      INSERT INTO sources (name, is_default) VALUES
-        ('cash', 1),
-        ('upi', 1),
-        ('credit card', 1),
-        ('debit card', 1);
-    `);
+  const existingSources = await db.select().from(sources).limit(1);
+  if (existingSources.length === 0) {
+    await db.insert(sources).values([
+      { name: "cash", is_default: 1 },
+      { name: "upi", is_default: 1 },
+      { name: "credit card", is_default: 1 },
+      { name: "debit card", is_default: 1 },
+    ]);
   }
 }
 
 async function seedTransactions() {
-  const existing = await db.getAllAsync("SELECT * FROM transactions");
+  const existing = await db.select().from(transactions).limit(1);
   if (existing.length > 0) return;
 
-  await db.execAsync(`
+  // Use raw SQL for date('now') functions
+  await expo.execAsync(`
     INSERT INTO transactions (type, amount, merchant, category_id, source_id, date, note) VALUES
       ('expense', 450,   'Swiggy',          1, 2, date('now'),             null),
       ('expense', 1200,  'Uber',            2, 2, date('now'),             null),
@@ -165,46 +169,63 @@ async function seedTransactions() {
   `);
 }
 
+// --- Shared select for transaction queries with JOINs ---
+
+function transactionSelect() {
+  return db
+    .select({
+      id: transactions.id,
+      type: transactions.type,
+      amount: transactions.amount,
+      merchant: transactions.merchant,
+      category_id: transactions.category_id,
+      source_id: transactions.source_id,
+      date: transactions.date,
+      note: transactions.note,
+      created_at: transactions.created_at,
+      category_name: categories.name,
+      source_name: sources.name,
+    })
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.category_id, categories.id))
+    .leftJoin(sources, eq(transactions.source_id, sources.id));
+}
+
 // --- Queries ---
 
-export function getRecentTransactions(limit = 20) {
-  return db.getAllAsync<TransactionRow>(
-    `SELECT t.*, c.name as category_name, s.name as source_name
-     FROM transactions t
-     LEFT JOIN categories c ON t.category_id = c.id
-     LEFT JOIN sources s ON t.source_id = s.id
-     ORDER BY t.date DESC, t.created_at DESC
-     LIMIT ?`,
-    [limit],
-  );
+export async function getRecentTransactions(limit = 20) {
+  return (await transactionSelect()
+    .orderBy(desc(transactions.date), desc(transactions.created_at))
+    .limit(limit)) as TransactionRow[];
 }
 
-export function getMonthlySummary(yearMonth: string) {
-  return db.getFirstAsync<MonthlySummary>(
-    `SELECT
-       COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) as total_income,
-       COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) as total_expenses
-     FROM transactions
-     WHERE strftime('%Y-%m', date) = ?`,
-    [yearMonth],
-  );
+export async function getMonthlySummary(yearMonth: string) {
+  const result = await db
+    .select({
+      total_income: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
+      total_expenses: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
+    })
+    .from(transactions)
+    .where(sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`);
+  return result[0] as MonthlySummary;
 }
 
-export function getAllCategories() {
-  return db.getAllAsync<Category>("SELECT * FROM categories");
+export async function getAllCategories() {
+  return (await db.select().from(categories)) as Category[];
 }
 
-export function getCategoriesByType(type: "income" | "expense") {
-  return db.getAllAsync<Category>("SELECT * FROM categories WHERE type = ?", [
-    type,
-  ]);
+export async function getCategoriesByType(type: "income" | "expense") {
+  return (await db
+    .select()
+    .from(categories)
+    .where(eq(categories.type, type))) as Category[];
 }
 
-export function getAllSources() {
-  return db.getAllAsync<Source>("SELECT * FROM sources");
+export async function getAllSources() {
+  return (await db.select().from(sources)) as Source[];
 }
 
-export function getTransactionsPaginated(
+export async function getTransactionsPaginated(
   limit = 10,
   offset = 0,
   filters?: {
@@ -215,45 +236,39 @@ export function getTransactionsPaginated(
     dateTo?: string | null;
   },
 ) {
-  const where: string[] = [];
-  const params: (string | number)[] = [];
+  const conditions = [];
 
   if (filters?.type && filters.type !== "all") {
-    where.push("t.type = ?");
-    params.push(filters.type);
+    conditions.push(eq(transactions.type, filters.type));
   }
   if (filters?.categoryId) {
-    where.push("t.category_id = ?");
-    params.push(filters.categoryId);
+    conditions.push(eq(transactions.category_id, filters.categoryId));
   }
   if (filters?.sourceId) {
-    where.push("t.source_id = ?");
-    params.push(filters.sourceId);
+    conditions.push(eq(transactions.source_id, filters.sourceId));
   }
   if (filters?.dateFrom) {
-    where.push("t.date >= ?");
-    params.push(filters.dateFrom);
+    conditions.push(gte(transactions.date, filters.dateFrom));
   }
   if (filters?.dateTo) {
-    where.push("t.date <= ?");
-    params.push(`${filters.dateTo} 23:59`);
+    conditions.push(lte(transactions.date, `${filters.dateTo} 23:59`));
   }
 
-  const whereClause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+  const query = transactionSelect()
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(transactions.date), desc(transactions.created_at))
+    .limit(limit)
+    .offset(offset);
 
-  return db.getAllAsync<TransactionRow>(
-    `SELECT t.*, c.name as category_name, s.name as source_name
-     FROM transactions t
-     LEFT JOIN categories c ON t.category_id = c.id
-     LEFT JOIN sources s ON t.source_id = s.id
-     ${whereClause}
-     ORDER BY t.date DESC, t.created_at DESC
-     LIMIT ? OFFSET ?`,
-    [...params, limit, offset],
-  );
+  return (await query) as TransactionRow[];
 }
 
-export function insertTransaction(params: {
+export async function getTransactionById(id: number) {
+  const result = await transactionSelect().where(eq(transactions.id, id));
+  return (result[0] ?? null) as TransactionRow | null;
+}
+
+export async function insertTransaction(params: {
   type: "income" | "expense";
   amount: number;
   merchant: string | null;
@@ -262,66 +277,86 @@ export function insertTransaction(params: {
   date: string;
   note: string | null;
 }) {
-  return db.runAsync(
-    "INSERT INTO transactions (type, amount, merchant, category_id, source_id, date, note) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    [
-      params.type,
-      params.amount,
-      params.merchant,
-      params.categoryId,
-      params.sourceId,
-      params.date,
-      params.note,
-    ],
-  );
+  return db.insert(transactions).values({
+    type: params.type,
+    amount: params.amount,
+    merchant: params.merchant,
+    category_id: params.categoryId,
+    source_id: params.sourceId,
+    date: params.date,
+    note: params.note,
+  });
 }
 
-export function deleteTransaction(id: number) {
-  return db.runAsync("DELETE FROM transactions WHERE id = ?", [id]);
+export async function updateTransaction(
+  id: number,
+  params: {
+    type: "income" | "expense";
+    amount: number;
+    merchant: string | null;
+    categoryId: number | null;
+    sourceId: number | null;
+    date: string;
+    note: string | null;
+  },
+) {
+  return db
+    .update(transactions)
+    .set({
+      type: params.type,
+      amount: params.amount,
+      merchant: params.merchant,
+      category_id: params.categoryId,
+      source_id: params.sourceId,
+      date: params.date,
+      note: params.note,
+    })
+    .where(eq(transactions.id, id));
 }
 
-export function addCategory(name: string, type: "income" | "expense") {
-  return db.runAsync(
-    "INSERT INTO categories (name, type, is_default) VALUES (?, ?, 0)",
-    [name, type],
-  );
+export async function deleteTransaction(id: number) {
+  return db.delete(transactions).where(eq(transactions.id, id));
 }
 
-export function deleteCategory(id: number) {
-  return db.runAsync("DELETE FROM categories WHERE id = ? AND is_default = 0", [
-    id,
-  ]);
+export async function addCategory(name: string, type: "income" | "expense") {
+  return db.insert(categories).values({ name, type, is_default: 0 });
 }
 
-export function addSource(name: string) {
-  return db.runAsync("INSERT INTO sources (name, is_default) VALUES (?, 0)", [
-    name,
-  ]);
+export async function deleteCategory(id: number) {
+  return db
+    .delete(categories)
+    .where(and(eq(categories.id, id), eq(categories.is_default, 0)));
 }
 
-export function deleteSource(id: number) {
-  return db.runAsync("DELETE FROM sources WHERE id = ? AND is_default = 0", [
-    id,
-  ]);
+export async function addSource(name: string) {
+  return db.insert(sources).values({ name, is_default: 0 });
 }
 
-export function clearAllTransactions() {
-  return db.runAsync("DELETE FROM transactions");
+export async function deleteSource(id: number) {
+  return db
+    .delete(sources)
+    .where(and(eq(sources.id, id), eq(sources.is_default, 0)));
 }
 
-export function getDataStats() {
-  return db.getFirstAsync<{
-    total_transactions: number;
-    total_categories: number;
-    total_sources: number;
-    first_transaction_date: string | null;
-  }>(`
-    SELECT
-      (SELECT COUNT(*) FROM transactions) as total_transactions,
-      (SELECT COUNT(*) FROM categories) as total_categories,
-      (SELECT COUNT(*) FROM sources) as total_sources,
-      (SELECT MIN(date) FROM transactions) as first_transaction_date
-  `);
+export async function clearAllTransactions() {
+  return db.delete(transactions);
 }
 
-export default db;
+export async function getDataStats() {
+  const txCount = await db.select({ value: count() }).from(transactions);
+  const catCount = await db.select({ value: count() }).from(categories);
+  const srcCount = await db.select({ value: count() }).from(sources);
+  const firstDate = await db
+    .select({ value: min(transactions.date) })
+    .from(transactions);
+
+  return {
+    total_transactions: txCount[0]?.value ?? 0,
+    total_categories: catCount[0]?.value ?? 0,
+    total_sources: srcCount[0]?.value ?? 0,
+    first_transaction_date: firstDate[0]?.value ?? null,
+  };
+}
+
+// Default export: raw expo-sqlite instance for backward compat
+export default expo;

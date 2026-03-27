@@ -14,7 +14,12 @@ import { Pressable, View } from "react-native";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { QUERY_KEYS, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
+import {
+  editScreen,
+  QUERY_KEYS,
+  SCREENS,
+  TRANSACTION_TYPE,
+} from "@/lib/constants";
 import { getMonthlySummary, getRecentTransactions } from "@/lib/db";
 import { buildListData, formatINR, type ListItem } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
@@ -119,7 +124,10 @@ export default function HomeScreen() {
             item.type === "header" ? (
               <DateHeader label={item.label} />
             ) : (
-              <TransactionItem item={item.data} />
+              <TransactionItem
+                item={item.data}
+                onPress={(id) => router.push(editScreen(id))}
+              />
             )
           }
           showsVerticalScrollIndicator={false}

@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
-import { QUERY_KEYS, TRANSACTION_TYPE } from "@/lib/constants";
+import { QUERY_KEYS, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
 import {
   addCategory,
   addSource,
@@ -324,7 +324,7 @@ export default function SettingsScreen() {
           <Icon as={Trash2} className="size-4 text-negative" />
         </Pressable>
         <Pressable
-          onPress={() => router.push("/about")}
+          onPress={() => router.push(SCREENS.ABOUT)}
           className="mx-5 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
         >
           <Text className="flex-1 text-sm font-medium text-foreground">

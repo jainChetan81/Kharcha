@@ -4,7 +4,13 @@ export const SCREENS = {
   ADD: "/add",
   HISTORY: "/history",
   SETTINGS: "/settings",
+  ABOUT: "/about",
+  EDIT: "/edit",
 } as const;
+
+export function editScreen(id: number) {
+  return `${SCREENS.EDIT}/${id}` as const;
+}
 
 // --- Pagination ---
 export const PAGE_SIZE = 10;

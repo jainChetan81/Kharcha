@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { Trash2 } from "lucide-react-native";
+import { ChevronRight, Trash2 } from "lucide-react-native";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
@@ -10,11 +10,13 @@ import { cn } from "@/lib/utils";
 export function TransactionItem({
   item,
   showTime = false,
+  onPress,
   onDelete,
   isDeleting = false,
 }: {
   item: TransactionRow;
   showTime?: boolean;
+  onPress?: (id: number) => void;
   onDelete?: (id: number) => void;
   isDeleting?: boolean;
 }) {
@@ -25,7 +27,11 @@ export function TransactionItem({
 
   return (
     <View className="mb-2 flex-row items-stretch gap-2">
-      <View className="flex-[4] flex-row items-center rounded-2xl border border-border bg-card p-4">
+      <Pressable
+        onPress={() => onPress?.(item.id)}
+        className="flex-[4] flex-row items-center rounded-2xl border border-border bg-card p-4"
+        disabled={!onPress}
+      >
         <View className="h-10 w-10 items-center justify-center rounded-xl bg-muted">
           <Text className="text-sm font-semibold text-muted-foreground">
             {(item.merchant ?? item.category_name ?? "?")[0].toUpperCase()}
@@ -55,7 +61,13 @@ export function TransactionItem({
             </Text>
           )}
         </View>
-      </View>
+        {onPress && (
+          <Icon
+            as={ChevronRight}
+            className="ml-2 size-4 text-muted-foreground"
+          />
+        )}
+      </Pressable>
       {onDelete && (
         <Pressable
           onPress={() => !isDeleting && onDelete(item.id)}
