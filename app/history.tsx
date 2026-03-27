@@ -300,12 +300,13 @@ export default function HistoryScreen() {
           isIOS ? "pt-[60px]" : "pt-12",
         )}
       >
-        <View className="flex-row items-center">
-          <Pressable onPress={() => router.back()} className="mr-3 py-1">
-            <Icon as={ChevronLeft} className="size-6 text-foreground" />
-          </Pressable>
+        <Pressable
+          onPress={() => router.back()}
+          className="flex-row items-center py-1"
+        >
+          <Icon as={ChevronLeft} className="mr-1 size-6 text-foreground" />
           <Text className="text-lg font-bold text-foreground">History</Text>
-        </View>
+        </Pressable>
         <Pressable
           onPress={openFilters}
           className="relative flex-row items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2"

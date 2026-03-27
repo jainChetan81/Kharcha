@@ -11,6 +11,7 @@ import {
   User,
 } from "lucide-react-native";
 import { Pressable, View } from "react-native";
+import { PieChart } from "react-native-gifted-charts";
 import { ScreenError } from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { Icon } from "@/components/ui/icon";
@@ -24,6 +25,68 @@ import {
 import { getMonthlySummary, getRecentTransactions } from "@/lib/db";
 import { buildListData, formatINR, type ListItem } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
+
+function SpendingRing({
+  income,
+  expenses,
+}: {
+  income: number;
+  expenses: number;
+}) {
+  const balance = income - expenses;
+  const hasIncome = income > 0;
+  const overspent = expenses > income;
+
+  const spentPercent = hasIncome ? Math.min((expenses / income) * 100, 100) : 0;
+
+  const pieData = hasIncome
+    ? [
+        {
+          value: overspent ? 0 : 100 - spentPercent,
+          color: "#7c3aed",
+        },
+        {
+          value: overspent ? 100 : spentPercent,
+          color: overspent ? "#ef4444" : "#2a2a2a",
+        },
+      ]
+    : [{ value: 100, color: "#2a2a2a" }];
+
+  return (
+    <View className="items-center">
+      <PieChart
+        data={pieData}
+        donut
+        radius={100}
+        innerRadius={84}
+        innerCircleColor="#0a0a0a"
+        centerLabelComponent={() => (
+          <View className="items-center justify-center">
+            {hasIncome ? (
+              <>
+                <Text
+                  className={cn(
+                    "text-2xl font-bold",
+                    overspent ? "text-negative" : "text-foreground",
+                  )}
+                >
+                  {formatINR(balance)}
+                </Text>
+                <Text className="mt-0.5 text-xs text-muted-foreground">
+                  available
+                </Text>
+              </>
+            ) : (
+              <Text className="text-xs text-muted-foreground">
+                no income added
+              </Text>
+            )}
+          </View>
+        )}
+      />
+    </View>
+  );
+}
 
 export default function HomeScreen() {
   const currentMonth = format(new Date(), "yyyy-MM");
@@ -40,7 +103,6 @@ export default function HomeScreen() {
 
   const income = summary?.total_income ?? 0;
   const expenses = summary?.total_expenses ?? 0;
-  const balance = income - expenses;
   const listData = buildListData(transactions);
 
   return (
@@ -65,18 +127,13 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Balance */}
-        <View className="mt-5 items-center rounded-2xl border border-border bg-card p-5">
-          <Text className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            Total Balance
-          </Text>
-          <Text className="mt-1 text-4xl font-extrabold text-foreground">
-            {formatINR(balance)}
-          </Text>
+        {/* Spending Ring */}
+        <View className="mt-5">
+          <SpendingRing income={income} expenses={expenses} />
         </View>
 
-        {/* Summary Cards */}
-        <View className="mt-3 flex-row gap-3">
+        {/* Income / Spent row */}
+        <View className="mt-4 flex-row gap-3">
           <Pressable
             onPress={() =>
               router.push(
@@ -87,7 +144,7 @@ export default function HomeScreen() {
           >
             <View>
               <Text className="text-xs text-muted-foreground">Income</Text>
-              <Text className="mt-1.5 text-xl font-bold text-positive">
+              <Text className="mt-1 text-lg font-bold text-positive">
                 {formatINR(income)}
               </Text>
             </View>
@@ -103,7 +160,7 @@ export default function HomeScreen() {
           >
             <View>
               <Text className="text-xs text-muted-foreground">Spent</Text>
-              <Text className="mt-1.5 text-xl font-bold text-negative">
+              <Text className="mt-1 text-lg font-bold text-negative">
                 {formatINR(expenses)}
               </Text>
             </View>
