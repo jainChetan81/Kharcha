@@ -6,6 +6,7 @@ import * as Device from "expo-device";
 import { router } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
 import { Pressable, ScrollView, View } from "react-native";
+import { ScreenError } from "@/components/error-boundary";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { getDataStats } from "@/lib/db";
@@ -118,3 +119,5 @@ export default function AboutScreen() {
     </View>
   );
 }
+
+export const ErrorBoundary = ScreenError;

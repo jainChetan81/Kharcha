@@ -22,6 +22,7 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import { ScreenError } from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -526,3 +527,5 @@ export default function HistoryScreen() {
     </View>
   );
 }
+
+export const ErrorBoundary = ScreenError;

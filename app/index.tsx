@@ -11,6 +11,7 @@ import {
   User,
 } from "lucide-react-native";
 import { Pressable, View } from "react-native";
+import { ScreenError } from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
@@ -193,3 +194,5 @@ export default function HomeScreen() {
     </View>
   );
 }
+
+export const ErrorBoundary = ScreenError;

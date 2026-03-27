@@ -19,6 +19,7 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import { ScreenError } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
@@ -431,3 +432,5 @@ export default function SettingsScreen() {
     </View>
   );
 }
+
+export const ErrorBoundary = ScreenError;
