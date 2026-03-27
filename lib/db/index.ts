@@ -1,12 +1,13 @@
 import { and, count, desc, eq, gte, lte, min, sql } from "drizzle-orm";
 import { drizzle, type ExpoSQLiteDatabase } from "drizzle-orm/expo-sqlite";
 import * as SQLite from "expo-sqlite";
+import { DB_NAME } from "@/lib/constants";
 import { categories, sources, transactions } from "./schema";
 
 // --- DB Setup ---
 
-const expo = SQLite.openDatabaseSync("kharcha.db");
-const db: ExpoSQLiteDatabase = drizzle(expo);
+const expo = SQLite.openDatabaseSync(DB_NAME);
+const db: ExpoSQLiteDatabase = drizzle(expo, { logger: __DEV__ });
 
 // --- Types (kept for backward compat) ---
 
@@ -336,6 +337,26 @@ export async function deleteSource(id: number) {
   return db
     .delete(sources)
     .where(and(eq(sources.id, id), eq(sources.is_default, 0)));
+}
+
+export async function reinsertTransaction(row: {
+  type: "income" | "expense";
+  amount: number;
+  merchant: string | null;
+  category_id: number | null;
+  source_id: number | null;
+  date: string;
+  note: string | null;
+}) {
+  return db.insert(transactions).values({
+    type: row.type,
+    amount: row.amount,
+    merchant: row.merchant,
+    category_id: row.category_id,
+    source_id: row.source_id,
+    date: row.date,
+    note: row.note,
+  });
 }
 
 export async function clearAllTransactions() {

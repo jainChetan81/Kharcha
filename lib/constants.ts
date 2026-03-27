@@ -12,6 +12,10 @@ export function editScreen(id: number) {
   return `${SCREENS.EDIT}/${id}` as const;
 }
 
+// --- App ---
+export const DB_NAME = "kharcha.db";
+export const UNDO_TIMEOUT_MS = 5000;
+
 // --- Pagination ---
 export const PAGE_SIZE = 10;
 

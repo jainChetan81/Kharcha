@@ -43,6 +43,7 @@
     "react-native-reanimated": "^4.3.0",
     "react-native-screens": "^4.24.0",
     "react-native-svg": "^15.15.3",
+    "react-native-swipeable-item": "^2.0.9",
     "react-native-toast-message": "^2.3.3",
     "tailwind-merge": "^3.5.0",
     "zod": "^4.3.6",

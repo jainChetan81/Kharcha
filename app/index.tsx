@@ -120,6 +120,9 @@ export default function HomeScreen() {
 
         <FlashList
           data={listData}
+          keyExtractor={(item) =>
+            item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
+          }
           getItemType={(item) => item.type}
           renderItem={({ item }: { item: ListItem }) =>
             item.type === "header" ? (

@@ -12,10 +12,9 @@ import {
   Receipt,
   SlidersHorizontal,
 } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -41,7 +40,9 @@ import {
   getAllSources,
   getCategoriesByType,
   getTransactionsPaginated,
+  reinsertTransaction,
   type Source,
+  type TransactionRow,
 } from "@/lib/db";
 import { buildListData, formatINR, type ListItem } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
@@ -119,7 +120,7 @@ export default function HistoryScreen() {
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [sourceId, setSourceId] = useState<number | null>(null);
   const [month, setMonth] = useState<Date | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const deletedRef = useRef<TransactionRow | null>(null);
 
   // Draft filters (inside modal)
   const [showFilters, setShowFilters] = useState(false);
@@ -238,25 +239,10 @@ export default function HistoryScreen() {
     setMonth(null);
   }
 
-  function confirmDelete(id: number) {
-    Alert.alert(
-      "Delete Transaction",
-      "Are you sure you want to delete this transaction?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => performDelete(id),
-        },
-      ],
-    );
-  }
-
-  async function performDelete(id: number) {
-    setDeletingId(id);
+  async function handleSwipeDelete(item: TransactionRow) {
+    deletedRef.current = item;
     try {
-      await deleteTransaction(id);
+      await deleteTransaction(item.id);
       await queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.TRANSACTIONS],
       });
@@ -266,15 +252,36 @@ export default function HistoryScreen() {
       await queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
       });
-      Toast.show({ type: "success", text1: "Transaction deleted" });
-    } catch (err) {
       Toast.show({
-        type: "error",
-        text1: "Failed to delete",
-        text2: String(err),
+        type: "undo",
+        text1: "Transaction deleted",
+        visibilityTime: 5000,
+        props: {
+          onUndo: async () => {
+            const row = deletedRef.current;
+            if (!row) return;
+            deletedRef.current = null;
+            Toast.hide();
+            try {
+              await reinsertTransaction(row);
+              await queryClient.invalidateQueries({
+                queryKey: [QUERY_KEYS.TRANSACTIONS],
+              });
+              await queryClient.invalidateQueries({
+                queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
+              });
+              await queryClient.invalidateQueries({
+                queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
+              });
+              Toast.show({ type: "success", text1: "Transaction restored" });
+            } catch {
+              Toast.show({ type: "error", text1: "Failed to undo" });
+            }
+          },
+        },
       });
-    } finally {
-      setDeletingId(null);
+    } catch {
+      Toast.show({ type: "error", text1: "Failed to delete" });
     }
   }
 
@@ -344,6 +351,9 @@ export default function HistoryScreen() {
       {/* Transaction List */}
       <FlashList
         data={listData}
+        keyExtractor={(item) =>
+          item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
+        }
         getItemType={(item) => item.type}
         renderItem={({ item }: { item: ListItem }) =>
           item.type === "header" ? (
@@ -356,8 +366,7 @@ export default function HistoryScreen() {
                 item={item.data}
                 showTime
                 onPress={(id) => router.push(editScreen(id))}
-                onDelete={confirmDelete}
-                isDeleting={deletingId === item.data.id}
+                onSwipeDelete={handleSwipeDelete}
               />
             </View>
           )
