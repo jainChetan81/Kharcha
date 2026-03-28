@@ -14,6 +14,7 @@ import { ScreenError } from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { useBudgets } from "@/hooks/use-budgets";
 import { useCurrency } from "@/hooks/use-currency";
 import { useSettings } from "@/hooks/use-settings";
 import {
@@ -21,7 +22,7 @@ import {
   useMonthlySummary,
   useRecentTransactions,
 } from "@/hooks/use-transactions";
-import { editScreen, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
+import { COLORS, editScreen, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
 import { buildListData } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -101,6 +102,8 @@ export default function HomeScreen() {
   const { data: summary } = useMonthlySummary(currentMonth);
   const { data: prevSummary } = useMonthlySummary(prevMonth);
   const { data: categoryBreakdown = [] } = useCategoryBreakdown(currentMonth);
+  const { data: budgetsList = [] } = useBudgets();
+  const budgetMap = new Map(budgetsList.map((b) => [b.category_id, b.amount]));
 
   const income = summary?.total_income ?? 0;
   const expenses = summary?.total_expenses ?? 0;
@@ -210,32 +213,51 @@ export default function HomeScreen() {
             <Text className="mb-3 text-sm font-semibold uppercase text-[#888888]">
               This Month
             </Text>
-            {categoryBreakdown.map((cat) => (
-              <Pressable
-                key={cat.category_id}
-                onPress={() =>
-                  router.push(
-                    `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${cat.category_id}`,
-                  )
-                }
-                className="mb-3"
-              >
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-base capitalize text-[#f0f0f0]">
-                    {cat.category_name}
-                  </Text>
-                  <Text className="text-sm text-[#888888]">
-                    {fmt(cat.total)}
-                  </Text>
-                </View>
-                <View className="mt-1.5 h-1 rounded-full bg-[#2a2a2a]">
-                  <View
-                    className="h-1 rounded-full bg-[#7c3aed]"
-                    style={{ width: `${cat.percentage}%` }}
-                  />
-                </View>
-              </Pressable>
-            ))}
+            {categoryBreakdown.map((cat) => {
+              const budget = budgetMap.get(cat.category_id);
+              const ratio = budget ? cat.total / budget : 0;
+              const barColor = !budget
+                ? COLORS.PRIMARY
+                : ratio >= 1
+                  ? COLORS.DANGER
+                  : ratio >= 0.75
+                    ? COLORS.WARNING
+                    : COLORS.PRIMARY;
+              const barWidth = budget
+                ? Math.min(ratio * 100, 100)
+                : cat.percentage;
+
+              return (
+                <Pressable
+                  key={cat.category_id}
+                  onPress={() =>
+                    router.push(
+                      `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${cat.category_id}`,
+                    )
+                  }
+                  className="mb-3"
+                >
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-base capitalize text-[#f0f0f0]">
+                      {cat.category_name}
+                    </Text>
+                    <Text className="text-sm text-[#888888]">
+                      {fmt(cat.total)}
+                      {budget ? ` / ${fmt(budget)}` : ""}
+                    </Text>
+                  </View>
+                  <View className="mt-1.5 h-1 rounded-full bg-[#2a2a2a]">
+                    <View
+                      className="h-1 rounded-full"
+                      style={{
+                        width: `${barWidth}%`,
+                        backgroundColor: barColor,
+                      }}
+                    />
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
         )}
 

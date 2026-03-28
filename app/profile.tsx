@@ -16,7 +16,7 @@ import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useSettings } from "@/hooks/use-settings";
-import { TOAST_TYPE } from "@/lib/constants";
+import { SCREENS, TOAST_TYPE } from "@/lib/constants";
 import { cn, isIOS } from "@/lib/utils";
 
 export default function ProfileScreen() {
@@ -92,12 +92,7 @@ export default function ProfileScreen() {
           Budgets
         </Text>
         <Pressable
-          onPress={() =>
-            Toast.show({
-              type: TOAST_TYPE.SUCCESS,
-              text1: "Coming soon",
-            })
-          }
+          onPress={() => router.push(SCREENS.BUDGETS)}
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
         >
           <Text className="flex-1 text-sm font-medium text-foreground">

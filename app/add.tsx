@@ -15,6 +15,7 @@ import {
   TOAST_TYPE,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
+import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
 import { cn, isIOS } from "@/lib/utils";
 
 export default function AddTransaction() {
@@ -52,6 +53,26 @@ export default function AddTransaction() {
         text1: "Transaction added",
         props: { formattedAmount: fmt(Number(value.amount)), type: value.type },
       });
+
+      if (value.type === TRANSACTION_TYPE.EXPENSE && value.categoryId) {
+        const budget = await getBudgetForCategory(value.categoryId);
+        if (budget) {
+          const yearMonth = value.date.slice(0, 7);
+          const spent = await getCategorySpent(value.categoryId, yearMonth);
+          if (spent >= budget) {
+            Toast.show({
+              type: TOAST_TYPE.ERROR,
+              text1: `⚠️ ${value.merchant || "Category"} budget exceeded`,
+            });
+          } else if (spent >= budget * 0.9) {
+            Toast.show({
+              type: TOAST_TYPE.ERROR,
+              text1: `⚠️ Approaching ${value.merchant || "category"} budget`,
+            });
+          }
+        }
+      }
+
       router.back();
     } catch (err) {
       Toast.show({

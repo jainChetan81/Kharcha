@@ -64,6 +64,12 @@ export async function initDB() {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS budgets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category_id INTEGER UNIQUE REFERENCES categories(id),
+      amount REAL NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL

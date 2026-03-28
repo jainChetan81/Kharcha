@@ -32,6 +32,14 @@ export const transactions = sqliteTable("transactions", {
   created_at: text("created_at").default("(datetime('now'))"),
 });
 
+export const budgets = sqliteTable("budgets", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  category_id: integer("category_id")
+    .references(() => categories.id)
+    .unique(),
+  amount: real("amount").notNull(),
+});
+
 export const settings = sqliteTable("settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
@@ -45,4 +53,5 @@ export type Source = InferSelectModel<typeof sources>;
 export type NewSource = InferInsertModel<typeof sources>;
 export type Transaction = InferSelectModel<typeof transactions>;
 export type NewTransaction = InferInsertModel<typeof transactions>;
+export type Budget = InferSelectModel<typeof budgets>;
 export type Setting = InferSelectModel<typeof settings>;

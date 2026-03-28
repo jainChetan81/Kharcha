@@ -5,6 +5,7 @@ export const SCREENS = {
   SETTINGS: "/settings",
   ABOUT: "/about",
   PROFILE: "/profile",
+  BUDGETS: "/budgets",
   EDIT: "/edit",
 } as const;
 
@@ -35,6 +36,13 @@ export const TOAST_TYPE = {
   UNDO: "undo",
 } as const;
 
+export const COLORS = {
+  PRIMARY: "#7c3aed",
+  WARNING: "#f59e0b",
+  DANGER: "#ef4444",
+  BAR_BG: "#2a2a2a",
+} as const;
+
 export const QUERY_KEYS = {
   TRANSACTION: "transaction",
   TRANSACTIONS: "transactions",
@@ -45,4 +53,5 @@ export const QUERY_KEYS = {
   SOURCES: "sources",
   DATA_STATS: "data-stats",
   SETTINGS: "settings",
+  BUDGETS: "budgets",
 } as const;
