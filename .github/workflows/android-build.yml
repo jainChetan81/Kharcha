@@ -1,0 +1,43 @@
+name: Android APK Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: install dependencies
+        run: pnpm install
+
+      - name: setup eas
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: build android apk
+        run: eas build --platform android --profile preview --non-interactive
+
+      - name: download apk
+        run: |
+          APK_URL=$(eas build:list --platform android --limit 1 --json --non-interactive | jq -r '.[0].artifacts.buildUrl')
+          curl -L $APK_URL -o kharcha.apk
+
+      - name: upload apk artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kharcha-android
+          path: kharcha.apk
+          retention-days: 7
