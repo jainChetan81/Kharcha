@@ -87,7 +87,7 @@ export default function SettingsScreen() {
   const [showAddSource, setShowAddSource] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">(
-    "expense",
+    TRANSACTION_TYPE.EXPENSE,
   );
   const [newSourceName, setNewSourceName] = useState("");
 
@@ -237,10 +237,13 @@ export default function SettingsScreen() {
           isIOS ? "pt-[60px]" : "pt-12",
         )}
       >
-        <Pressable onPress={() => router.back()} className="mr-3 py-1">
-          <Icon as={ChevronLeft} className="size-6 text-foreground" />
+        <Pressable
+          onPress={() => router.back()}
+          className="flex-row items-center py-1"
+        >
+          <Icon as={ChevronLeft} className="mr-1 size-6 text-foreground" />
+          <Text className="text-lg font-bold text-foreground">Settings</Text>
         </Pressable>
-        <Text className="text-lg font-bold text-foreground">Settings</Text>
       </View>
 
       <ScrollView
@@ -259,7 +262,7 @@ export default function SettingsScreen() {
         ))}
         <Pressable
           onPress={() => {
-            setNewCategoryType("expense");
+            setNewCategoryType(TRANSACTION_TYPE.EXPENSE);
             setNewCategoryName("");
             setShowAddCategory(true);
           }}
@@ -283,7 +286,7 @@ export default function SettingsScreen() {
         ))}
         <Pressable
           onPress={() => {
-            setNewCategoryType("income");
+            setNewCategoryType(TRANSACTION_TYPE.INCOME);
             setNewCategoryName("");
             setShowAddCategory(true);
           }}
@@ -357,7 +360,11 @@ export default function SettingsScreen() {
         >
           <View className="rounded-t-2xl bg-card p-6">
             <Text className="mb-4 text-base font-bold text-foreground">
-              Add {newCategoryType === "income" ? "Income" : "Expense"} Category
+              Add{" "}
+              {newCategoryType === TRANSACTION_TYPE.INCOME
+                ? "Income"
+                : "Expense"}{" "}
+              Category
             </Text>
             <Input
               placeholder="Category name"

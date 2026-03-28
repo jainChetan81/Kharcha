@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Pressable, View } from "react-native";
 import Toast from "react-native-toast-message";
 import { ScreenError } from "@/components/error-boundary";
@@ -9,15 +9,23 @@ import {
   type TransactionFormValues,
 } from "@/components/transaction-form";
 import { Text } from "@/components/ui/text";
-import { DATE_TIME_FORMAT, QUERY_KEYS } from "@/lib/constants";
+import {
+  DATE_TIME_FORMAT,
+  QUERY_KEYS,
+  TRANSACTION_TYPE,
+} from "@/lib/constants";
 import { insertTransaction } from "@/lib/db";
 import { cn, isIOS } from "@/lib/utils";
 
 export default function AddTransaction() {
   const queryClient = useQueryClient();
+  const { type: typeParam } = useLocalSearchParams<{ type?: string }>();
 
   const defaultValues: TransactionFormValues = {
-    type: "expense",
+    type:
+      typeParam === TRANSACTION_TYPE.INCOME
+        ? TRANSACTION_TYPE.INCOME
+        : TRANSACTION_TYPE.EXPENSE,
     amount: "",
     merchant: "",
     categoryId: null,
@@ -33,7 +41,8 @@ export default function AddTransaction() {
         amount: Number(value.amount),
         merchant: value.merchant || null,
         categoryId: value.categoryId,
-        sourceId: value.type === "income" ? null : value.sourceId,
+        sourceId:
+          value.type === TRANSACTION_TYPE.INCOME ? null : value.sourceId,
         date: value.date,
         note: value.note || null,
       });

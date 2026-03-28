@@ -66,10 +66,13 @@ export default function AboutScreen() {
           isIOS ? "pt-[60px]" : "pt-12",
         )}
       >
-        <Pressable onPress={() => router.back()} className="mr-3 py-1">
-          <Icon as={ChevronLeft} className="size-6 text-foreground" />
+        <Pressable
+          onPress={() => router.back()}
+          className="flex-row items-center py-1"
+        >
+          <Icon as={ChevronLeft} className="mr-1 size-6 text-foreground" />
+          <Text className="text-lg font-bold text-foreground">About</Text>
         </Pressable>
-        <Text className="text-lg font-bold text-foreground">About</Text>
       </View>
 
       <ScrollView

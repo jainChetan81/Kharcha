@@ -1,12 +1,15 @@
 import "../global.css";
 import { useReactQueryDevTools } from "@dev-plugins/react-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as QuickActions from "expo-quick-actions";
+import { useQuickActionRouting } from "expo-quick-actions/router";
 import { SplashScreen, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { Pressable, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
 import Toast, { type ToastConfig } from "react-native-toast-message";
 import { Text } from "@/components/ui/text";
+import { TRANSACTION_TYPE } from "@/lib/constants";
 import { initDB } from "@/lib/db";
 
 SplashScreen.preventAutoHideAsync();
@@ -33,9 +36,9 @@ const toastConfig: ToastConfig = {
       </View>
       {props?.amount ? (
         <Text
-          className={`text-sm font-bold ${props.type === "income" ? "text-positive" : "text-negative"}`}
+          className={`text-sm font-bold ${props.type === TRANSACTION_TYPE.INCOME ? "text-positive" : "text-negative"}`}
         >
-          {props.type === "income" ? "+" : "-"}₹
+          {props.type === TRANSACTION_TYPE.INCOME ? "+" : "-"}₹
           {Number(props.amount).toLocaleString("en-IN")}
         </Text>
       ) : null}
@@ -89,6 +92,8 @@ export default function RootLayout() {
     useReactQueryDevTools(queryClient);
   }
 
+  useQuickActionRouting();
+
   const [dbReady, setDbReady] = useState(false);
 
   useEffect(() => {
@@ -102,6 +107,27 @@ export default function RootLayout() {
         });
       })
       .finally(() => SplashScreen.hideAsync());
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === "ios") {
+      QuickActions.setItems([
+        {
+          title: "Add Expense",
+          subtitle: "Record a new expense",
+          icon: "compose",
+          id: "add_expense",
+          params: { href: "/add?type=expense" },
+        },
+        {
+          title: "Transactions",
+          subtitle: "View all transactions",
+          icon: "search",
+          id: "transactions",
+          params: { href: "/history" },
+        },
+      ]);
+    }
   }, []);
 
   return (

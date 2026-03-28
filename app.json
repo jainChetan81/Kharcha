@@ -10,12 +10,18 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0a0a0a"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.chetanjain.kharcha",
       "buildNumber": "1",
+      "icon": "./assets/icon.png",
+      "splash": {
+        "image": "./assets/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#0a0a0a"
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -27,7 +33,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.chetanjain.kharcha"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -35,7 +42,8 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-quick-actions"
     ],
     "extra": {
       "router": {},

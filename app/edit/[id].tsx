@@ -8,7 +8,7 @@ import {
   type TransactionFormValues,
 } from "@/components/transaction-form";
 import { Text } from "@/components/ui/text";
-import { QUERY_KEYS } from "@/lib/constants";
+import { QUERY_KEYS, TRANSACTION_TYPE } from "@/lib/constants";
 import { getTransactionById, updateTransaction } from "@/lib/db";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -48,7 +48,8 @@ export default function EditTransactionScreen() {
         amount: Number(value.amount),
         merchant: value.merchant || null,
         categoryId: value.categoryId,
-        sourceId: value.type === "income" ? null : value.sourceId,
+        sourceId:
+          value.type === TRANSACTION_TYPE.INCOME ? null : value.sourceId,
         date: value.date,
         note: value.note || null,
       });
