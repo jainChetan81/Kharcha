@@ -261,6 +261,37 @@ pnpm quality       # lint + typecheck
 
 ---
 
+## ci/cd
+
+github actions workflows in `.github/workflows/`:
+
+| workflow | trigger | what it does |
+|---|---|---|
+| `ci.yml` | push/PR to main | biome lint + typecheck |
+| `ios-build.yml` | manual dispatch | EAS build → TestFlight submit |
+| `android-build.yml` | manual dispatch | EAS build → APK artifact upload |
+
+all workflows use `pnpm/action-setup@v4` (reads pnpm version from `packageManager` in package.json) and node 22.
+
+---
+
+## setup
+
+```bash
+git clone <repo>
+cd kharcha
+pnpm install
+pnpm start
+```
+
+requirements:
+- node >= 22.19.0 (pinned in `.nvmrc`)
+- pnpm >= 9.0.0 (pinned in `packageManager`)
+- ios simulator or expo go for development
+- EAS CLI + expo account for builds
+
+---
+
 ## phase 2 roadmap
 
 - **gmail API integration** — read axis bank transaction emails, regex parse amount + merchant + date

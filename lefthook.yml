@@ -7,3 +7,10 @@ pre-commit:
     lint:
       glob: "*.{js,ts,jsx,tsx}"
       run: pnpm biome check --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+
+pre-push:
+  commands:
+    typecheck:
+      run: pnpm typecheck
+    doctor:
+      run: pnpm dlx expo-doctor
