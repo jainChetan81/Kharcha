@@ -1,4 +1,7 @@
+import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+// --- Tables ---
 
 export const categories = sqliteTable("categories", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -28,3 +31,12 @@ export const transactions = sqliteTable("transactions", {
   note: text("note"),
   created_at: text("created_at").default("(datetime('now'))"),
 });
+
+// --- Inferred types ---
+
+export type Category = InferSelectModel<typeof categories>;
+export type NewCategory = InferInsertModel<typeof categories>;
+export type Source = InferSelectModel<typeof sources>;
+export type NewSource = InferInsertModel<typeof sources>;
+export type Transaction = InferSelectModel<typeof transactions>;
+export type NewTransaction = InferInsertModel<typeof transactions>;

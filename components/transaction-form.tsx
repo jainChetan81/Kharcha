@@ -21,7 +21,7 @@ import {
   DATE_TIME_FORMAT,
   QUERY_KEYS,
 } from "@/lib/constants";
-import { getAllSources, getCategoriesByType, type Source } from "@/lib/db";
+import { getAllSources, getCategoriesByType } from "@/lib/db";
 import { parseDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 

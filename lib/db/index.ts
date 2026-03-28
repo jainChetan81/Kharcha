@@ -2,35 +2,39 @@ import { and, count, desc, eq, gte, lte, min, sql } from "drizzle-orm";
 import { drizzle, type ExpoSQLiteDatabase } from "drizzle-orm/expo-sqlite";
 import * as SQLite from "expo-sqlite";
 import { DB_NAME } from "@/lib/constants";
-import { categories, sources, transactions } from "./schema";
+import {
+  type Category,
+  categories,
+  type NewCategory,
+  type NewSource,
+  type NewTransaction,
+  type Source,
+  sources,
+  type Transaction,
+  transactions,
+} from "./schema";
+
+export type {
+  Category,
+  NewCategory,
+  NewSource,
+  NewTransaction,
+  Source,
+  Transaction,
+};
 
 // --- DB Setup ---
 
 const expo = SQLite.openDatabaseSync(DB_NAME);
 const db: ExpoSQLiteDatabase = drizzle(expo, { logger: __DEV__ });
 
-// --- Types (kept for backward compat) ---
+// --- Query-specific types ---
 
-export type Category = {
-  id: number;
-  name: string;
-  type: "income" | "expense";
-  is_default: number;
-};
-export type Source = { id: number; name: string; is_default: number };
-export type TransactionRow = {
-  id: number;
-  type: "income" | "expense";
-  amount: number;
-  merchant: string | null;
-  category_id: number | null;
-  source_id: number | null;
-  date: string;
-  note: string | null;
-  created_at: string;
+export type TransactionRow = Transaction & {
   category_name: string | null;
   source_name: string | null;
 };
+
 export type MonthlySummary = {
   total_income: number;
   total_expenses: number;
@@ -166,7 +170,20 @@ async function seedTransactions() {
       ('income',  8000,  'Side project',    9, null, date('now', '-11 days'), 'Website fix'),
       ('expense', 450,   'Rapido',          2, 2, date('now', '-12 days'), null),
       ('expense', 3500,  'Water purifier',  4, 3, date('now', '-13 days'), 'AMC renewal'),
-      ('expense', 280,   'Dunzo',           1, 2, date('now', '-14 days'), null);
+      ('expense', 280,   'Dunzo',           1, 2, date('now', '-14 days'), null),
+      -- Last month seed data
+      ('income',  80000, 'Salary',          8, null, date('now', '-1 month', 'start of month', '+1 day'), 'Feb salary'),
+      ('expense', 3200,  'Swiggy',          1, 2, date('now', '-1 month', 'start of month', '+2 days'), null),
+      ('expense', 1800,  'Uber',            2, 2, date('now', '-1 month', 'start of month', '+3 days'), null),
+      ('expense', 4500,  'Amazon',          3, 3, date('now', '-1 month', 'start of month', '+5 days'), 'Backpack'),
+      ('expense', 649,   'Netflix',         5, 3, date('now', '-1 month', 'start of month', '+6 days'), null),
+      ('expense', 1800,  'Electricity',     4, 2, date('now', '-1 month', 'start of month', '+8 days'), 'Feb bill'),
+      ('expense', 2500,  'DMart',           3, 1, date('now', '-1 month', 'start of month', '+10 days'), null),
+      ('expense', 1500,  'Gym',             6, 2, date('now', '-1 month', 'start of month', '+12 days'), 'Monthly fee'),
+      ('expense', 950,   'BigBasket',       1, 2, date('now', '-1 month', 'start of month', '+15 days'), null),
+      ('expense', 1200,  'Ola',             2, 2, date('now', '-1 month', 'start of month', '+18 days'), null),
+      ('expense', 199,   'Spotify',         5, 3, date('now', '-1 month', 'start of month', '+20 days'), null),
+      ('expense', 3500,  'Croma',           3, 3, date('now', '-1 month', 'start of month', '+22 days'), 'Charger');
   `);
 }
 

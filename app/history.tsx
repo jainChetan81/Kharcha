@@ -338,7 +338,7 @@ export default function HistoryScreen() {
       </View>
 
       {/* Summary Bar */}
-      {allTransactions.length > 0 && (
+      {allTransactions.length > 0 && (totalSpent > 0 || totalIncome > 0) && (
         <View className="mx-5 mb-3 rounded-xl bg-card p-3">
           <Text className="text-xs text-muted-foreground">
             {allTransactions.length} transactions
