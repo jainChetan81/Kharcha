@@ -4,6 +4,7 @@ export const SCREENS = {
   HISTORY: "/history",
   SETTINGS: "/settings",
   ABOUT: "/about",
+  PROFILE: "/profile",
   EDIT: "/edit",
 } as const;
 
@@ -43,4 +44,5 @@ export const QUERY_KEYS = {
   CATEGORIES: "categories",
   SOURCES: "sources",
   DATA_STATS: "data-stats",
+  SETTINGS: "settings",
 } as const;

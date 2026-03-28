@@ -34,12 +34,12 @@ const toastConfig: ToastConfig = {
           <Text className="mt-0.5 text-xs text-muted-foreground">{text2}</Text>
         ) : null}
       </View>
-      {props?.amount ? (
+      {props?.formattedAmount ? (
         <Text
           className={`text-sm font-bold ${props.type === TRANSACTION_TYPE.INCOME ? "text-positive" : "text-negative"}`}
         >
-          {props.type === TRANSACTION_TYPE.INCOME ? "+" : "-"}₹
-          {Number(props.amount).toLocaleString("en-IN")}
+          {props.type === TRANSACTION_TYPE.INCOME ? "+" : "-"}
+          {props.formattedAmount}
         </Text>
       ) : null}
     </View>

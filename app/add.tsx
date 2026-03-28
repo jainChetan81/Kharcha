@@ -8,6 +8,7 @@ import {
   type TransactionFormValues,
 } from "@/components/transaction-form";
 import { Text } from "@/components/ui/text";
+import { useCurrency } from "@/hooks/use-currency";
 import { useInsertTransaction } from "@/hooks/use-transactions";
 import {
   DATE_TIME_FORMAT,
@@ -18,6 +19,7 @@ import { cn, isIOS } from "@/lib/utils";
 
 export default function AddTransaction() {
   const { type: typeParam } = useLocalSearchParams<{ type?: string }>();
+  const { format: fmt } = useCurrency();
   const insertMutation = useInsertTransaction();
 
   const defaultValues: TransactionFormValues = {
@@ -48,7 +50,7 @@ export default function AddTransaction() {
       Toast.show({
         type: TOAST_TYPE.SUCCESS,
         text1: "Transaction added",
-        props: { amount: value.amount, type: value.type },
+        props: { formattedAmount: fmt(Number(value.amount)), type: value.type },
       });
       router.back();
     } catch (err) {

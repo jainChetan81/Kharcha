@@ -10,8 +10,9 @@ import {
 } from "react-native";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { useCurrency } from "@/hooks/use-currency";
 import type { TransactionRow } from "@/lib/db";
-import { formatINR, parseDate } from "@/lib/format";
+import { parseDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -28,6 +29,7 @@ export function TransactionItem({
   onPress?: (id: number) => void;
   onSwipeDelete?: (item: TransactionRow) => void;
 }) {
+  const { format: fmt } = useCurrency();
   const translateX = useRef(new Animated.Value(0)).current;
   const itemHeight = useRef(new Animated.Value(1)).current;
 
@@ -99,7 +101,7 @@ export function TransactionItem({
           )}
         >
           {isIncome ? "+" : "-"}
-          {formatINR(item.amount)}
+          {fmt(item.amount)}
         </Text>
         {showTime && (
           <Text className="mt-0.5 text-[10px] text-muted-foreground">

@@ -32,6 +32,11 @@ export const transactions = sqliteTable("transactions", {
   created_at: text("created_at").default("(datetime('now'))"),
 });
 
+export const settings = sqliteTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});
+
 // --- Inferred types ---
 
 export type Category = InferSelectModel<typeof categories>;
@@ -40,3 +45,4 @@ export type Source = InferSelectModel<typeof sources>;
 export type NewSource = InferInsertModel<typeof sources>;
 export type Transaction = InferSelectModel<typeof transactions>;
 export type NewTransaction = InferInsertModel<typeof transactions>;
+export type Setting = InferSelectModel<typeof settings>;

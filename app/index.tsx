@@ -14,21 +14,25 @@ import { ScreenError } from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { useCurrency } from "@/hooks/use-currency";
+import { useSettings } from "@/hooks/use-settings";
 import {
   useCategoryBreakdown,
   useMonthlySummary,
   useRecentTransactions,
 } from "@/hooks/use-transactions";
 import { editScreen, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
-import { buildListData, formatINR } from "@/lib/format";
+import { buildListData } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
 
 function SpendingRing({
   income,
   expenses,
+  fmt,
 }: {
   income: number;
   expenses: number;
+  fmt: (n: number) => string;
 }) {
   const balance = income - expenses;
   const hasIncome = income > 0;
@@ -67,7 +71,7 @@ function SpendingRing({
                     overspent ? "text-negative" : "text-foreground",
                   )}
                 >
-                  {formatINR(balance)}
+                  {fmt(balance)}
                 </Text>
                 <Text className="mt-0.5 text-xs text-muted-foreground">
                   available
@@ -86,6 +90,9 @@ function SpendingRing({
 }
 
 export default function HomeScreen() {
+  const { format: fmt } = useCurrency();
+  const { userName } = useSettings();
+
   const now = new Date();
   const currentMonth = format(now, "yyyy-MM");
   const prevMonth = format(subMonths(now, 1), "yyyy-MM");
@@ -115,22 +122,30 @@ export default function HomeScreen() {
           <View className="flex-row items-center justify-between">
             <View>
               <Text className="text-lg font-bold text-foreground">
-                Hello, Chetan
+                Hello, {userName}
               </Text>
               <Text className="mt-0.5 text-sm text-muted-foreground">
                 {format(new Date(), "MMMM yyyy")}
               </Text>
             </View>
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-primary">
+            <Pressable
+              onPress={() => router.push(SCREENS.PROFILE)}
+              className="h-10 w-10 items-center justify-center rounded-full bg-primary"
+            >
               <Text className="text-sm font-bold text-primary-foreground">
-                CJ
+                {userName
+                  .split(" ")
+                  .map((w) => w[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2)}
               </Text>
-            </View>
+            </Pressable>
           </View>
 
           {/* Spending Ring */}
           <View className="mt-3">
-            <SpendingRing income={income} expenses={expenses} />
+            <SpendingRing income={income} expenses={expenses} fmt={fmt} />
           </View>
 
           {/* Income / Spent row */}
@@ -146,7 +161,7 @@ export default function HomeScreen() {
               <View>
                 <Text className="text-xs text-muted-foreground">Income</Text>
                 <Text className="mt-0.5 text-base font-bold text-positive">
-                  {formatINR(income)}
+                  {fmt(income)}
                 </Text>
               </View>
               <Icon
@@ -165,7 +180,7 @@ export default function HomeScreen() {
               <View>
                 <Text className="text-xs text-muted-foreground">Spent</Text>
                 <Text className="mt-0.5 text-base font-bold text-negative">
-                  {formatINR(expenses)}
+                  {fmt(expenses)}
                 </Text>
               </View>
               <Icon
@@ -210,7 +225,7 @@ export default function HomeScreen() {
                     {cat.category_name}
                   </Text>
                   <Text className="text-sm text-[#888888]">
-                    {formatINR(cat.total)}
+                    {fmt(cat.total)}
                   </Text>
                 </View>
                 <View className="mt-1.5 h-1 rounded-full bg-[#2a2a2a]">
@@ -290,7 +305,10 @@ export default function HomeScreen() {
               Settings
             </Text>
           </Pressable>
-          <Pressable className="items-center gap-1">
+          <Pressable
+            onPress={() => router.push(SCREENS.PROFILE)}
+            className="items-center gap-1"
+          >
             <Icon as={User} className="size-5 text-muted-foreground" />
             <Text className="text-[11px] font-medium text-muted-foreground">
               Profile

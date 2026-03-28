@@ -1,8 +1,21 @@
 import { format, isToday, isYesterday } from "date-fns";
 import type { TransactionRow } from "@/lib/db";
 
-export function formatINR(n: number) {
-  return `₹${n.toLocaleString("en-IN")}`;
+export type CurrencyCode = "INR" | "USD" | "GBP" | "EUR";
+
+const CURRENCY_CONFIG: Record<
+  CurrencyCode,
+  { symbol: string; locale: string }
+> = {
+  INR: { symbol: "₹", locale: "en-IN" },
+  USD: { symbol: "$", locale: "en-US" },
+  GBP: { symbol: "£", locale: "en-GB" },
+  EUR: { symbol: "€", locale: "de-DE" },
+};
+
+export function formatCurrency(n: number, code: CurrencyCode = "INR") {
+  const { symbol, locale } = CURRENCY_CONFIG[code];
+  return `${symbol}${n.toLocaleString(locale)}`;
 }
 
 export function parseDate(dateStr: string): Date {

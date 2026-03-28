@@ -63,6 +63,15 @@ export async function initDB() {
       note TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
+    INSERT OR IGNORE INTO settings (key, value) VALUES
+      ('currency', 'INR'),
+      ('userName', 'Chetan');
   `);
 
   // Migration: add type column to transactions if missing
@@ -425,4 +434,5 @@ export async function getCategoryBreakdown(yearMonth: string) {
 }
 
 // Default export: raw expo-sqlite instance for backward compat
+export { db };
 export default expo;

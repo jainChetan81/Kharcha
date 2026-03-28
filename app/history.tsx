@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useCategoriesByType } from "@/hooks/use-categories";
+import { useCurrency } from "@/hooks/use-currency";
 import { useAllSources } from "@/hooks/use-sources";
 import {
   useSwipeDelete,
@@ -31,7 +32,7 @@ import {
   TRANSACTION_TYPE,
   type TransactionFilterType,
 } from "@/lib/constants";
-import { buildListData, formatINR, type ListItem } from "@/lib/format";
+import { buildListData, type ListItem } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
 
 const TYPE_FILTERS = Object.values(TRANSACTION_TYPE);
@@ -97,6 +98,7 @@ function ChipRow({
 }
 
 export default function HistoryScreen() {
+  const { format: fmt } = useCurrency();
   const { filter: filterParam, category_id: categoryIdParam } =
     useLocalSearchParams<{ filter?: string; category_id?: string }>();
 
@@ -262,7 +264,7 @@ export default function HistoryScreen() {
               <>
                 {"  ·  "}
                 <Text className="text-xs font-semibold text-negative">
-                  {formatINR(totalSpent)} spent
+                  {fmt(totalSpent)} spent
                 </Text>
               </>
             )}
@@ -270,7 +272,7 @@ export default function HistoryScreen() {
               <>
                 {"  ·  "}
                 <Text className="text-xs font-semibold text-positive">
-                  {formatINR(totalIncome)} income
+                  {fmt(totalIncome)} income
                 </Text>
               </>
             )}
