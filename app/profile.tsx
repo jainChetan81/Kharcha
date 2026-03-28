@@ -15,13 +15,14 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
-import { useSettings } from "@/hooks/use-settings";
+import { CURRENCIES, type CurrencyCode, useConfig } from "@/hooks/use-config";
 import { SCREENS, TOAST_TYPE } from "@/lib/constants";
 import { cn, isIOS } from "@/lib/utils";
 
 export default function ProfileScreen() {
-  const { userName, updateUserName } = useSettings();
+  const { userName, updateUserName, currency, updateCurrency } = useConfig();
   const [showEditName, setShowEditName] = useState(false);
+  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [draftName, setDraftName] = useState("");
 
   const initials = userName
@@ -82,6 +83,18 @@ export default function ProfileScreen() {
             Name
           </Text>
           <Text className="mr-2 text-sm text-muted-foreground">{userName}</Text>
+          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
+        </Pressable>
+        <Pressable
+          onPress={() => setShowCurrencyPicker(true)}
+          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Text className="flex-1 text-sm font-medium text-foreground">
+            Currency
+          </Text>
+          <Text className="mr-2 text-sm text-muted-foreground">
+            {CURRENCIES[currency].symbol} {currency}
+          </Text>
           <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
         </Pressable>
 
@@ -151,6 +164,53 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal
+        visible={showCurrencyPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCurrencyPicker(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/50"
+          onPress={() => setShowCurrencyPicker(false)}
+        />
+        <View className="rounded-t-2xl bg-card p-6">
+          <Text className="mb-4 text-base font-bold text-foreground">
+            Select Currency
+          </Text>
+          {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => (
+            <Pressable
+              key={code}
+              onPress={async () => {
+                await updateCurrency(code);
+                setShowCurrencyPicker(false);
+              }}
+              className="flex-row items-center rounded-xl px-4 py-3"
+            >
+              <Text className="w-8 text-base font-bold text-foreground">
+                {CURRENCIES[code].symbol}
+              </Text>
+              <Text className="flex-1 text-sm text-foreground">
+                {code} — {CURRENCIES[code].name}
+              </Text>
+              {currency === code && (
+                <View className="h-5 w-5 items-center justify-center rounded-full bg-primary">
+                  <Text className="text-xs text-primary-foreground">✓</Text>
+                </View>
+              )}
+            </Pressable>
+          ))}
+          <Pressable
+            onPress={() => setShowCurrencyPicker(false)}
+            className={cn("mt-3 items-center py-2", isIOS && "mb-4")}
+          >
+            <Text className="text-sm font-medium text-muted-foreground">
+              Cancel
+            </Text>
+          </Pressable>
+        </View>
       </Modal>
     </View>
   );

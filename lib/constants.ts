@@ -2,7 +2,7 @@ export const SCREENS = {
   HOME: "/",
   ADD: "/add",
   HISTORY: "/history",
-  SETTINGS: "/settings",
+  CONFIG: "/config",
   ABOUT: "/about",
   PROFILE: "/profile",
   BUDGETS: "/budgets",
@@ -58,7 +58,7 @@ export const QUERY_KEYS = {
   CATEGORIES: "categories",
   SOURCES: "sources",
   DATA_STATS: "data-stats",
-  SETTINGS: "settings",
+  CONFIG: "config",
   BUDGETS: "budgets",
   SUBSCRIPTIONS: "subscriptions",
 } as const;

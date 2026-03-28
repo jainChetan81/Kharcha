@@ -81,12 +81,12 @@ export async function initDB() {
       amount REAL NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS settings (
+    CREATE TABLE IF NOT EXISTS config (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
 
-    INSERT OR IGNORE INTO settings (key, value) VALUES
+    INSERT OR IGNORE INTO config (key, value) VALUES
       ('currency', 'INR'),
       ('userName', 'User');
   `);

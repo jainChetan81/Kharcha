@@ -54,7 +54,7 @@ export const budgets = sqliteTable("budgets", {
   amount: real("amount").notNull(),
 });
 
-export const settings = sqliteTable("settings", {
+export const config = sqliteTable("config", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
 });
@@ -69,4 +69,4 @@ export type Transaction = InferSelectModel<typeof transactions>;
 export type NewTransaction = InferInsertModel<typeof transactions>;
 export type Subscription = InferSelectModel<typeof subscriptions>;
 export type Budget = InferSelectModel<typeof budgets>;
-export type Setting = InferSelectModel<typeof settings>;
+export type ConfigRow = InferSelectModel<typeof config>;

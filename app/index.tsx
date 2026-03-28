@@ -15,8 +15,8 @@ import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useBudgets } from "@/hooks/use-budgets";
+import { useConfig } from "@/hooks/use-config";
 import { useCurrency } from "@/hooks/use-currency";
-import { useSettings } from "@/hooks/use-settings";
 import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
 import {
   useCategoryBreakdown,
@@ -93,7 +93,7 @@ function SpendingRing({
 
 export default function HomeScreen() {
   const { format: fmt } = useCurrency();
-  const { userName } = useSettings();
+  const { userName } = useConfig();
 
   const now = new Date();
   const currentMonth = format(now, "yyyy-MM");
@@ -325,12 +325,12 @@ export default function HomeScreen() {
             </View>
           </Pressable>
           <Pressable
-            onPress={() => router.push(SCREENS.SETTINGS)}
+            onPress={() => router.push(SCREENS.CONFIG)}
             className="items-center gap-1"
           >
             <Icon as={Settings} className="size-5 text-muted-foreground" />
             <Text className="text-[11px] font-medium text-muted-foreground">
-              Settings
+              Config
             </Text>
           </Pressable>
           <Pressable

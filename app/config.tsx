@@ -29,12 +29,6 @@ import {
   useDeleteCategory,
 } from "@/hooks/use-categories";
 import {
-  CURRENCIES,
-  type CurrencyCode,
-  useSettings,
-} from "@/hooks/use-settings";
-
-import {
   useAddSource,
   useAllSources,
   useDeleteSource,
@@ -85,7 +79,7 @@ function ListItem({
   );
 }
 
-export default function SettingsScreen() {
+export default function ConfigScreen() {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddSource, setShowAddSource] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -93,9 +87,7 @@ export default function SettingsScreen() {
     TRANSACTION_TYPE.EXPENSE,
   );
   const [newSourceName, setNewSourceName] = useState("");
-  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
 
-  const { currency, updateCurrency } = useSettings();
   const { data: categories = [] } = useAllCategories();
   const { data: sources = [] } = useAllSources();
 
@@ -238,7 +230,7 @@ export default function SettingsScreen() {
           className="flex-row items-center py-1"
         >
           <Icon as={ChevronLeft} className="mr-1 size-6 text-foreground" />
-          <Text className="text-lg font-bold text-foreground">Settings</Text>
+          <Text className="text-lg font-bold text-foreground">Config</Text>
         </Pressable>
       </View>
 
@@ -246,21 +238,6 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
       >
-        {/* Preferences */}
-        <SectionHeader title="Preferences" />
-        <Pressable
-          onPress={() => setShowCurrencyPicker(true)}
-          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            Currency
-          </Text>
-          <Text className="mr-2 text-sm text-muted-foreground">
-            {CURRENCIES[currency].symbol} {currency}
-          </Text>
-          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-        </Pressable>
-
         {/* Expense Categories */}
         <SectionHeader title="Expense Categories" />
         {expenseCategories.map((c) => (
@@ -449,54 +426,6 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
         </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Currency Picker Modal */}
-      <Modal
-        visible={showCurrencyPicker}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCurrencyPicker(false)}
-      >
-        <Pressable
-          className="flex-1 bg-black/50"
-          onPress={() => setShowCurrencyPicker(false)}
-        />
-        <View className="rounded-t-2xl bg-card p-6">
-          <Text className="mb-4 text-base font-bold text-foreground">
-            Select Currency
-          </Text>
-          {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => (
-            <Pressable
-              key={code}
-              onPress={async () => {
-                await updateCurrency(code);
-                setShowCurrencyPicker(false);
-              }}
-              className="flex-row items-center rounded-xl px-4 py-3"
-            >
-              <Text className="w-8 text-base font-bold text-foreground">
-                {CURRENCIES[code].symbol}
-              </Text>
-              <Text className="flex-1 text-sm text-foreground">
-                {code} — {CURRENCIES[code].name}
-              </Text>
-              {currency === code && (
-                <View className="h-5 w-5 items-center justify-center rounded-full bg-primary">
-                  <Text className="text-xs text-primary-foreground">✓</Text>
-                </View>
-              )}
-            </Pressable>
-          ))}
-          <Pressable
-            onPress={() => setShowCurrencyPicker(false)}
-            className={cn("mt-3 items-center py-2", isIOS && "mb-4")}
-          >
-            <Text className="text-sm font-medium text-muted-foreground">
-              Cancel
-            </Text>
-          </Pressable>
-        </View>
       </Modal>
     </View>
   );

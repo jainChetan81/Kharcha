@@ -1,9 +1,9 @@
 import { useCallback } from "react";
-import { useSettings } from "@/hooks/use-settings";
+import { useConfig } from "@/hooks/use-config";
 import { formatCurrency } from "@/lib/format";
 
 export function useCurrency() {
-  const { currency } = useSettings();
+  const { currency } = useConfig();
   const format = useCallback(
     (amount: number) => formatCurrency(amount, currency),
     [currency],
