@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
 import { Pressable, View } from "react-native";
@@ -9,17 +8,17 @@ import {
   type TransactionFormValues,
 } from "@/components/transaction-form";
 import { Text } from "@/components/ui/text";
+import { useInsertTransaction } from "@/hooks/use-transactions";
 import {
   DATE_TIME_FORMAT,
-  QUERY_KEYS,
+  TOAST_TYPE,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { insertTransaction } from "@/lib/db";
 import { cn, isIOS } from "@/lib/utils";
 
 export default function AddTransaction() {
-  const queryClient = useQueryClient();
   const { type: typeParam } = useLocalSearchParams<{ type?: string }>();
+  const insertMutation = useInsertTransaction();
 
   const defaultValues: TransactionFormValues = {
     type:
@@ -36,7 +35,7 @@ export default function AddTransaction() {
 
   async function handleSubmit(value: TransactionFormValues) {
     try {
-      await insertTransaction({
+      await insertMutation.mutateAsync({
         type: value.type,
         amount: Number(value.amount),
         merchant: value.merchant || null,
@@ -46,24 +45,15 @@ export default function AddTransaction() {
         date: value.date,
         note: value.note || null,
       });
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TRANSACTIONS],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
-      });
       Toast.show({
-        type: "success",
+        type: TOAST_TYPE.SUCCESS,
         text1: "Transaction added",
         props: { amount: value.amount, type: value.type },
       });
       router.back();
     } catch (err) {
       Toast.show({
-        type: "error",
+        type: TOAST_TYPE.ERROR,
         text1: "Failed to save",
         text2: String(err),
       });

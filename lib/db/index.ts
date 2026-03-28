@@ -23,12 +23,8 @@ export type {
   Transaction,
 };
 
-// --- DB Setup ---
-
 const expo = SQLite.openDatabaseSync(DB_NAME);
 const db: ExpoSQLiteDatabase = drizzle(expo, { logger: __DEV__ });
-
-// --- Query-specific types ---
 
 export type TransactionRow = Transaction & {
   category_name: string | null;
@@ -39,8 +35,6 @@ export type MonthlySummary = {
   total_income: number;
   total_expenses: number;
 };
-
-// --- Init ---
 
 export async function initDB() {
   // Create tables using raw SQL for CREATE IF NOT EXISTS
@@ -187,8 +181,6 @@ async function seedTransactions() {
   `);
 }
 
-// --- Shared select for transaction queries with JOINs ---
-
 function transactionSelect() {
   return db
     .select({
@@ -208,8 +200,6 @@ function transactionSelect() {
     .leftJoin(categories, eq(transactions.category_id, categories.id))
     .leftJoin(sources, eq(transactions.source_id, sources.id));
 }
-
-// --- Queries ---
 
 export async function getRecentTransactions(limit = 20) {
   return (await transactionSelect()
@@ -364,6 +354,7 @@ export async function reinsertTransaction(row: {
   source_id: number | null;
   date: string;
   note: string | null;
+  created_at: string | null;
 }) {
   return db.insert(transactions).values({
     type: row.type,
@@ -372,6 +363,7 @@ export async function reinsertTransaction(row: {
     category_id: row.category_id,
     source_id: row.source_id,
     date: row.date,
+    created_at: row.created_at,
     note: row.note,
   });
 }

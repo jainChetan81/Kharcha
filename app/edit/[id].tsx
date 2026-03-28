@@ -1,4 +1,3 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import Toast from "react-native-toast-message";
@@ -8,20 +7,19 @@ import {
   type TransactionFormValues,
 } from "@/components/transaction-form";
 import { Text } from "@/components/ui/text";
-import { QUERY_KEYS, TRANSACTION_TYPE } from "@/lib/constants";
-import { getTransactionById, updateTransaction } from "@/lib/db";
+import {
+  useTransactionById,
+  useUpdateTransaction,
+} from "@/hooks/use-transactions";
+import { TOAST_TYPE, TRANSACTION_TYPE } from "@/lib/constants";
 import { cn, isIOS } from "@/lib/utils";
 
 export default function EditTransactionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const transactionId = Number(id);
-  const queryClient = useQueryClient();
+  const updateMutation = useUpdateTransaction(transactionId);
 
-  const { data: transaction, isLoading } = useQuery({
-    queryKey: ["transaction", transactionId],
-    queryFn: () => getTransactionById(transactionId),
-    enabled: !!transactionId,
-  });
+  const { data: transaction, isLoading } = useTransactionById(transactionId);
 
   if (isLoading || !transaction) {
     return (
@@ -43,7 +41,7 @@ export default function EditTransactionScreen() {
 
   async function handleSubmit(value: TransactionFormValues) {
     try {
-      await updateTransaction(transactionId, {
+      await updateMutation.mutateAsync({
         type: value.type,
         amount: Number(value.amount),
         merchant: value.merchant || null,
@@ -53,23 +51,11 @@ export default function EditTransactionScreen() {
         date: value.date,
         note: value.note || null,
       });
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TRANSACTIONS],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
-      });
-      Toast.show({ type: "success", text1: "Transaction updated" });
+      Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Transaction updated" });
       router.back();
     } catch (err) {
       Toast.show({
-        type: "error",
+        type: TOAST_TYPE.ERROR,
         text1: "Failed to update",
         text2: String(err),
       });

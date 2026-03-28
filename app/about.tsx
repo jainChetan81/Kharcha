@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import * as Application from "expo-application";
 import Constants from "expo-constants";
@@ -9,7 +8,7 @@ import { Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { getDataStats } from "@/lib/db";
+import { useDataStats } from "@/hooks/use-stats";
 import { parseDate } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -48,10 +47,7 @@ function getDeviceTypeName(type: Device.DeviceType | null): string {
 }
 
 export default function AboutScreen() {
-  const { data: stats } = useQuery({
-    queryKey: ["data-stats"],
-    queryFn: getDataStats,
-  });
+  const { data: stats } = useDataStats();
 
   const firstDate = stats?.first_transaction_date
     ? format(parseDate(stats.first_transaction_date), "dd MMM yyyy")

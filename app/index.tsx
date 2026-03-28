@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { format, subMonths } from "date-fns";
 import { router } from "expo-router";
 import {
@@ -16,16 +15,11 @@ import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import {
-  editScreen,
-  QUERY_KEYS,
-  SCREENS,
-  TRANSACTION_TYPE,
-} from "@/lib/constants";
-import {
-  getCategoryBreakdown,
-  getMonthlySummary,
-  getRecentTransactions,
-} from "@/lib/db";
+  useCategoryBreakdown,
+  useMonthlySummary,
+  useRecentTransactions,
+} from "@/hooks/use-transactions";
+import { editScreen, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
 import { buildListData, formatINR } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -96,25 +90,10 @@ export default function HomeScreen() {
   const currentMonth = format(now, "yyyy-MM");
   const prevMonth = format(subMonths(now, 1), "yyyy-MM");
 
-  const { data: transactions = [] } = useQuery({
-    queryKey: [QUERY_KEYS.TRANSACTIONS],
-    queryFn: () => getRecentTransactions(10),
-  });
-
-  const { data: summary } = useQuery({
-    queryKey: [QUERY_KEYS.MONTHLY_SUMMARY, currentMonth],
-    queryFn: () => getMonthlySummary(currentMonth),
-  });
-
-  const { data: prevSummary } = useQuery({
-    queryKey: [QUERY_KEYS.MONTHLY_SUMMARY, prevMonth],
-    queryFn: () => getMonthlySummary(prevMonth),
-  });
-
-  const { data: categoryBreakdown = [] } = useQuery({
-    queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN, currentMonth],
-    queryFn: () => getCategoryBreakdown(currentMonth),
-  });
+  const { data: transactions = [] } = useRecentTransactions(10);
+  const { data: summary } = useMonthlySummary(currentMonth);
+  const { data: prevSummary } = useMonthlySummary(prevMonth);
+  const { data: categoryBreakdown = [] } = useCategoryBreakdown(currentMonth);
 
   const income = summary?.total_income ?? 0;
   const expenses = summary?.total_expenses ?? 0;

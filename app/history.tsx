@@ -1,9 +1,4 @@
 import { FlashList } from "@shopify/flash-list";
-import {
-  useInfiniteQuery,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
 import { addMonths, format, subMonths } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -12,7 +7,7 @@ import {
   Receipt,
   SlidersHorizontal,
 } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -20,30 +15,22 @@ import {
   ScrollView,
   View,
 } from "react-native";
-import Toast from "react-native-toast-message";
 import { ScreenError } from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { useCategoriesByType } from "@/hooks/use-categories";
+import { useAllSources } from "@/hooks/use-sources";
+import {
+  useSwipeDelete,
+  useTransactionsPaginated,
+} from "@/hooks/use-transactions";
 import {
   editScreen,
-  PAGE_SIZE,
-  QUERY_KEYS,
   TRANSACTION_TYPE,
   type TransactionFilterType,
 } from "@/lib/constants";
-import {
-  type Category,
-  deleteTransaction,
-  getAllCategories,
-  getAllSources,
-  getCategoriesByType,
-  getTransactionsPaginated,
-  reinsertTransaction,
-  type Source,
-  type TransactionRow,
-} from "@/lib/db";
 import { buildListData, formatINR, type ListItem } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -110,7 +97,6 @@ function ChipRow({
 }
 
 export default function HistoryScreen() {
-  const queryClient = useQueryClient();
   const { filter: filterParam, category_id: categoryIdParam } =
     useLocalSearchParams<{ filter?: string; category_id?: string }>();
 
@@ -121,7 +107,7 @@ export default function HistoryScreen() {
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [sourceId, setSourceId] = useState<number | null>(null);
   const [month, setMonth] = useState<Date | null>(null);
-  const deletedRef = useRef<TransactionRow | null>(null);
+  const handleSwipeDelete = useSwipeDelete();
 
   // Draft filters (inside modal)
   const [showFilters, setShowFilters] = useState(false);
@@ -154,20 +140,11 @@ export default function HistoryScreen() {
     setDraftSourceId(null);
   }, [draftType]);
 
-  const { data: categories = [] } = useQuery<Category[]>({
-    queryKey: [QUERY_KEYS.CATEGORIES, "filter", draftType],
-    queryFn: () =>
-      draftType === TRANSACTION_TYPE.ALL
-        ? getAllCategories()
-        : getCategoriesByType(draftType as "income" | "expense"),
-    enabled: showFilters,
-  });
+  const { data: categories = [] } = useCategoriesByType(draftType, showFilters);
 
-  const { data: sources = [] } = useQuery<Source[]>({
-    queryKey: [QUERY_KEYS.SOURCES, "filter"],
-    queryFn: getAllSources,
-    enabled: showFilters && draftType !== TRANSACTION_TYPE.INCOME,
-  });
+  const { data: sources = [] } = useAllSources(
+    showFilters && draftType !== TRANSACTION_TYPE.INCOME,
+  );
 
   const hasActiveFilters =
     typeFilter !== TRANSACTION_TYPE.ALL ||
@@ -195,16 +172,7 @@ export default function HistoryScreen() {
     isFetchingNextPage,
     isRefetching,
     refetch,
-  } = useInfiniteQuery({
-    queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED, filters],
-    queryFn: ({ pageParam = 0 }) =>
-      getTransactionsPaginated(PAGE_SIZE, pageParam, filters),
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      if (lastPage.length < PAGE_SIZE) return undefined;
-      return allPages.flat().length;
-    },
-  });
+  } = useTransactionsPaginated(filters);
 
   const allTransactions = data?.pages.flat() ?? [];
   const listData = buildListData(allTransactions);
@@ -244,58 +212,6 @@ export default function HistoryScreen() {
     setCategoryId(null);
     setSourceId(null);
     setMonth(null);
-  }
-
-  async function handleSwipeDelete(item: TransactionRow) {
-    deletedRef.current = item;
-    try {
-      await deleteTransaction(item.id);
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TRANSACTIONS],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
-      });
-      Toast.show({
-        type: "undo",
-        text1: "Transaction deleted",
-        visibilityTime: 5000,
-        props: {
-          onUndo: async () => {
-            const row = deletedRef.current;
-            if (!row) return;
-            deletedRef.current = null;
-            Toast.hide();
-            try {
-              await reinsertTransaction(row);
-              await queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.TRANSACTIONS],
-              });
-              await queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
-              });
-              await queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
-              });
-              await queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
-              });
-              Toast.show({ type: "success", text1: "Transaction restored" });
-            } catch {
-              Toast.show({ type: "error", text1: "Failed to undo" });
-            }
-          },
-        },
-      });
-    } catch {
-      Toast.show({ type: "error", text1: "Failed to delete" });
-    }
   }
 
   const draftHasFilters =

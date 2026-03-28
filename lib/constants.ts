@@ -1,4 +1,3 @@
-// --- Routes ---
 export const SCREENS = {
   HOME: "/",
   ADD: "/add",
@@ -12,18 +11,14 @@ export function editScreen(id: number) {
   return `${SCREENS.EDIT}/${id}` as const;
 }
 
-// --- App ---
 export const DB_NAME = "kharcha.db";
 export const UNDO_TIMEOUT_MS = 5000;
 
-// --- Pagination ---
 export const PAGE_SIZE = 10;
 
-// --- Date Formats ---
 export const DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm";
 export const DATE_DISPLAY_FORMAT = "dd MMM yyyy, hh:mm a";
 
-// --- Transaction Types ---
 export const TRANSACTION_TYPE = {
   ALL: "all",
   EXPENSE: "expense",
@@ -33,12 +28,19 @@ export const TRANSACTION_TYPE = {
 export type TransactionFilterType =
   (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
 
-// --- Query Keys ---
+export const TOAST_TYPE = {
+  SUCCESS: "success",
+  ERROR: "error",
+  UNDO: "undo",
+} as const;
+
 export const QUERY_KEYS = {
+  TRANSACTION: "transaction",
   TRANSACTIONS: "transactions",
   TRANSACTIONS_PAGINATED: "transactions-paginated",
   MONTHLY_SUMMARY: "monthly-summary",
   CATEGORY_BREAKDOWN: "category-breakdown",
   CATEGORIES: "categories",
   SOURCES: "sources",
+  DATA_STATS: "data-stats",
 } as const;

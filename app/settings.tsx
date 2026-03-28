@@ -1,4 +1,3 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import {
@@ -24,18 +23,18 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
-import { QUERY_KEYS, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
 import {
-  addCategory,
-  addSource,
-  type Category,
-  clearAllTransactions,
-  deleteCategory,
-  deleteSource,
-  getAllCategories,
-  getAllSources,
-  type Source,
-} from "@/lib/db";
+  useAddCategory,
+  useAllCategories,
+  useDeleteCategory,
+} from "@/hooks/use-categories";
+import {
+  useAddSource,
+  useAllSources,
+  useDeleteSource,
+} from "@/hooks/use-sources";
+import { useClearAllTransactions } from "@/hooks/use-transactions";
+import { SCREENS, TOAST_TYPE, TRANSACTION_TYPE } from "@/lib/constants";
 import { cn, isIOS } from "@/lib/utils";
 
 function SectionHeader({ title }: { title: string }) {
@@ -81,8 +80,6 @@ function ListItem({
 }
 
 export default function SettingsScreen() {
-  const queryClient = useQueryClient();
-
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddSource, setShowAddSource] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -91,15 +88,14 @@ export default function SettingsScreen() {
   );
   const [newSourceName, setNewSourceName] = useState("");
 
-  const { data: categories = [] } = useQuery<Category[]>({
-    queryKey: [QUERY_KEYS.CATEGORIES, "all"],
-    queryFn: getAllCategories,
-  });
+  const { data: categories = [] } = useAllCategories();
+  const { data: sources = [] } = useAllSources();
 
-  const { data: sources = [] } = useQuery<Source[]>({
-    queryKey: [QUERY_KEYS.SOURCES],
-    queryFn: getAllSources,
-  });
+  const addCategoryMutation = useAddCategory();
+  const deleteCategoryMutation = useDeleteCategory();
+  const addSourceMutation = useAddSource();
+  const deleteSourceMutation = useDeleteSource();
+  const clearTransactionsMutation = useClearAllTransactions();
 
   const expenseCategories = categories.filter(
     (c) => c.type === TRANSACTION_TYPE.EXPENSE,
@@ -112,19 +108,20 @@ export default function SettingsScreen() {
     const name = newCategoryName.trim();
     if (!name) return;
     try {
-      await addCategory(name, newCategoryType);
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CATEGORIES],
-      });
+      await addCategoryMutation.mutateAsync({ name, type: newCategoryType });
       setNewCategoryName("");
       setShowAddCategory(false);
-      Toast.show({ type: "success", text1: "Category added" });
+      Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Category added" });
     } catch (err) {
-      Toast.show({ type: "error", text1: "Failed", text2: String(err) });
+      Toast.show({
+        type: TOAST_TYPE.ERROR,
+        text1: "Failed",
+        text2: String(err),
+      });
     }
   }
 
-  async function handleDeleteCategory(id: number) {
+  function handleDeleteCategory(id: number) {
     Alert.alert("Delete Category", "This will remove the category.", [
       { text: "Cancel", style: "cancel" },
       {
@@ -132,13 +129,14 @@ export default function SettingsScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await deleteCategory(id);
-            await queryClient.invalidateQueries({
-              queryKey: [QUERY_KEYS.CATEGORIES],
-            });
-            Toast.show({ type: "success", text1: "Category deleted" });
+            await deleteCategoryMutation.mutateAsync(id);
+            Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Category deleted" });
           } catch (err) {
-            Toast.show({ type: "error", text1: "Failed", text2: String(err) });
+            Toast.show({
+              type: TOAST_TYPE.ERROR,
+              text1: "Failed",
+              text2: String(err),
+            });
           }
         },
       },
@@ -149,19 +147,20 @@ export default function SettingsScreen() {
     const name = newSourceName.trim();
     if (!name) return;
     try {
-      await addSource(name);
-      await queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.SOURCES],
-      });
+      await addSourceMutation.mutateAsync(name);
       setNewSourceName("");
       setShowAddSource(false);
-      Toast.show({ type: "success", text1: "Source added" });
+      Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Source added" });
     } catch (err) {
-      Toast.show({ type: "error", text1: "Failed", text2: String(err) });
+      Toast.show({
+        type: TOAST_TYPE.ERROR,
+        text1: "Failed",
+        text2: String(err),
+      });
     }
   }
 
-  async function handleDeleteSource(id: number) {
+  function handleDeleteSource(id: number) {
     Alert.alert("Delete Source", "This will remove the source.", [
       { text: "Cancel", style: "cancel" },
       {
@@ -169,13 +168,14 @@ export default function SettingsScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await deleteSource(id);
-            await queryClient.invalidateQueries({
-              queryKey: [QUERY_KEYS.SOURCES],
-            });
-            Toast.show({ type: "success", text1: "Source deleted" });
+            await deleteSourceMutation.mutateAsync(id);
+            Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Source deleted" });
           } catch (err) {
-            Toast.show({ type: "error", text1: "Failed", text2: String(err) });
+            Toast.show({
+              type: TOAST_TYPE.ERROR,
+              text1: "Failed",
+              text2: String(err),
+            });
           }
         },
       },
@@ -193,26 +193,14 @@ export default function SettingsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await clearAllTransactions();
-              await queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.TRANSACTIONS],
-              });
-              await queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
-              });
-              await queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
-              });
-              await queryClient.invalidateQueries({
-                queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
-              });
+              await clearTransactionsMutation.mutateAsync();
               Toast.show({
-                type: "success",
+                type: TOAST_TYPE.SUCCESS,
                 text1: "All transactions deleted",
               });
             } catch (err) {
               Toast.show({
-                type: "error",
+                type: TOAST_TYPE.ERROR,
                 text1: "Failed",
                 text2: String(err),
               });

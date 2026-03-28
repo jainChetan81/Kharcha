@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { Platform, Pressable, View } from "react-native";
 import Toast, { type ToastConfig } from "react-native-toast-message";
 import { Text } from "@/components/ui/text";
-import { TRANSACTION_TYPE } from "@/lib/constants";
+import { TOAST_TYPE, TRANSACTION_TYPE } from "@/lib/constants";
 import { initDB } from "@/lib/db";
 
 SplashScreen.preventAutoHideAsync();
@@ -101,7 +101,7 @@ export default function RootLayout() {
       .then(() => setDbReady(true))
       .catch((err) => {
         Toast.show({
-          type: "error",
+          type: TOAST_TYPE.ERROR,
           text1: "Database Error",
           text2: String(err),
         });
