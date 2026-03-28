@@ -203,6 +203,9 @@ export default function SettingsScreen() {
               await queryClient.invalidateQueries({
                 queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
               });
+              await queryClient.invalidateQueries({
+                queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
+              });
               Toast.show({
                 type: "success",
                 text1: "All transactions deleted",

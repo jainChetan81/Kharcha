@@ -61,6 +61,9 @@ export default function EditTransactionScreen() {
       await queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
       });
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
+      });
       Toast.show({ type: "success", text1: "Transaction updated" });
       router.back();
     } catch (err) {

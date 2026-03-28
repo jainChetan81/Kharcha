@@ -379,5 +379,41 @@ export async function getDataStats() {
   };
 }
 
+export type CategoryBreakdownRow = {
+  category_id: number;
+  category_name: string;
+  total: number;
+  percentage: number;
+};
+
+export async function getCategoryBreakdown(yearMonth: string) {
+  const rows = await db
+    .select({
+      category_id: transactions.category_id,
+      category_name: categories.name,
+      total: sql<number>`SUM(${transactions.amount})`,
+    })
+    .from(transactions)
+    .leftJoin(categories, eq(transactions.category_id, categories.id))
+    .where(
+      and(
+        eq(transactions.type, "expense"),
+        sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+      ),
+    )
+    .groupBy(transactions.category_id)
+    .orderBy(sql`SUM(${transactions.amount}) DESC`)
+    .limit(5);
+
+  const grandTotal = rows.reduce((sum, r) => sum + r.total, 0);
+
+  return rows.map((r) => ({
+    category_id: r.category_id as number,
+    category_name: r.category_name ?? "Unknown",
+    total: r.total,
+    percentage: grandTotal > 0 ? (r.total / grandTotal) * 100 : 0,
+  })) as CategoryBreakdownRow[];
+}
+
 // Default export: raw expo-sqlite instance for backward compat
 export default expo;

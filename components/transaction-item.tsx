@@ -15,7 +15,7 @@ import { formatINR, parseDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.35;
+const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.7;
 
 export function TransactionItem({
   item,

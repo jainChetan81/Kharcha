@@ -38,6 +38,7 @@ export const QUERY_KEYS = {
   TRANSACTIONS: "transactions",
   TRANSACTIONS_PAGINATED: "transactions-paginated",
   MONTHLY_SUMMARY: "monthly-summary",
+  CATEGORY_BREAKDOWN: "category-breakdown",
   CATEGORIES: "categories",
   SOURCES: "sources",
 } as const;

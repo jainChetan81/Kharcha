@@ -22,7 +22,11 @@ import {
   SCREENS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { getMonthlySummary, getRecentTransactions } from "@/lib/db";
+import {
+  getCategoryBreakdown,
+  getMonthlySummary,
+  getRecentTransactions,
+} from "@/lib/db";
 import { buildListData, formatINR, type ListItem } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -57,8 +61,8 @@ function SpendingRing({
       <PieChart
         data={pieData}
         donut
-        radius={100}
-        innerRadius={84}
+        radius={76}
+        innerRadius={63}
         innerCircleColor="#0a0a0a"
         centerLabelComponent={() => (
           <View className="items-center justify-center">
@@ -66,7 +70,7 @@ function SpendingRing({
               <>
                 <Text
                   className={cn(
-                    "text-2xl font-bold",
+                    "text-xl font-bold",
                     overspent ? "text-negative" : "text-foreground",
                   )}
                 >
@@ -101,6 +105,11 @@ export default function HomeScreen() {
     queryFn: () => getMonthlySummary(currentMonth),
   });
 
+  const { data: categoryBreakdown = [] } = useQuery({
+    queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN, currentMonth],
+    queryFn: () => getCategoryBreakdown(currentMonth),
+  });
+
   const income = summary?.total_income ?? 0;
   const expenses = summary?.total_expenses ?? 0;
   const listData = buildListData(transactions);
@@ -109,7 +118,7 @@ export default function HomeScreen() {
     <View className="flex-1 bg-background">
       {/* Header */}
       <View
-        className={cn("bg-background px-6 pb-6", isIOS ? "pt-[60px]" : "pt-12")}
+        className={cn("bg-background px-6 pb-4", isIOS ? "pt-[60px]" : "pt-12")}
       >
         <View className="flex-row items-center justify-between">
           <View>
@@ -128,23 +137,23 @@ export default function HomeScreen() {
         </View>
 
         {/* Spending Ring */}
-        <View className="mt-5">
+        <View className="mt-3">
           <SpendingRing income={income} expenses={expenses} />
         </View>
 
         {/* Income / Spent row */}
-        <View className="mt-4 flex-row gap-3">
+        <View className="mt-3 flex-row gap-3">
           <Pressable
             onPress={() =>
               router.push(
                 `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.INCOME}`,
               )
             }
-            className="flex-1 flex-row items-center justify-between rounded-2xl border border-border bg-card p-4"
+            className="flex-1 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
           >
             <View>
               <Text className="text-xs text-muted-foreground">Income</Text>
-              <Text className="mt-1 text-lg font-bold text-positive">
+              <Text className="mt-0.5 text-base font-bold text-positive">
                 {formatINR(income)}
               </Text>
             </View>
@@ -156,11 +165,11 @@ export default function HomeScreen() {
                 `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}`,
               )
             }
-            className="flex-1 flex-row items-center justify-between rounded-2xl border border-border bg-card p-4"
+            className="flex-1 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
           >
             <View>
               <Text className="text-xs text-muted-foreground">Spent</Text>
-              <Text className="mt-1 text-lg font-bold text-negative">
+              <Text className="mt-0.5 text-base font-bold text-negative">
                 {formatINR(expenses)}
               </Text>
             </View>
@@ -171,10 +180,6 @@ export default function HomeScreen() {
 
       {/* Transactions */}
       <View className="flex-1 px-5 pt-4">
-        <Text className="mb-3 text-sm font-semibold text-muted-foreground">
-          Recent Transactions
-        </Text>
-
         <FlashList
           data={listData}
           keyExtractor={(item) =>
@@ -193,6 +198,46 @@ export default function HomeScreen() {
           }
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 24 }}
+          ListHeaderComponent={
+            <>
+              {categoryBreakdown.length > 0 && (
+                <View className="mb-4">
+                  <Text className="mb-3 text-sm font-semibold uppercase text-[#888888]">
+                    This Month
+                  </Text>
+                  {categoryBreakdown.map((cat) => (
+                    <Pressable
+                      key={cat.category_id}
+                      onPress={() =>
+                        router.push(
+                          `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${cat.category_id}`,
+                        )
+                      }
+                      className="mb-3"
+                    >
+                      <View className="flex-row items-center justify-between">
+                        <Text className="text-base capitalize text-[#f0f0f0]">
+                          {cat.category_name}
+                        </Text>
+                        <Text className="text-sm text-[#888888]">
+                          {formatINR(cat.total)}
+                        </Text>
+                      </View>
+                      <View className="mt-1.5 h-1 rounded-full bg-[#2a2a2a]">
+                        <View
+                          className="h-1 rounded-full bg-[#7c3aed]"
+                          style={{ width: `${cat.percentage}%` }}
+                        />
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              <Text className="mb-3 text-sm font-semibold text-muted-foreground">
+                Recent Transactions
+              </Text>
+            </>
+          }
         />
       </View>
 

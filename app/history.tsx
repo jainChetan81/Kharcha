@@ -111,7 +111,8 @@ function ChipRow({
 
 export default function HistoryScreen() {
   const queryClient = useQueryClient();
-  const { filter: filterParam } = useLocalSearchParams<{ filter?: string }>();
+  const { filter: filterParam, category_id: categoryIdParam } =
+    useLocalSearchParams<{ filter?: string; category_id?: string }>();
 
   // Applied filters
   const [typeFilter, setTypeFilter] = useState<TransactionFilterType>(
@@ -138,7 +139,13 @@ export default function HistoryScreen() {
     ) {
       setTypeFilter(filterParam);
     }
-  }, [filterParam]);
+    if (categoryIdParam) {
+      const parsed = Number(categoryIdParam);
+      if (!Number.isNaN(parsed)) {
+        setCategoryId(parsed);
+      }
+    }
+  }, [filterParam, categoryIdParam]);
 
   // Reset draft category/source when draft type changes
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset on draftType change
@@ -252,6 +259,9 @@ export default function HistoryScreen() {
       await queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
       });
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
+      });
       Toast.show({
         type: "undo",
         text1: "Transaction deleted",
@@ -272,6 +282,9 @@ export default function HistoryScreen() {
               });
               await queryClient.invalidateQueries({
                 queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
+              });
+              await queryClient.invalidateQueries({
+                queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
               });
               Toast.show({ type: "success", text1: "Transaction restored" });
             } catch {

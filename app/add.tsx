@@ -43,6 +43,9 @@ export default function AddTransaction() {
       await queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
       });
+      await queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
+      });
       Toast.show({
         type: "success",
         text1: "Transaction added",
