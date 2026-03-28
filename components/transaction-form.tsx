@@ -89,10 +89,12 @@ export function TransactionForm({
   defaultValues,
   submitLabel,
   onSubmit,
+  lockType = false,
 }: {
   defaultValues: TransactionFormValues;
   submitLabel: string;
   onSubmit: (values: TransactionFormValues) => Promise<void>;
+  lockType?: boolean;
 }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -152,6 +154,7 @@ export function TransactionForm({
             </Pressable>
             <Pressable
               onPress={() => {
+                if (lockType) return;
                 field.handleChange("income");
                 setActiveType("income");
                 form.setFieldValue("categoryId", null);
@@ -159,6 +162,7 @@ export function TransactionForm({
               }}
               className={cn(
                 "flex-1 items-center rounded-xl py-3",
+                lockType && "opacity-40",
                 field.state.value === "income" ? "bg-positive" : "bg-card",
               )}
             >

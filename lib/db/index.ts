@@ -64,6 +64,17 @@ export async function initDB() {
       created_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      amount REAL NOT NULL,
+      billing_day INTEGER NOT NULL,
+      category_id INTEGER REFERENCES categories(id),
+      source_id INTEGER REFERENCES sources(id),
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS budgets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       category_id INTEGER UNIQUE REFERENCES categories(id),
@@ -77,7 +88,7 @@ export async function initDB() {
 
     INSERT OR IGNORE INTO settings (key, value) VALUES
       ('currency', 'INR'),
-      ('userName', 'Chetan');
+      ('userName', 'User');
   `);
 
   // Migration: add type column to transactions if missing
@@ -107,6 +118,13 @@ export async function initDB() {
         ('investments', 'income', 1),
         ('other', 'income', 1);
     `);
+  }
+
+  // Migration: add subscription_id column to transactions if missing
+  if (!txCols.some((c) => c.name === "subscription_id")) {
+    await expo.execAsync(
+      "ALTER TABLE transactions ADD COLUMN subscription_id INTEGER REFERENCES subscriptions(id)",
+    );
   }
 
   await seedDefaults();
@@ -205,6 +223,7 @@ function transactionSelect() {
       merchant: transactions.merchant,
       category_id: transactions.category_id,
       source_id: transactions.source_id,
+      subscription_id: transactions.subscription_id,
       date: transactions.date,
       note: transactions.note,
       created_at: transactions.created_at,
@@ -297,6 +316,7 @@ export async function insertTransaction(params: {
   merchant: string | null;
   categoryId: number | null;
   sourceId: number | null;
+  subscriptionId?: number | null;
   date: string;
   note: string | null;
 }) {
@@ -306,6 +326,7 @@ export async function insertTransaction(params: {
     merchant: params.merchant,
     category_id: params.categoryId,
     source_id: params.sourceId,
+    subscription_id: params.subscriptionId ?? null,
     date: params.date,
     note: params.note,
   });

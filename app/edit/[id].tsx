@@ -73,9 +73,18 @@ export default function EditTransactionScreen() {
         <Pressable onPress={() => router.back()} className="py-1 pr-4">
           <Text className="text-base font-semibold text-primary">Cancel</Text>
         </Pressable>
-        <Text className="text-lg font-bold text-foreground">
-          Edit Transaction
-        </Text>
+        <View className="items-center">
+          <Text className="text-lg font-bold text-foreground">
+            Edit Transaction
+          </Text>
+          {transaction.subscription_id && (
+            <View className="mt-1 rounded-md bg-primary/20 px-2 py-0.5">
+              <Text className="text-[10px] font-medium text-primary">
+                SUBSCRIPTION
+              </Text>
+            </View>
+          )}
+        </View>
         <View className="w-14" />
       </View>
 
@@ -83,6 +92,7 @@ export default function EditTransactionScreen() {
         defaultValues={defaultValues}
         submitLabel="Save Changes"
         onSubmit={handleSubmit}
+        lockType={!!transaction.subscription_id}
       />
     </View>
   );

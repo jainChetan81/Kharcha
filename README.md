@@ -4,26 +4,6 @@ personal expense tracking app for ios. built with expo, react native, and local-
 
 ---
 
-## table of contents
-
-- [tech stack](#tech-stack)
-- [project structure](#project-structure)
-- [design system](#design-system)
-- [screens & navigation](#screens--navigation)
-- [database](#database)
-- [reusable components](#reusable-components)
-- [utilities](#utilities)
-- [state management](#state-management)
-- [forms & validation](#forms--validation)
-- [linting & formatting](#linting--formatting)
-- [git hooks](#git-hooks)
-- [ci/cd](#cicd)
-- [deployment](#deployment)
-- [claude code commands](#claude-code-commands)
-- [phase 2 roadmap](#phase-2-roadmap)
-
----
-
 ## tech stack
 
 | package | purpose |
@@ -32,17 +12,16 @@ personal expense tracking app for ios. built with expo, react native, and local-
 | expo-router | file-based navigation |
 | nativewind v4 | tailwind css for react native |
 | react-native-reusables | shadcn-style ui primitives |
-| @rn-primitives/* | headless primitives for rn-reusables |
-| lucide-react-native | monochrome icons |
-| @tanstack/react-query | async data fetching + caching |
+| drizzle-orm | type-safe sqlite orm |
+| @tanstack/react-query | data fetching + caching + mutations |
 | @tanstack/react-form | form state management |
-| zustand | global ui state (planned) |
 | expo-sqlite | local sqlite database |
-| zod | schema validation (planned) |
+| expo-quick-actions | ios home screen quick actions |
 | date-fns | date formatting and manipulation |
-| biome | linting + formatting (replaces eslint + prettier) |
+| react-native-gifted-charts | pie/donut charts |
+| zod | schema validation |
+| biome | linting + formatting |
 | lefthook | git hooks |
-| eas | expo build + OTA updates (planned) |
 
 ---
 
@@ -51,31 +30,52 @@ personal expense tracking app for ios. built with expo, react native, and local-
 ```
 kharcha/
 ├── app/                        # screens (expo-router file-based)
-│   ├── _layout.tsx             # root layout, QueryClientProvider, initDB
+│   ├── _layout.tsx             # root layout, QueryClientProvider, initDB, quick actions
 │   ├── index.tsx               # home screen
-│   ├── add.tsx                 # add transaction screen
-│   ├── history.tsx             # transactions list screen (planned)
-│   └── settings.tsx            # settings screen (planned)
+│   ├── add.tsx                 # add transaction
+│   ├── edit/[id].tsx           # edit transaction
+│   ├── history.tsx             # transaction history with filters
+│   ├── settings.tsx            # categories, sources, currency, data management
+│   ├── profile.tsx             # user profile, budgets, subscriptions
+│   ├── budgets.tsx             # monthly budget limits per category
+│   ├── subscriptions.tsx       # recurring subscription management
+│   ├── edit-subscription/[id].tsx  # edit subscription (billing day locked)
+│   └── about.tsx               # app + device info
 ├── components/
+│   ├── transaction-form.tsx    # shared form for add/edit transactions
+│   ├── subscription-form.tsx   # subscription creation form
+│   ├── transaction-item.tsx    # swipeable transaction row + date header
+│   ├── error-boundary.tsx      # screen error boundary
 │   └── ui/                     # rn-reusables components
 │       ├── button.tsx
 │       ├── card.tsx
 │       ├── icon.tsx
 │       ├── input.tsx
-│       ├── native-only-animated-view.tsx
 │       ├── select.tsx
 │       └── text.tsx
+├── hooks/                      # custom react query hooks
+│   ├── use-transactions.ts     # transaction queries + mutations
+│   ├── use-categories.ts       # category queries + mutations
+│   ├── use-sources.ts          # source queries + mutations
+│   ├── use-budgets.ts          # budget queries + mutations
+│   ├── use-subscriptions.ts    # subscription queries + mutations
+│   ├── use-settings.ts         # app settings (currency, userName)
+│   ├── use-currency.ts         # currency formatting hook
+│   └── use-stats.ts            # data stats query
 ├── lib/
 │   ├── db/
-│   │   └── index.ts            # db init, schema, seeds, queries, types
+│   │   ├── schema.ts           # drizzle table definitions + inferred types
+│   │   ├── index.ts            # db init, seeds, transaction queries
+│   │   ├── settings.ts         # settings queries
+│   │   ├── budgets.ts          # budget queries
+│   │   └── subscriptions.ts    # subscription queries + auto-processing
+│   ├── constants.ts            # screens, query keys, colors, toast types
+│   ├── format.ts               # currency formatting, date labels, list builders
 │   └── utils.ts                # cn(), isIOS, isAndroid, isWeb
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-├── global.css                  # tailwind base imports
-├── tailwind.config.js          # design tokens + nativewind preset
-├── metro.config.js
-├── babel.config.js
+├── types/
+│   └── global.d.ts             # global utility types (Prettify<T>)
+├── .nvmrc                      # node version (22.19.0)
+├── .npmrc                      # engine-strict + hoisted node-linker
 ├── biome.json
 ├── lefthook.yml
 ├── CLAUDE.md
@@ -84,421 +84,180 @@ kharcha/
 
 ---
 
-## design system
+## screens
 
-### colour tokens
-
-all colours are defined in `tailwind.config.js` as semantic tokens. use the tailwind class names, not raw hex values.
-
-| token | hex | tailwind class | usage |
-|---|---|---|---|
-| background | `#0a0a0a` | `bg-background` | all screen backgrounds |
-| card | `#1a1a1a` | `bg-card` | cards, tab bar, inputs |
-| border | `#2a2a2a` | `border-border` | card borders, dividers |
-| foreground | `#f0f0f0` | `text-foreground` | headings, primary content |
-| muted foreground | `#888888` | `text-muted-foreground` | subtitles, metadata, placeholders |
-| primary (accent) | `#7c3aed` | `bg-primary` / `text-primary` | cta buttons, active tab, FAB |
-| positive | `#22c55e` | `text-positive` | income, success states |
-| negative | `#ef4444` | `text-negative` | expenses, error states |
-
-### nativewind usage
-
-use semantic tailwind classes for all styling. no inline styles unless required for dynamic values (e.g., platform padding).
-
-```tsx
-// correct — semantic tokens
-<View className="flex-1 bg-background px-4 py-6">
-  <Text className="text-foreground text-xl font-bold">kharcha</Text>
-  <Text className="text-muted-foreground text-sm">subtitle</Text>
-</View>
-
-// avoid — raw hex or inline styles
-<View style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
-```
-
-### typography scale
-
-| class | usage |
-|---|---|
-| `text-4xl font-extrabold` | large balance display |
-| `text-lg font-bold` | screen titles |
-| `text-sm font-semibold` | section headers |
-| `text-sm` | body, labels |
-| `text-xs` | timestamps, tags, metadata |
-| `text-[11px]` | tab bar labels |
-
-### spacing
-
-follow 4px base grid. use tailwind spacing: `p-4` (16px), `p-6` (24px), `gap-3` (12px), `gap-4` (16px).
-
-### border radius
-
-| class | usage |
-|---|---|
-| `rounded-xl` | inputs |
-| `rounded-2xl` | cards |
-| `rounded-full` | avatar, pills, fab button |
-
-### icons
-
-use lucide-react-native via the `Icon` component wrapper (`components/ui/icon.tsx`). icons inherit colour from `className`.
-
-```tsx
-import { Icon } from "@/components/ui/icon";
-import { House } from "lucide-react-native";
-
-<Icon as={House} className="size-5 text-primary" />
-```
-
----
-
-## screens & navigation
+| screen | file | description |
+|---|---|---|
+| home | `app/index.tsx` | spending ring, income/spent cards, month comparison, category breakdown with budget bars, recent transactions |
+| add | `app/add.tsx` | add transaction or subscription (switch toggle), income/expense type, budget warning toasts |
+| edit | `app/edit/[id].tsx` | edit transaction (type locked for subscription transactions, shows SUB badge) |
+| history | `app/history.tsx` | paginated transaction list with filter modal (type, category, source, month), swipe-to-delete with undo |
+| settings | `app/settings.tsx` | currency picker, manage categories (expense/income), manage sources, clear data, about link |
+| profile | `app/profile.tsx` | editable user name, budgets + subscriptions links |
+| budgets | `app/budgets.tsx` | set/edit/remove budget limits per expense category |
+| subscriptions | `app/subscriptions.tsx` | list subscriptions (this month/upcoming), toggle active/paused, long-press to delete |
+| edit subscription | `app/edit-subscription/[id].tsx` | edit name, amount, category, source (billing day read-only) |
+| about | `app/about.tsx` | app version, device info, data stats |
 
 ### bottom tab navigation
 
-3 tabs + centre FAB button. tabs use lucide icons.
+5 tabs with centre FAB button:
 
-| tab | icon | file | description |
-|---|---|---|---|
-| home | `House` | `app/index.tsx` | monthly summary + recent transactions |
-| add | `Plus` (FAB) | `app/add.tsx` | pushes to add screen |
-| history | `Clock` | `app/history.tsx` | full transaction list (planned) |
-| settings | `Settings` | `app/settings.tsx` | manage categories and sources (planned) |
+| tab | icon | screen |
+|---|---|---|
+| home | `House` | home |
+| history | `Clock` | history |
+| add | `Plus` (FAB) | add transaction |
+| settings | `Settings` | settings |
+| profile | `User` | profile |
 
-the FAB is a 60x60 purple circle (`bg-primary`) centred in the tab bar via absolute positioning. active tab uses `text-primary`, inactive uses `text-muted-foreground`.
+### ios quick actions
 
-### screen specs
-
-**home (`app/index.tsx`)**
-- header: "Hello, Chetan" + current month/year + avatar
-- balance card: total balance (income - expenses) in `bg-card` with `border-border`
-- summary cards: income (green text) + spent (red text) side by side, `bg-card`
-- recent transactions: last 20, grouped by date (today, yesterday, date)
-- each transaction: category initial, merchant name, category + source, amount
-- data: tanstack query fetching from sqlite
-
-**add transaction (`app/add.tsx`)**
-- type toggle: expense (red tint) / income (green tint)
-- fields: amount (numeric), merchant (text), category (chip picker), source (chip picker), date (text, defaults to today), note (multiline)
-- validation: amount > 0, category required, source required, date required (YYYY-MM-DD)
-- on submit: insert into transactions table, invalidate queries, navigate back
-- error handling: Alert on failure
-- form: tanstack form with onSubmit validators
-
-**history (`app/history.tsx`)** — planned
-- full transaction list, scrollable
-- filter by category, source, date range
-- grouped by date
-
-**settings (`app/settings.tsx`)** — planned
-- manage categories: list + add new + delete (cannot delete defaults)
-- manage sources: list + add new + delete (cannot delete defaults)
+long-press app icon for:
+- "Add Expense" → opens add screen with expense pre-selected
+- "Transactions" → opens history screen
 
 ---
 
 ## database
 
-### schema
+### schema (drizzle orm)
 
-```sql
-CREATE TABLE IF NOT EXISTS categories (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  is_default INTEGER DEFAULT 0
-);
+6 tables defined in `lib/db/schema.ts` with drizzle inferred types:
 
-CREATE TABLE IF NOT EXISTS sources (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  is_default INTEGER DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS transactions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  type TEXT NOT NULL DEFAULT 'expense',  -- 'income' | 'expense'
-  amount REAL NOT NULL,
-  merchant TEXT,
-  category_id INTEGER REFERENCES categories(id),
-  source_id INTEGER REFERENCES sources(id),
-  date TEXT NOT NULL,       -- ISO 8601 string (YYYY-MM-DD)
-  note TEXT,
-  created_at TEXT DEFAULT (datetime('now'))
-);
+```
+categories    (id, name, type: income|expense, is_default)
+sources       (id, name, is_default)
+subscriptions (id, name, amount, billing_day, category_id, source_id, is_active, created_at)
+transactions  (id, type, amount, merchant, category_id, source_id, subscription_id, date, note, created_at)
+budgets       (id, category_id UNIQUE, amount)
+settings      (key PRIMARY KEY, value)
 ```
 
-### migrations
+types are auto-inferred via `InferSelectModel` / `InferInsertModel` — no manual type duplication.
 
-the `type` column on transactions was added post-initial schema. `initDB()` checks for it via `PRAGMA table_info` and runs `ALTER TABLE` if missing.
+### seeds
 
-### default seeds
+on first launch, `initDB()` seeds:
+- **categories:** food, transport, shopping, utilities, entertainment, health, other (expense) + salary, freelance, refunds, investments, other (income)
+- **sources:** cash, upi, credit card, debit card
+- **settings:** currency=INR, userName=User
+- **transactions:** ~30 sample transactions across current and previous month
 
-**categories:** food, transport, shopping, utilities, entertainment, health, salary, freelance, other
+### query architecture
 
-**sources:** cash, upi, credit card, debit card
-
-seeds only run once on first app launch (checks if tables are empty before inserting).
-
-### types and queries (`lib/db/index.ts`)
-
-all types and query functions live in a single file:
-
-```ts
-// types
-export type Category = { id: number; name: string; is_default: number };
-export type Source = { id: number; name: string; is_default: number };
-export type TransactionRow = { id, type, amount, merchant, category_id, source_id, date, note, created_at, category_name, source_name };
-export type MonthlySummary = { total_income: number; total_expenses: number };
-
-// queries
-export function getRecentTransactions(limit = 20)   // JOIN with categories + sources
-export function getMonthlySummary(yearMonth: string) // aggregate income/expenses
-export function insertTransaction(params)            // insert row
 ```
+lib/db/schema.ts     → table definitions + types
+lib/db/index.ts      → initDB, transaction queries, shared db instance
+lib/db/settings.ts   → getSetting, getAllSettings, updateSetting
+lib/db/budgets.ts    → getBudgets, setBudget, deleteBudget, getCategorySpent
+lib/db/subscriptions.ts → getSubscriptions, addSubscription, processSubscriptions, toggleSubscription
+```
+
+all query files import the shared `db` instance from `lib/db/index.ts`.
 
 ---
 
-## reusable components
+## hooks
 
-### rn-reusables components (`components/ui/`)
+all data access goes through custom hooks in `hooks/`. screens never call `useQuery`/`useMutation` directly.
 
-installed via `pnpm dlx @react-native-reusables/cli@latest add <component>`.
-
-| component | file | status |
+| hook | file | provides |
 |---|---|---|
-| `Text` | text.tsx | active — typography with variants + TextClassContext |
-| `Button` | button.tsx | active — pressable with CVA variants |
-| `Input` | input.tsx | active — styled TextInput wrapper |
-| `Icon` | icon.tsx | active — lucide icon wrapper with cssInterop |
-| `Card` | card.tsx | available — card + header/content/footer |
-| `Select` | select.tsx | available — rn-primitives dropdown |
-| `NativeOnlyAnimatedView` | native-only-animated-view.tsx | internal — used by select |
+| `useRecentTransactions` | use-transactions.ts | recent transactions query |
+| `useMonthlySummary` | use-transactions.ts | monthly income/expense totals |
+| `useCategoryBreakdown` | use-transactions.ts | top 5 expense categories |
+| `useTransactionsPaginated` | use-transactions.ts | infinite query with filters |
+| `useInsertTransaction` | use-transactions.ts | insert mutation |
+| `useUpdateTransaction` | use-transactions.ts | update mutation |
+| `useSwipeDelete` | use-transactions.ts | delete + undo toast logic |
+| `useAllCategories` | use-categories.ts | all categories query |
+| `useCategoriesByType` | use-categories.ts | filtered by income/expense |
+| `useAddCategory` / `useDeleteCategory` | use-categories.ts | category mutations |
+| `useAllSources` | use-sources.ts | all sources query |
+| `useAddSource` / `useDeleteSource` | use-sources.ts | source mutations |
+| `useBudgets` | use-budgets.ts | all budgets query |
+| `useSetBudget` / `useDeleteBudget` | use-budgets.ts | budget mutations |
+| `useSubscriptions` | use-subscriptions.ts | all subscriptions query |
+| `useSubscriptionById` | use-subscriptions.ts | single subscription query |
+| `useSubscriptionsTotal` | use-subscriptions.ts | active subscriptions total amount |
+| `useAddSubscription` | use-subscriptions.ts | add mutation |
+| `useUpdateSubscription` | use-subscriptions.ts | update mutation |
+| `useDeleteSubscription` | use-subscriptions.ts | delete mutation (+ related transactions) |
+| `useToggleSubscription` | use-subscriptions.ts | pause/resume mutation |
+| `useSettings` | use-settings.ts | currency + userName + update functions |
+| `useCurrency` | use-currency.ts | `{ currency, format }` for formatting amounts |
+| `useDataStats` | use-stats.ts | transaction/category/source counts |
+
+### query key management
+
+all query keys are centralized in `lib/constants.ts` under `QUERY_KEYS`. hooks handle invalidation internally — screens don't touch query keys.
 
 ---
 
-## utilities
+## features
 
-### `lib/utils.ts`
+### multi-currency support
 
-```ts
-export function cn(...inputs: ClassValue[])  // clsx + tailwind-merge
-export const isIOS: boolean
-export const isAndroid: boolean
-export const isWeb: boolean
-```
+currency setting stored in sqlite `settings` table. supported currencies:
 
----
+| code | symbol | locale |
+|---|---|---|
+| INR | ₹ | en-IN |
+| USD | $ | en-US |
+| GBP | £ | en-GB |
+| EUR | € | de-DE |
 
-## state management
+change currency in settings → preferences. all amounts across the app update immediately.
 
-### tanstack query
+### monthly budgets
 
-used for all sqlite data fetching. queries are called in screen files.
+set per-category budget limits in profile → monthly budgets. home screen category bars change color based on spend vs budget:
 
-```ts
-const { data: transactions } = useQuery({
-  queryKey: ["transactions"],
-  queryFn: () => getRecentTransactions(20),
-});
-```
+| spend ratio | bar color | constant |
+|---|---|---|
+| no budget set | purple | `COLORS.PRIMARY` |
+| under 75% | purple | `COLORS.PRIMARY` |
+| 75-99% | orange | `COLORS.WARNING` |
+| 100%+ | red | `COLORS.DANGER` |
 
-invalidate queries after mutations:
+adding a transaction that exceeds or approaches (90%) a budget triggers a warning toast.
 
-```ts
-await queryClient.invalidateQueries({ queryKey: ["transactions"] });
-await queryClient.invalidateQueries({ queryKey: ["monthly-summary"] });
-```
+### month vs last month comparison
 
-### tanstack query devtools
+home screen shows spending change compared to previous month ("↑ 12% vs last month" in red, "↓ 8%" in green). hidden when no previous month data exists.
 
-`@dev-plugins/react-query` is installed and wired up in `_layout.tsx` (dev only). access via expo dev tools (shift+m in terminal).
+### subscriptions
 
-### zustand — planned
+recurring expenses (Netflix, Spotify, etc.) managed via profile → subscriptions.
 
-for ui-only global state (active filters, selected date range, etc.). not for db data.
+- each subscription has a name, amount, billing day (1-31), category, and source
+- on app launch, `processSubscriptions()` auto-creates transactions for active subscriptions due this month
+- handles end-of-month edge cases (billing day 31 → uses last day of month)
+- subscriptions can be paused/resumed via toggle
+- transactions created from subscriptions show a "SUB" badge
+- home screen shows total active subscription cost with link to subscriptions screen
+- add screen has a subscription switch — when on, shows subscription form with day picker
+- editing a subscription: name, amount, category, source are editable; billing day is read-only (delete and recreate to change)
+- deleting a subscription removes all its related transactions
+- subscription transactions have their type toggle locked to expense in the edit screen
 
----
+### swipe to delete
 
-## forms & validation
-
-all forms use tanstack form with inline onSubmit validators.
-
-```tsx
-const form = useForm({
-  defaultValues: { amount: "", merchant: "", categoryId: null, ... },
-  onSubmit: async ({ value }) => {
-    await insertTransaction({ ... });
-    router.back();
-  },
-});
-
-<form.Field name="amount" validators={{
-  onSubmit: ({ value }) => {
-    if (Number(value) <= 0) return "Amount must be greater than 0";
-    return undefined;
-  },
-}}>
-  {(field) => <Input value={field.state.value} onChangeText={field.handleChange} />}
-</form.Field>
-```
-
-zod schemas for form-level validation are planned.
+history screen supports swipe-to-delete with a 5-second undo toast. threshold is 70% of screen width.
 
 ---
 
-## linting & formatting
-
-biome handles both linting and formatting. no eslint, no prettier.
-
-### config (`biome.json`)
-
-```json
-{
-  "$schema": "https://biomejs.dev/schemas/2.4.9/schema.json",
-  "files": {
-    "ignoreUnknown": true,
-    "includes": ["app/**", "components/**", "lib/**"]
-  },
-  "formatter": { "indentStyle": "space", "indentWidth": 2 },
-  "linter": { "enabled": true, "rules": { "recommended": true } },
-  "javascript": { "formatter": { "quoteStyle": "double" } }
-}
-```
-
-### commands
+## commands
 
 ```bash
-pnpm lint          # check only
-pnpm lint:fix      # check + auto-fix
-pnpm format        # format only (biome format --write)
+pnpm start         # start expo dev server
+pnpm ios           # run on ios simulator
+pnpm lint          # biome check
+pnpm lint:fix      # biome check + auto-fix
 pnpm typecheck     # tsc --noEmit
 pnpm quality       # lint + typecheck
 ```
-
----
-
-## git hooks
-
-lefthook runs biome on staged files before every commit.
-
-### config (`lefthook.yml`)
-
-```yaml
-pre-commit:
-  commands:
-    biome:
-      glob: "*.{js,ts,jsx,tsx}"
-      run: pnpm biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
-      stage_fixed: true
-```
-
-install hooks after cloning:
-
-```bash
-pnpm dlx lefthook install
-```
-
----
-
-## ci/cd
-
-github actions runs on every push and PR to main/master.
-
-### pipeline (`.github/workflows/ci.yml`)
-
-```yaml
-name: CI
-on:
-  push:
-    branches: [master, main]
-  pull_request:
-    branches: [master, main]
-jobs:
-  quality:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: latest
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install
-      - run: pnpm lint
-      - run: pnpm typecheck
-```
-
----
-
-## deployment
-
-kharcha is a personal ios app. no public app store listing. distribution via testflight.
-
-### prerequisites
-
-- expo account
-- apple developer account
-- eas cli: `pnpm add -g eas-cli`
-- login: `eas login`
-
-### eas setup (one time)
-
-```bash
-eas init
-eas build:configure
-```
-
-### build commands
-
-```bash
-pnpm build:ios          # production build -> testflight
-pnpm build:ios:preview  # preview build for testing
-pnpm submit:ios         # submit to testflight
-pnpm update             # OTA js update (no review needed)
-```
-
-### eas.json (add to root)
-
-```json
-{
-  "build": {
-    "preview": {
-      "distribution": "internal",
-      "ios": { "simulator": false }
-    },
-    "production": {
-      "ios": { "buildConfiguration": "Release" }
-    }
-  },
-  "submit": {
-    "production": {
-      "ios": { "appleId": "your@apple.id", "ascAppId": "your-app-id" }
-    }
-  }
-}
-```
-
-### OTA updates
-
-for js-only changes (no native module changes), push updates without going through testflight review:
-
-```bash
-pnpm update
-```
-
----
-
-## claude code commands
-
-| command | description |
-|---|---|
-| `/commit` | stage all + create conventional commit message |
-| `/quality` | run biome + tsc, report errors |
-| `/new-screen [name]` | scaffold a new expo-router screen |
-| `/review` | review uncommitted changes for issues |
-
-**note:** claude code will never run pnpm commands directly. it will tell you which command to run and wait for your confirmation.
 
 ---
 
@@ -508,4 +267,4 @@ pnpm update
 - **bun backend** — lightweight server to handle gmail oauth + email fetching
 - **sync on app open** — hit backend on launch, fetch emails since `last_synced_at`, insert new transactions
 - **railway deployment** — containerised bun backend
-- **share sheet + OCR** — share a payment screenshot to the app, OCR extracts amount and prefills form (requires expo dev client)
+- **share sheet + OCR** — share a payment screenshot to the app, OCR extracts amount and prefills form

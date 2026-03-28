@@ -6,11 +6,17 @@ export const SCREENS = {
   ABOUT: "/about",
   PROFILE: "/profile",
   BUDGETS: "/budgets",
+  SUBSCRIPTIONS: "/subscriptions",
   EDIT: "/edit",
+  EDIT_SUBSCRIPTION: "/edit-subscription",
 } as const;
 
 export function editScreen(id: number) {
   return `${SCREENS.EDIT}/${id}` as const;
+}
+
+export function editSubscriptionScreen(id: number) {
+  return `${SCREENS.EDIT_SUBSCRIPTION}/${id}` as const;
 }
 
 export const DB_NAME = "kharcha.db";
@@ -54,4 +60,5 @@ export const QUERY_KEYS = {
   DATA_STATS: "data-stats",
   SETTINGS: "settings",
   BUDGETS: "budgets",
+  SUBSCRIPTIONS: "subscriptions",
 } as const;

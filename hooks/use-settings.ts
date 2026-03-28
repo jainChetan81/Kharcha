@@ -30,7 +30,7 @@ export function useSettings() {
   });
 
   const currency = (settings?.currency ?? "INR") as CurrencyCode;
-  const userName = settings?.userName ?? "Chetan";
+  const userName = settings?.userName ?? "User";
 
   return {
     currency,

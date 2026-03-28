@@ -86,9 +86,16 @@ export function TransactionItem({
         </Text>
       </View>
       <View className="ml-3 flex-1">
-        <Text className="text-sm font-semibold text-foreground">
-          {item.merchant || item.category_name || item.type}
-        </Text>
+        <View className="flex-row items-center gap-1">
+          <Text className="text-sm font-semibold text-foreground">
+            {item.merchant || item.category_name || item.type}
+          </Text>
+          {item.subscription_id && (
+            <View className="rounded-md bg-primary/20 px-1.5 py-0.5">
+              <Text className="text-[10px] font-medium text-primary">SUB</Text>
+            </View>
+          )}
+        </View>
         <Text className="mt-0.5 text-xs capitalize text-muted-foreground">
           {subtitle}
         </Text>

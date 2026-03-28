@@ -1,14 +1,17 @@
 import { format } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
-import { Pressable, View } from "react-native";
+import { useState } from "react";
+import { Pressable, Switch, View } from "react-native";
 import Toast from "react-native-toast-message";
 import { ScreenError } from "@/components/error-boundary";
+import { SubscriptionForm } from "@/components/subscription-form";
 import {
   TransactionForm,
   type TransactionFormValues,
 } from "@/components/transaction-form";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
+import { useAddSubscription } from "@/hooks/use-subscriptions";
 import { useInsertTransaction } from "@/hooks/use-transactions";
 import {
   DATE_TIME_FORMAT,
@@ -16,18 +19,24 @@ import {
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
+import { processSubscriptions } from "@/lib/db/subscriptions";
 import { cn, isIOS } from "@/lib/utils";
 
 export default function AddTransaction() {
-  const { type: typeParam } = useLocalSearchParams<{ type?: string }>();
+  const { type: typeParam, mode: modeParam } = useLocalSearchParams<{
+    type?: string;
+    mode?: string;
+  }>();
   const { format: fmt } = useCurrency();
   const insertMutation = useInsertTransaction();
+  const addSubMutation = useAddSubscription();
+
+  const [isSubscription, setIsSubscription] = useState(
+    modeParam === "subscription",
+  );
 
   const defaultValues: TransactionFormValues = {
-    type:
-      typeParam === TRANSACTION_TYPE.INCOME
-        ? TRANSACTION_TYPE.INCOME
-        : TRANSACTION_TYPE.EXPENSE,
+    type: TRANSACTION_TYPE.EXPENSE,
     amount: "",
     merchant: "",
     categoryId: null,
@@ -36,7 +45,15 @@ export default function AddTransaction() {
     note: "",
   };
 
-  async function handleSubmit(value: TransactionFormValues) {
+  const oneTimeDefaults: TransactionFormValues = {
+    ...defaultValues,
+    type:
+      typeParam === TRANSACTION_TYPE.INCOME
+        ? TRANSACTION_TYPE.INCOME
+        : TRANSACTION_TYPE.EXPENSE,
+  };
+
+  async function handleTransactionSubmit(value: TransactionFormValues) {
     try {
       await insertMutation.mutateAsync({
         type: value.type,
@@ -83,11 +100,36 @@ export default function AddTransaction() {
     }
   }
 
+  async function handleSubscriptionSubmit(value: {
+    name: string;
+    amount: number;
+    billingDay: number;
+    categoryId: number | null;
+    sourceId: number | null;
+  }) {
+    try {
+      await addSubMutation.mutateAsync(value);
+      await processSubscriptions();
+      Toast.show({
+        type: TOAST_TYPE.SUCCESS,
+        text1: "Subscription added",
+        text2: `Renews on day ${value.billingDay} every month`,
+      });
+      router.back();
+    } catch (err) {
+      Toast.show({
+        type: TOAST_TYPE.ERROR,
+        text1: "Failed to save",
+        text2: String(err),
+      });
+    }
+  }
+
   return (
     <View className="flex-1 bg-background">
       <View
         className={cn(
-          "flex-row items-center justify-between bg-background px-6 pb-5",
+          "flex-row items-center justify-between bg-background px-6 pb-3",
           isIOS ? "pt-[60px]" : "pt-12",
         )}
       >
@@ -95,16 +137,32 @@ export default function AddTransaction() {
           <Text className="text-base font-semibold text-primary">Cancel</Text>
         </Pressable>
         <Text className="text-lg font-bold text-foreground">
-          Add Transaction
+          {isSubscription ? "Add Subscription" : "Add Transaction"}
         </Text>
         <View className="w-14" />
       </View>
 
-      <TransactionForm
-        defaultValues={defaultValues}
-        submitLabel="Add Transaction"
-        onSubmit={handleSubmit}
-      />
+      <View className="mx-5 mb-3 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-2.5">
+        <Text className="text-sm font-medium text-foreground">
+          Subscription
+        </Text>
+        <Switch
+          value={isSubscription}
+          onValueChange={setIsSubscription}
+          trackColor={{ false: "#2a2a2a", true: "#7c3aed" }}
+          thumbColor="#f0f0f0"
+        />
+      </View>
+
+      {isSubscription ? (
+        <SubscriptionForm onSubmit={handleSubscriptionSubmit} />
+      ) : (
+        <TransactionForm
+          defaultValues={oneTimeDefaults}
+          submitLabel="Add Transaction"
+          onSubmit={handleTransactionSubmit}
+        />
+      )}
     </View>
   );
 }

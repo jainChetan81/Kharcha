@@ -17,6 +17,7 @@ import { Text } from "@/components/ui/text";
 import { useBudgets } from "@/hooks/use-budgets";
 import { useCurrency } from "@/hooks/use-currency";
 import { useSettings } from "@/hooks/use-settings";
+import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
 import {
   useCategoryBreakdown,
   useMonthlySummary,
@@ -103,6 +104,7 @@ export default function HomeScreen() {
   const { data: prevSummary } = useMonthlySummary(prevMonth);
   const { data: categoryBreakdown = [] } = useCategoryBreakdown(currentMonth);
   const { data: budgetsList = [] } = useBudgets();
+  const { data: subsTotal = 0 } = useSubscriptionsTotal();
   const budgetMap = new Map(budgetsList.map((b) => [b.category_id, b.amount]));
 
   const income = summary?.total_income ?? 0;
@@ -120,7 +122,6 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
       >
-        {/* Header */}
         <View className={cn("px-6 pb-4", isIOS ? "pt-[60px]" : "pt-12")}>
           <View className="flex-row items-center justify-between">
             <View>
@@ -146,12 +147,10 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {/* Spending Ring */}
           <View className="mt-3">
             <SpendingRing income={income} expenses={expenses} fmt={fmt} />
           </View>
 
-          {/* Income / Spent row */}
           <View className="mt-3 flex-row gap-3">
             <Pressable
               onPress={() =>
@@ -193,7 +192,6 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {/* Month vs last month */}
           {spendingChange !== null && (
             <Text
               className={cn(
@@ -205,9 +203,19 @@ export default function HomeScreen() {
               last month
             </Text>
           )}
+
+          {subsTotal > 0 && (
+            <Pressable
+              onPress={() => router.push(SCREENS.SUBSCRIPTIONS)}
+              className="mt-3"
+            >
+              <Text className="text-center text-xs text-[#888888]">
+                ↻ {fmt(subsTotal)} in subscriptions this month
+              </Text>
+            </Pressable>
+          )}
         </View>
 
-        {/* Category Breakdown */}
         {categoryBreakdown.length > 0 && (
           <View className="px-5 pb-4 pt-2">
             <Text className="mb-3 text-sm font-semibold uppercase text-[#888888]">
@@ -261,7 +269,6 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Recent Transactions */}
         <View className="px-5 pt-2">
           <Text className="mb-3 text-sm font-semibold text-muted-foreground">
             Recent Transactions
@@ -280,7 +287,6 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom Nav */}
       <View
         className={cn(
           "border-t border-border bg-card pt-2.5",

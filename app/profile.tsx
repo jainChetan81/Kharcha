@@ -60,7 +60,6 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
       >
-        {/* Avatar */}
         <View className="items-center py-6">
           <View className="h-20 w-20 items-center justify-center rounded-full bg-primary">
             <Text className="text-2xl font-bold text-primary-foreground">
@@ -69,7 +68,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Profile */}
         <Text className="mb-2 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Profile
         </Text>
@@ -87,9 +85,8 @@ export default function ProfileScreen() {
           <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
         </Pressable>
 
-        {/* Budgets */}
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Budgets
+          Manage
         </Text>
         <Pressable
           onPress={() => router.push(SCREENS.BUDGETS)}
@@ -100,9 +97,17 @@ export default function ProfileScreen() {
           </Text>
           <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
         </Pressable>
+        <Pressable
+          onPress={() => router.push(SCREENS.SUBSCRIPTIONS)}
+          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Text className="flex-1 text-sm font-medium text-foreground">
+            Subscriptions
+          </Text>
+          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
+        </Pressable>
       </ScrollView>
 
-      {/* Edit Name Modal */}
       <Modal
         visible={showEditName}
         transparent

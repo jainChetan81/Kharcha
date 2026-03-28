@@ -18,6 +18,17 @@ export const sources = sqliteTable("sources", {
   is_default: integer("is_default").default(0),
 });
 
+export const subscriptions = sqliteTable("subscriptions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  amount: real("amount").notNull(),
+  billing_day: integer("billing_day").notNull(),
+  category_id: integer("category_id").references(() => categories.id),
+  source_id: integer("source_id").references(() => sources.id),
+  is_active: integer("is_active").default(1),
+  created_at: text("created_at").default("(datetime('now'))"),
+});
+
 export const transactions = sqliteTable("transactions", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   type: text("type", { enum: ["income", "expense"] })
@@ -27,6 +38,9 @@ export const transactions = sqliteTable("transactions", {
   merchant: text("merchant"),
   category_id: integer("category_id").references(() => categories.id),
   source_id: integer("source_id").references(() => sources.id),
+  subscription_id: integer("subscription_id").references(
+    () => subscriptions.id,
+  ),
   date: text("date").notNull(),
   note: text("note"),
   created_at: text("created_at").default("(datetime('now'))"),
@@ -53,5 +67,6 @@ export type Source = InferSelectModel<typeof sources>;
 export type NewSource = InferInsertModel<typeof sources>;
 export type Transaction = InferSelectModel<typeof transactions>;
 export type NewTransaction = InferInsertModel<typeof transactions>;
+export type Subscription = InferSelectModel<typeof subscriptions>;
 export type Budget = InferSelectModel<typeof budgets>;
 export type Setting = InferSelectModel<typeof settings>;

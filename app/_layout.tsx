@@ -11,6 +11,7 @@ import Toast, { type ToastConfig } from "react-native-toast-message";
 import { Text } from "@/components/ui/text";
 import { TOAST_TYPE, TRANSACTION_TYPE } from "@/lib/constants";
 import { initDB } from "@/lib/db";
+import { processSubscriptions } from "@/lib/db/subscriptions";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -98,7 +99,17 @@ export default function RootLayout() {
 
   useEffect(() => {
     initDB()
-      .then(() => setDbReady(true))
+      .then(async () => {
+        const created = await processSubscriptions();
+        if (created.length > 0) {
+          Toast.show({
+            type: TOAST_TYPE.SUCCESS,
+            text1: `${created.length} subscription${created.length > 1 ? "s" : ""} renewed`,
+            text2: created.join(", "),
+          });
+        }
+        setDbReady(true);
+      })
       .catch((err) => {
         Toast.show({
           type: TOAST_TYPE.ERROR,
