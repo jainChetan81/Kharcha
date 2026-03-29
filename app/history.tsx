@@ -29,8 +29,6 @@ import {
   useSwipeDelete,
   useTransactionsPaginated,
 } from "@/hooks/use-transactions";
-import { useGoogleAuth } from "@/lib/gmail/auth";
-import { syncGmailTransactions } from "@/lib/gmail/sync";
 import {
   editScreen,
   SOURCE_TYPE,
@@ -39,6 +37,8 @@ import {
   type TransactionFilterType,
 } from "@/lib/constants";
 import { buildListData, type ListItem } from "@/lib/format";
+import { useGoogleAuth } from "@/lib/gmail/auth";
+import { syncGmailTransactions } from "@/lib/gmail/sync";
 import { cn, isIOS } from "@/lib/utils";
 
 const TYPE_FILTERS = Object.values(TRANSACTION_TYPE);
@@ -230,7 +230,9 @@ export default function HistoryScreen() {
       const result = await syncGmailTransactions();
       const lines: string[] = [];
       if (result.expenseCount > 0) {
-        lines.push(`${result.expenseCount} expense (${fmt(result.expenseTotal)})`);
+        lines.push(
+          `${result.expenseCount} expense (${fmt(result.expenseTotal)})`,
+        );
       }
       if (result.incomeCount > 0) {
         lines.push(`${result.incomeCount} income (${fmt(result.incomeTotal)})`);
@@ -335,13 +337,13 @@ export default function HistoryScreen() {
             onPress={openFilters}
             className="relative flex-row items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2"
           >
-          <Icon
-            as={SlidersHorizontal}
-            className="size-4 text-muted-foreground"
-          />
-          <Text className="text-xs font-medium text-muted-foreground">
-            Filter
-          </Text>
+            <Icon
+              as={SlidersHorizontal}
+              className="size-4 text-muted-foreground"
+            />
+            <Text className="text-xs font-medium text-muted-foreground">
+              Filter
+            </Text>
             {hasActiveFilters && (
               <View className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary" />
             )}

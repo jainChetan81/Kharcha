@@ -143,7 +143,7 @@ export async function initDB() {
   }
 
   await seedDefaults();
-  // await seedTransactions();
+  await seedTransactions();
 }
 
 async function seedDefaults() {
