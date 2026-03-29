@@ -4,12 +4,14 @@ import { router, useLocalSearchParams } from "expo-router";
 import {
   ChevronLeft,
   ChevronRight,
+  Mail,
   Receipt,
   SlidersHorizontal,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -27,8 +29,12 @@ import {
   useSwipeDelete,
   useTransactionsPaginated,
 } from "@/hooks/use-transactions";
+import { useGoogleAuth } from "@/lib/gmail/auth";
+import { syncGmailTransactions } from "@/lib/gmail/sync";
 import {
   editScreen,
+  SOURCE_TYPE,
+  type SourceFilterType,
   TRANSACTION_TYPE,
   type TransactionFilterType,
 } from "@/lib/constants";
@@ -36,6 +42,7 @@ import { buildListData, type ListItem } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
 
 const TYPE_FILTERS = Object.values(TRANSACTION_TYPE);
+const SOURCE_TYPE_FILTERS = Object.values(SOURCE_TYPE);
 
 function ChipRow({
   items,
@@ -99,8 +106,12 @@ function ChipRow({
 
 export default function HistoryScreen() {
   const { format: fmt } = useCurrency();
-  const { filter: filterParam, category_id: categoryIdParam } =
-    useLocalSearchParams<{ filter?: string; category_id?: string }>();
+  const params = useLocalSearchParams<{
+    filter?: string;
+    category_id?: string;
+    source_type?: string;
+    month?: string;
+  }>();
 
   // Applied filters
   const [typeFilter, setTypeFilter] = useState<TransactionFilterType>(
@@ -108,8 +119,19 @@ export default function HistoryScreen() {
   );
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [sourceId, setSourceId] = useState<number | null>(null);
+  const [sourceTypeFilter, setSourceTypeFilter] = useState<SourceFilterType>(
+    SOURCE_TYPE.ALL,
+  );
   const [month, setMonth] = useState<Date | null>(null);
   const handleSwipeDelete = useSwipeDelete();
+  const { isConnected } = useGoogleAuth();
+  const [gmailConnected, setGmailConnected] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: isConnected is stable from hook
+  useEffect(() => {
+    isConnected().then(setGmailConnected);
+  }, []);
 
   // Draft filters (inside modal)
   const [showFilters, setShowFilters] = useState(false);
@@ -118,22 +140,36 @@ export default function HistoryScreen() {
   );
   const [draftCategoryId, setDraftCategoryId] = useState<number | null>(null);
   const [draftSourceId, setDraftSourceId] = useState<number | null>(null);
+  const [draftSourceType, setDraftSourceType] = useState<SourceFilterType>(
+    SOURCE_TYPE.ALL,
+  );
   const [draftMonth, setDraftMonth] = useState<Date | null>(null);
 
   useEffect(() => {
     if (
-      filterParam === TRANSACTION_TYPE.INCOME ||
-      filterParam === TRANSACTION_TYPE.EXPENSE
+      params.filter === TRANSACTION_TYPE.INCOME ||
+      params.filter === TRANSACTION_TYPE.EXPENSE
     ) {
-      setTypeFilter(filterParam);
+      setTypeFilter(params.filter);
     }
-    if (categoryIdParam) {
-      const parsed = Number(categoryIdParam);
+    if (params.category_id) {
+      const parsed = Number(params.category_id);
       if (!Number.isNaN(parsed)) {
         setCategoryId(parsed);
       }
     }
-  }, [filterParam, categoryIdParam]);
+    if (
+      params.source_type === SOURCE_TYPE.MANUAL ||
+      params.source_type === SOURCE_TYPE.SYNCED ||
+      params.source_type === SOURCE_TYPE.RECURRING
+    ) {
+      setSourceTypeFilter(params.source_type);
+    }
+    if (params.month) {
+      const [y, m] = params.month.split("-").map(Number);
+      if (y && m) setMonth(new Date(y, m - 1));
+    }
+  }, [params.filter, params.category_id, params.source_type, params.month]);
 
   // Reset draft category/source when draft type changes
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset on draftType change
@@ -152,12 +188,14 @@ export default function HistoryScreen() {
     typeFilter !== TRANSACTION_TYPE.ALL ||
     categoryId !== null ||
     sourceId !== null ||
+    sourceTypeFilter !== SOURCE_TYPE.ALL ||
     month !== null;
 
   const filters = {
     type: typeFilter,
     categoryId,
     sourceId: typeFilter === TRANSACTION_TYPE.INCOME ? null : sourceId,
+    sourceType: sourceTypeFilter,
     dateFrom: month ? format(month, "yyyy-MM-01") : null,
     dateTo: month
       ? format(
@@ -186,10 +224,44 @@ export default function HistoryScreen() {
     .filter((t) => t.type === "income")
     .reduce((sum, t) => sum + t.amount, 0);
 
+  async function handleGmailSync() {
+    setSyncing(true);
+    try {
+      const result = await syncGmailTransactions();
+      const lines: string[] = [];
+      if (result.expenseCount > 0) {
+        lines.push(`${result.expenseCount} expense (${fmt(result.expenseTotal)})`);
+      }
+      if (result.incomeCount > 0) {
+        lines.push(`${result.incomeCount} income (${fmt(result.incomeTotal)})`);
+      }
+      if (result.skipped > 0) {
+        lines.push(`${result.skipped} duplicates skipped`);
+      }
+      if (result.failed > 0) {
+        lines.push(`${result.failed} failed to parse`);
+      }
+      Alert.alert(
+        `${result.added} transaction${result.added !== 1 ? "s" : ""} synced`,
+        lines.join("\n") || "No new transactions found",
+        [{ text: "OK" }],
+      );
+      if (result.added > 0) {
+        setSourceTypeFilter(SOURCE_TYPE.SYNCED);
+      }
+      refetch();
+    } catch (err) {
+      Alert.alert("Sync failed", String(err));
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   function openFilters() {
     setDraftType(typeFilter);
     setDraftCategoryId(categoryId);
     setDraftSourceId(sourceId);
+    setDraftSourceType(sourceTypeFilter);
     setDraftMonth(month);
     setShowFilters(true);
   }
@@ -198,6 +270,7 @@ export default function HistoryScreen() {
     setTypeFilter(draftType);
     setCategoryId(draftCategoryId);
     setSourceId(draftSourceId);
+    setSourceTypeFilter(draftSourceType);
     setMonth(draftMonth);
     setShowFilters(false);
   }
@@ -206,6 +279,7 @@ export default function HistoryScreen() {
     setDraftType(TRANSACTION_TYPE.ALL);
     setDraftCategoryId(null);
     setDraftSourceId(null);
+    setDraftSourceType(SOURCE_TYPE.ALL);
     setDraftMonth(null);
   }
 
@@ -213,6 +287,7 @@ export default function HistoryScreen() {
     setTypeFilter(TRANSACTION_TYPE.ALL);
     setCategoryId(null);
     setSourceId(null);
+    setSourceTypeFilter(SOURCE_TYPE.ALL);
     setMonth(null);
   }
 
@@ -220,6 +295,7 @@ export default function HistoryScreen() {
     draftType !== TRANSACTION_TYPE.ALL ||
     draftCategoryId !== null ||
     draftSourceId !== null ||
+    draftSourceType !== SOURCE_TYPE.ALL ||
     draftMonth !== null;
 
   return (
@@ -238,10 +314,27 @@ export default function HistoryScreen() {
           <Icon as={ChevronLeft} className="mr-1 size-6 text-foreground" />
           <Text className="text-lg font-bold text-foreground">History</Text>
         </Pressable>
-        <Pressable
-          onPress={openFilters}
-          className="relative flex-row items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2"
-        >
+        <View className="flex-row items-center gap-2">
+          {gmailConnected && (
+            <Pressable
+              onPress={handleGmailSync}
+              disabled={syncing}
+              className="flex-row items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2"
+            >
+              {syncing ? (
+                <ActivityIndicator size="small" color="#7c3aed" />
+              ) : (
+                <Icon as={Mail} className="size-4 text-muted-foreground" />
+              )}
+              <Text className="text-xs font-medium text-muted-foreground">
+                {syncing ? "Syncing" : "Sync"}
+              </Text>
+            </Pressable>
+          )}
+          <Pressable
+            onPress={openFilters}
+            className="relative flex-row items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2"
+          >
           <Icon
             as={SlidersHorizontal}
             className="size-4 text-muted-foreground"
@@ -249,10 +342,11 @@ export default function HistoryScreen() {
           <Text className="text-xs font-medium text-muted-foreground">
             Filter
           </Text>
-          {hasActiveFilters && (
-            <View className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary" />
-          )}
-        </Pressable>
+            {hasActiveFilters && (
+              <View className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-primary" />
+            )}
+          </Pressable>
+        </View>
       </View>
 
       {/* Summary Bar */}
@@ -416,6 +510,34 @@ export default function HistoryScreen() {
               </View>
             </>
           )}
+
+          {/* Source Type */}
+          <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Source
+          </Text>
+          <View className="mb-5 flex-row gap-2">
+            {SOURCE_TYPE_FILTERS.map((f) => (
+              <Pressable
+                key={f}
+                onPress={() => setDraftSourceType(f)}
+                className={cn(
+                  "flex-1 items-center rounded-xl py-2.5",
+                  draftSourceType === f ? "bg-primary" : "bg-muted",
+                )}
+              >
+                <Text
+                  className={cn(
+                    "text-xs font-medium capitalize",
+                    draftSourceType === f
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {f}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
 
           {/* Month */}
           <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

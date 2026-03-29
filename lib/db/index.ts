@@ -29,6 +29,7 @@ const db: ExpoSQLiteDatabase = drizzle(expo, { logger: __DEV__ });
 export type TransactionRow = Transaction & {
   category_name: string | null;
   source_name: string | null;
+  source_type: "manual" | "synced" | "recurring";
 };
 
 export type MonthlySummary = {
@@ -127,8 +128,22 @@ export async function initDB() {
     );
   }
 
+  // Migration: add source_type column to transactions if missing
+  if (!txCols.some((c) => c.name === "source_type")) {
+    await expo.execAsync(
+      "ALTER TABLE transactions ADD COLUMN source_type TEXT NOT NULL DEFAULT 'manual'",
+    );
+    // backfill existing data
+    await expo.execAsync(
+      "UPDATE transactions SET source_type = 'synced' WHERE note = 'synced from gmail'",
+    );
+    await expo.execAsync(
+      "UPDATE transactions SET source_type = 'recurring' WHERE subscription_id IS NOT NULL",
+    );
+  }
+
   await seedDefaults();
-  await seedTransactions();
+  // await seedTransactions();
 }
 
 async function seedDefaults() {
@@ -224,6 +239,7 @@ function transactionSelect() {
       category_id: transactions.category_id,
       source_id: transactions.source_id,
       subscription_id: transactions.subscription_id,
+      source_type: transactions.source_type,
       date: transactions.date,
       note: transactions.note,
       created_at: transactions.created_at,
@@ -274,6 +290,7 @@ export async function getTransactionsPaginated(
     type?: "income" | "expense" | "all";
     categoryId?: number | null;
     sourceId?: number | null;
+    sourceType?: "manual" | "synced" | "recurring" | "all";
     dateFrom?: string | null;
     dateTo?: string | null;
   },
@@ -288,6 +305,9 @@ export async function getTransactionsPaginated(
   }
   if (filters?.sourceId) {
     conditions.push(eq(transactions.source_id, filters.sourceId));
+  }
+  if (filters?.sourceType && filters.sourceType !== "all") {
+    conditions.push(eq(transactions.source_type, filters.sourceType));
   }
   if (filters?.dateFrom) {
     conditions.push(gte(transactions.date, filters.dateFrom));
@@ -317,6 +337,7 @@ export async function insertTransaction(params: {
   categoryId: number | null;
   sourceId: number | null;
   subscriptionId?: number | null;
+  sourceType?: "manual" | "synced" | "recurring";
   date: string;
   note: string | null;
 }) {
@@ -327,6 +348,7 @@ export async function insertTransaction(params: {
     category_id: params.categoryId,
     source_id: params.sourceId,
     subscription_id: params.subscriptionId ?? null,
+    source_type: params.sourceType ?? "manual",
     date: params.date,
     note: params.note,
   });

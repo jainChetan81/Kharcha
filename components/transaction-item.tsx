@@ -11,6 +11,7 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
+import { SOURCE_TYPE } from "@/lib/constants";
 import type { TransactionRow } from "@/lib/db";
 import { parseDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -90,9 +91,14 @@ export function TransactionItem({
           <Text className="text-sm font-semibold text-foreground">
             {item.merchant || item.category_name || item.type}
           </Text>
-          {item.subscription_id && (
-            <View className="rounded-md bg-primary/20 px-1.5 py-0.5">
-              <Text className="text-[10px] font-medium text-primary">SUB</Text>
+          {item.source_type === SOURCE_TYPE.SYNCED && (
+            <View className="rounded-md bg-[#1d4ed8] px-1.5 py-0.5">
+              <Text className="text-[10px] font-medium text-white">GMAIL</Text>
+            </View>
+          )}
+          {item.source_type === SOURCE_TYPE.RECURRING && (
+            <View className="rounded-md bg-primary px-1.5 py-0.5">
+              <Text className="text-[10px] font-medium text-white">SUB</Text>
             </View>
           )}
         </View>

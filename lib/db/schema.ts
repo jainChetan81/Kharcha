@@ -41,6 +41,11 @@ export const transactions = sqliteTable("transactions", {
   subscription_id: integer("subscription_id").references(
     () => subscriptions.id,
   ),
+  source_type: text("source_type", {
+    enum: ["manual", "synced", "recurring"],
+  })
+    .notNull()
+    .default("manual"),
   date: text("date").notNull(),
   note: text("note"),
   created_at: text("created_at").default("(datetime('now'))"),

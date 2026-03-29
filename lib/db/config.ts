@@ -25,3 +25,7 @@ export async function updateConfig(key: string, value: string): Promise<void> {
     .values({ key, value })
     .onConflictDoUpdate({ target: config.key, set: { value } });
 }
+
+export async function deleteConfig(key: string): Promise<void> {
+  await db.delete(config).where(eq(config.key, key));
+}

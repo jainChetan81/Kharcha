@@ -9,6 +9,7 @@ export const SCREENS = {
   SUBSCRIPTIONS: "/subscriptions",
   EDIT: "/edit",
   EDIT_SUBSCRIPTION: "/edit-subscription",
+  GMAIL_SYNC: "/gmail-sync",
 } as const;
 
 export function editScreen(id: number) {
@@ -35,6 +36,16 @@ export const TRANSACTION_TYPE = {
 
 export type TransactionFilterType =
   (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
+
+export const SOURCE_TYPE = {
+  ALL: "all",
+  MANUAL: "manual",
+  SYNCED: "synced",
+  RECURRING: "recurring",
+} as const;
+
+export type SourceFilterType =
+  (typeof SOURCE_TYPE)[keyof typeof SOURCE_TYPE];
 
 export const TOAST_TYPE = {
   SUCCESS: "success",

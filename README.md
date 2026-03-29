@@ -294,8 +294,7 @@ requirements:
 
 ## phase 2 roadmap
 
-- **gmail API integration** — read axis bank transaction emails, regex parse amount + merchant + date
-- **bun backend** — lightweight server to handle gmail oauth + email fetching
-- **sync on app open** — hit backend on launch, fetch emails since `last_synced_at`, insert new transactions
-- **railway deployment** — containerised bun backend
+see [GMAIL_SYNC.md](GMAIL_SYNC.md) for the full plan.
+
+- **gmail sync** — on-device oauth + gmail API to auto-import axis bank transactions (no backend)
 - **share sheet + OCR** — share a payment screenshot to the app, OCR extracts amount and prefills form
