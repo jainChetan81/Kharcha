@@ -1,9 +1,7 @@
-import { formatDistanceToNow } from "date-fns";
 import { router } from "expo-router";
 import { ChevronLeft, ChevronRight, Mail } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -19,68 +17,13 @@ import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { CURRENCIES, type CurrencyCode, useConfig } from "@/hooks/use-config";
 import { SCREENS, TOAST_TYPE } from "@/lib/constants";
-import { getConfig, updateConfig } from "@/lib/db/config";
-import { useGoogleAuth } from "@/lib/gmail/auth";
-import { syncGmailTransactions } from "@/lib/gmail/sync";
 import { cn, isIOS } from "@/lib/utils";
 
 export default function ProfileScreen() {
   const { userName, updateUserName, currency, updateCurrency } = useConfig();
-  const { signIn, signOut, isConnected } = useGoogleAuth();
   const [showEditName, setShowEditName] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [draftName, setDraftName] = useState("");
-  const [gmailConnected, setGmailConnected] = useState(false);
-  const [lastSynced, setLastSynced] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: isConnected is stable from hook
-  useEffect(() => {
-    isConnected().then(setGmailConnected);
-    getConfig("gmail_last_synced_at").then(setLastSynced);
-  }, []);
-
-  async function handleConnectGmail() {
-    const success = await signIn();
-    if (success) {
-      setGmailConnected(true);
-      await updateConfig("gmail_connected", "true");
-      Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Gmail connected" });
-    }
-  }
-
-  async function handleDisconnectGmail() {
-    await signOut();
-    setGmailConnected(false);
-    await updateConfig("gmail_connected", "false");
-    setLastSynced(null);
-    Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Gmail disconnected" });
-  }
-
-  async function handleSync() {
-    setSyncing(true);
-    try {
-      const result = await syncGmailTransactions();
-      const synced = await getConfig("gmail_last_synced_at");
-      setLastSynced(synced);
-      Toast.show({
-        type: TOAST_TYPE.SUCCESS,
-        text1: `${result.added} transaction${result.added !== 1 ? "s" : ""} added`,
-        text2:
-          result.skipped > 0
-            ? `${result.skipped} duplicates skipped`
-            : undefined,
-      });
-    } catch (err) {
-      Toast.show({
-        type: TOAST_TYPE.ERROR,
-        text1: "Sync failed",
-        text2: String(err),
-      });
-    } finally {
-      setSyncing(false);
-    }
-  }
 
   const initials = userName
     .split(" ")
@@ -156,64 +99,18 @@ export default function ProfileScreen() {
         </Pressable>
 
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Gmail
-        </Text>
-        {gmailConnected ? (
-          <>
-            <View className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3">
-              <Icon as={Mail} className="mr-3 size-4 text-positive" />
-              <Text className="flex-1 text-sm font-medium text-positive">
-                Gmail Connected
-              </Text>
-            </View>
-            {lastSynced && (
-              <View className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3">
-                <Text className="flex-1 text-sm text-muted-foreground">
-                  Last synced {formatDistanceToNow(new Date(lastSynced))} ago
-                </Text>
-              </View>
-            )}
-            <Pressable
-              onPress={handleSync}
-              disabled={syncing}
-              className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-            >
-              {syncing ? (
-                <ActivityIndicator
-                  size="small"
-                  color="#7c3aed"
-                  className="mr-3"
-                />
-              ) : null}
-              <Text className="flex-1 text-sm font-medium text-primary">
-                {syncing ? "Syncing..." : "Sync Now"}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={handleDisconnectGmail}
-              className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-            >
-              <Text className="flex-1 text-sm font-medium text-negative">
-                Disconnect
-              </Text>
-            </Pressable>
-          </>
-        ) : (
-          <Pressable
-            onPress={handleConnectGmail}
-            className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-          >
-            <Icon as={Mail} className="mr-3 size-4 text-muted-foreground" />
-            <Text className="flex-1 text-sm font-medium text-foreground">
-              Connect Gmail
-            </Text>
-            <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-          </Pressable>
-        )}
-
-        <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Manage
         </Text>
+        <Pressable
+          onPress={() => router.push(SCREENS.GMAIL_SYNC)}
+          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Icon as={Mail} className="mr-3 size-4 text-muted-foreground" />
+          <Text className="flex-1 text-sm font-medium text-foreground">
+            Gmail Sync
+          </Text>
+          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
+        </Pressable>
         <Pressable
           onPress={() => router.push(SCREENS.BUDGETS)}
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"

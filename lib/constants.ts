@@ -9,6 +9,7 @@ export const SCREENS = {
   SUBSCRIPTIONS: "/subscriptions",
   EDIT: "/edit",
   EDIT_SUBSCRIPTION: "/edit-subscription",
+  GMAIL_SYNC: "/gmail-sync",
 } as const;
 
 export function editScreen(id: number) {
