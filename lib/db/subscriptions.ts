@@ -158,6 +158,7 @@ export async function processSubscriptions(): Promise<string[]> {
       category_id: sub.category_id,
       source_id: sub.source_id,
       subscription_id: sub.id,
+      source_type: "recurring",
       date: billingDate,
       note: "Auto-created from subscription",
     });

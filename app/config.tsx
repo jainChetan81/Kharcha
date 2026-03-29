@@ -1,8 +1,6 @@
-import Constants from "expo-constants";
 import { router } from "expo-router";
 import {
   ChevronLeft,
-  ChevronRight,
   Lock,
   Plus,
   Trash2,
@@ -33,8 +31,7 @@ import {
   useAllSources,
   useDeleteSource,
 } from "@/hooks/use-sources";
-import { useClearAllTransactions } from "@/hooks/use-transactions";
-import { SCREENS, TOAST_TYPE, TRANSACTION_TYPE } from "@/lib/constants";
+import { TOAST_TYPE, TRANSACTION_TYPE } from "@/lib/constants";
 import { cn, isIOS } from "@/lib/utils";
 
 function SectionHeader({ title }: { title: string }) {
@@ -95,8 +92,6 @@ export default function ConfigScreen() {
   const deleteCategoryMutation = useDeleteCategory();
   const addSourceMutation = useAddSource();
   const deleteSourceMutation = useDeleteSource();
-  const clearTransactionsMutation = useClearAllTransactions();
-
   const expenseCategories = categories.filter(
     (c) => c.type === TRANSACTION_TYPE.EXPENSE,
   );
@@ -181,40 +176,6 @@ export default function ConfigScreen() {
       },
     ]);
   }
-
-  function handleClearTransactions() {
-    Alert.alert(
-      "Clear All Transactions",
-      "This will permanently delete all your transactions. This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete All",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await clearTransactionsMutation.mutateAsync();
-              Toast.show({
-                type: TOAST_TYPE.SUCCESS,
-                text1: "All transactions deleted",
-              });
-            } catch (err) {
-              Toast.show({
-                type: TOAST_TYPE.ERROR,
-                text1: "Failed",
-                text2: String(err),
-              });
-            }
-          },
-        },
-      ],
-    );
-  }
-
-  const appVersion =
-    Constants.expoConfig?.version ??
-    Constants.manifest2?.extra?.expoClient?.version ??
-    "1.0.0";
 
   return (
     <View className="flex-1 bg-background">
@@ -307,29 +268,6 @@ export default function ConfigScreen() {
           <Text className="text-sm font-medium text-primary">Add Source</Text>
         </Pressable>
 
-        {/* Data */}
-        <SectionHeader title="Data" />
-        <Pressable
-          onPress={handleClearTransactions}
-          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Text className="flex-1 text-sm font-medium text-negative">
-            Clear All Transactions
-          </Text>
-          <Icon as={Trash2} className="size-4 text-negative" />
-        </Pressable>
-        <Pressable
-          onPress={() => router.push(SCREENS.ABOUT)}
-          className="mx-5 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            About
-          </Text>
-          <Text className="mr-2 text-sm text-muted-foreground">
-            v{appVersion}
-          </Text>
-          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-        </Pressable>
       </ScrollView>
 
       {/* Add Category Modal */}

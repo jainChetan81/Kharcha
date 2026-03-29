@@ -1,14 +1,16 @@
-import { formatDistanceToNow } from "date-fns";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { format, formatDistanceToNow } from "date-fns";
 import { router } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import Toast from "react-native-toast-message";
 import { ScreenError } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { TOAST_TYPE } from "@/lib/constants";
+import { useCurrency } from "@/hooks/use-currency";
+import { SCREENS, TOAST_TYPE } from "@/lib/constants";
 import { deleteConfig, getConfig, updateConfig } from "@/lib/db/config";
 import { useGoogleAuth } from "@/lib/gmail/auth";
 import { syncGmailTransactions } from "@/lib/gmail/sync";
@@ -34,6 +36,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function GmailSyncScreen() {
+	const { format: fmt } = useCurrency();
 	const { signIn, signOut, isConnected, getValidAccessToken } =
 		useGoogleAuth();
 	const [connected, setConnected] = useState(false);
@@ -46,6 +49,10 @@ export default function GmailSyncScreen() {
 	const [syncing, setSyncing] = useState(false);
 	const [verifying, setVerifying] = useState(false);
 	const [loading, setLoading] = useState(true);
+	const [showDatePicker, setShowDatePicker] = useState(false);
+	const [syncFromDate, setSyncFromDate] = useState<Date>(
+		new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+	);
 
 	const loadState = useCallback(async () => {
 		console.log("[GmailSync] Loading state...");
@@ -60,6 +67,9 @@ export default function GmailSyncScreen() {
 		setLastSynced(synced);
 		setEmailsFetched(fetched);
 		setTransactionsAdded(added);
+		if (synced) {
+			setSyncFromDate(new Date(synced));
+		}
 		setLoading(false);
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
@@ -150,6 +160,14 @@ export default function GmailSyncScreen() {
 		}
 	}
 
+	async function handleUpdateSyncFrom(date: Date) {
+		setSyncFromDate(date);
+		setShowDatePicker(false);
+		await updateConfig("gmail_last_synced_at", date.toISOString());
+		setLastSynced(date.toISOString());
+		console.log("[GmailSync] Sync-from date updated to:", date.toISOString());
+	}
+
 	async function handleSync() {
 		console.log("[GmailSync] Sync button pressed");
 		setSyncing(true);
@@ -174,14 +192,33 @@ export default function GmailSyncScreen() {
 			setEmailsFetched(newFetched);
 			setTransactionsAdded(newAdded);
 
-			Toast.show({
-				type: TOAST_TYPE.SUCCESS,
-				text1: `${result.added} transaction${result.added !== 1 ? "s" : ""} added`,
-				text2:
-					result.skipped > 0
-						? `${result.skipped} duplicates skipped`
-						: undefined,
-			});
+			const lines: string[] = [];
+			if (result.expenseCount > 0) {
+				lines.push(`${result.expenseCount} expense (${fmt(result.expenseTotal)})`);
+			}
+			if (result.incomeCount > 0) {
+				lines.push(`${result.incomeCount} income (${fmt(result.incomeTotal)})`);
+			}
+			if (result.skipped > 0) {
+				lines.push(`${result.skipped} duplicates skipped`);
+			}
+			if (result.failed > 0) {
+				lines.push(`${result.failed} failed to parse`);
+			}
+
+			Alert.alert(
+				`${result.added} transaction${result.added !== 1 ? "s" : ""} synced`,
+				lines.join("\n") || "No new transactions found",
+				[
+					{ text: "OK" },
+					...(result.added > 0
+						? [{
+								text: "View",
+								onPress: () => router.push(`${SCREENS.HISTORY}?source_type=synced`),
+							}]
+						: []),
+				],
+			);
 		} catch (err) {
 			console.log("[GmailSync] Sync error:", err);
 			Toast.show({
@@ -290,6 +327,35 @@ export default function GmailSyncScreen() {
 								label="Transactions Added"
 								value={transactionsAdded ?? "0"}
 							/>
+
+							{/* SYNC FROM */}
+							<SectionHeader title="Sync From" />
+							<Pressable
+								onPress={() => setShowDatePicker(!showDatePicker)}
+								className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+							>
+								<Text className="flex-1 text-sm font-medium text-foreground">
+									Fetch emails after
+								</Text>
+								<Text className="text-sm text-primary">
+									{format(syncFromDate, "dd MMM yyyy")}
+								</Text>
+							</Pressable>
+							{showDatePicker && (
+								<View className="mx-5 mb-2 rounded-xl border border-border bg-card">
+									<DateTimePicker
+										value={syncFromDate}
+										mode="date"
+										display="spinner"
+										maximumDate={new Date()}
+										themeVariant="dark"
+										onChange={(_event, date) => {
+											if (date) handleUpdateSyncFrom(date);
+										}}
+										style={{ height: 150 }}
+									/>
+								</View>
+							)}
 
 							{/* ACTIONS */}
 							<SectionHeader title="Actions" />

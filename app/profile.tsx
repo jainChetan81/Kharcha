@@ -1,7 +1,8 @@
 import { router } from "expo-router";
-import { ChevronLeft, ChevronRight, Mail } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Mail, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -16,6 +17,7 @@ import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { CURRENCIES, type CurrencyCode, useConfig } from "@/hooks/use-config";
+import { useClearAllTransactions } from "@/hooks/use-transactions";
 import { SCREENS, TOAST_TYPE } from "@/lib/constants";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -24,6 +26,7 @@ export default function ProfileScreen() {
   const [showEditName, setShowEditName] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [draftName, setDraftName] = useState("");
+  const clearTransactionsMutation = useClearAllTransactions();
 
   const initials = userName
     .split(" ")
@@ -31,6 +34,35 @@ export default function ProfileScreen() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  function handleClearTransactions() {
+    Alert.alert(
+      "Clear All Transactions",
+      "This will permanently delete all your transactions. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete All",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await clearTransactionsMutation.mutateAsync();
+              Toast.show({
+                type: TOAST_TYPE.SUCCESS,
+                text1: "All transactions deleted",
+              });
+            } catch (err) {
+              Toast.show({
+                type: TOAST_TYPE.ERROR,
+                text1: "Failed",
+                text2: String(err),
+              });
+            }
+          },
+        },
+      ],
+    );
+  }
 
   async function handleSaveName() {
     const trimmed = draftName.trim();
@@ -128,6 +160,28 @@ export default function ProfileScreen() {
             Subscriptions
           </Text>
           <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
+        </Pressable>
+
+        <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          App
+        </Text>
+        <Pressable
+          onPress={() => router.push(SCREENS.ABOUT)}
+          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Text className="flex-1 text-sm font-medium text-foreground">
+            About
+          </Text>
+          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
+        </Pressable>
+        <Pressable
+          onPress={handleClearTransactions}
+          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Text className="flex-1 text-sm font-medium text-negative">
+            Clear All Transactions
+          </Text>
+          <Icon as={Trash2} className="size-4 text-negative" />
         </Pressable>
       </ScrollView>
 

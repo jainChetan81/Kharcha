@@ -1,4 +1,4 @@
-import * as Google from "expo-auth-session/providers/google";
+import * as AuthSession from "expo-auth-session";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 
@@ -6,7 +6,14 @@ WebBrowser.maybeCompleteAuthSession();
 
 const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "";
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
+const WEB_CLIENT_SECRET = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET ?? "";
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
+
+const discovery = {
+	authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+	tokenEndpoint: "https://oauth2.googleapis.com/token",
+	revocationEndpoint: "https://oauth2.googleapis.com/revoke",
+};
 
 export const SECURE_STORE_KEYS = {
 	ACCESS_TOKEN: "gmail_access_token",
@@ -17,18 +24,14 @@ export const SECURE_STORE_KEYS = {
 export async function getValidAccessToken(): Promise<string | null> {
 	console.log("[Gmail] getValidAccessToken called");
 	const expiry = await SecureStore.getItemAsync(SECURE_STORE_KEYS.TOKEN_EXPIRY);
-	const accessToken = await SecureStore.getItemAsync(
-		SECURE_STORE_KEYS.ACCESS_TOKEN,
-	);
-	const refreshToken = await SecureStore.getItemAsync(
-		SECURE_STORE_KEYS.REFRESH_TOKEN,
-	);
+	const accessToken = await SecureStore.getItemAsync(SECURE_STORE_KEYS.ACCESS_TOKEN);
+	const refreshToken = await SecureStore.getItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN);
 
 	console.log("[Gmail] Stored tokens — access:", !!accessToken, "refresh:", !!refreshToken, "expiry:", expiry);
 
 	if (!accessToken) return null;
 
-	if (expiry && Date.now() < parseInt(expiry, 10) - 60000) {
+	if (expiry && Date.now() < Number.parseInt(expiry, 10) - 60000) {
 		console.log("[Gmail] Access token still valid");
 		return accessToken;
 	}
@@ -39,40 +42,47 @@ export async function getValidAccessToken(): Promise<string | null> {
 	}
 
 	console.log("[Gmail] Token expired, refreshing...");
-	const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
-		method: "POST",
-		headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		body: new URLSearchParams({
-			client_id: WEB_CLIENT_ID,
-			refresh_token: refreshToken,
-			grant_type: "refresh_token",
-		}).toString(),
-	});
+	try {
+		const tokenResult = await AuthSession.refreshAsync(
+			{
+				clientId: WEB_CLIENT_ID,
+				clientSecret: WEB_CLIENT_SECRET,
+				refreshToken,
+			},
+			discovery,
+		);
+		console.log("[Gmail] Refresh result: success");
 
-	const refreshed = await refreshResponse.json();
-	console.log("[Gmail] Refresh result:", refreshed.error ?? "success");
-	if (!refreshed.access_token) return null;
+		await SecureStore.setItemAsync(SECURE_STORE_KEYS.ACCESS_TOKEN, tokenResult.accessToken);
+		if (tokenResult.refreshToken) {
+			await SecureStore.setItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN, tokenResult.refreshToken);
+		}
+		const newExpiry = tokenResult.issuedAt + (tokenResult.expiresIn ?? 3600);
+		await SecureStore.setItemAsync(SECURE_STORE_KEYS.TOKEN_EXPIRY, String(newExpiry * 1000));
 
-	await SecureStore.setItemAsync(
-		SECURE_STORE_KEYS.ACCESS_TOKEN,
-		refreshed.access_token,
-	);
-	const newExpiry = Date.now() + refreshed.expires_in * 1000;
-	await SecureStore.setItemAsync(
-		SECURE_STORE_KEYS.TOKEN_EXPIRY,
-		newExpiry.toString(),
-	);
-
-	return refreshed.access_token;
+		return tokenResult.accessToken;
+	} catch (err) {
+		console.log("[Gmail] Refresh failed:", err);
+		return null;
+	}
 }
 
 export function useGoogleAuth() {
-	const [request, _response, promptAsync] = Google.useAuthRequest({
-		iosClientId: IOS_CLIENT_ID,
-		webClientId: WEB_CLIENT_ID,
-		scopes: SCOPES,
-		extraParams: { access_type: "offline", prompt: "consent" },
+	const redirectUri = AuthSession.makeRedirectUri({
+		native: `com.chetanjain.kharcha:/oauthredirect`,
 	});
+
+	const [request, _response, promptAsync] = AuthSession.useAuthRequest(
+		{
+			clientId: IOS_CLIENT_ID,
+			scopes: SCOPES,
+			redirectUri,
+			responseType: AuthSession.ResponseType.Code,
+			usePKCE: true,
+			extraParams: { access_type: "offline", prompt: "consent" },
+		},
+		discovery,
+	);
 
 	const signIn = async () => {
 		console.log("[Gmail] signIn called");
@@ -80,53 +90,43 @@ export function useGoogleAuth() {
 		console.log("[Gmail] Web CLIENT_ID:", WEB_CLIENT_ID ? `${WEB_CLIENT_ID.slice(0, 20)}...` : "MISSING");
 		console.log("[Gmail] redirectUri:", request?.redirectUri);
 		console.log("[Gmail] request ready:", !!request);
+
 		const result = await promptAsync();
-		console.log("[Gmail] promptAsync result:", JSON.stringify(result, null, 2));
+		console.log("[Gmail] promptAsync result type:", result.type);
+
 		if (result.type !== "success") return false;
 
 		const { code } = result.params;
-		console.log("[Gmail] Got auth code, exchanging for tokens...");
+		console.log("[Gmail] Got auth code, exchanging for tokens via exchangeCodeAsync...");
 
-		// exchange code for tokens using web client ID
-		const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-			method: "POST",
-			headers: { "Content-Type": "application/x-www-form-urlencoded" },
-			body: new URLSearchParams({
-				code,
-				client_id: WEB_CLIENT_ID,
-				grant_type: "authorization_code",
-				redirect_uri: request?.redirectUri ?? "",
-				code_verifier: request?.codeVerifier ?? "",
-			}).toString(),
-		});
+		try {
+			const tokenResult = await AuthSession.exchangeCodeAsync(
+				{
+					code,
+					clientId: IOS_CLIENT_ID,
+					redirectUri: request?.redirectUri ?? "",
+					extraParams: request?.codeVerifier
+						? { code_verifier: request.codeVerifier }
+						: undefined,
+				},
+				discovery,
+			);
 
-		const tokens = await tokenResponse.json();
-		console.log("[Gmail] Token exchange result:", tokens.error ?? "success");
+			console.log("[Gmail] Token exchange success — accessToken:", !!tokenResult.accessToken, "refreshToken:", !!tokenResult.refreshToken);
 
-		if (!tokens.access_token) {
-			console.log("[Gmail] No access token in response:", JSON.stringify(tokens));
+			await SecureStore.setItemAsync(SECURE_STORE_KEYS.ACCESS_TOKEN, tokenResult.accessToken);
+			if (tokenResult.refreshToken) {
+				await SecureStore.setItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN, tokenResult.refreshToken);
+			}
+			const expiry = tokenResult.issuedAt + (tokenResult.expiresIn ?? 3600);
+			await SecureStore.setItemAsync(SECURE_STORE_KEYS.TOKEN_EXPIRY, String(expiry * 1000));
+
+			console.log("[Gmail] Tokens stored successfully");
+			return true;
+		} catch (err) {
+			console.log("[Gmail] Token exchange failed:", err);
 			return false;
 		}
-
-		// store tokens securely
-		await SecureStore.setItemAsync(
-			SECURE_STORE_KEYS.ACCESS_TOKEN,
-			tokens.access_token,
-		);
-		if (tokens.refresh_token) {
-			await SecureStore.setItemAsync(
-				SECURE_STORE_KEYS.REFRESH_TOKEN,
-				tokens.refresh_token,
-			);
-		}
-		const expiry = Date.now() + tokens.expires_in * 1000;
-		await SecureStore.setItemAsync(
-			SECURE_STORE_KEYS.TOKEN_EXPIRY,
-			expiry.toString(),
-		);
-
-		console.log("[Gmail] Tokens stored successfully");
-		return true;
 	};
 
 	const signOut = async () => {
@@ -137,9 +137,7 @@ export function useGoogleAuth() {
 	};
 
 	const isConnected = async (): Promise<boolean> => {
-		const token = await SecureStore.getItemAsync(
-			SECURE_STORE_KEYS.REFRESH_TOKEN,
-		);
+		const token = await SecureStore.getItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN);
 		return !!token;
 	};
 

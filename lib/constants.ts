@@ -37,6 +37,16 @@ export const TRANSACTION_TYPE = {
 export type TransactionFilterType =
   (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
 
+export const SOURCE_TYPE = {
+  ALL: "all",
+  MANUAL: "manual",
+  SYNCED: "synced",
+  RECURRING: "recurring",
+} as const;
+
+export type SourceFilterType =
+  (typeof SOURCE_TYPE)[keyof typeof SOURCE_TYPE];
+
 export const TOAST_TYPE = {
   SUCCESS: "success",
   ERROR: "error",
