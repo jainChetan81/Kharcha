@@ -1,10 +1,5 @@
 import { router } from "expo-router";
-import {
-  ChevronLeft,
-  Lock,
-  Plus,
-  Trash2,
-} from "lucide-react-native";
+import { ChevronLeft, Lock, Plus, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import {
   Alert,
@@ -267,7 +262,6 @@ export default function ConfigScreen() {
           <Icon as={Plus} className="size-4 text-primary" />
           <Text className="text-sm font-medium text-primary">Add Source</Text>
         </Pressable>
-
       </ScrollView>
 
       {/* Add Category Modal */}

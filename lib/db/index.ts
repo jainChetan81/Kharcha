@@ -176,7 +176,7 @@ async function seedDefaults() {
   }
 }
 
-async function seedTransactions() {
+async function _seedTransactions() {
   const existing = await db.select().from(transactions).limit(1);
   if (existing.length > 0) return;
 

@@ -44,8 +44,7 @@ export const SOURCE_TYPE = {
   RECURRING: "recurring",
 } as const;
 
-export type SourceFilterType =
-  (typeof SOURCE_TYPE)[keyof typeof SOURCE_TYPE];
+export type SourceFilterType = (typeof SOURCE_TYPE)[keyof typeof SOURCE_TYPE];
 
 export const TOAST_TYPE = {
   SUCCESS: "success",
