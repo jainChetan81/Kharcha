@@ -126,7 +126,6 @@ export function TransactionForm({
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      {/* Type Toggle */}
       <form.Field name="type">
         {(field) => (
           <View className="mb-5 flex-row gap-3">
@@ -181,7 +180,6 @@ export function TransactionForm({
         )}
       </form.Field>
 
-      {/* Amount */}
       <form.Field
         name="amount"
         validators={{
@@ -216,7 +214,6 @@ export function TransactionForm({
         )}
       </form.Field>
 
-      {/* Merchant — expense only */}
       {activeType === "expense" && (
         <form.Field name="merchant">
           {(field) => (
@@ -235,7 +232,6 @@ export function TransactionForm({
         </form.Field>
       )}
 
-      {/* Category */}
       <form.Field
         name="categoryId"
         validators={{
@@ -260,7 +256,6 @@ export function TransactionForm({
         )}
       </form.Field>
 
-      {/* From — income only */}
       {activeType === "income" && (
         <form.Field name="merchant">
           {(field) => (
@@ -279,7 +274,6 @@ export function TransactionForm({
         </form.Field>
       )}
 
-      {/* Source — expense only */}
       <form.Field
         name="sourceId"
         validators={{
@@ -306,7 +300,6 @@ export function TransactionForm({
         }
       </form.Field>
 
-      {/* Date & Time */}
       <form.Field
         name="date"
         validators={{
@@ -400,7 +393,6 @@ export function TransactionForm({
         }}
       </form.Field>
 
-      {/* Note */}
       <form.Field name="note">
         {(field) => (
           <View className="mb-5">
@@ -421,7 +413,6 @@ export function TransactionForm({
         )}
       </form.Field>
 
-      {/* Submit */}
       <form.Subscribe
         selector={(state) => ({
           isSubmitting: state.isSubmitting,

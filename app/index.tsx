@@ -24,7 +24,13 @@ import {
   useMonthlySummary,
   useRecentTransactions,
 } from "@/hooks/use-transactions";
-import { COLORS, editScreen, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
+import {
+  COLORS,
+  editScreen,
+  LABELS,
+  SCREENS,
+  TRANSACTION_TYPE,
+} from "@/lib/constants";
 import { buildListData } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -47,19 +53,19 @@ function SpendingRing({
     ? [
         {
           value: overspent ? 0 : 100 - spentPercent,
-          color: "#7c3aed",
+          color: COLORS.PRIMARY,
         },
         {
           value: overspent ? 100 : spentPercent,
-          color: overspent ? "#ef4444" : "#2a2a2a",
+          color: overspent ? COLORS.DANGER : COLORS.BAR_BG,
         },
       ]
     : hasExpenses
-      ? [{ value: 100, color: "#ef4444" }]
-      : [{ value: 100, color: "#2a2a2a" }];
+      ? [{ value: 100, color: COLORS.DANGER }]
+      : [{ value: 100, color: COLORS.BAR_BG }];
 
   const centerAmount = hasIncome ? income - expenses : expenses;
-  const centerLabel = hasIncome ? "available" : hasExpenses ? "spent" : "";
+  const centerLabel = hasIncome ? LABELS.AVAILABLE : LABELS.SPENT;
 
   return (
     <View className="items-center">
@@ -68,7 +74,7 @@ function SpendingRing({
         donut
         radius={76}
         innerRadius={63}
-        innerCircleColor="#0a0a0a"
+        innerCircleColor={COLORS.BACKGROUND}
         centerLabelComponent={() => (
           <View className="items-center justify-center">
             {hasIncome || hasExpenses ? (
@@ -88,7 +94,9 @@ function SpendingRing({
                 </Text>
               </>
             ) : (
-              <Text className="text-xs text-muted-foreground">no data</Text>
+              <Text className="text-xs text-muted-foreground">
+                {LABELS.NO_DATA}
+              </Text>
             )}
           </View>
         )}
@@ -132,7 +140,7 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#7c3aed"
+            tintColor={COLORS.PRIMARY}
           />
         }
       >
@@ -329,7 +337,7 @@ export default function HomeScreen() {
               className="h-[52px] w-[52px] items-center justify-center rounded-full bg-primary"
               style={{
                 elevation: 8,
-                shadowColor: "#7c3aed",
+                shadowColor: COLORS.PRIMARY,
                 shadowOpacity: 0.4,
                 shadowRadius: 12,
                 shadowOffset: { width: 0, height: 4 },

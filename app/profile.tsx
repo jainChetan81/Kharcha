@@ -194,12 +194,20 @@ export default function ProfileScreen() {
         </Pressable>
         <Pressable
           onPress={async () => {
-            await seedSampleData();
-            await queryClient.invalidateQueries();
-            Toast.show({
-              type: TOAST_TYPE.SUCCESS,
-              text1: "Sample data loaded",
-            });
+            const seeded = await seedSampleData();
+            if (seeded) {
+              await queryClient.invalidateQueries();
+              Toast.show({
+                type: TOAST_TYPE.SUCCESS,
+                text1: "Sample data loaded",
+              });
+            } else {
+              Toast.show({
+                type: TOAST_TYPE.ERROR,
+                text1: "Data already exists",
+                text2: "Clear all transactions first",
+              });
+            }
           }}
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
         >

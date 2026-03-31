@@ -14,6 +14,7 @@ import {
   Alert,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   View,
 } from "react-native";
@@ -24,12 +25,14 @@ import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useCategoriesByType } from "@/hooks/use-categories";
 import { useCurrency } from "@/hooks/use-currency";
+import { useRefresh } from "@/hooks/use-refresh";
 import { useAllSources } from "@/hooks/use-sources";
 import {
   useSwipeDelete,
   useTransactionsPaginated,
 } from "@/hooks/use-transactions";
 import {
+  COLORS,
   editScreen,
   SOURCE_TYPE,
   type SourceFilterType,
@@ -106,6 +109,7 @@ function ChipRow({
 
 export default function HistoryScreen() {
   const { format: fmt } = useCurrency();
+  const { refreshing, onRefresh } = useRefresh();
   const params = useLocalSearchParams<{
     filter?: string;
     category_id?: string;
@@ -205,14 +209,8 @@ export default function HistoryScreen() {
       : null,
   };
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isRefetching,
-    refetch,
-  } = useTransactionsPaginated(filters);
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useTransactionsPaginated(filters);
 
   const allTransactions = data?.pages.flat() ?? [];
   const listData = buildListData(allTransactions);
@@ -251,7 +249,7 @@ export default function HistoryScreen() {
       if (result.added > 0) {
         setSourceTypeFilter(SOURCE_TYPE.SYNCED);
       }
-      refetch();
+      await onRefresh();
     } catch (err) {
       Alert.alert("Sync failed", String(err));
     } finally {
@@ -302,7 +300,6 @@ export default function HistoryScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      {/* Header */}
       <View
         className={cn(
           "flex-row items-center justify-between bg-background px-6 pb-4",
@@ -351,7 +348,6 @@ export default function HistoryScreen() {
         </View>
       </View>
 
-      {/* Summary Bar */}
       {allTransactions.length > 0 && (totalSpent > 0 || totalIncome > 0) && (
         <View className="mx-5 mb-3 rounded-xl bg-card p-3">
           <Text className="text-xs text-muted-foreground">
@@ -376,7 +372,6 @@ export default function HistoryScreen() {
         </View>
       )}
 
-      {/* Transaction List */}
       <FlashList
         data={listData}
         keyExtractor={(item) =>
@@ -403,8 +398,13 @@ export default function HistoryScreen() {
           if (hasNextPage) fetchNextPage();
         }}
         onEndReachedThreshold={0.3}
-        refreshing={isRefetching}
-        onRefresh={() => refetch()}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.PRIMARY}
+          />
+        }
         ListFooterComponent={
           isFetchingNextPage ? (
             <View className="items-center py-4">
@@ -428,7 +428,6 @@ export default function HistoryScreen() {
         contentContainerStyle={{ paddingBottom: 24 }}
       />
 
-      {/* Filter Modal */}
       <Modal
         visible={showFilters}
         transparent
@@ -440,7 +439,6 @@ export default function HistoryScreen() {
           onPress={() => setShowFilters(false)}
         />
         <View className="rounded-t-2xl bg-card p-6">
-          {/* Modal Header */}
           <View className="mb-6 flex-row items-center justify-between">
             <Text className="text-base font-bold text-foreground">Filters</Text>
             {draftHasFilters && (
@@ -455,7 +453,6 @@ export default function HistoryScreen() {
             )}
           </View>
 
-          {/* Type */}
           <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Type
           </Text>
@@ -483,7 +480,6 @@ export default function HistoryScreen() {
             ))}
           </View>
 
-          {/* Category */}
           <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Category
           </Text>
@@ -496,7 +492,6 @@ export default function HistoryScreen() {
             />
           </View>
 
-          {/* Source — hidden for income */}
           {draftType !== TRANSACTION_TYPE.INCOME && (
             <>
               <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -513,7 +508,6 @@ export default function HistoryScreen() {
             </>
           )}
 
-          {/* Source Type */}
           <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Source
           </Text>
@@ -541,7 +535,6 @@ export default function HistoryScreen() {
             ))}
           </View>
 
-          {/* Month */}
           <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Month
           </Text>
@@ -567,7 +560,6 @@ export default function HistoryScreen() {
             </Pressable>
           </View>
 
-          {/* Actions */}
           <Button
             className="mb-3 h-14 rounded-2xl bg-primary"
             onPress={applyFilters}

@@ -110,7 +110,6 @@ export default function ConfigScreen() {
             try {
               await clearAllTransactions();
               queryClient.clear();
-              await queryClient.invalidateQueries();
               Toast.show({
                 type: TOAST_TYPE.SUCCESS,
                 text1: "All transactions deleted",
@@ -214,7 +213,6 @@ export default function ConfigScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      {/* Header */}
       <View
         className={cn(
           "flex-row items-center bg-background px-6 pb-4",
@@ -234,7 +232,6 @@ export default function ConfigScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
       >
-        {/* Expense Categories */}
         <SectionHeader title="Expense Categories" />
         {expenseCategories.map((c) => (
           <ListItem
@@ -258,7 +255,6 @@ export default function ConfigScreen() {
           </Text>
         </Pressable>
 
-        {/* Income Categories */}
         <SectionHeader title="Income Categories" />
         {incomeCategories.map((c) => (
           <ListItem
@@ -282,7 +278,6 @@ export default function ConfigScreen() {
           </Text>
         </Pressable>
 
-        {/* Sources */}
         <SectionHeader title="Payment Sources" />
         {sources.map((s) => (
           <ListItem
@@ -324,7 +319,6 @@ export default function ConfigScreen() {
         </Pressable>
       </ScrollView>
 
-      {/* Add Category Modal */}
       <Modal
         visible={showAddCategory}
         transparent
@@ -374,7 +368,6 @@ export default function ConfigScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Add Source Modal */}
       <Modal
         visible={showAddSource}
         transparent

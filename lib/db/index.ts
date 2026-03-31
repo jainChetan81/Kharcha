@@ -176,8 +176,10 @@ async function seedDefaults() {
   }
 }
 
-export async function seedSampleData() {
-  // Use raw SQL for date('now') functions
+export async function seedSampleData(): Promise<boolean> {
+  const existing = await db.select().from(transactions).limit(1);
+  if (existing.length > 0) return false;
+
   await expo.execAsync(`
     INSERT INTO transactions (type, amount, merchant, category_id, source_id, date, note) VALUES
       ('expense', 450,   'Swiggy',          1, 2, date('now'),             null),
@@ -224,6 +226,7 @@ export async function seedSampleData() {
       ('expense', 199,   'Spotify',         5, 3, date('now', '-1 month', 'start of month', '+20 days'), null),
       ('expense', 3500,  'Croma',           3, 3, date('now', '-1 month', 'start of month', '+22 days'), 'Charger');
   `);
+  return true;
 }
 
 function transactionSelect() {

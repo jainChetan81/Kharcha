@@ -55,7 +55,6 @@ export default function AboutScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      {/* Header */}
       <View
         className={cn(
           "flex-row items-center bg-background px-6 pb-4",
@@ -75,7 +74,6 @@ export default function AboutScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
       >
-        {/* App */}
         <SectionHeader title="App" />
         <InfoRow
           label="App Version"
@@ -87,7 +85,6 @@ export default function AboutScreen() {
         <InfoRow label="Build Number" value={Application.nativeBuildVersion} />
         <InfoRow label="Bundle ID" value={Application.applicationId} />
 
-        {/* Device */}
         <SectionHeader title="Device" />
         <InfoRow label="Device" value={Device.modelName} />
         <InfoRow
@@ -99,7 +96,6 @@ export default function AboutScreen() {
           value={getDeviceTypeName(Device.deviceType)}
         />
 
-        {/* Data */}
         <SectionHeader title="Data" />
         <InfoRow
           label="Total Transactions"

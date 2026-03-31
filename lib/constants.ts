@@ -56,7 +56,18 @@ export const COLORS = {
   PRIMARY: "#7c3aed",
   WARNING: "#f59e0b",
   DANGER: "#ef4444",
+  POSITIVE: "#22c55e",
   BAR_BG: "#2a2a2a",
+  BACKGROUND: "#0a0a0a",
+  MUTED: "#888888",
+  FOREGROUND: "#f0f0f0",
+  WHITE: "#ffffff",
+} as const;
+
+export const LABELS = {
+  AVAILABLE: "available",
+  SPENT: "spent",
+  NO_DATA: "no data",
 } as const;
 
 export const QUERY_KEYS = {
