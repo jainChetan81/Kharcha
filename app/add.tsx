@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -27,6 +28,7 @@ export default function AddTransaction() {
     type?: string;
     mode?: string;
   }>();
+  const queryClient = useQueryClient();
   const { format: fmt } = useCurrency();
   const insertMutation = useInsertTransaction();
   const addSubMutation = useAddSubscription();
@@ -110,6 +112,7 @@ export default function AddTransaction() {
     try {
       await addSubMutation.mutateAsync(value);
       await processSubscriptions();
+      await queryClient.invalidateQueries();
       Toast.show({
         type: TOAST_TYPE.SUCCESS,
         text1: "Subscription added",

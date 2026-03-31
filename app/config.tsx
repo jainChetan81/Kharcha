@@ -1,5 +1,12 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { ChevronLeft, Lock, Plus, Trash2 } from "lucide-react-native";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  Plus,
+  Trash2,
+} from "lucide-react-native";
 import { useState } from "react";
 import {
   Alert,
@@ -26,7 +33,8 @@ import {
   useAllSources,
   useDeleteSource,
 } from "@/hooks/use-sources";
-import { TOAST_TYPE, TRANSACTION_TYPE } from "@/lib/constants";
+import { SCREENS, TOAST_TYPE, TRANSACTION_TYPE } from "@/lib/constants";
+import { clearAllTransactions } from "@/lib/db";
 import { cn, isIOS } from "@/lib/utils";
 
 function SectionHeader({ title }: { title: string }) {
@@ -72,6 +80,7 @@ function ListItem({
 }
 
 export default function ConfigScreen() {
+  const queryClient = useQueryClient();
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddSource, setShowAddSource] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -87,6 +96,37 @@ export default function ConfigScreen() {
   const deleteCategoryMutation = useDeleteCategory();
   const addSourceMutation = useAddSource();
   const deleteSourceMutation = useDeleteSource();
+
+  function handleClearTransactions() {
+    Alert.alert(
+      "Clear All Transactions",
+      "This will permanently delete all your transactions. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete All",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await clearAllTransactions();
+              queryClient.clear();
+              await queryClient.invalidateQueries();
+              Toast.show({
+                type: TOAST_TYPE.SUCCESS,
+                text1: "All transactions deleted",
+              });
+            } catch (err) {
+              Toast.show({
+                type: TOAST_TYPE.ERROR,
+                text1: "Failed",
+                text2: String(err),
+              });
+            }
+          },
+        },
+      ],
+    );
+  }
   const expenseCategories = categories.filter(
     (c) => c.type === TRANSACTION_TYPE.EXPENSE,
   );
@@ -261,6 +301,26 @@ export default function ConfigScreen() {
         >
           <Icon as={Plus} className="size-4 text-primary" />
           <Text className="text-sm font-medium text-primary">Add Source</Text>
+        </Pressable>
+
+        <SectionHeader title="Data" />
+        <Pressable
+          onPress={handleClearTransactions}
+          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Text className="flex-1 text-sm font-medium text-negative">
+            Clear All Transactions
+          </Text>
+          <Icon as={Trash2} className="size-4 text-negative" />
+        </Pressable>
+        <Pressable
+          onPress={() => router.push(SCREENS.ABOUT)}
+          className="mx-5 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Text className="flex-1 text-sm font-medium text-foreground">
+            About
+          </Text>
+          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
         </Pressable>
       </ScrollView>
 

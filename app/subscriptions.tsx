@@ -1,11 +1,19 @@
 import { router } from "expo-router";
 import { ChevronLeft, Plus, Receipt } from "lucide-react-native";
-import { Alert, Pressable, ScrollView, Switch, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Switch,
+  View,
+} from "react-native";
 import Toast from "react-native-toast-message";
 import { ScreenError } from "@/components/error-boundary";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
+import { useRefresh } from "@/hooks/use-refresh";
 import {
   type SubscriptionRow,
   useDeleteSubscription,
@@ -17,6 +25,7 @@ import { cn, isIOS } from "@/lib/utils";
 
 export default function SubscriptionsScreen() {
   const { format: fmt } = useCurrency();
+  const { refreshing, onRefresh } = useRefresh();
   const { data: subs = [] } = useSubscriptions();
   const toggleMutation = useToggleSubscription();
   const deleteMutation = useDeleteSubscription();
@@ -130,6 +139,13 @@ export default function SubscriptionsScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 40 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#7c3aed"
+            />
+          }
         >
           {thisMonth.length > 0 && (
             <>

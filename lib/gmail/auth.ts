@@ -1,12 +1,13 @@
 import * as AuthSession from "expo-auth-session";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
+import { env } from "@/lib/env";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "";
-const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
-const WEB_CLIENT_SECRET = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_SECRET ?? "";
+const IOS_CLIENT_ID = env.GOOGLE_IOS_CLIENT_ID;
+const WEB_CLIENT_ID = env.GOOGLE_WEB_CLIENT_ID;
+const WEB_CLIENT_SECRET = env.GOOGLE_CLIENT_SECRET;
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 
 const discovery = {

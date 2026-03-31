@@ -8,7 +8,7 @@ import {
   Settings,
   User,
 } from "lucide-react-native";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
 import { ScreenError } from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
@@ -17,6 +17,7 @@ import { Text } from "@/components/ui/text";
 import { useBudgets } from "@/hooks/use-budgets";
 import { useConfig } from "@/hooks/use-config";
 import { useCurrency } from "@/hooks/use-currency";
+import { useRefresh } from "@/hooks/use-refresh";
 import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
 import {
   useCategoryBreakdown,
@@ -36,8 +37,8 @@ function SpendingRing({
   expenses: number;
   fmt: (n: number) => string;
 }) {
-  const balance = income - expenses;
   const hasIncome = income > 0;
+  const hasExpenses = expenses > 0;
   const overspent = expenses > income;
 
   const spentPercent = hasIncome ? Math.min((expenses / income) * 100, 100) : 0;
@@ -53,7 +54,12 @@ function SpendingRing({
           color: overspent ? "#ef4444" : "#2a2a2a",
         },
       ]
-    : [{ value: 100, color: "#2a2a2a" }];
+    : hasExpenses
+      ? [{ value: 100, color: "#ef4444" }]
+      : [{ value: 100, color: "#2a2a2a" }];
+
+  const centerAmount = hasIncome ? income - expenses : expenses;
+  const centerLabel = hasIncome ? "available" : hasExpenses ? "spent" : "";
 
   return (
     <View className="items-center">
@@ -65,24 +71,24 @@ function SpendingRing({
         innerCircleColor="#0a0a0a"
         centerLabelComponent={() => (
           <View className="items-center justify-center">
-            {hasIncome ? (
+            {hasIncome || hasExpenses ? (
               <>
                 <Text
                   className={cn(
                     "text-xl font-bold",
-                    overspent ? "text-negative" : "text-foreground",
+                    !hasIncome || overspent
+                      ? "text-negative"
+                      : "text-foreground",
                   )}
                 >
-                  {fmt(balance)}
+                  {fmt(Math.abs(centerAmount))}
                 </Text>
                 <Text className="mt-0.5 text-xs text-muted-foreground">
-                  available
+                  {centerLabel}
                 </Text>
               </>
             ) : (
-              <Text className="text-xs text-muted-foreground">
-                no income added
-              </Text>
+              <Text className="text-xs text-muted-foreground">no data</Text>
             )}
           </View>
         )}
@@ -94,6 +100,7 @@ function SpendingRing({
 export default function HomeScreen() {
   const { format: fmt } = useCurrency();
   const { userName } = useConfig();
+  const { refreshing, onRefresh } = useRefresh();
 
   const now = new Date();
   const currentMonth = format(now, "yyyy-MM");
@@ -121,6 +128,13 @@ export default function HomeScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#7c3aed"
+          />
+        }
       >
         <View className={cn("px-6 pb-4", isIOS ? "pt-[60px]" : "pt-12")}>
           <View className="flex-row items-center justify-between">

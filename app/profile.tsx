@@ -1,5 +1,12 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { ChevronLeft, ChevronRight, Mail, Trash2 } from "lucide-react-native";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Database,
+  Mail,
+  Trash2,
+} from "lucide-react-native";
 import { useState } from "react";
 import {
   Alert,
@@ -19,9 +26,11 @@ import { Text } from "@/components/ui/text";
 import { CURRENCIES, type CurrencyCode, useConfig } from "@/hooks/use-config";
 import { useClearAllTransactions } from "@/hooks/use-transactions";
 import { SCREENS, TOAST_TYPE } from "@/lib/constants";
+import { seedSampleData } from "@/lib/db";
 import { cn, isIOS } from "@/lib/utils";
 
 export default function ProfileScreen() {
+  const queryClient = useQueryClient();
   const { userName, updateUserName, currency, updateCurrency } = useConfig();
   const [showEditName, setShowEditName] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
@@ -182,6 +191,22 @@ export default function ProfileScreen() {
             Clear All Transactions
           </Text>
           <Icon as={Trash2} className="size-4 text-negative" />
+        </Pressable>
+        <Pressable
+          onPress={async () => {
+            await seedSampleData();
+            await queryClient.invalidateQueries();
+            Toast.show({
+              type: TOAST_TYPE.SUCCESS,
+              text1: "Sample data loaded",
+            });
+          }}
+          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Icon as={Database} className="mr-3 size-4 text-muted-foreground" />
+          <Text className="flex-1 text-sm font-medium text-foreground">
+            Load Sample Data
+          </Text>
         </Pressable>
       </ScrollView>
 

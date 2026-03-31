@@ -169,17 +169,14 @@ async function seedDefaults() {
   if (existingSources.length === 0) {
     await db.insert(sources).values([
       { name: "cash", is_default: 1 },
-      { name: "upi", is_default: 1 },
+      { name: "UPI", is_default: 1 },
       { name: "credit card", is_default: 1 },
       { name: "debit card", is_default: 1 },
     ]);
   }
 }
 
-async function _seedTransactions() {
-  const existing = await db.select().from(transactions).limit(1);
-  if (existing.length > 0) return;
-
+export async function seedSampleData() {
   // Use raw SQL for date('now') functions
   await expo.execAsync(`
     INSERT INTO transactions (type, amount, merchant, category_id, source_id, date, note) VALUES
