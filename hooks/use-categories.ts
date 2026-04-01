@@ -5,7 +5,7 @@ import {
   deleteCategory,
   getAllCategories,
   getCategoriesByType,
-} from "@/lib/db";
+} from "@/lib/db/categories";
 
 export function useAllCategories() {
   return useQuery({

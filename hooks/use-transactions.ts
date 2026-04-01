@@ -4,8 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import Toast from "react-native-toast-message";
-import { PAGE_SIZE, QUERY_KEYS, TOAST_TYPE } from "@/lib/constants";
+import { PAGE_SIZE, QUERY_KEYS } from "@/lib/constants";
 import {
   clearAllTransactions,
   deleteTransaction,
@@ -16,12 +15,13 @@ import {
   getTransactionById,
   getTransactionsPaginated,
   insertTransaction,
-  reinsertTransaction,
+  restoreTransaction,
   type TransactionRow,
   updateTransaction,
 } from "@/lib/db";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
-function useInvalidateTransactions() {
+export function useInvalidateTransactions() {
   const queryClient = useQueryClient();
   return () =>
     Promise.all([
@@ -80,6 +80,7 @@ export function useTransactionsPaginated(filters: {
   type?: "income" | "expense" | "all";
   categoryId?: number | null;
   sourceId?: number | null;
+  sourceType?: "manual" | "synced" | "recurring" | "all";
   dateFrom?: string | null;
   dateTo?: string | null;
 }) {
@@ -120,10 +121,10 @@ export function useDeleteTransaction() {
   });
 }
 
-export function useReinsertTransaction() {
+export function useRestoreTransaction() {
   const invalidate = useInvalidateTransactions();
   return useMutation({
-    mutationFn: reinsertTransaction,
+    mutationFn: restoreTransaction,
     onSuccess: () => invalidate(),
   });
 }
@@ -138,29 +139,30 @@ export function useClearAllTransactions() {
 
 export function useSwipeDelete() {
   const deleteMutation = useDeleteTransaction();
-  const reinsertMutation = useReinsertTransaction();
+  const restoreMutation = useRestoreTransaction();
 
   return async (item: TransactionRow) => {
     try {
       await deleteMutation.mutateAsync(item.id);
+      const Toast = (await import("react-native-toast-message")).default;
       Toast.show({
-        type: TOAST_TYPE.UNDO,
+        type: "undo",
         text1: "Transaction deleted",
         visibilityTime: 5000,
         props: {
           onUndo: async () => {
             Toast.hide();
             try {
-              await reinsertMutation.mutateAsync(item);
-              Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Transaction restored" });
+              await restoreMutation.mutateAsync(item);
+              showSuccessToast("Transaction restored");
             } catch {
-              Toast.show({ type: TOAST_TYPE.ERROR, text1: "Failed to undo" });
+              showErrorToast("Failed to undo");
             }
           },
         },
       });
     } catch {
-      Toast.show({ type: TOAST_TYPE.ERROR, text1: "Failed to delete" });
+      showErrorToast("Failed to delete");
     }
   };
 }

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/constants";
-import { getDataStats } from "@/lib/db";
+import { getDataStats } from "@/lib/db/stats";
 
 export function useDataStats() {
   return useQuery({
