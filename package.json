@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@react-native-community/datetimepicker": "8.6.0",
+    "@react-native-google-signin/google-signin": "^16.1.2",
     "@rn-primitives/select": "^1.2.0",
     "@rn-primitives/slot": "^1.2.0",
     "@shopify/flash-list": "2.0.2",

@@ -1,7 +1,10 @@
+import { Alert } from "react-native";
+
 function required(key: string): string {
   const value = process.env[key];
   if (!value) {
-    throw new Error(`Missing required env variable: ${key}`);
+    Alert.alert("Missing Environment Variable", `${key} is not set.`);
+    return "";
   }
   return value;
 }

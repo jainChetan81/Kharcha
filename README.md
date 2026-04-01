@@ -119,7 +119,7 @@ sqlite ← drizzle-orm ← lib/db/*.ts ← hooks/use-*.ts ← screens
 
 **multi-currency** — INR/USD/GBP/EUR. stored in config table. `useCurrency()` hook provides `format()` everywhere.
 
-**gmail sync** — on-device oauth → gmail API → parse axis/hdfc bank emails → dedup → insert. see [GMAIL_SYNC.md](GMAIL_SYNC.md).
+**gmail sync** — on-device oauth → gmail API → parse axis/hdfc bank emails → dedup → insert. see [docs/GMAIL_SYNC.md](docs/GMAIL_SYNC.md).
 
 **swipe to delete** — history screen, 70% threshold, 5s undo toast.
 
@@ -149,3 +149,10 @@ pnpm quality       # lint + typecheck
 | `android-build.yml` | manual | EAS build → APK artifact |
 
 pnpm version from `packageManager` in package.json · node 22.
+
+---
+
+## docs
+
+- [Architecture](docs/ARCHITECTURE.md) — data flow, query layer, auth, styling
+- [Gmail Sync](docs/GMAIL_SYNC.md) — oauth setup, platform-specific auth, email parsing
