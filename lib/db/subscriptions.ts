@@ -1,21 +1,14 @@
 import { format, getDaysInMonth } from "date-fns";
 import { and, eq, sql } from "drizzle-orm";
-import { db } from "@/lib/db";
-import {
-  categories,
-  type Subscription,
-  sources,
-  subscriptions,
-  transactions,
-} from "./schema";
+import { SUBSCRIPTION_NOTE } from "@/lib/constants";
+import { db } from "./connection";
+import { categories, sources, subscriptions, transactions } from "./schema";
+import type { SubscriptionRow } from "./types";
 
-export type SubscriptionRow = Subscription & {
-  category_name: string | null;
-  source_name: string | null;
-};
+export type { SubscriptionRow };
 
-export async function getSubscriptions(): Promise<SubscriptionRow[]> {
-  const rows = await db
+function subscriptionSelect() {
+  return db
     .select({
       id: subscriptions.id,
       name: subscriptions.name,
@@ -31,31 +24,16 @@ export async function getSubscriptions(): Promise<SubscriptionRow[]> {
     .from(subscriptions)
     .leftJoin(categories, eq(subscriptions.category_id, categories.id))
     .leftJoin(sources, eq(subscriptions.source_id, sources.id));
+}
 
-  return rows as SubscriptionRow[];
+export async function getSubscriptions(): Promise<SubscriptionRow[]> {
+  return (await subscriptionSelect()) as SubscriptionRow[];
 }
 
 export async function getSubscriptionById(
   id: number,
 ): Promise<SubscriptionRow | null> {
-  const rows = await db
-    .select({
-      id: subscriptions.id,
-      name: subscriptions.name,
-      amount: subscriptions.amount,
-      billing_day: subscriptions.billing_day,
-      category_id: subscriptions.category_id,
-      source_id: subscriptions.source_id,
-      is_active: subscriptions.is_active,
-      created_at: subscriptions.created_at,
-      category_name: categories.name,
-      source_name: sources.name,
-    })
-    .from(subscriptions)
-    .leftJoin(categories, eq(subscriptions.category_id, categories.id))
-    .leftJoin(sources, eq(subscriptions.source_id, sources.id))
-    .where(eq(subscriptions.id, id));
-
+  const rows = await subscriptionSelect().where(eq(subscriptions.id, id));
   return (rows[0] as SubscriptionRow) ?? null;
 }
 
@@ -130,40 +108,47 @@ export async function processSubscriptions(): Promise<string[]> {
     .from(subscriptions)
     .where(eq(subscriptions.is_active, 1));
 
+  // Batch-fetch existing subscription transactions for this month
+  const existingTxns = await db
+    .select({
+      subscription_id: transactions.subscription_id,
+    })
+    .from(transactions)
+    .where(
+      and(
+        sql`${transactions.subscription_id} IS NOT NULL`,
+        sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+      ),
+    );
+
+  const existingSubIds = new Set(existingTxns.map((t) => t.subscription_id));
+
   const created: string[] = [];
 
   for (const sub of activeSubs) {
     const effectiveDay = Math.min(sub.billing_day, daysInMonth);
     if (effectiveDay > today) continue;
+    if (existingSubIds.has(sub.id)) continue;
 
-    const existing = await db
-      .select({ id: transactions.id })
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.subscription_id, sub.id),
-          sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
-        ),
-      )
-      .limit(1);
+    try {
+      const billingDate = `${yearMonth}-${String(effectiveDay).padStart(2, "0")}`;
 
-    if (existing.length > 0) continue;
+      await db.insert(transactions).values({
+        type: "expense",
+        amount: sub.amount,
+        merchant: sub.name,
+        category_id: sub.category_id,
+        source_id: sub.source_id,
+        subscription_id: sub.id,
+        source_type: "recurring",
+        date: billingDate,
+        note: SUBSCRIPTION_NOTE,
+      });
 
-    const billingDate = `${yearMonth}-${String(effectiveDay).padStart(2, "0")}`;
-
-    await db.insert(transactions).values({
-      type: "expense",
-      amount: sub.amount,
-      merchant: sub.name,
-      category_id: sub.category_id,
-      source_id: sub.source_id,
-      subscription_id: sub.id,
-      source_type: "recurring",
-      date: billingDate,
-      note: "Auto-created from subscription",
-    });
-
-    created.push(sub.name);
+      created.push(sub.name);
+    } catch (err) {
+      console.warn(`[Subscriptions] Failed to process "${sub.name}":`, err);
+    }
   }
 
   return created;
