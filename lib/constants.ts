@@ -65,6 +65,8 @@ export const COLORS = {
   MUTED: "#888888",
   FOREGROUND: "#f0f0f0",
   WHITE: "#ffffff",
+  BADGE_BLUE: "#1d4ed8",
+  SHADOW: "#000000",
 } as const;
 
 export const LABELS = {
@@ -74,9 +76,21 @@ export const LABELS = {
 } as const;
 
 export const GMAIL_API = {
-  BASE: "https://gmail.googleapis.com/gmail/v1/users/me",
   MESSAGES: "https://gmail.googleapis.com/gmail/v1/users/me/messages",
+  PROFILE: "https://gmail.googleapis.com/gmail/v1/users/me/profile",
 } as const;
+
+export const CONFIG_KEYS = {
+  CURRENCY: "currency",
+  USER_NAME: "userName",
+  GMAIL_CONNECTED: "gmail_connected",
+  GMAIL_LAST_SYNCED_AT: "gmail_last_synced_at",
+  GMAIL_EMAILS_FETCHED: "gmail_emails_fetched",
+  GMAIL_TRANSACTIONS_ADDED: "gmail_transactions_added",
+} as const;
+
+export const SUBSCRIPTION_NOTE = "Auto-created from subscription";
+export const GMAIL_SYNC_NOTE = "synced from gmail";
 
 export const BANK_SENDERS = [
   "alerts@axis.bank.com",

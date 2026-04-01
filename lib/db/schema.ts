@@ -1,4 +1,3 @@
-import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // --- Tables ---
@@ -64,14 +63,4 @@ export const config = sqliteTable("config", {
   value: text("value").notNull(),
 });
 
-// --- Inferred types ---
-
-export type Category = InferSelectModel<typeof categories>;
-export type NewCategory = InferInsertModel<typeof categories>;
-export type Source = InferSelectModel<typeof sources>;
-export type NewSource = InferInsertModel<typeof sources>;
-export type Transaction = InferSelectModel<typeof transactions>;
-export type NewTransaction = InferInsertModel<typeof transactions>;
-export type Subscription = InferSelectModel<typeof subscriptions>;
-export type Budget = InferSelectModel<typeof budgets>;
-export type ConfigRow = InferSelectModel<typeof config>;
+// Inferred types are exported from ./types.ts
