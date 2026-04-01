@@ -1,5 +1,10 @@
 import { and, eq, sql } from "drizzle-orm";
-import { BANK_SENDERS, GMAIL_API } from "@/lib/constants";
+import {
+  BANK_SENDERS,
+  CONFIG_KEYS,
+  GMAIL_API,
+  GMAIL_SYNC_NOTE,
+} from "@/lib/constants";
 import { db } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import { categories, transactions } from "@/lib/db/schema";
@@ -22,7 +27,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
   const accessToken = await getValidAccessToken();
   if (!accessToken) throw new Error("Not authenticated");
 
-  const lastSyncedAt = await getConfig("gmail_last_synced_at");
+  const lastSyncedAt = await getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT);
   const result: SyncResult = {
     added: 0,
     skipped: 0,
@@ -34,6 +39,12 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     failedEmails: [],
     addedEmails: [],
   };
+
+  const defaultCategory = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(and(eq(categories.name, "other"), eq(categories.type, "expense")))
+    .limit(1);
 
   for (const sender of BANK_SENDERS) {
     try {
@@ -84,7 +95,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
               and(
                 eq(transactions.date, parsed.date),
                 eq(transactions.amount, parsed.amount),
-                sql`${transactions.note} = 'synced from gmail'`,
+                sql`${transactions.note} = ${GMAIL_SYNC_NOTE}`,
               ),
             )
             .limit(1);
@@ -94,21 +105,13 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             continue;
           }
 
-          const defaultCategory = await db
-            .select({ id: categories.id })
-            .from(categories)
-            .where(
-              and(eq(categories.name, "other"), eq(categories.type, "expense")),
-            )
-            .limit(1);
-
           await db.insert(transactions).values({
             amount: parsed.amount,
             merchant: parsed.merchant,
             category_id: defaultCategory[0]?.id ?? null,
             source_id: null,
             date: parsed.date,
-            note: "synced from gmail",
+            note: GMAIL_SYNC_NOTE,
             type: parsed.type,
             source_type: "synced",
           });
@@ -122,16 +125,21 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             result.incomeCount++;
             result.incomeTotal += parsed.amount;
           }
-        } catch {
+        } catch (error) {
+          console.error(`[Sync] Failed to process message:`, error);
           result.failed++;
         }
       }
-    } catch {
+    } catch (error) {
+      console.error(`[Sync] Failed to fetch emails from ${sender}:`, error);
       result.failed++;
     }
   }
 
-  await updateConfig("gmail_last_synced_at", new Date().toISOString());
+  await updateConfig(
+    CONFIG_KEYS.GMAIL_LAST_SYNCED_AT,
+    new Date().toISOString(),
+  );
 
   return result;
 }

@@ -16,7 +16,6 @@ export const indusindUpiDebit: Parser = (body) => {
     merchant: upiMatch ? upiMatch[1].trim() : "UPI Payment",
     date: today(),
     type: TRANSACTION_TYPE.EXPENSE,
-    source: "UPI",
   };
 };
 
@@ -32,7 +31,6 @@ export const indusindUpiCredit: Parser = (body) => {
     merchant: upiMatch ? upiMatch[1].trim() : "Credit",
     date: today(),
     type: TRANSACTION_TYPE.INCOME,
-    source: "UPI",
   };
 };
 
@@ -52,7 +50,6 @@ export const indusindGenericDebit: Parser = (body) => {
     merchant,
     date: today(),
     type: TRANSACTION_TYPE.EXPENSE,
-    source: "debit card",
   };
 };
 

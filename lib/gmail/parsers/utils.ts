@@ -5,7 +5,6 @@ export interface ParsedTransaction {
   merchant: string;
   date: string;
   type: "expense" | "income";
-  source: string;
 }
 
 export type Parser = (body: string) => ParsedTransaction | null;
