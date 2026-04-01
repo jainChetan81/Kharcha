@@ -48,6 +48,7 @@ export const SOURCE_TYPE = {
 } as const;
 
 export type SourceFilterType = (typeof SOURCE_TYPE)[keyof typeof SOURCE_TYPE];
+export type SourceType = Exclude<SourceFilterType, "all">;
 
 export const TOAST_TYPE = {
   SUCCESS: "success",

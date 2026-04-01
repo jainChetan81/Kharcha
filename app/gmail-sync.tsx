@@ -2,11 +2,11 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { router } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { ChevronDown, ChevronLeft, ChevronUp } from "lucide-react-native";
+import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
+  Modal,
   Pressable,
   ScrollView,
   View,
@@ -16,11 +16,17 @@ import { ScreenError } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { useCurrency } from "@/hooks/use-currency";
-import { QUERY_KEYS, SCREENS, TOAST_TYPE } from "@/lib/constants";
+import { useSyncState } from "@/hooks/use-sync-state";
+import {
+  COLORS,
+  GMAIL_API,
+  QUERY_KEYS,
+  SCREENS,
+  TOAST_TYPE,
+} from "@/lib/constants";
 import { deleteConfig, getConfig, updateConfig } from "@/lib/db/config";
 import { useGoogleAuth } from "@/lib/gmail/auth";
-import { syncGmailTransactions } from "@/lib/gmail/sync";
+import { type SyncResult, syncGmailTransactions } from "@/lib/gmail/sync";
 import { cn, isIOS } from "@/lib/utils";
 
 function SectionHeader({ title }: { title: string }) {
@@ -43,45 +49,28 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function GmailSyncScreen() {
-  const { format: fmt } = useCurrency();
   const queryClient = useQueryClient();
-  const { signIn, signOut, isConnected, getValidAccessToken } = useGoogleAuth();
-  const [connected, setConnected] = useState(false);
+  const { signIn, signOut, getValidAccessToken } = useGoogleAuth();
+  const {
+    connected,
+    setConnected,
+    lastSynced,
+    setLastSynced,
+    emailsFetched,
+    setEmailsFetched,
+    transactionsAdded,
+    setTransactionsAdded,
+    loading,
+    syncFromDate,
+    setSyncFromDate,
+  } = useSyncState();
   const [email, setEmail] = useState<string | null>(null);
-  const [lastSynced, setLastSynced] = useState<string | null>(null);
-  const [emailsFetched, setEmailsFetched] = useState<string | null>(null);
-  const [transactionsAdded, setTransactionsAdded] = useState<string | null>(
-    null,
-  );
   const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const [showResults, setShowResults] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [syncFromDate, setSyncFromDate] = useState<Date>(
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-  );
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: isConnected is stable from hook
-  const loadState = useCallback(async () => {
-    const [isConn, synced, fetched, added] = await Promise.all([
-      isConnected(),
-      getConfig("gmail_last_synced_at"),
-      getConfig("gmail_emails_fetched"),
-      getConfig("gmail_transactions_added"),
-    ]);
-    setConnected(isConn);
-    setLastSynced(synced);
-    setEmailsFetched(fetched);
-    setTransactionsAdded(added);
-    if (synced) {
-      setSyncFromDate(new Date(synced));
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    loadState();
-  }, [loadState]);
+  const busy = loading || syncing || verifying;
 
   async function handleConnect() {
     try {
@@ -132,10 +121,9 @@ export default function GmailSyncScreen() {
         return;
       }
 
-      const profileRes = await fetch(
-        "https://gmail.googleapis.com/gmail/v1/users/me/profile",
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const profileRes = await fetch(`${GMAIL_API.BASE}/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (profileRes.ok) {
         const profile = await profileRes.json();
         setEmail(profile.emailAddress);
@@ -196,38 +184,8 @@ export default function GmailSyncScreen() {
       setEmailsFetched(newFetched);
       setTransactionsAdded(newAdded);
 
-      const lines: string[] = [];
-      if (result.expenseCount > 0) {
-        lines.push(
-          `${result.expenseCount} expense (${fmt(result.expenseTotal)})`,
-        );
-      }
-      if (result.incomeCount > 0) {
-        lines.push(`${result.incomeCount} income (${fmt(result.incomeTotal)})`);
-      }
-      if (result.skipped > 0) {
-        lines.push(`${result.skipped} duplicates skipped`);
-      }
-      if (result.failed > 0) {
-        lines.push(`${result.failed} failed to parse`);
-      }
-
-      Alert.alert(
-        `${result.added} transaction${result.added !== 1 ? "s" : ""} synced`,
-        lines.join("\n") || "No new transactions found",
-        [
-          { text: "OK" },
-          ...(result.added > 0
-            ? [
-                {
-                  text: "View",
-                  onPress: () =>
-                    router.push(`${SCREENS.HISTORY}?source_type=synced`),
-                },
-              ]
-            : []),
-        ],
-      );
+      setSyncResult(result);
+      setShowResults(true);
     } catch (err) {
       Toast.show({
         type: TOAST_TYPE.ERROR,
@@ -274,7 +232,7 @@ export default function GmailSyncScreen() {
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#7c3aed" />
+          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
         </View>
       ) : (
         <ScrollView
@@ -302,6 +260,7 @@ export default function GmailSyncScreen() {
               <Button
                 className="h-14 rounded-2xl bg-primary"
                 onPress={handleConnect}
+                disabled={busy}
               >
                 <Text className="text-base font-semibold text-primary-foreground">
                   Connect with Google
@@ -355,57 +314,226 @@ export default function GmailSyncScreen() {
                 </View>
               )}
 
-              <SectionHeader title="Actions" />
-              <View className="mx-5 mb-2">
+              <View className="mx-5 mb-3 mt-6">
                 <Button
-                  variant="outline"
-                  className="h-12 rounded-xl border-[#2a2a2a]"
-                  onPress={handleVerify}
-                  disabled={verifying}
-                >
-                  {verifying ? (
-                    <ActivityIndicator
-                      size="small"
-                      color="#7c3aed"
-                      className="mr-2"
-                    />
-                  ) : null}
-                  <Text className="text-sm font-medium text-foreground">
-                    {verifying ? "Verifying..." : "Verify Connection"}
-                  </Text>
-                </Button>
-              </View>
-              <View className="mx-5 mb-2">
-                <Button
-                  className="h-14 rounded-2xl bg-primary"
+                  className="h-12 rounded-xl bg-primary"
                   onPress={handleSync}
-                  disabled={syncing}
+                  disabled={busy}
                 >
                   {syncing ? (
                     <ActivityIndicator
                       size="small"
-                      color="#ffffff"
+                      color={COLORS.WHITE}
                       className="mr-2"
                     />
                   ) : null}
-                  <Text className="text-base font-semibold text-primary-foreground">
+                  <Text className="text-sm font-semibold text-primary-foreground">
                     {syncing ? "Syncing..." : "Sync Now"}
                   </Text>
                 </Button>
               </View>
-              <Pressable
-                onPress={handleDisconnect}
-                className="mx-5 mt-2 items-center py-3"
-              >
-                <Text className="text-sm font-medium text-negative">
-                  Disconnect
-                </Text>
-              </Pressable>
+              <View className="mx-5 flex-row gap-3">
+                <Button
+                  variant="outline"
+                  className="h-12 flex-1 rounded-xl border-[#2a2a2a]"
+                  onPress={handleVerify}
+                  disabled={busy}
+                >
+                  {verifying ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={COLORS.PRIMARY}
+                      className="mr-2"
+                    />
+                  ) : null}
+                  <Text className="text-sm font-medium text-foreground">
+                    {verifying ? "Verifying..." : "Verify"}
+                  </Text>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-12 flex-1 rounded-xl border-[#2a2a2a]"
+                  onPress={handleDisconnect}
+                  disabled={busy}
+                >
+                  <Text className="text-sm font-medium text-negative">
+                    Disconnect
+                  </Text>
+                </Button>
+              </View>
             </>
           )}
         </ScrollView>
       )}
+      <SyncResultsSheet
+        result={syncResult}
+        visible={showResults}
+        onClose={() => setShowResults(false)}
+      />
     </View>
+  );
+}
+
+function AccordionSection({
+  title,
+  count,
+  color,
+  children,
+}: {
+  title: string;
+  count: number;
+  color: string;
+  children: React.ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (count === 0) return null;
+
+  return (
+    <View className="mb-4">
+      <Pressable
+        onPress={() => setExpanded(!expanded)}
+        className="flex-row items-center justify-between rounded-xl bg-background px-4 py-3"
+      >
+        <View className="flex-row items-center gap-2">
+          <View
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: color }}
+          />
+          <Text className="text-sm font-semibold text-foreground">{title}</Text>
+          <View className="rounded-full bg-muted px-2 py-0.5">
+            <Text className="text-[10px] font-medium text-muted-foreground">
+              {count}
+            </Text>
+          </View>
+        </View>
+        <Icon
+          as={expanded ? ChevronUp : ChevronDown}
+          className="size-4 text-muted-foreground"
+        />
+      </Pressable>
+      {expanded && <View className="mt-1 px-2">{children}</View>}
+    </View>
+  );
+}
+
+function EmailRow({ sender, text }: { sender: string; text: string }) {
+  const shortSender = sender.split("@")[0] ?? sender;
+  return (
+    <View className="border-b border-border/50 py-2.5">
+      <Text className="text-xs font-medium text-primary">{shortSender}</Text>
+      <Text className="mt-0.5 text-sm text-muted-foreground">{text}</Text>
+    </View>
+  );
+}
+
+function SyncResultsSheet({
+  result,
+  visible,
+  onClose,
+}: {
+  result: SyncResult | null;
+  visible: boolean;
+  onClose: () => void;
+}) {
+  if (!result) return null;
+
+  const totalProcessed =
+    result.added + result.failed + result.filtered + result.skipped;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <Pressable className="flex-1 bg-black/50" onPress={onClose} />
+      <View className="rounded-t-2xl bg-card px-5 pb-6 pt-5">
+        <View className="mb-4 flex-row items-center justify-between">
+          <Text className="text-base font-bold text-foreground">
+            Sync Results
+          </Text>
+          <Text className="text-xs text-muted-foreground">
+            {totalProcessed} emails processed
+          </Text>
+        </View>
+
+        {totalProcessed === 0 && (
+          <Text className="py-8 text-center text-sm text-muted-foreground">
+            No emails found
+          </Text>
+        )}
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          style={{ maxHeight: 400 }}
+        >
+          <AccordionSection
+            title="Added"
+            count={result.added}
+            color={COLORS.POSITIVE}
+          >
+            {result.addedEmails.map((e) => (
+              <EmailRow key={`a-${e.id}`} sender={e.sender} text={e.text} />
+            ))}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Failed to parse"
+            count={result.failed}
+            color={COLORS.DANGER}
+          >
+            {result.failedEmails.map((e) => (
+              <EmailRow key={`f-${e.id}`} sender={e.sender} text={e.text} />
+            ))}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Filtered"
+            count={result.filtered}
+            color={COLORS.MUTED}
+          >
+            {result.filteredEmails.map((e) => (
+              <EmailRow key={`x-${e.id}`} sender={e.sender} text={e.text} />
+            ))}
+          </AccordionSection>
+
+          {result.skipped > 0 && (
+            <View className="flex-row items-center gap-2 rounded-xl bg-background px-4 py-3">
+              <View className="h-2 w-2 rounded-full bg-muted-foreground" />
+              <Text className="text-sm text-muted-foreground">
+                {result.skipped} duplicates skipped
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+
+        <View className={cn("mt-4 flex-row gap-3", isIOS && "mb-4")}>
+          {result.added > 0 && (
+            <Pressable
+              onPress={() => {
+                onClose();
+                router.push(`${SCREENS.HISTORY}?source_type=synced`);
+              }}
+              className="flex-1 items-center rounded-xl border border-border py-3"
+            >
+              <Text className="text-sm font-semibold text-foreground">
+                View
+              </Text>
+            </Pressable>
+          )}
+          <Pressable
+            onPress={onClose}
+            className="flex-1 items-center rounded-xl bg-primary py-3"
+          >
+            <Text className="text-sm font-semibold text-primary-foreground">
+              Done
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 }
 

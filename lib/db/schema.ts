@@ -46,6 +46,7 @@ export const transactions = sqliteTable("transactions", {
   })
     .notNull()
     .default("manual"),
+  gmail_message_id: text("gmail_message_id"),
   date: text("date").notNull(),
   note: text("note"),
   created_at: text("created_at").default("(datetime('now'))"),

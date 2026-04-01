@@ -56,8 +56,34 @@ export const indusindGenericDebit: Parser = (body) => {
   };
 };
 
+// "account XXXXXXX0002 is credited by Rs.400000 on 24-03-26 received from account XXXXXXX1794/ADITYA PRA (IMPS Ref no. 608318599522)"
+export const indusindImpsCredit: Parser = (body) => {
+  const amountMatch = body.match(/credited by Rs\.?([\d,]+\.?\d*)/i);
+  const dateMatch = body.match(/on (\d{2}-\d{2}-\d{2})/i);
+  const fromMatch = body.match(
+    /received from account\s+[\dX]+\/([\w\s]+?)(?:\s*\(|$)/i,
+  );
+
+  if (!amountMatch) return null;
+
+  let date = today();
+  if (dateMatch) {
+    const [day, month, year] = dateMatch[1].split("-");
+    date = `20${year}-${month}-${day} 00:00`;
+  }
+
+  return {
+    amount: parseAmount(amountMatch[1]),
+    merchant: fromMatch ? fromMatch[1].trim() : "IMPS Credit",
+    date,
+    type: TRANSACTION_TYPE.INCOME,
+    source: "IMPS",
+  };
+};
+
 export const INDUSIND_PARSERS: Parser[] = [
   indusindUpiDebit,
   indusindUpiCredit,
+  indusindImpsCredit,
   indusindGenericDebit,
 ];

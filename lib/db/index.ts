@@ -1,7 +1,7 @@
 import { and, count, desc, eq, gte, lte, min, sql } from "drizzle-orm";
 import { drizzle, type ExpoSQLiteDatabase } from "drizzle-orm/expo-sqlite";
 import * as SQLite from "expo-sqlite";
-import { DB_NAME } from "@/lib/constants";
+import { DB_NAME, type SourceType } from "@/lib/constants";
 import {
   type Category,
   categories,
@@ -30,7 +30,7 @@ const db: ExpoSQLiteDatabase = drizzle(expo, { logger: __DEV__ });
 export type TransactionRow = Transaction & {
   category_name: string | null;
   source_name: string | null;
-  source_type: "manual" | "synced" | "recurring";
+  source_type: SourceType;
 };
 
 export type MonthlySummary = {
@@ -261,7 +261,7 @@ export async function getTransactionsPaginated(
     type?: "income" | "expense" | "all";
     categoryId?: number | null;
     sourceId?: number | null;
-    sourceType?: "manual" | "synced" | "recurring" | "all";
+    sourceType?: SourceType | "all";
     dateFrom?: string | null;
     dateTo?: string | null;
   },
@@ -308,7 +308,7 @@ export async function insertTransaction(params: {
   categoryId: number | null;
   sourceId: number | null;
   subscriptionId?: number | null;
-  sourceType?: "manual" | "synced" | "recurring";
+  sourceType?: SourceType;
   date: string;
   note: string | null;
 }) {
