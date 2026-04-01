@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
+import { db } from "./connection";
 import { config } from "./schema";
 
 export async function getConfig(key: string): Promise<string | null> {
