@@ -12,6 +12,9 @@ export const SCREENS = {
   GMAIL_SYNC: "/gmail-sync",
 } as const;
 
+export const BUNDLE_ID = "com.chetanjain.kharcha" as const;
+export const OAUTH_REDIRECT_PATH = "oauthredirect" as const;
+
 export function editScreen(id: number) {
   return `${SCREENS.EDIT}/${id}` as const;
 }
@@ -21,7 +24,7 @@ export function editSubscriptionScreen(id: number) {
 }
 
 export const DB_NAME = "kharcha.db";
-export const UNDO_TIMEOUT_MS = 5000;
+export const UNDO_TIMEOUT_MS = 3500;
 
 export const PAGE_SIZE = 10;
 
@@ -69,6 +72,20 @@ export const LABELS = {
   SPENT: "spent",
   NO_DATA: "no data",
 } as const;
+
+export const GMAIL_API = {
+  BASE: "https://gmail.googleapis.com/gmail/v1/users/me",
+  MESSAGES: "https://gmail.googleapis.com/gmail/v1/users/me/messages",
+} as const;
+
+export const BANK_SENDERS = [
+  "alerts@axis.bank.com",
+  "alerts@axis.bank.in",
+  "alerts@hdfcbank.net",
+  "alerts@hdfcbank.com",
+  "alerts@hdfcbank.bank.in",
+  "indusind_bank@indusind.com",
+] as const;
 
 export const QUERY_KEYS = {
   TRANSACTION: "transaction",

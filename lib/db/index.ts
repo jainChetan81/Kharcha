@@ -5,6 +5,7 @@ import { DB_NAME } from "@/lib/constants";
 import {
   type Category,
   categories,
+  config,
   type NewCategory,
   type NewSource,
   type NewTransaction,
@@ -38,33 +39,24 @@ export type MonthlySummary = {
 };
 
 export async function initDB() {
-  // Create tables using raw SQL for CREATE IF NOT EXISTS
-  await expo.execAsync(`
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       type TEXT NOT NULL DEFAULT 'expense',
       is_default INTEGER DEFAULT 0
-    );
+    )
+  `);
 
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS sources (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       is_default INTEGER DEFAULT 0
-    );
+    )
+  `);
 
-    CREATE TABLE IF NOT EXISTS transactions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT NOT NULL DEFAULT 'expense',
-      amount REAL NOT NULL,
-      merchant TEXT,
-      category_id INTEGER REFERENCES categories(id),
-      source_id INTEGER REFERENCES sources(id),
-      date TEXT NOT NULL,
-      note TEXT,
-      created_at TEXT DEFAULT (datetime('now'))
-    );
-
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS subscriptions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -74,76 +66,49 @@ export async function initDB() {
       source_id INTEGER REFERENCES sources(id),
       is_active INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now'))
-    );
+    )
+  `);
 
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL DEFAULT 'expense',
+      amount REAL NOT NULL,
+      merchant TEXT,
+      category_id INTEGER REFERENCES categories(id),
+      source_id INTEGER REFERENCES sources(id),
+      subscription_id INTEGER REFERENCES subscriptions(id),
+      source_type TEXT NOT NULL DEFAULT 'manual',
+      date TEXT NOT NULL,
+      note TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS budgets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       category_id INTEGER UNIQUE REFERENCES categories(id),
       amount REAL NOT NULL
-    );
+    )
+  `);
 
+  await db.run(sql`
     CREATE TABLE IF NOT EXISTS config (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
-    );
-
-    INSERT OR IGNORE INTO config (key, value) VALUES
-      ('currency', 'INR'),
-      ('userName', 'User');
+    )
   `);
 
-  // Migration: add type column to transactions if missing
-  const txCols = await expo.getAllAsync<{ name: string }>(
-    "PRAGMA table_info(transactions)",
-  );
-  if (!txCols.some((c) => c.name === "type")) {
-    await expo.execAsync(
-      "ALTER TABLE transactions ADD COLUMN type TEXT NOT NULL DEFAULT 'expense'",
-    );
-  }
-
-  // Migration: add type column to categories if missing
-  const catCols = await expo.getAllAsync<{ name: string }>(
-    "PRAGMA table_info(categories)",
-  );
-  if (!catCols.some((c) => c.name === "type")) {
-    await expo.execAsync(
-      "ALTER TABLE categories ADD COLUMN type TEXT NOT NULL DEFAULT 'expense'",
-    );
-    await expo.execAsync(
-      "UPDATE categories SET type = 'income' WHERE name IN ('salary', 'freelance')",
-    );
-    await expo.execAsync(`
-      INSERT INTO categories (name, type, is_default) VALUES
-        ('refunds', 'income', 1),
-        ('investments', 'income', 1),
-        ('other', 'income', 1);
-    `);
-  }
-
-  // Migration: add subscription_id column to transactions if missing
-  if (!txCols.some((c) => c.name === "subscription_id")) {
-    await expo.execAsync(
-      "ALTER TABLE transactions ADD COLUMN subscription_id INTEGER REFERENCES subscriptions(id)",
-    );
-  }
-
-  // Migration: add source_type column to transactions if missing
-  if (!txCols.some((c) => c.name === "source_type")) {
-    await expo.execAsync(
-      "ALTER TABLE transactions ADD COLUMN source_type TEXT NOT NULL DEFAULT 'manual'",
-    );
-    // backfill existing data
-    await expo.execAsync(
-      "UPDATE transactions SET source_type = 'synced' WHERE note = 'synced from gmail'",
-    );
-    await expo.execAsync(
-      "UPDATE transactions SET source_type = 'recurring' WHERE subscription_id IS NOT NULL",
-    );
-  }
+  await db
+    .insert(config)
+    .values([
+      { key: "currency", value: "INR" },
+      { key: "userName", value: "User" },
+    ])
+    .onConflictDoNothing();
 
   await seedDefaults();
-  // await seedTransactions();
 }
 
 async function seedDefaults() {
@@ -180,7 +145,7 @@ export async function seedSampleData(): Promise<boolean> {
   const existing = await db.select().from(transactions).limit(1);
   if (existing.length > 0) return false;
 
-  await expo.execAsync(`
+  await db.run(sql`
     INSERT INTO transactions (type, amount, merchant, category_id, source_id, date, note) VALUES
       ('expense', 450,   'Swiggy',          1, 2, date('now'),             null),
       ('expense', 1200,  'Uber',            2, 2, date('now'),             null),
@@ -212,7 +177,6 @@ export async function seedSampleData(): Promise<boolean> {
       ('expense', 450,   'Rapido',          2, 2, date('now', '-12 days'), null),
       ('expense', 3500,  'Water purifier',  4, 3, date('now', '-13 days'), 'AMC renewal'),
       ('expense', 280,   'Dunzo',           1, 2, date('now', '-14 days'), null),
-      -- Last month seed data
       ('income',  80000, 'Salary',          8, null, date('now', '-1 month', 'start of month', '+1 day'), 'Feb salary'),
       ('expense', 3200,  'Swiggy',          1, 2, date('now', '-1 month', 'start of month', '+2 days'), null),
       ('expense', 1800,  'Uber',            2, 2, date('now', '-1 month', 'start of month', '+3 days'), null),
@@ -224,7 +188,7 @@ export async function seedSampleData(): Promise<boolean> {
       ('expense', 950,   'BigBasket',       1, 2, date('now', '-1 month', 'start of month', '+15 days'), null),
       ('expense', 1200,  'Ola',             2, 2, date('now', '-1 month', 'start of month', '+18 days'), null),
       ('expense', 199,   'Spotify',         5, 3, date('now', '-1 month', 'start of month', '+20 days'), null),
-      ('expense', 3500,  'Croma',           3, 3, date('now', '-1 month', 'start of month', '+22 days'), 'Charger');
+      ('expense', 3500,  'Croma',           3, 3, date('now', '-1 month', 'start of month', '+22 days'), 'Charger')
   `);
   return true;
 }
@@ -253,6 +217,13 @@ function transactionSelect() {
 
 export async function getRecentTransactions(limit = 20) {
   return (await transactionSelect()
+    .orderBy(desc(transactions.date), desc(transactions.created_at))
+    .limit(limit)) as TransactionRow[];
+}
+
+export async function getMonthTransactions(yearMonth: string, limit = 10) {
+  return (await transactionSelect()
+    .where(sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`)
     .orderBy(desc(transactions.date), desc(transactions.created_at))
     .limit(limit)) as TransactionRow[];
 }
@@ -482,6 +453,5 @@ export async function getCategoryBreakdown(yearMonth: string) {
   })) as CategoryBreakdownRow[];
 }
 
-// Default export: raw expo-sqlite instance for backward compat
 export { db };
 export default expo;

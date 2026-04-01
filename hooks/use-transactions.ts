@@ -11,6 +11,7 @@ import {
   deleteTransaction,
   getCategoryBreakdown,
   getMonthlySummary,
+  getMonthTransactions,
   getRecentTransactions,
   getTransactionById,
   getTransactionsPaginated,
@@ -43,6 +44,13 @@ export function useRecentTransactions(limit = 10) {
   return useQuery({
     queryKey: [QUERY_KEYS.TRANSACTIONS],
     queryFn: () => getRecentTransactions(limit),
+  });
+}
+
+export function useMonthTransactions(yearMonth: string, limit = 10) {
+  return useQuery({
+    queryKey: [QUERY_KEYS.TRANSACTIONS, yearMonth],
+    queryFn: () => getMonthTransactions(yearMonth, limit),
   });
 }
 

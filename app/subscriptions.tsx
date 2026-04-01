@@ -144,6 +144,7 @@ export default function SubscriptionsScreen() {
               refreshing={refreshing}
               onRefresh={onRefresh}
               tintColor="#7c3aed"
+              progressViewOffset={40}
             />
           }
         >

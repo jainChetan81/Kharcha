@@ -1,0 +1,63 @@
+import { format } from "date-fns";
+import { TRANSACTION_TYPE } from "@/lib/constants";
+import { type Parser, parseAmount } from "./utils";
+
+const today = () => format(new Date(), "yyyy-MM-dd HH:mm");
+
+// "Debited for INR 200.00 towards UPI/140853857998/DR/TRIS/FDRL/..."
+export const indusindUpiDebit: Parser = (body) => {
+  const amountMatch = body.match(/Debited for INR ([\d,]+\.?\d*)/i);
+  const upiMatch = body.match(/towards\s+UPI\/[\d]+\/DR\/([^/]+)/i);
+
+  if (!amountMatch) return null;
+
+  return {
+    amount: parseAmount(amountMatch[1]),
+    merchant: upiMatch ? upiMatch[1].trim() : "UPI Payment",
+    date: today(),
+    type: TRANSACTION_TYPE.EXPENSE,
+    source: "UPI",
+  };
+};
+
+// "Credited for INR X towards UPI/..."
+export const indusindUpiCredit: Parser = (body) => {
+  const amountMatch = body.match(/Credited for INR ([\d,]+\.?\d*)/i);
+  const upiMatch = body.match(/towards\s+UPI\/[\d]+\/CR\/([^/]+)/i);
+
+  if (!amountMatch) return null;
+
+  return {
+    amount: parseAmount(amountMatch[1]),
+    merchant: upiMatch ? upiMatch[1].trim() : "Credit",
+    date: today(),
+    type: TRANSACTION_TYPE.INCOME,
+    source: "UPI",
+  };
+};
+
+// generic fallback: "Debited for INR X towards ..."
+export const indusindGenericDebit: Parser = (body) => {
+  const amountMatch = body.match(/Debited for INR ([\d,]+\.?\d*)/i);
+  const towardsMatch = body.match(/towards\s+(.+?)(?:\s*\.|$)/i);
+
+  if (!amountMatch) return null;
+
+  const rawMerchant = towardsMatch ? towardsMatch[1].trim() : "Payment";
+  const merchant =
+    rawMerchant.length > 40 ? rawMerchant.slice(0, 40) : rawMerchant;
+
+  return {
+    amount: parseAmount(amountMatch[1]),
+    merchant,
+    date: today(),
+    type: TRANSACTION_TYPE.EXPENSE,
+    source: "debit card",
+  };
+};
+
+export const INDUSIND_PARSERS: Parser[] = [
+  indusindUpiDebit,
+  indusindUpiCredit,
+  indusindGenericDebit,
+];

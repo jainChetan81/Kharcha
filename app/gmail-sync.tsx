@@ -1,4 +1,5 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { router } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
@@ -16,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
-import { SCREENS, TOAST_TYPE } from "@/lib/constants";
+import { QUERY_KEYS, SCREENS, TOAST_TYPE } from "@/lib/constants";
 import { deleteConfig, getConfig, updateConfig } from "@/lib/db/config";
 import { useGoogleAuth } from "@/lib/gmail/auth";
 import { syncGmailTransactions } from "@/lib/gmail/sync";
@@ -43,6 +44,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 export default function GmailSyncScreen() {
   const { format: fmt } = useCurrency();
+  const queryClient = useQueryClient();
   const { signIn, signOut, isConnected, getValidAccessToken } = useGoogleAuth();
   const [connected, setConnected] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
@@ -174,6 +176,19 @@ export default function GmailSyncScreen() {
       await Promise.all([
         updateConfig("gmail_emails_fetched", newFetched),
         updateConfig("gmail_transactions_added", newAdded),
+      ]);
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TRANSACTIONS] }),
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
+        }),
       ]);
 
       const synced = await getConfig("gmail_last_synced_at");

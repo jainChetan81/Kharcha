@@ -397,18 +397,19 @@ export default function HistoryScreen() {
         onEndReached={() => {
           if (hasNextPage) fetchNextPage();
         }}
-        onEndReachedThreshold={0.3}
+        onEndReachedThreshold={0.5}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={COLORS.PRIMARY}
+            progressViewOffset={40}
           />
         }
         ListFooterComponent={
           isFetchingNextPage ? (
-            <View className="items-center py-4">
-              <ActivityIndicator color="#7c3aed" />
+            <View className="items-center py-6">
+              <ActivityIndicator size="small" color={COLORS.PRIMARY} />
             </View>
           ) : null
         }

@@ -1,6 +1,7 @@
-import { format, subMonths } from "date-fns";
+import { addMonths, format, isSameMonth, subMonths } from "date-fns";
 import { router } from "expo-router";
 import {
+  ChevronLeft,
   ChevronRight,
   Clock,
   House,
@@ -8,6 +9,7 @@ import {
   Settings,
   User,
 } from "lucide-react-native";
+import { useState } from "react";
 import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
 import { ScreenError } from "@/components/error-boundary";
@@ -22,6 +24,7 @@ import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
 import {
   useCategoryBreakdown,
   useMonthlySummary,
+  useMonthTransactions,
   useRecentTransactions,
 } from "@/hooks/use-transactions";
 import {
@@ -111,13 +114,20 @@ export default function HomeScreen() {
   const { refreshing, onRefresh } = useRefresh();
 
   const now = new Date();
-  const currentMonth = format(now, "yyyy-MM");
-  const prevMonth = format(subMonths(now, 1), "yyyy-MM");
+  const [selectedDate, setSelectedDate] = useState(now);
+  const isCurrentMonth = isSameMonth(selectedDate, now);
 
-  const { data: transactions = [] } = useRecentTransactions(10);
-  const { data: summary } = useMonthlySummary(currentMonth);
+  const selectedMonth = format(selectedDate, "yyyy-MM");
+  const prevMonth = format(subMonths(selectedDate, 1), "yyyy-MM");
+
+  const { data: recentTransactions = [] } = useRecentTransactions(10);
+  const { data: monthTransactions = [] } = useMonthTransactions(
+    selectedMonth,
+    10,
+  );
+  const { data: summary } = useMonthlySummary(selectedMonth);
   const { data: prevSummary } = useMonthlySummary(prevMonth);
-  const { data: categoryBreakdown = [] } = useCategoryBreakdown(currentMonth);
+  const { data: categoryBreakdown = [] } = useCategoryBreakdown(selectedMonth);
   const { data: budgetsList = [] } = useBudgets();
   const { data: subsTotal = 0 } = useSubscriptionsTotal();
   const budgetMap = new Map(budgetsList.map((b) => [b.category_id, b.amount]));
@@ -129,6 +139,7 @@ export default function HomeScreen() {
     prevExpenses > 0
       ? Math.round(((expenses - prevExpenses) / prevExpenses) * 100)
       : null;
+  const transactions = isCurrentMonth ? recentTransactions : monthTransactions;
   const listData = buildListData(transactions);
 
   return (
@@ -141,19 +152,15 @@ export default function HomeScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={COLORS.PRIMARY}
+            progressViewOffset={40}
           />
         }
       >
         <View className={cn("px-6 pb-4", isIOS ? "pt-[60px]" : "pt-12")}>
           <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-lg font-bold text-foreground">
-                Hello, {userName}
-              </Text>
-              <Text className="mt-0.5 text-sm text-muted-foreground">
-                {format(new Date(), "MMMM yyyy")}
-              </Text>
-            </View>
+            <Text className="text-lg font-bold text-foreground">
+              Hello, {userName}
+            </Text>
             <Pressable
               onPress={() => router.push(SCREENS.PROFILE)}
               className="h-10 w-10 items-center justify-center rounded-full bg-primary"
@@ -166,6 +173,36 @@ export default function HomeScreen() {
                   .toUpperCase()
                   .slice(0, 2)}
               </Text>
+            </Pressable>
+          </View>
+
+          <View className="mt-4 flex-row items-center justify-between">
+            <Pressable
+              onPress={() => setSelectedDate(subMonths(selectedDate, 1))}
+              hitSlop={12}
+              className="rounded-full p-2"
+            >
+              <Icon as={ChevronLeft} className="size-6 text-muted-foreground" />
+            </Pressable>
+            <Text className="text-base font-medium text-muted-foreground">
+              {format(selectedDate, "MMMM yyyy")}
+            </Text>
+            <Pressable
+              onPress={() =>
+                !isCurrentMonth && setSelectedDate(addMonths(selectedDate, 1))
+              }
+              hitSlop={12}
+              className="rounded-full p-2"
+            >
+              <Icon
+                as={ChevronRight}
+                className={cn(
+                  "size-6",
+                  isCurrentMonth
+                    ? "text-muted-foreground/20"
+                    : "text-muted-foreground",
+                )}
+              />
             </Pressable>
           </View>
 
@@ -241,7 +278,7 @@ export default function HomeScreen() {
         {categoryBreakdown.length > 0 && (
           <View className="px-5 pb-4 pt-2">
             <Text className="mb-3 text-sm font-semibold uppercase text-[#888888]">
-              This Month
+              {isCurrentMonth ? "This Month" : format(selectedDate, "MMMM")}
             </Text>
             {categoryBreakdown.map((cat) => {
               const budget = budgetMap.get(cat.category_id);
@@ -293,7 +330,7 @@ export default function HomeScreen() {
 
         <View className="px-5 pt-2">
           <Text className="mb-3 text-sm font-semibold text-muted-foreground">
-            Recent Transactions
+            {isCurrentMonth ? "Recent Transactions" : "Transactions"}
           </Text>
           {listData.map((item) =>
             item.type === "header" ? (

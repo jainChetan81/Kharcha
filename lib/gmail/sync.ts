@@ -1,16 +1,10 @@
 import { and, eq, sql } from "drizzle-orm";
+import { BANK_SENDERS, GMAIL_API } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import { categories, transactions } from "@/lib/db/schema";
 import { getValidAccessToken } from "./auth";
-import { parseEmail } from "./parser";
-
-const BANK_SENDERS = [
-  "alerts@axis.bank.com",
-  "alerts@hdfcbank.net",
-  "alerts@hdfcbank.com",
-  "alerts@hdfcbank.bank.in",
-];
+import { parseEmail } from "./parsers";
 
 export interface SyncResult {
   added: number;
@@ -20,6 +14,8 @@ export interface SyncResult {
   expenseTotal: number;
   incomeCount: number;
   incomeTotal: number;
+  failedEmails: string[];
+  addedEmails: string[];
 }
 
 export async function syncGmailTransactions(): Promise<SyncResult> {
@@ -35,6 +31,8 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     expenseTotal: 0,
     incomeCount: 0,
     incomeTotal: 0,
+    failedEmails: [],
+    addedEmails: [],
   };
 
   for (const sender of BANK_SENDERS) {
@@ -46,7 +44,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
       const query = `from:${sender} after:${formatted}`;
 
       const listResponse = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=50`,
+        `${GMAIL_API.MESSAGES}?q=${encodeURIComponent(query)}&maxResults=50`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
       const listData = await listResponse.json();
@@ -56,7 +54,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
       for (const message of listData.messages) {
         try {
           const msgResponse = await fetch(
-            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}?format=metadata&metadataHeaders=Subject`,
+            `${GMAIL_API.MESSAGES}/${message.id}?format=metadata&metadataHeaders=Subject`,
             { headers: { Authorization: `Bearer ${accessToken}` } },
           );
           const msgData = await msgResponse.json();
@@ -70,6 +68,11 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
 
           const parsed = parseEmail(sender, body);
           if (!parsed) {
+            console.log(
+              `[Sync] Failed to parse from ${sender}:`,
+              body.slice(0, 300),
+            );
+            result.failedEmails.push(`${sender}: ${body.slice(0, 80)}...`);
             result.failed++;
             continue;
           }
@@ -111,6 +114,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
           });
 
           result.added++;
+          result.addedEmails.push(`${parsed.merchant}: ${parsed.amount}`);
           if (parsed.type === "expense") {
             result.expenseCount++;
             result.expenseTotal += parsed.amount;
