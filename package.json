@@ -1,6 +1,6 @@
 {
 	"name": "kharcha",
-	"version": "0.1.0",
+	"version": "0.1.0-beta.1",
 	"main": "expo-router/entry",
 	"engines": {
 		"node": ">=22.19.0",
@@ -17,12 +17,10 @@
 		"format": "biome check --write .",
 		"typecheck": "tsc --noEmit",
 		"quality": "pnpm lint && pnpm typecheck",
+		"local-ci": "pnpm install --frozen-lockfile && pnpm quality && pnpm audit --audit-level=high || true && pnpm dead-code",
 		"doctor": "expo-doctor",
-		"check": "pnpm dlx expo install --check",
-		"drizzle:generate": "drizzle-kit generate",
-		"drizzle:studio": "drizzle-kit studio",
-		"release": "bash scripts/release.sh",
-		"update:ai-rules": "curl -o .claude/AGENTS.md https://raw.githubusercontent.com/vercel-labs/agent-skills/main/skills/react-native-skills/AGENTS.md && cp .claude/AGENTS.md .cursor/rules.md"
+		"expo-dependency-check": "pnpm dlx expo install --check",
+		"dead-code": "knip --no-exit-code"
 	},
 	"dependencies": {
 		"@react-native-community/datetimepicker": "8.6.0",
@@ -48,6 +46,8 @@
 		"expo-secure-store": "~55.0.9",
 		"expo-sqlite": "~55.0.11",
 		"expo-status-bar": "~55.0.4",
+		"expo-system-ui": "^55.0.11",
+		"expo-updates": "^55.0.16",
 		"expo-web-browser": "~55.0.10",
 		"lucide-react-native": "^1.7.0",
 		"nativewind": "^4.2.3",
@@ -69,6 +69,7 @@
 		"@types/react": "~19.2.2",
 		"drizzle-kit": "^0.31.10",
 		"expo-doctor": "1.18.15-canary-20260328-2049187",
+		"knip": "^6.2.0",
 		"lefthook": "^2.1.4",
 		"tailwindcss": "^3.4.19",
 		"typescript": "~5.9.2"
