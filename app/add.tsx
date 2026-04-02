@@ -3,7 +3,6 @@ import { format } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, Switch, View } from "react-native";
-import Toast from "react-native-toast-message";
 import { ScreenError } from "@/components/error-boundary";
 import { SubscriptionForm } from "@/components/subscription-form";
 import {
@@ -14,13 +13,10 @@ import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
 import { useAddSubscription } from "@/hooks/use-subscriptions";
 import { useInsertTransaction } from "@/hooks/use-transactions";
-import {
-  DATE_TIME_FORMAT,
-  TOAST_TYPE,
-  TRANSACTION_TYPE,
-} from "@/lib/constants";
+import { COLORS, DATE_TIME_FORMAT, TRANSACTION_TYPE } from "@/lib/constants";
 import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
 import { processSubscriptions } from "@/lib/db/subscriptions";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
 export default function AddTransaction() {
@@ -67,11 +63,10 @@ export default function AddTransaction() {
         date: value.date,
         note: value.note || null,
       });
-      Toast.show({
-        type: TOAST_TYPE.SUCCESS,
-        text1: "Transaction added",
-        props: { formattedAmount: fmt(Number(value.amount)), type: value.type },
-      });
+      showSuccessToast(
+        "Transaction added",
+        `${value.type === TRANSACTION_TYPE.INCOME ? "+" : "-"}${fmt(Number(value.amount))}`,
+      );
 
       if (value.type === TRANSACTION_TYPE.EXPENSE && value.categoryId) {
         const budget = await getBudgetForCategory(value.categoryId);
@@ -79,26 +74,18 @@ export default function AddTransaction() {
           const yearMonth = value.date.slice(0, 7);
           const spent = await getCategorySpent(value.categoryId, yearMonth);
           if (spent >= budget) {
-            Toast.show({
-              type: TOAST_TYPE.ERROR,
-              text1: `⚠️ ${value.merchant || "Category"} budget exceeded`,
-            });
+            showErrorToast(`${value.merchant || "Category"} budget exceeded`);
           } else if (spent >= budget * 0.9) {
-            Toast.show({
-              type: TOAST_TYPE.ERROR,
-              text1: `⚠️ Approaching ${value.merchant || "category"} budget`,
-            });
+            showErrorToast(
+              `Approaching ${value.merchant || "category"} budget`,
+            );
           }
         }
       }
 
       router.back();
     } catch (err) {
-      Toast.show({
-        type: TOAST_TYPE.ERROR,
-        text1: "Failed to save",
-        text2: String(err),
-      });
+      showErrorToast("Failed to save", err);
     }
   }
 
@@ -113,18 +100,13 @@ export default function AddTransaction() {
       await addSubMutation.mutateAsync(value);
       await processSubscriptions();
       await queryClient.invalidateQueries();
-      Toast.show({
-        type: TOAST_TYPE.SUCCESS,
-        text1: "Subscription added",
-        text2: `Renews on day ${value.billingDay} every month`,
-      });
+      showSuccessToast(
+        "Subscription added",
+        `Renews on day ${value.billingDay} every month`,
+      );
       router.back();
     } catch (err) {
-      Toast.show({
-        type: TOAST_TYPE.ERROR,
-        text1: "Failed to save",
-        text2: String(err),
-      });
+      showErrorToast("Failed to save", err);
     }
   }
 
@@ -152,8 +134,8 @@ export default function AddTransaction() {
         <Switch
           value={isSubscription}
           onValueChange={setIsSubscription}
-          trackColor={{ false: "#2a2a2a", true: "#7c3aed" }}
-          thumbColor="#f0f0f0"
+          trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
+          thumbColor={COLORS.FOREGROUND}
         />
       </View>
 

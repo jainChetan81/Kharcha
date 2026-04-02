@@ -9,9 +9,10 @@ import { useEffect, useState } from "react";
 import { Platform, Pressable, View } from "react-native";
 import Toast, { type ToastConfig } from "react-native-toast-message";
 import { Text } from "@/components/ui/text";
-import { TOAST_TYPE, TRANSACTION_TYPE } from "@/lib/constants";
+import { COLORS, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
 import { initDB } from "@/lib/db";
 import { processSubscriptions } from "@/lib/db/subscriptions";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -24,17 +25,19 @@ const queryClient = new QueryClient({
   },
 });
 
+const TOAST_SHADOW = {
+  elevation: 6,
+  shadowColor: COLORS.SHADOW,
+  shadowOpacity: 0.3,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 2 },
+} as const;
+
 const toastConfig: ToastConfig = {
   success: ({ text1, text2, props }) => (
     <View
       className="mx-4 mt-2 flex-row items-center rounded-xl border-l-4 border-positive bg-card px-4 py-3"
-      style={{
-        elevation: 6,
-        shadowColor: "#000",
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 2 },
-      }}
+      style={TOAST_SHADOW}
     >
       <View className="flex-1">
         <Text className="text-sm font-semibold text-foreground">{text1}</Text>
@@ -55,13 +58,7 @@ const toastConfig: ToastConfig = {
   error: ({ text1, text2 }) => (
     <View
       className="mx-4 mt-2 flex-row items-center rounded-xl border-l-4 border-negative bg-card px-4 py-3"
-      style={{
-        elevation: 6,
-        shadowColor: "#000",
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 2 },
-      }}
+      style={TOAST_SHADOW}
     >
       <View className="flex-1">
         <Text className="text-sm font-semibold text-foreground">{text1}</Text>
@@ -74,13 +71,7 @@ const toastConfig: ToastConfig = {
   undo: ({ text1, props }) => (
     <View
       className="mx-4 mt-2 flex-row items-center rounded-xl bg-card px-4 py-3"
-      style={{
-        elevation: 6,
-        shadowColor: "#000",
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 2 },
-      }}
+      style={TOAST_SHADOW}
     >
       <Text className="flex-1 text-sm font-semibold text-foreground">
         {text1}
@@ -109,20 +100,15 @@ export default function RootLayout() {
       .then(async () => {
         const created = await processSubscriptions();
         if (created.length > 0) {
-          Toast.show({
-            type: TOAST_TYPE.SUCCESS,
-            text1: `${created.length} subscription${created.length > 1 ? "s" : ""} renewed`,
-            text2: created.join(", "),
-          });
+          showSuccessToast(
+            `${created.length} subscription${created.length > 1 ? "s" : ""} renewed`,
+            created.join(", "),
+          );
         }
         setDbReady(true);
       })
       .catch((err) => {
-        Toast.show({
-          type: TOAST_TYPE.ERROR,
-          text1: "Database Error",
-          text2: String(err),
-        });
+        showErrorToast("Database Error", err);
       })
       .finally(() => SplashScreen.hideAsync());
   }, []);
@@ -135,14 +121,14 @@ export default function RootLayout() {
           subtitle: "Record a new expense",
           icon: "compose",
           id: "add_expense",
-          params: { href: "/add?type=expense" },
+          params: { href: `${SCREENS.ADD}?type=expense` },
         },
         {
           title: "Transactions",
           subtitle: "View all transactions",
           icon: "search",
           id: "transactions",
-          params: { href: "/history" },
+          params: { href: SCREENS.HISTORY },
         },
       ]);
     }
