@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": ["app/**/*.{ts,tsx}"],
+  "project": ["app/**/*.{ts,tsx}", "components/**/*.{ts,tsx}", "hooks/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}"],
+  "ignore": ["**/*.d.ts"],
+  "ignoreDependencies": [
+    "@react-native-community/datetimepicker",
+    "@rn-primitives/select",
+    "@rn-primitives/slot",
+    "expo-crypto",
+    "expo-linking",
+    "react-dom",
+    "react-native-reanimated",
+    "react-native-safe-area-context",
+    "react-native-screens",
+    "react-native-svg",
+    "react-native-worklets",
+    "tailwind-merge",
+    "tailwindcss",
+    "drizzle-kit",
+    "lefthook",
+    "expo-doctor"
+  ],
+  "ignoreExportsUsedInFile": true
+}

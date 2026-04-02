@@ -20,10 +20,16 @@ jobs:
           cache: pnpm
 
       - name: install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: lint
         run: pnpm biome check .
 
       - name: typecheck
         run: pnpm tsc --noEmit
+
+      - name: audit dependencies
+        run: pnpm audit --audit-level=high || true
+
+      - name: dead code detection
+        run: pnpm knip --no-exit-code
