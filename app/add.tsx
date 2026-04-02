@@ -74,10 +74,10 @@ export default function AddTransaction() {
           const yearMonth = value.date.slice(0, 7);
           const spent = await getCategorySpent(value.categoryId, yearMonth);
           if (spent >= budget) {
-            showErrorToast(`${value.merchant || "Category"} budget exceeded`);
+            showErrorToast(`⚠️ ${value.merchant || "Category"} budget exceeded`);
           } else if (spent >= budget * 0.9) {
             showErrorToast(
-              `Approaching ${value.merchant || "category"} budget`,
+              `⚠️ Approaching ${value.merchant || "category"} budget`,
             );
           }
         }

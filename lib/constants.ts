@@ -83,6 +83,8 @@ export const GMAIL_API = {
 export const CONFIG_KEYS = {
   CURRENCY: "currency",
   USER_NAME: "userName",
+  APP_VERSION: "app_version",
+  SCHEMA_VERSION: "schema_version",
   GMAIL_CONNECTED: "gmail_connected",
   GMAIL_LAST_SYNCED_AT: "gmail_last_synced_at",
   GMAIL_EMAILS_FETCHED: "gmail_emails_fetched",

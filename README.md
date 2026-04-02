@@ -93,6 +93,8 @@ config        (key PK, value)
 
 types auto-inferred via drizzle — no manual duplication. `TransactionRow` extends `Transaction` with joined `category_name` + `source_name`.
 
+**schema changes**: edit `lib/db/schema.ts`, then run `pnpm drizzle:generate` to create a timestamped SQL migration in `drizzle/`. commit both the schema and migration files. migrations tracked in `drizzle/meta` for version control.
+
 ---
 
 ## query architecture
@@ -130,12 +132,14 @@ sqlite ← drizzle-orm ← lib/db/*.ts ← hooks/use-*.ts ← screens
 ## commands
 
 ```bash
-pnpm start         # expo dev server (port 8082)
-pnpm ios           # run on ios simulator
-pnpm lint          # biome check
-pnpm lint:fix      # biome check + auto-fix
-pnpm typecheck     # tsc --noEmit
-pnpm quality       # lint + typecheck
+pnpm start           # expo dev server (port 8082)
+pnpm ios             # run on ios simulator
+pnpm lint            # biome check
+pnpm lint:fix        # biome check + auto-fix
+pnpm typecheck       # tsc --noEmit
+pnpm quality         # lint + typecheck
+pnpm drizzle:generate  # generate sql migration from schema changes
+pnpm drizzle:studio    # visual db inspector (web UI)
 ```
 
 ---
@@ -155,4 +159,5 @@ pnpm version from `packageManager` in package.json · node 22.
 ## docs
 
 - [Architecture](docs/ARCHITECTURE.md) — data flow, query layer, auth, styling
+- [Drizzle ORM & Migrations](docs/DRIZZLE.md) — schema management, migration workflow, best practices
 - [Gmail Sync](docs/GMAIL_SYNC.md) — oauth setup, platform-specific auth, email parsing

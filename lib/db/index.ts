@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { CONFIG_KEYS } from "@/lib/constants";
-import { db } from "./connection";
+import { APP_VERSION, isUpgrade } from "@/lib/version";
+import { db, runMigrations } from "./connection";
 import { categories, config, sources, transactions } from "./schema";
 import type {
   CategoryBreakdownRow,
@@ -30,93 +31,46 @@ export type {
 } from "./types";
 
 export async function initDB() {
-  await db.run(sql`
-    CREATE TABLE IF NOT EXISTS categories (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL DEFAULT 'expense',
-      is_default INTEGER DEFAULT 0
-    )
-  `);
+  // Run migrations on app startup
+  await runMigrations();
 
-  await db.run(sql`
-    CREATE TABLE IF NOT EXISTS sources (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      is_default INTEGER DEFAULT 0
-    )
-  `);
+  // Track app version for upgrade detection
+  const previousVersion = await getConfigValue(CONFIG_KEYS.APP_VERSION);
+  const hasUpgrade = isUpgrade(previousVersion);
 
-  await db.run(sql`
-    CREATE TABLE IF NOT EXISTS subscriptions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      amount REAL NOT NULL,
-      billing_day INTEGER NOT NULL,
-      category_id INTEGER REFERENCES categories(id),
-      source_id INTEGER REFERENCES sources(id),
-      is_active INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now'))
-    )
-  `);
-
-  await db.run(sql`
-    CREATE TABLE IF NOT EXISTS transactions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT NOT NULL DEFAULT 'expense',
-      amount REAL NOT NULL,
-      merchant TEXT,
-      category_id INTEGER REFERENCES categories(id),
-      source_id INTEGER REFERENCES sources(id),
-      subscription_id INTEGER REFERENCES subscriptions(id),
-      source_type TEXT NOT NULL DEFAULT 'manual',
-      date TEXT NOT NULL,
-      note TEXT,
-      created_at TEXT DEFAULT (datetime('now'))
-    )
-  `);
-
-  await db.run(sql`
-    CREATE TABLE IF NOT EXISTS budgets (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      category_id INTEGER UNIQUE REFERENCES categories(id),
-      amount REAL NOT NULL
-    )
-  `);
-
-  await db.run(sql`
-    CREATE TABLE IF NOT EXISTS config (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    )
-  `);
-
-  // Indexes for common query patterns
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
-  );
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)`,
-  );
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_transactions_category_id ON transactions(category_id)`,
-  );
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_transactions_subscription_id ON transactions(subscription_id)`,
-  );
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_transactions_source_type ON transactions(source_type)`,
-  );
-
+  // Seed default config values + app version tracking
   await db
     .insert(config)
     .values([
       { key: CONFIG_KEYS.CURRENCY, value: "INR" },
       { key: CONFIG_KEYS.USER_NAME, value: "User" },
+      { key: CONFIG_KEYS.APP_VERSION, value: APP_VERSION },
+      { key: CONFIG_KEYS.SCHEMA_VERSION, value: APP_VERSION },
     ])
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: config.key,
+      set: { value: sql`excluded.value` },
+    });
 
-  await seedDefaults();
+  // Only seed defaults on first boot
+  if (!previousVersion) {
+    await seedDefaults();
+  }
+
+  if (hasUpgrade && previousVersion) {
+    console.info(`[DB] Upgraded from ${previousVersion} to ${APP_VERSION}`);
+  }
+}
+
+/**
+ * Helper to fetch single config value
+ */
+async function getConfigValue(key: string): Promise<string | null> {
+  const rows = await db
+    .select({ value: config.value })
+    .from(config)
+    .where(eq(config.key, key));
+  return rows[0]?.value ?? null;
 }
 
 async function seedDefaults() {

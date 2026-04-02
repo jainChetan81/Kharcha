@@ -45,7 +45,7 @@ export function ChipPicker({
           return (
             <Pressable
               key={item.id}
-              onPress={() => onSelect(item.id)}
+              onPress={() => onSelect(selected ? null : item.id)}
               className={cn(
                 "rounded-full px-4 py-2.5",
                 selected ? "bg-primary" : "border border-border bg-card",
