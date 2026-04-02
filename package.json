@@ -21,7 +21,8 @@
 		"check": "pnpm dlx expo install --check",
 		"drizzle:generate": "drizzle-kit generate",
 		"drizzle:studio": "drizzle-kit studio",
-		"release": "bash scripts/release.sh"
+		"release": "bash scripts/release.sh",
+		"update:ai-rules": "curl -o .claude/AGENTS.md https://raw.githubusercontent.com/vercel-labs/agent-skills/main/skills/react-native-skills/AGENTS.md && cp .claude/AGENTS.md .cursor/rules.md"
 	},
 	"dependencies": {
 		"@react-native-community/datetimepicker": "8.6.0",
