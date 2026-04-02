@@ -20,7 +20,7 @@ jobs:
           cache: pnpm
 
       - name: install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: lint
         run: pnpm biome check .
@@ -47,7 +47,7 @@ jobs:
           cache: pnpm
 
       - name: install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: export bundle (web)
         run: pnpm expo export --platform web
