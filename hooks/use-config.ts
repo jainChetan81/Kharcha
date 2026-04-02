@@ -19,7 +19,10 @@ export type AppConfig = {
   userName: string;
 };
 
-export function useConfig() {
+export function useConfig(): AppConfig & {
+  updateCurrency: (code: CurrencyCode) => Promise<void>;
+  updateUserName: (name: string) => Promise<void>;
+} {
   const queryClient = useQueryClient();
 
   const { data: raw } = useQuery({

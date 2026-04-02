@@ -23,6 +23,24 @@ requirements: node >= 22.19.0 · pnpm >= 9.0.0 · ios simulator or expo go
 
 ---
 
+## local ci
+
+run `pnpm run local-ci` before pushing to catch lint, type, and dead code issues early:
+
+```bash
+pnpm run local-ci
+```
+
+this mirrors github actions ci locally. see [docs/CI.md](docs/CI.md) for detailed ci/cd workflows, build processes, troubleshooting, and secrets setup.
+
+### documentation
+
+- **[CI & Local Development](docs/CI.md)** — ci/cd workflows, local ci, eas builds, troubleshooting, secrets
+- **[Architecture](docs/ARCHITECTURE.md)** — data flow, query layer, auth, styling
+- **[Gmail Sync](docs/GMAIL_SYNC.md)** — oauth setup, platform-specific auth, email parsing
+
+---
+
 ## project structure
 
 ```
@@ -142,17 +160,13 @@ pnpm quality       # lint + typecheck
 
 ## ci/cd
 
-| workflow | trigger | action |
-|---|---|---|
-| `ci.yml` | push/PR to main | lint + typecheck |
-| `ios-build.yml` | manual | EAS build → TestFlight |
-| `android-build.yml` | manual | EAS build → APK artifact |
+**local**: `pnpm run local-ci` — lint, type check, dead code detection (run before push)
+
+**github actions**:
+- `ci.yml` — push/PR to main → quality checks (lint, typecheck, audit, knip)
+- `ios-build.yml` — manual trigger → EAS build → TestFlight submission
+- `android-build.yml` — manual trigger → EAS build → APK release
+
+see [docs/CI.md](docs/CI.md) for detailed workflows, when to use which, environment setup, and troubleshooting.
 
 pnpm version from `packageManager` in package.json · node 22.
-
----
-
-## docs
-
-- [Architecture](docs/ARCHITECTURE.md) — data flow, query layer, auth, styling
-- [Gmail Sync](docs/GMAIL_SYNC.md) — oauth setup, platform-specific auth, email parsing

@@ -152,7 +152,10 @@ export function useSwipeDelete() {
             Toast.hide();
             try {
               await reinsertMutation.mutateAsync(item);
-              Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Transaction restored" });
+              Toast.show({
+                type: TOAST_TYPE.SUCCESS,
+                text1: "Transaction restored",
+              });
             } catch {
               Toast.show({ type: TOAST_TYPE.ERROR, text1: "Failed to undo" });
             }

@@ -31,8 +31,13 @@ export function useCategoriesByType(
 export function useAddCategory() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ name, type }: { name: string; type: "income" | "expense" }) =>
-      addCategory(name, type),
+    mutationFn: ({
+      name,
+      type,
+    }: {
+      name: string;
+      type: "income" | "expense";
+    }) => addCategory(name, type),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CATEGORIES] }),
   });

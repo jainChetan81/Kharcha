@@ -19,8 +19,13 @@ export function useBudgets() {
 export function useSetBudget() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ categoryId, amount }: { categoryId: number; amount: number }) =>
-      setBudget(categoryId, amount),
+    mutationFn: ({
+      categoryId,
+      amount,
+    }: {
+      categoryId: number;
+      amount: number;
+    }) => setBudget(categoryId, amount),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS] }),
   });

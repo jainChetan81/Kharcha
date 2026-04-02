@@ -24,7 +24,6 @@ export function editSubscriptionScreen(id: number) {
 }
 
 export const DB_NAME = "kharcha.db";
-export const UNDO_TIMEOUT_MS = 3500;
 
 export const PAGE_SIZE = 10;
 

@@ -454,4 +454,3 @@ export async function getCategoryBreakdown(yearMonth: string) {
 }
 
 export { db };
-export default expo;
