@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["app/**", "components/**", "lib/**", "hooks/**"]
+    "includes": ["app/**", "components/**", "lib/**"]
   },
   "assist": {
     "actions": {
