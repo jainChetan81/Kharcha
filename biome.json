@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["app/**", "components/**", "lib/**"]
+    "includes": ["app/**", "components/**", "lib/**", "hooks/**"]
   },
   "assist": {
     "actions": {
@@ -32,4 +32,3 @@
       "quoteStyle": "double"
     }
   }
-}
