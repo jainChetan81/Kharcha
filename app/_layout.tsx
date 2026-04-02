@@ -6,12 +6,13 @@ import { useQuickActionRouting } from "expo-quick-actions/router";
 import { SplashScreen, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { Platform, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import Toast, { type ToastConfig } from "react-native-toast-message";
 import { Text } from "@/components/ui/text";
 import { TOAST_TYPE, TRANSACTION_TYPE } from "@/lib/constants";
 import { initDB } from "@/lib/db";
 import { processSubscriptions } from "@/lib/db/subscriptions";
+import { isIOS } from "@/lib/utils";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -128,7 +129,7 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (Platform.OS === "ios") {
+    if (isIOS) {
       QuickActions.setItems([
         {
           title: "Add Expense",

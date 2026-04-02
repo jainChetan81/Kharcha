@@ -12,7 +12,7 @@ import { FullWindowOverlay as RNFullWindowOverlay } from "react-native-screens";
 import { Icon } from "@/components/ui/icon";
 import { NativeOnlyAnimatedView } from "@/components/ui/native-only-animated-view";
 import { TextClassContext } from "@/components/ui/text";
-import { cn } from "@/lib/utils";
+import { cn, isIOS, isWeb } from "@/lib/utils";
 
 type Option = SelectPrimitive.Option;
 
@@ -77,8 +77,7 @@ function SelectTrigger({
   );
 }
 
-const FullWindowOverlay =
-  Platform.OS === "ios" ? RNFullWindowOverlay : React.Fragment;
+const FullWindowOverlay = isIOS ? RNFullWindowOverlay : React.Fragment;
 
 function SelectContent({
   className,
@@ -218,7 +217,7 @@ function SelectScrollUpButton({
   className,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.ScrollUpButton>) {
-  if (Platform.OS !== "web") {
+  if (!isWeb) {
     return null;
   }
   return (
@@ -242,7 +241,7 @@ function SelectScrollDownButton({
   className,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.ScrollDownButton>) {
-  if (Platform.OS !== "web") {
+  if (!isWeb) {
     return null;
   }
   return (

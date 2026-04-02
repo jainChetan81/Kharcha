@@ -12,7 +12,6 @@ import {
   Alert,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   View,
@@ -228,9 +227,7 @@ export default function ProfileScreen() {
           className="flex-1 bg-black/50"
           onPress={() => setShowEditName(false)}
         />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
+        <KeyboardAvoidingView behavior={isIOS ? "padding" : undefined}>
           <View className="rounded-t-2xl bg-card p-6">
             <Text className="mb-4 text-base font-bold text-foreground">
               Edit Name
