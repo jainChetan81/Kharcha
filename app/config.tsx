@@ -1,27 +1,14 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Lock,
-  Plus,
-  Trash2,
-} from "lucide-react-native";
+import { ChevronRight, Lock, Plus, Trash2 } from "lucide-react-native";
 import { useState } from "react";
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-} from "react-native";
-import Toast from "react-native-toast-message";
+import { Alert, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { SectionHeader } from "@/components/ui/section-header";
 import { Text } from "@/components/ui/text";
 import {
   useAddCategory,
@@ -33,19 +20,12 @@ import {
   useAllSources,
   useDeleteSource,
 } from "@/hooks/use-sources";
-import { SCREENS, TOAST_TYPE, TRANSACTION_TYPE } from "@/lib/constants";
-import { clearAllTransactions } from "@/lib/db";
+import { useClearAllTransactions } from "@/hooks/use-transactions";
+import { COLORS, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-      {title}
-    </Text>
-  );
-}
-
-function ListItem({
+function ConfigRow({
   label,
   badge,
   isDefault,
@@ -80,7 +60,6 @@ function ListItem({
 }
 
 export default function ConfigScreen() {
-  const queryClient = useQueryClient();
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddSource, setShowAddSource] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -96,6 +75,7 @@ export default function ConfigScreen() {
   const deleteCategoryMutation = useDeleteCategory();
   const addSourceMutation = useAddSource();
   const deleteSourceMutation = useDeleteSource();
+  const clearAllMutation = useClearAllTransactions();
 
   function handleClearTransactions() {
     Alert.alert(
@@ -108,18 +88,10 @@ export default function ConfigScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await clearAllTransactions();
-              queryClient.clear();
-              Toast.show({
-                type: TOAST_TYPE.SUCCESS,
-                text1: "All transactions deleted",
-              });
+              await clearAllMutation.mutateAsync();
+              showSuccessToast("All transactions deleted");
             } catch (err) {
-              Toast.show({
-                type: TOAST_TYPE.ERROR,
-                text1: "Failed",
-                text2: String(err),
-              });
+              showErrorToast("Failed", err);
             }
           },
         },
@@ -140,13 +112,9 @@ export default function ConfigScreen() {
       await addCategoryMutation.mutateAsync({ name, type: newCategoryType });
       setNewCategoryName("");
       setShowAddCategory(false);
-      Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Category added" });
+      showSuccessToast("Category added");
     } catch (err) {
-      Toast.show({
-        type: TOAST_TYPE.ERROR,
-        text1: "Failed",
-        text2: String(err),
-      });
+      showErrorToast("Failed", err);
     }
   }
 
@@ -159,13 +127,9 @@ export default function ConfigScreen() {
         onPress: async () => {
           try {
             await deleteCategoryMutation.mutateAsync(id);
-            Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Category deleted" });
+            showSuccessToast("Category deleted");
           } catch (err) {
-            Toast.show({
-              type: TOAST_TYPE.ERROR,
-              text1: "Failed",
-              text2: String(err),
-            });
+            showErrorToast("Failed", err);
           }
         },
       },
@@ -179,13 +143,9 @@ export default function ConfigScreen() {
       await addSourceMutation.mutateAsync(name);
       setNewSourceName("");
       setShowAddSource(false);
-      Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Source added" });
+      showSuccessToast("Source added");
     } catch (err) {
-      Toast.show({
-        type: TOAST_TYPE.ERROR,
-        text1: "Failed",
-        text2: String(err),
-      });
+      showErrorToast("Failed", err);
     }
   }
 
@@ -198,13 +158,9 @@ export default function ConfigScreen() {
         onPress: async () => {
           try {
             await deleteSourceMutation.mutateAsync(id);
-            Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Source deleted" });
+            showSuccessToast("Source deleted");
           } catch (err) {
-            Toast.show({
-              type: TOAST_TYPE.ERROR,
-              text1: "Failed",
-              text2: String(err),
-            });
+            showErrorToast("Failed", err);
           }
         },
       },
@@ -213,20 +169,7 @@ export default function ConfigScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <View
-        className={cn(
-          "flex-row items-center bg-background px-6 pb-4",
-          isIOS ? "pt-[60px]" : "pt-12",
-        )}
-      >
-        <Pressable
-          onPress={() => router.back()}
-          className="flex-row items-center py-1"
-        >
-          <Icon as={ChevronLeft} className="mr-1 size-6 text-foreground" />
-          <Text className="text-lg font-bold text-foreground">Config</Text>
-        </Pressable>
-      </View>
+      <ScreenHeader title="Config" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -234,7 +177,7 @@ export default function ConfigScreen() {
       >
         <SectionHeader title="Expense Categories" />
         {expenseCategories.map((c) => (
-          <ListItem
+          <ConfigRow
             key={c.id}
             label={c.name}
             isDefault={c.is_default === 1}
@@ -257,7 +200,7 @@ export default function ConfigScreen() {
 
         <SectionHeader title="Income Categories" />
         {incomeCategories.map((c) => (
-          <ListItem
+          <ConfigRow
             key={c.id}
             label={c.name}
             isDefault={c.is_default === 1}
@@ -280,7 +223,7 @@ export default function ConfigScreen() {
 
         <SectionHeader title="Payment Sources" />
         {sources.map((s) => (
-          <ListItem
+          <ConfigRow
             key={s.id}
             label={s.name}
             isDefault={s.is_default === 1}
@@ -319,99 +262,75 @@ export default function ConfigScreen() {
         </Pressable>
       </ScrollView>
 
-      <Modal
+      <BottomSheet
         visible={showAddCategory}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowAddCategory(false)}
+        onClose={() => setShowAddCategory(false)}
+        avoidKeyboard
       >
+        <Text className="mb-4 text-base font-bold text-foreground">
+          Add{" "}
+          {newCategoryType === TRANSACTION_TYPE.INCOME ? "Income" : "Expense"}{" "}
+          Category
+        </Text>
+        <Input
+          placeholder="Category name"
+          value={newCategoryName}
+          onChangeText={setNewCategoryName}
+          placeholderTextColor={COLORS.MUTED}
+          autoFocus
+        />
+        <Button
+          className="mt-4 h-14 rounded-2xl bg-primary"
+          onPress={handleAddCategory}
+          disabled={!newCategoryName.trim()}
+        >
+          <Text className="text-base font-semibold text-primary-foreground">
+            Add Category
+          </Text>
+        </Button>
         <Pressable
-          className="flex-1 bg-black/50"
           onPress={() => setShowAddCategory(false)}
-        />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          className={cn("mt-3 items-center py-2", isIOS && "mb-4")}
         >
-          <View className="rounded-t-2xl bg-card p-6">
-            <Text className="mb-4 text-base font-bold text-foreground">
-              Add{" "}
-              {newCategoryType === TRANSACTION_TYPE.INCOME
-                ? "Income"
-                : "Expense"}{" "}
-              Category
-            </Text>
-            <Input
-              placeholder="Category name"
-              value={newCategoryName}
-              onChangeText={setNewCategoryName}
-              placeholderTextColor="#888888"
-              autoFocus
-            />
-            <Button
-              className="mt-4 h-14 rounded-2xl bg-primary"
-              onPress={handleAddCategory}
-              disabled={!newCategoryName.trim()}
-            >
-              <Text className="text-base font-semibold text-primary-foreground">
-                Add Category
-              </Text>
-            </Button>
-            <Pressable
-              onPress={() => setShowAddCategory(false)}
-              className={cn("mt-3 items-center py-2", isIOS && "mb-4")}
-            >
-              <Text className="text-sm font-medium text-muted-foreground">
-                Cancel
-              </Text>
-            </Pressable>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+          <Text className="text-sm font-medium text-muted-foreground">
+            Cancel
+          </Text>
+        </Pressable>
+      </BottomSheet>
 
-      <Modal
+      <BottomSheet
         visible={showAddSource}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowAddSource(false)}
+        onClose={() => setShowAddSource(false)}
+        avoidKeyboard
       >
-        <Pressable
-          className="flex-1 bg-black/50"
-          onPress={() => setShowAddSource(false)}
+        <Text className="mb-4 text-base font-bold text-foreground">
+          Add Payment Source
+        </Text>
+        <Input
+          placeholder="Source name"
+          value={newSourceName}
+          onChangeText={setNewSourceName}
+          placeholderTextColor={COLORS.MUTED}
+          autoFocus
         />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        <Button
+          className="mt-4 h-14 rounded-2xl bg-primary"
+          onPress={handleAddSource}
+          disabled={!newSourceName.trim()}
         >
-          <View className="rounded-t-2xl bg-card p-6">
-            <Text className="mb-4 text-base font-bold text-foreground">
-              Add Payment Source
-            </Text>
-            <Input
-              placeholder="Source name"
-              value={newSourceName}
-              onChangeText={setNewSourceName}
-              placeholderTextColor="#888888"
-              autoFocus
-            />
-            <Button
-              className="mt-4 h-14 rounded-2xl bg-primary"
-              onPress={handleAddSource}
-              disabled={!newSourceName.trim()}
-            >
-              <Text className="text-base font-semibold text-primary-foreground">
-                Add Source
-              </Text>
-            </Button>
-            <Pressable
-              onPress={() => setShowAddSource(false)}
-              className={cn("mt-3 items-center py-2", isIOS && "mb-4")}
-            >
-              <Text className="text-sm font-medium text-muted-foreground">
-                Cancel
-              </Text>
-            </Pressable>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+          <Text className="text-base font-semibold text-primary-foreground">
+            Add Source
+          </Text>
+        </Button>
+        <Pressable
+          onPress={() => setShowAddSource(false)}
+          className={cn("mt-3 items-center py-2", isIOS && "mb-4")}
+        >
+          <Text className="text-sm font-medium text-muted-foreground">
+            Cancel
+          </Text>
+        </Pressable>
+      </BottomSheet>
     </View>
   );
 }

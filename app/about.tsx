@@ -2,34 +2,13 @@ import { format } from "date-fns";
 import * as Application from "expo-application";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
-import { router } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
-import { Pressable, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
-import { Icon } from "@/components/ui/icon";
-import { Text } from "@/components/ui/text";
+import { InfoRow } from "@/components/ui/info-row";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { SectionHeader } from "@/components/ui/section-header";
 import { useDataStats } from "@/hooks/use-stats";
 import { parseDate } from "@/lib/format";
-import { cn, isIOS } from "@/lib/utils";
-
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-      {title}
-    </Text>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string | null }) {
-  return (
-    <View className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3">
-      <Text className="flex-1 text-sm font-medium text-foreground">
-        {label}
-      </Text>
-      <Text className="text-sm text-muted-foreground">{value ?? "—"}</Text>
-    </View>
-  );
-}
 
 function getDeviceTypeName(type: Device.DeviceType | null): string {
   switch (type) {
@@ -55,20 +34,7 @@ export default function AboutScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <View
-        className={cn(
-          "flex-row items-center bg-background px-6 pb-4",
-          isIOS ? "pt-[60px]" : "pt-12",
-        )}
-      >
-        <Pressable
-          onPress={() => router.back()}
-          className="flex-row items-center py-1"
-        >
-          <Icon as={ChevronLeft} className="mr-1 size-6 text-foreground" />
-          <Text className="text-lg font-bold text-foreground">About</Text>
-        </Pressable>
-      </View>
+      <ScreenHeader title="About" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
