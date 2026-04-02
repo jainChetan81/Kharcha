@@ -1,5 +1,5 @@
 import { format, isToday, isYesterday } from "date-fns";
-import type { TransactionRow } from "@/lib/db/types";
+import type { TransactionRow } from "@/lib/db";
 
 export type CurrencyCode = "INR" | "USD" | "GBP" | "EUR";
 

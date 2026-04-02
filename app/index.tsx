@@ -168,7 +168,7 @@ export default function HomeScreen() {
               <Text className="text-sm font-bold text-primary-foreground">
                 {userName
                   .split(" ")
-                  .map((w) => w[0])
+                  .map((w: string) => w[0])
                   .join("")
                   .toUpperCase()
                   .slice(0, 2)}
@@ -214,7 +214,7 @@ export default function HomeScreen() {
             <Pressable
               onPress={() =>
                 router.push(
-                  `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.INCOME}`,
+                  `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.INCOME}&month=${selectedMonth}`,
                 )
               }
               className="flex-1 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
@@ -233,7 +233,7 @@ export default function HomeScreen() {
             <Pressable
               onPress={() =>
                 router.push(
-                  `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}`,
+                  `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&month=${selectedMonth}`,
                 )
               }
               className="flex-1 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
@@ -299,7 +299,7 @@ export default function HomeScreen() {
                   key={cat.category_id}
                   onPress={() =>
                     router.push(
-                      `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${cat.category_id}`,
+                      `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${cat.category_id}&month=${selectedMonth}`,
                     )
                   }
                   className="mb-3"
@@ -358,14 +358,14 @@ export default function HomeScreen() {
         <View className="flex-row items-center justify-around">
           <View className="items-center gap-1">
             <Icon as={House} className="size-5 text-primary" />
-            <Text className="text-[11px] font-semibold text-primary">Home</Text>
+            <Text className="text-xs font-semibold text-primary">Home</Text>
           </View>
           <Pressable
             onPress={() => router.push(SCREENS.HISTORY)}
             className="items-center gap-1"
           >
             <Icon as={Clock} className="size-5 text-muted-foreground" />
-            <Text className="text-[11px] font-medium text-muted-foreground">
+            <Text className="text-xs font-medium text-muted-foreground">
               History
             </Text>
           </Pressable>
@@ -391,7 +391,7 @@ export default function HomeScreen() {
             className="items-center gap-1"
           >
             <Icon as={Settings} className="size-5 text-muted-foreground" />
-            <Text className="text-[11px] font-medium text-muted-foreground">
+            <Text className="text-xs font-medium text-muted-foreground">
               Config
             </Text>
           </Pressable>
@@ -400,7 +400,7 @@ export default function HomeScreen() {
             className="items-center gap-1"
           >
             <Icon as={User} className="size-5 text-muted-foreground" />
-            <Text className="text-[11px] font-medium text-muted-foreground">
+            <Text className="text-xs font-medium text-muted-foreground">
               Profile
             </Text>
           </Pressable>

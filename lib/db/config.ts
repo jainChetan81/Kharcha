@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { db } from "./connection";
-import { config } from "./schema";
+import { db } from "@/lib/db";
+import { type ConfigRow, config } from "./schema";
 
 export async function getConfig(key: string): Promise<string | null> {
   const rows = await db
@@ -11,7 +11,7 @@ export async function getConfig(key: string): Promise<string | null> {
 }
 
 export async function getAllConfig(): Promise<Record<string, string>> {
-  const rows = await db.select().from(config);
+  const rows: ConfigRow[] = await db.select().from(config);
   const result: Record<string, string> = {};
   for (const row of rows) {
     result[row.key] = row.value;

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/constants";
-import { addSource, deleteSource, getAllSources } from "@/lib/db/sources";
+import { addSource, deleteSource, getAllSources } from "@/lib/db";
 
 export function useAllSources(enabled = true) {
   return useQuery({

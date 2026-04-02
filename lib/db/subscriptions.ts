@@ -1,7 +1,7 @@
 import { format, getDaysInMonth } from "date-fns";
 import { and, eq, sql } from "drizzle-orm";
 import { SUBSCRIPTION_NOTE } from "@/lib/constants";
-import { db } from "./connection";
+import { db } from "@/lib/db";
 import { categories, sources, subscriptions, transactions } from "./schema";
 import type { SubscriptionRow } from "./types";
 

@@ -24,7 +24,6 @@ export function editSubscriptionScreen(id: number) {
 }
 
 export const DB_NAME = "kharcha.db";
-export const UNDO_TIMEOUT_MS = 3500;
 
 export const PAGE_SIZE = 10;
 
@@ -48,6 +47,7 @@ export const SOURCE_TYPE = {
 } as const;
 
 export type SourceFilterType = (typeof SOURCE_TYPE)[keyof typeof SOURCE_TYPE];
+export type SourceType = Exclude<SourceFilterType, "all">;
 
 export const TOAST_TYPE = {
   SUCCESS: "success",

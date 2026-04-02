@@ -1,13 +1,15 @@
 import { and, eq, sql } from "drizzle-orm";
-import { db } from "./connection";
-import { budgets, categories, transactions } from "./schema";
-import type { BudgetRow } from "./types";
+import { db } from "@/lib/db";
+import { type Budget, budgets, categories, transactions } from "./schema";
 
-export type { BudgetRow };
+export type BudgetRow = Budget & {
+  category_name: string;
+};
 
 export async function getBudgets(): Promise<BudgetRow[]> {
   const rows = await db
     .select({
+      id: budgets.id,
       category_id: budgets.category_id,
       category_name: categories.name,
       amount: budgets.amount,
@@ -16,6 +18,7 @@ export async function getBudgets(): Promise<BudgetRow[]> {
     .leftJoin(categories, eq(budgets.category_id, categories.id));
 
   return rows.map((r) => ({
+    id: r.id as number,
     category_id: r.category_id as number,
     category_name: r.category_name ?? "Unknown",
     amount: r.amount,

@@ -27,7 +27,7 @@ export default function ProfileScreen() {
 
   const initials = userName
     .split(" ")
-    .map((w) => w[0])
+    .map((w: string) => w[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);

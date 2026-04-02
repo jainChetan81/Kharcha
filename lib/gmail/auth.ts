@@ -5,9 +5,9 @@ import {
 import * as AuthSession from "expo-auth-session";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
-import { Platform } from "react-native";
 import { BUNDLE_ID, OAUTH_REDIRECT_PATH } from "@/lib/constants";
 import { env } from "@/lib/env";
+import { isAndroid } from "@/lib/utils";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -35,7 +35,7 @@ GoogleSignin.configure({
 });
 
 export async function getValidAccessToken(): Promise<string | null> {
-  if (Platform.OS === "android") {
+  if (isAndroid) {
     try {
       const tokens = await GoogleSignin.getTokens();
       return tokens.accessToken;
@@ -170,10 +170,10 @@ export function useGoogleAuth() {
     }
   };
 
-  const signIn = Platform.OS === "android" ? signInAndroid : signInIOS;
+  const signIn = isAndroid ? signInAndroid : signInIOS;
 
   const signOut = async () => {
-    if (Platform.OS === "android") {
+    if (isAndroid) {
       try {
         await GoogleSignin.signOut();
       } catch {}
@@ -184,7 +184,7 @@ export function useGoogleAuth() {
   };
 
   const isConnected = async (): Promise<boolean> => {
-    if (Platform.OS === "android") {
+    if (isAndroid) {
       return GoogleSignin.getCurrentUser() !== null;
     }
     const token = await SecureStore.getItemAsync(

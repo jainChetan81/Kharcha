@@ -23,6 +23,24 @@ requirements: node >= 22.19.0 · pnpm >= 9.0.0 · ios simulator or expo go
 
 ---
 
+## local ci
+
+run `pnpm run local-ci` before pushing to catch lint, type, and dead code issues early:
+
+```bash
+pnpm run local-ci
+```
+
+this mirrors github actions ci locally. see [docs/CI.md](docs/CI.md) for detailed ci/cd workflows, build processes, troubleshooting, and secrets setup.
+
+### documentation
+
+- **[CI & Local Development](docs/CI.md)** — ci/cd workflows, local ci, eas builds, troubleshooting, secrets
+- **[Architecture](docs/ARCHITECTURE.md)** — data flow, query layer, auth, styling
+- **[Gmail Sync](docs/GMAIL_SYNC.md)** — oauth setup, platform-specific auth, email parsing
+
+---
+
 ## project structure
 
 ```
@@ -93,8 +111,6 @@ config        (key PK, value)
 
 types auto-inferred via drizzle — no manual duplication. `TransactionRow` extends `Transaction` with joined `category_name` + `source_name`.
 
-**schema changes**: edit `lib/db/schema.ts`, then run `pnpm drizzle:generate` to create a timestamped SQL migration in `drizzle/`. commit both the schema and migration files. migrations tracked in `drizzle/meta` for version control.
-
 ---
 
 ## query architecture
@@ -132,32 +148,25 @@ sqlite ← drizzle-orm ← lib/db/*.ts ← hooks/use-*.ts ← screens
 ## commands
 
 ```bash
-pnpm start           # expo dev server (port 8082)
-pnpm ios             # run on ios simulator
-pnpm lint            # biome check
-pnpm lint:fix        # biome check + auto-fix
-pnpm typecheck       # tsc --noEmit
-pnpm quality         # lint + typecheck
-pnpm drizzle:generate  # generate sql migration from schema changes
-pnpm drizzle:studio    # visual db inspector (web UI)
+pnpm start         # expo dev server (port 8082)
+pnpm ios           # run on ios simulator
+pnpm lint          # biome check
+pnpm lint:fix      # biome check + auto-fix
+pnpm typecheck     # tsc --noEmit
+pnpm quality       # lint + typecheck
 ```
 
 ---
 
 ## ci/cd
 
-| workflow | trigger | action |
-|---|---|---|
-| `ci.yml` | push/PR to main | lint + typecheck |
-| `ios-build.yml` | manual | EAS build → TestFlight |
-| `android-build.yml` | manual | EAS build → APK artifact |
+**local**: `pnpm run local-ci` — lint, type check, dead code detection (run before push)
+
+**github actions**:
+- `ci.yml` — push/PR to main → quality checks (lint, typecheck, audit, knip)
+- `ios-build.yml` — manual trigger → EAS build → TestFlight submission
+- `android-build.yml` — manual trigger → EAS build → APK release
+
+see [docs/CI.md](docs/CI.md) for detailed workflows, when to use which, environment setup, and troubleshooting.
 
 pnpm version from `packageManager` in package.json · node 22.
-
----
-
-## docs
-
-- [Architecture](docs/ARCHITECTURE.md) — data flow, query layer, auth, styling
-- [Drizzle ORM & Migrations](docs/DRIZZLE.md) — schema management, migration workflow, best practices
-- [Gmail Sync](docs/GMAIL_SYNC.md) — oauth setup, platform-specific auth, email parsing

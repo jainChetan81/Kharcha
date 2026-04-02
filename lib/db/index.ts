@@ -1,76 +1,114 @@
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
-import { CONFIG_KEYS } from "@/lib/constants";
-import { APP_VERSION, isUpgrade } from "@/lib/version";
-import { db, runMigrations } from "./connection";
-import { categories, config, sources, transactions } from "./schema";
-import type {
-  CategoryBreakdownRow,
-  MonthlySummary,
-  TransactionRow,
-} from "./types";
+import { and, count, desc, eq, gte, lte, min, sql } from "drizzle-orm";
+import { drizzle, type ExpoSQLiteDatabase } from "drizzle-orm/expo-sqlite";
+import * as SQLite from "expo-sqlite";
+import { DB_NAME, type SourceType } from "@/lib/constants";
+import {
+  type Category,
+  categories,
+  config,
+  type NewCategory,
+  type NewSource,
+  type NewTransaction,
+  type Source,
+  sources,
+  type Transaction,
+  transactions,
+} from "./schema";
 
-// Re-export sub-modules for backward compat
-export {
-  addCategory,
-  deleteCategory,
-  getAllCategories,
-  getCategoriesByType,
-} from "./categories";
-export { addSource, deleteSource, getAllSources } from "./sources";
-export { getDataStats } from "./stats";
 export type {
   Category,
-  CategoryBreakdownRow,
-  MonthlySummary,
   NewCategory,
   NewSource,
   NewTransaction,
   Source,
   Transaction,
-  TransactionRow,
-} from "./types";
+};
+
+const expo = SQLite.openDatabaseSync(DB_NAME);
+const db: ExpoSQLiteDatabase = drizzle(expo, { logger: __DEV__ });
+
+export type TransactionRow = Transaction & {
+  category_name: string | null;
+  source_name: string | null;
+  source_type: SourceType;
+};
+
+export type MonthlySummary = {
+  total_income: number;
+  total_expenses: number;
+};
 
 export async function initDB() {
-  // Run migrations on app startup
-  await runMigrations();
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'expense',
+      is_default INTEGER DEFAULT 0
+    )
+  `);
 
-  // Track app version for upgrade detection
-  const previousVersion = await getConfigValue(CONFIG_KEYS.APP_VERSION);
-  const hasUpgrade = isUpgrade(previousVersion);
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS sources (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      is_default INTEGER DEFAULT 0
+    )
+  `);
 
-  // Seed default config values + app version tracking
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      amount REAL NOT NULL,
+      billing_day INTEGER NOT NULL,
+      category_id INTEGER REFERENCES categories(id),
+      source_id INTEGER REFERENCES sources(id),
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL DEFAULT 'expense',
+      amount REAL NOT NULL,
+      merchant TEXT,
+      category_id INTEGER REFERENCES categories(id),
+      source_id INTEGER REFERENCES sources(id),
+      subscription_id INTEGER REFERENCES subscriptions(id),
+      source_type TEXT NOT NULL DEFAULT 'manual',
+      date TEXT NOT NULL,
+      note TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS budgets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category_id INTEGER UNIQUE REFERENCES categories(id),
+      amount REAL NOT NULL
+    )
+  `);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS config (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `);
+
   await db
     .insert(config)
     .values([
-      { key: CONFIG_KEYS.CURRENCY, value: "INR" },
-      { key: CONFIG_KEYS.USER_NAME, value: "User" },
-      { key: CONFIG_KEYS.APP_VERSION, value: APP_VERSION },
-      { key: CONFIG_KEYS.SCHEMA_VERSION, value: APP_VERSION },
+      { key: "currency", value: "INR" },
+      { key: "userName", value: "User" },
     ])
-    .onConflictDoUpdate({
-      target: config.key,
-      set: { value: sql`excluded.value` },
-    });
+    .onConflictDoNothing();
 
-  // Only seed defaults on first boot
-  if (!previousVersion) {
-    await seedDefaults();
-  }
-
-  if (hasUpgrade && previousVersion) {
-    console.info(`[DB] Upgraded from ${previousVersion} to ${APP_VERSION}`);
-  }
-}
-
-/**
- * Helper to fetch single config value
- */
-async function getConfigValue(key: string): Promise<string | null> {
-  const rows = await db
-    .select({ value: config.value })
-    .from(config)
-    .where(eq(config.key, key));
-  return rows[0]?.value ?? null;
+  await seedDefaults();
 }
 
 async function seedDefaults() {
@@ -201,6 +239,21 @@ export async function getMonthlySummary(yearMonth: string) {
   return result[0] as MonthlySummary;
 }
 
+export async function getAllCategories() {
+  return (await db.select().from(categories)) as Category[];
+}
+
+export async function getCategoriesByType(type: "income" | "expense") {
+  return (await db
+    .select()
+    .from(categories)
+    .where(eq(categories.type, type))) as Category[];
+}
+
+export async function getAllSources() {
+  return (await db.select().from(sources)) as Source[];
+}
+
 export async function getTransactionsPaginated(
   limit = 10,
   offset = 0,
@@ -208,7 +261,7 @@ export async function getTransactionsPaginated(
     type?: "income" | "expense" | "all";
     categoryId?: number | null;
     sourceId?: number | null;
-    sourceType?: "manual" | "synced" | "recurring" | "all";
+    sourceType?: SourceType | "all";
     dateFrom?: string | null;
     dateTo?: string | null;
   },
@@ -255,7 +308,7 @@ export async function insertTransaction(params: {
   categoryId: number | null;
   sourceId: number | null;
   subscriptionId?: number | null;
-  sourceType?: "manual" | "synced" | "recurring";
+  sourceType?: SourceType;
   date: string;
   note: string | null;
 }) {
@@ -302,7 +355,27 @@ export async function deleteTransaction(id: number) {
   return db.delete(transactions).where(eq(transactions.id, id));
 }
 
-export async function restoreTransaction(row: {
+export async function addCategory(name: string, type: "income" | "expense") {
+  return db.insert(categories).values({ name, type, is_default: 0 });
+}
+
+export async function deleteCategory(id: number) {
+  return db
+    .delete(categories)
+    .where(and(eq(categories.id, id), eq(categories.is_default, 0)));
+}
+
+export async function addSource(name: string) {
+  return db.insert(sources).values({ name, is_default: 0 });
+}
+
+export async function deleteSource(id: number) {
+  return db
+    .delete(sources)
+    .where(and(eq(sources.id, id), eq(sources.is_default, 0)));
+}
+
+export async function reinsertTransaction(row: {
   type: "income" | "expense";
   amount: number;
   merchant: string | null;
@@ -328,13 +401,35 @@ export async function clearAllTransactions() {
   return db.delete(transactions);
 }
 
+export async function getDataStats() {
+  const txCount = await db.select({ value: count() }).from(transactions);
+  const catCount = await db.select({ value: count() }).from(categories);
+  const srcCount = await db.select({ value: count() }).from(sources);
+  const firstDate = await db
+    .select({ value: min(transactions.date) })
+    .from(transactions);
+
+  return {
+    total_transactions: txCount[0]?.value ?? 0,
+    total_categories: catCount[0]?.value ?? 0,
+    total_sources: srcCount[0]?.value ?? 0,
+    first_transaction_date: firstDate[0]?.value ?? null,
+  };
+}
+
+export type CategoryBreakdownRow = {
+  category_id: number;
+  category_name: string;
+  total: number;
+  percentage: number;
+};
+
 export async function getCategoryBreakdown(yearMonth: string) {
-  const totalCol = sql<number>`SUM(${transactions.amount})`;
   const rows = await db
     .select({
       category_id: transactions.category_id,
       category_name: categories.name,
-      total: totalCol,
+      total: sql<number>`SUM(${transactions.amount})`,
     })
     .from(transactions)
     .leftJoin(categories, eq(transactions.category_id, categories.id))
@@ -345,7 +440,7 @@ export async function getCategoryBreakdown(yearMonth: string) {
       ),
     )
     .groupBy(transactions.category_id)
-    .orderBy(sql`${totalCol} DESC`)
+    .orderBy(sql`SUM(${transactions.amount}) DESC`)
     .limit(5);
 
   const grandTotal = rows.reduce((sum, r) => sum + r.total, 0);
@@ -358,4 +453,4 @@ export async function getCategoryBreakdown(yearMonth: string) {
   })) as CategoryBreakdownRow[];
 }
 
-export { db, default } from "./connection";
+export { db };
