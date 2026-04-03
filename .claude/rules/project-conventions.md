@@ -1,29 +1,37 @@
-# Project Conventions - [Kharcha]
+# Project Conventions - Kharcha
 
 ## Architecture
-- Use feature-based folder structure: `src/features/[feature]/`
-- API calls go in `src/features/[feature]/api/`
-- Components go in `src/features/[feature]/components/`
+- `app/` — screens (expo-router file-based routing)
+- `components/ui/` — reusable UI primitives (Button, Text, Input, ChipPicker, BottomSheet, etc.)
+- `components/` — feature components (TransactionForm, SubscriptionForm, TransactionItem)
+- `hooks/` — TanStack Query hooks wrapping db functions
+- `lib/db/` — SQLite via drizzle-orm (connection, schema, typed modules)
+- `lib/gmail/` — Gmail OAuth + bank email parsers
+- `lib/` — shared utilities (constants, format, toast, utils)
 
 ## State Management
-- Use Zustand for global state
-- Use React Query for server state
-- Never use Redux for new features
+- TanStack Query for all server/db state (query keys in `lib/constants.ts`)
+- Local `useState` for UI state (modals, form drafts, filters)
+- No global state store — queries handle caching and invalidation
 
 ## Styling
-- Use NativeWind for styling
-- Theme colors: always import from `src/theme/colors.ts`
-- Spacing scale: 4px base (1 = 4px, 2 = 8px, etc.)
+- NativeWind classes only, no inline `style` prop (exception: native components like DateTimePicker)
+- Use `cn()` from `@/lib/utils` for conditional classes
+- Color constants in `lib/constants.ts` (`COLORS.*`) for non-className contexts (Switch trackColor, etc.)
+- Use semantic color classes: `text-foreground`, `text-muted-foreground`, `bg-card`, `bg-primary`
 
 ## Naming Conventions
-- Components: PascalCase (e.g., `UserProfile.tsx`)
-- Hooks: camelCase with `use` prefix (e.g., `useUserData.ts`)
-- API functions: camelCase (e.g., `fetchUserProfile.ts`)
+- Components: PascalCase (e.g., `ScreenHeader.tsx`)
+- Hooks: camelCase with `use` prefix (e.g., `useTransactions.ts`)
+- DB functions: camelCase (e.g., `getTransactionsPaginated`)
+- Constants: UPPER_SNAKE_CASE (e.g., `QUERY_KEYS`, `TRANSACTION_TYPE`)
 
-## Testing
-- Write tests for all API hooks
-- Use MSW for mocking API calls
+## Data Layer
+- All db modules import `db` from `./connection` (single Drizzle instance)
+- Types live in `lib/db/types.ts` — single source of truth
+- Hooks re-export what screens need; screens never import from `lib/db/` directly
 
-## Performance Rules (Beyond Vercel)
-- Images must use `priority` prop if above fold
-- Lists must use `estimatedItemSize` with LegendList
+## Performance
+- Lists use `@shopify/flash-list` with `estimatedItemSize`
+- `getDataStats()` uses `Promise.all` for parallel queries — follow this pattern
+- Subscription processing batch-fetches to avoid N+1 queries

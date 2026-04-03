@@ -17,7 +17,7 @@
 		"format": "biome check --write .",
 		"typecheck": "tsc --noEmit",
 		"quality": "pnpm lint && pnpm typecheck",
-		"local-ci": "pnpm install --frozen-lockfile && pnpm quality && pnpm audit --audit-level=high || true && pnpm dead-code",
+		"local-ci": "pnpm install --frozen-lockfile && pnpm quality && pnpm audit --audit-level=high && pnpm dead-code",
 		"doctor": "expo-doctor",
 		"expo-dependency-check": "pnpm dlx expo install --check",
 		"dead-code": "knip --no-exit-code"

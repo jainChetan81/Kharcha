@@ -1,10 +1,9 @@
 import { and, eq, sql } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { type Budget, budgets, categories, transactions } from "./schema";
+import { db } from "./connection";
+import { budgets, categories, transactions } from "./schema";
+import type { BudgetRow } from "./types";
 
-export type BudgetRow = Budget & {
-  category_name: string;
-};
+export type { BudgetRow };
 
 export async function getBudgets(): Promise<BudgetRow[]> {
   const rows = await db

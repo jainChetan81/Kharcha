@@ -37,6 +37,7 @@ this mirrors github actions ci locally. see [docs/CI.md](docs/CI.md) for detaile
 
 - **[CI & Local Development](docs/CI.md)** — ci/cd workflows, local ci, eas builds, troubleshooting, secrets
 - **[Architecture](docs/ARCHITECTURE.md)** — data flow, query layer, auth, styling
+- **[Drizzle & Migrations](docs/DRIZZLE.md)** — schema management, dual migration strategy, version tracking
 - **[Gmail Sync](docs/GMAIL_SYNC.md)** — oauth setup, platform-specific auth, email parsing
 
 ---
@@ -77,7 +78,8 @@ hooks/                        all data access — screens never call useQuery di
 
 lib/db/
   schema.ts                   drizzle tables + inferred types (InferSelectModel)
-  index.ts                    initDB, seeds, transaction queries, shared db instance
+  connection.ts               sqlite connection + drizzle migrations runner
+  index.ts                    initDB (inline CREATE TABLE safety net), seeds, transaction queries
   config.ts                   key-value config (currency, userName, gmail_*)
   budgets.ts                  budget queries + getCategorySpent
   subscriptions.ts            subscription queries + processSubscriptions
@@ -98,13 +100,13 @@ lib/
 
 ## database
 
-7 tables in `lib/db/schema.ts`:
+6 tables in `lib/db/schema.ts`:
 
 ```
 categories    (id, name, type, is_default)
 sources       (id, name, is_default)
-subscriptions (id, name, amount, billing_day, category_id, source_id, is_active)
-transactions  (id, type, amount, merchant, category_id, source_id, subscription_id, date, note)
+subscriptions (id, name, amount, billing_day, category_id, source_id, is_active, created_at)
+transactions  (id, type, amount, merchant, category_id, source_id, subscription_id, source_type, gmail_message_id, date, note, created_at)
 budgets       (id, category_id UNIQUE, amount)
 config        (key PK, value)
 ```

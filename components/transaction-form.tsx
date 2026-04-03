@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { Button } from "@/components/ui/button";
+import { ChipPicker } from "@/components/ui/chip-picker";
+import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
@@ -24,56 +26,6 @@ import {
 import { getAllSources, getCategoriesByType } from "@/lib/db";
 import { parseDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-function FieldError({ errors }: { errors: string[] }) {
-  if (errors.length === 0) return null;
-  return <Text className="mt-1 text-xs text-negative">{errors[0]}</Text>;
-}
-
-function ChipPicker({
-  items,
-  selectedId,
-  onSelect,
-}: {
-  items: { id: number; name: string }[];
-  selectedId: number | null;
-  onSelect: (id: number) => void;
-}) {
-  return (
-    <View className="relative">
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8, paddingRight: 24 }}
-      >
-        {items.map((item) => {
-          const selected = selectedId === item.id;
-          return (
-            <Pressable
-              key={item.id}
-              onPress={() => onSelect(item.id)}
-              className={cn(
-                "rounded-full px-4 py-2.5",
-                selected ? "bg-primary" : "border border-border bg-card",
-              )}
-            >
-              <Text
-                className={cn(
-                  "text-sm font-medium capitalize",
-                  selected
-                    ? "text-primary-foreground"
-                    : "text-muted-foreground",
-                )}
-              >
-                {item.name}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-}
 
 export type TransactionFormValues = {
   type: "income" | "expense";

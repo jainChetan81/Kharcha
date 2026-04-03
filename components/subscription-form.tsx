@@ -3,52 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import Toast from "react-native-toast-message";
 import { Button } from "@/components/ui/button";
+import { ChipPicker } from "@/components/ui/chip-picker";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { QUERY_KEYS } from "@/lib/constants";
 import { getAllSources, getCategoriesByType } from "@/lib/db";
 import { cn } from "@/lib/utils";
-
-function ChipPicker({
-  items,
-  selectedId,
-  onSelect,
-}: {
-  items: { id: number; name: string }[];
-  selectedId: number | null;
-  onSelect: (id: number) => void;
-}) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 8, paddingRight: 24 }}
-    >
-      {items.map((item) => {
-        const selected = selectedId === item.id;
-        return (
-          <Pressable
-            key={item.id}
-            onPress={() => onSelect(item.id)}
-            className={cn(
-              "rounded-full px-4 py-2.5",
-              selected ? "bg-primary" : "border border-border bg-card",
-            )}
-          >
-            <Text
-              className={cn(
-                "text-sm font-medium capitalize",
-                selected ? "text-primary-foreground" : "text-muted-foreground",
-              )}
-            >
-              {item.name}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-}
 
 export function SubscriptionForm({
   onSubmit,

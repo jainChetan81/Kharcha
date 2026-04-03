@@ -15,11 +15,11 @@ import {
   getTransactionById,
   getTransactionsPaginated,
   insertTransaction,
-  reinsertTransaction,
+  restoreTransaction,
   type TransactionRow,
   updateTransaction,
 } from "@/lib/db";
-import { showErrorToast, showSuccessToast, showUndoToast } from "@/lib/toast";
+import { showErrorToast, showUndoToast } from "@/lib/toast";
 
 export function useInvalidateTransactions() {
   const queryClient = useQueryClient();
@@ -124,7 +124,7 @@ export function useDeleteTransaction() {
 export function useRestoreTransaction() {
   const invalidate = useInvalidateTransactions();
   return useMutation({
-    mutationFn: reinsertTransaction,
+    mutationFn: restoreTransaction,
     onSuccess: () => invalidate(),
   });
 }

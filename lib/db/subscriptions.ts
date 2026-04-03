@@ -1,7 +1,7 @@
 import { format, getDaysInMonth } from "date-fns";
 import { and, eq, sql } from "drizzle-orm";
 import { SUBSCRIPTION_NOTE } from "@/lib/constants";
-import { db } from "@/lib/db";
+import expo, { db } from "./connection";
 import { categories, sources, subscriptions, transactions } from "./schema";
 import type { SubscriptionRow } from "./types";
 
@@ -76,8 +76,10 @@ export async function updateSubscription(
 }
 
 export async function deleteSubscription(id: number) {
-  await db.delete(transactions).where(eq(transactions.subscription_id, id));
-  await db.delete(subscriptions).where(eq(subscriptions.id, id));
+  await expo.withTransactionAsync(async () => {
+    await db.delete(transactions).where(eq(transactions.subscription_id, id));
+    await db.delete(subscriptions).where(eq(subscriptions.id, id));
+  });
 }
 
 export async function toggleSubscription(id: number, isActive: boolean) {
@@ -102,35 +104,33 @@ export async function processSubscriptions(): Promise<string[]> {
   const today = now.getDate();
   const yearMonth = format(now, "yyyy-MM");
   const daysInMonth = getDaysInMonth(now);
-
-  const activeSubs = await db
-    .select()
-    .from(subscriptions)
-    .where(eq(subscriptions.is_active, 1));
-
-  // Batch-fetch existing subscription transactions for this month
-  const existingTxns = await db
-    .select({
-      subscription_id: transactions.subscription_id,
-    })
-    .from(transactions)
-    .where(
-      and(
-        sql`${transactions.subscription_id} IS NOT NULL`,
-        sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
-      ),
-    );
-
-  const existingSubIds = new Set(existingTxns.map((t) => t.subscription_id));
-
   const created: string[] = [];
 
-  for (const sub of activeSubs) {
-    const effectiveDay = Math.min(sub.billing_day, daysInMonth);
-    if (effectiveDay > today) continue;
-    if (existingSubIds.has(sub.id)) continue;
+  await expo.withTransactionAsync(async () => {
+    const activeSubs = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.is_active, 1));
 
-    try {
+    const existingTxns = await db
+      .select({
+        subscription_id: transactions.subscription_id,
+      })
+      .from(transactions)
+      .where(
+        and(
+          sql`${transactions.subscription_id} IS NOT NULL`,
+          sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+        ),
+      );
+
+    const existingSubIds = new Set(existingTxns.map((t) => t.subscription_id));
+
+    for (const sub of activeSubs) {
+      const effectiveDay = Math.min(sub.billing_day, daysInMonth);
+      if (effectiveDay > today) continue;
+      if (existingSubIds.has(sub.id)) continue;
+
       const billingDate = `${yearMonth}-${String(effectiveDay).padStart(2, "0")}`;
 
       await db.insert(transactions).values({
@@ -146,10 +146,8 @@ export async function processSubscriptions(): Promise<string[]> {
       });
 
       created.push(sub.name);
-    } catch (err) {
-      console.warn(`[Subscriptions] Failed to process "${sub.name}":`, err);
     }
-  }
+  });
 
   return created;
 }

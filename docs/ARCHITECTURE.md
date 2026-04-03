@@ -22,7 +22,12 @@ lib/db/subscriptions.ts subscription queries + processSubscriptions
 
 single shared `db` instance created in `index.ts`, imported by all other db files.
 
-tables created via `db.run(sql\`CREATE TABLE IF NOT EXISTS ...\`)` in `initDB()`. no drizzle-kit migrations — tables are created on first launch, schema is the source of truth.
+two migration strategies run on every app launch (see [DRIZZLE.md](DRIZZLE.md) for details):
+
+1. **inline `CREATE TABLE IF NOT EXISTS`** in `initDB()` — safety net for fresh installs where Drizzle migrations may not exist yet
+2. **Drizzle migrations** via `migrate(db, migrations)` in `connection.ts` — applies generated SQL from `drizzle/` for incremental schema changes
+
+both must be kept in sync with `lib/db/schema.ts` to avoid drift (e.g. missing columns on fresh installs).
 
 ---
 

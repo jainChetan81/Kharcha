@@ -12,5 +12,3 @@ pre-push:
   commands:
     typecheck:
       run: pnpm typecheck
-    doctor:
-      run: pnpm dlx expo-doctor

@@ -53,7 +53,9 @@ This introspects your schema and generates SQL migration(s):
 
 ### 3. Migration Runs Automatically on App Startup
 
-In `lib/db/connection.ts`:
+There are **two migration strategies** that both run on every app launch. They serve different purposes and must be kept in sync.
+
+#### Strategy A: Drizzle Migrations (`lib/db/connection.ts`)
 
 ```typescript
 export async function runMigrations() {
@@ -61,19 +63,32 @@ export async function runMigrations() {
 }
 ```
 
-And in `lib/db/index.ts`:
+Runs generated SQL files from `drizzle/` in order. This is the primary migration mechanism for schema changes tracked by `drizzle-kit`.
+
+#### Strategy B: Inline `CREATE TABLE IF NOT EXISTS` (`lib/db/index.ts`)
 
 ```typescript
 export async function initDB() {
-  // Runs all pending migrations using drizzle-kit/migrator
-  await runMigrations();
+  // Inline CREATE TABLE IF NOT EXISTS for each table
+  await db.run(sql`CREATE TABLE IF NOT EXISTS categories (...)`);
+  await db.run(sql`CREATE TABLE IF NOT EXISTS transactions (...)`);
+  // ... etc
 
-  // Then seed defaults
   await seedDefaults();
 }
 ```
 
-This happens once per app launch in `app/_layout.tsx`:
+These raw SQL statements act as a **safety net** for fresh installs where Drizzle migrations may not have been generated yet (e.g., during early development or if `drizzle/` is missing). Since they use `CREATE TABLE IF NOT EXISTS`, they are no-ops if the tables already exist from Drizzle migrations.
+
+#### Both must be kept in sync
+
+When the Drizzle schema (`lib/db/schema.ts`) changes, the inline `CREATE TABLE` statements in `initDB()` must also be updated to match. If they drift, fresh installs (which hit the `CREATE TABLE IF NOT EXISTS` path first) will create tables missing the new columns, and subsequent Drizzle migrations may fail or produce inconsistent state.
+
+**Example of drift**: The `gmail_message_id` column was added to `transactions` in `lib/db/schema.ts` and in a Drizzle migration, but was initially missing from the inline `CREATE TABLE IF NOT EXISTS` in `initDB()`. This meant fresh installs created the transactions table without `gmail_message_id`, causing gmail sync to fail.
+
+#### Startup sequence
+
+Both strategies run on every app launch via `app/_layout.tsx`:
 
 ```typescript
 useEffect(() => {
@@ -81,7 +96,9 @@ useEffect(() => {
 }, []);
 ```
 
-**Result**: ✅ Database schema stays in sync across all devices automatically.
+Inside `initDB()`, the inline `CREATE TABLE IF NOT EXISTS` statements run first (creating tables if they don't exist), then Drizzle migrations apply any pending schema changes on top.
+
+**Result**: Database schema stays in sync across all devices automatically.
 
 ---
 
@@ -117,6 +134,7 @@ Never edit this manually — `pnpm drizzle:generate` handles it.
 - **Keep schema in version control**: `lib/db/schema.ts` should be committed
 - **Keep migrations in version control**: All `drizzle/*.sql` + `migrations.js`
 - **Generate migrations after schema changes**: Always run `pnpm drizzle:generate`
+- **Update inline CREATE TABLE statements in `initDB()` when schema changes**: Keep them in sync with `lib/db/schema.ts` to avoid drift on fresh installs
 - **Use `onConflictDoNothing()` for idempotent seeds**: Prevents duplicate inserts if app restarts
 - **Test migrations locally**: Run `pnpm ios` with schema changes to verify migrations work
 

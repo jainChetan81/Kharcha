@@ -29,7 +29,10 @@ jobs:
         run: pnpm tsc --noEmit
 
       - name: audit dependencies
-        run: pnpm audit --audit-level=high || true
+        run: pnpm audit --audit-level=high
 
       - name: dead code detection
         run: pnpm knip --no-exit-code
+
+      - name: expo doctor
+        run: pnpm dlx expo-doctor

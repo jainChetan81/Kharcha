@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { type ConfigRow, config } from "./schema";
+import { db } from "./connection";
+import { config } from "./schema";
+import type { ConfigRow } from "./types";
 
 export async function getConfig(key: string): Promise<string | null> {
   const rows = await db

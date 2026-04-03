@@ -17,7 +17,13 @@ jobs:
           cache: pnpm
 
       - name: install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: lint
+        run: pnpm lint
+
+      - name: typecheck
+        run: pnpm typecheck
 
       - name: setup eas
         uses: expo/expo-github-action@v8

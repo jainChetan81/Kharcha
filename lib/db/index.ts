@@ -1,42 +1,25 @@
-import { and, count, desc, eq, gte, lte, min, sql } from "drizzle-orm";
-import { drizzle, type ExpoSQLiteDatabase } from "drizzle-orm/expo-sqlite";
-import * as SQLite from "expo-sqlite";
-import { DB_NAME, type SourceType } from "@/lib/constants";
-import {
-  type Category,
-  categories,
-  config,
-  type NewCategory,
-  type NewSource,
-  type NewTransaction,
-  type Source,
-  sources,
-  type Transaction,
-  transactions,
-} from "./schema";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import type { SourceType } from "@/lib/constants";
+import { db } from "./connection";
+import { categories, config, sources, transactions } from "./schema";
+import type {
+  CategoryBreakdownRow,
+  MonthlySummary,
+  TransactionRow,
+} from "./types";
 
+export { db } from "./connection";
 export type {
   Category,
+  CategoryBreakdownRow,
+  MonthlySummary,
   NewCategory,
   NewSource,
   NewTransaction,
   Source,
   Transaction,
-};
-
-const expo = SQLite.openDatabaseSync(DB_NAME);
-const db: ExpoSQLiteDatabase = drizzle(expo, { logger: __DEV__ });
-
-export type TransactionRow = Transaction & {
-  category_name: string | null;
-  source_name: string | null;
-  source_type: SourceType;
-};
-
-export type MonthlySummary = {
-  total_income: number;
-  total_expenses: number;
-};
+  TransactionRow,
+} from "./types";
 
 export async function initDB() {
   await db.run(sql`
@@ -79,6 +62,7 @@ export async function initDB() {
       source_id INTEGER REFERENCES sources(id),
       subscription_id INTEGER REFERENCES subscriptions(id),
       source_type TEXT NOT NULL DEFAULT 'manual',
+      gmail_message_id TEXT,
       date TEXT NOT NULL,
       note TEXT,
       created_at TEXT DEFAULT (datetime('now'))
@@ -99,6 +83,25 @@ export async function initDB() {
       value TEXT NOT NULL
     )
   `);
+
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
+  );
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)`,
+  );
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_transactions_category_id ON transactions(category_id)`,
+  );
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_transactions_subscription_id ON transactions(subscription_id)`,
+  );
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_transactions_source_type ON transactions(source_type)`,
+  );
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_transactions_gmail_message_id ON transactions(gmail_message_id)`,
+  );
 
   await db
     .insert(config)
@@ -239,21 +242,6 @@ export async function getMonthlySummary(yearMonth: string) {
   return result[0] as MonthlySummary;
 }
 
-export async function getAllCategories() {
-  return (await db.select().from(categories)) as Category[];
-}
-
-export async function getCategoriesByType(type: "income" | "expense") {
-  return (await db
-    .select()
-    .from(categories)
-    .where(eq(categories.type, type))) as Category[];
-}
-
-export async function getAllSources() {
-  return (await db.select().from(sources)) as Source[];
-}
-
 export async function getTransactionsPaginated(
   limit = 10,
   offset = 0,
@@ -355,27 +343,7 @@ export async function deleteTransaction(id: number) {
   return db.delete(transactions).where(eq(transactions.id, id));
 }
 
-export async function addCategory(name: string, type: "income" | "expense") {
-  return db.insert(categories).values({ name, type, is_default: 0 });
-}
-
-export async function deleteCategory(id: number) {
-  return db
-    .delete(categories)
-    .where(and(eq(categories.id, id), eq(categories.is_default, 0)));
-}
-
-export async function addSource(name: string) {
-  return db.insert(sources).values({ name, is_default: 0 });
-}
-
-export async function deleteSource(id: number) {
-  return db
-    .delete(sources)
-    .where(and(eq(sources.id, id), eq(sources.is_default, 0)));
-}
-
-export async function reinsertTransaction(row: {
+export async function restoreTransaction(row: {
   type: "income" | "expense";
   amount: number;
   merchant: string | null;
@@ -400,29 +368,6 @@ export async function reinsertTransaction(row: {
 export async function clearAllTransactions() {
   return db.delete(transactions);
 }
-
-export async function getDataStats() {
-  const txCount = await db.select({ value: count() }).from(transactions);
-  const catCount = await db.select({ value: count() }).from(categories);
-  const srcCount = await db.select({ value: count() }).from(sources);
-  const firstDate = await db
-    .select({ value: min(transactions.date) })
-    .from(transactions);
-
-  return {
-    total_transactions: txCount[0]?.value ?? 0,
-    total_categories: catCount[0]?.value ?? 0,
-    total_sources: srcCount[0]?.value ?? 0,
-    first_transaction_date: firstDate[0]?.value ?? null,
-  };
-}
-
-export type CategoryBreakdownRow = {
-  category_id: number;
-  category_name: string;
-  total: number;
-  percentage: number;
-};
 
 export async function getCategoryBreakdown(yearMonth: string) {
   const rows = await db
@@ -453,4 +398,11 @@ export async function getCategoryBreakdown(yearMonth: string) {
   })) as CategoryBreakdownRow[];
 }
 
-export { db };
+export {
+  addCategory,
+  deleteCategory,
+  getAllCategories,
+  getCategoriesByType,
+} from "./categories";
+export { addSource, deleteSource, getAllSources } from "./sources";
+export { getDataStats } from "./stats";

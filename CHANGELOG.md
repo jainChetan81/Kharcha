@@ -109,12 +109,16 @@ Breaking changes will be noted in `## Migration Guide` section of each release.
 
 ### For Maintainers
 
-1. **Update version** in `app.json`, `package.json`, and `lib/version.ts` (**keep them in sync**)
+1. **Update version** in `app.json`, `package.json`, and `lib/version.ts`
 
    ```bash
-   # Update all three to same version
+   # package.json gets the full semver (with prerelease tag if applicable)
+   package.json: "version": "0.2.0-beta.1"
+
+   # app.json and version.ts use major.minor.patch only
+   # (Expo does not support prerelease suffixes, and version.ts
+   #  compareVersions() only handles major.minor.patch)
    app.json: "version": "0.2.0"
-   package.json: "version": "0.2.0"
    lib/version.ts: const APP_VERSION = "0.2.0"
    ```
 
@@ -151,7 +155,7 @@ Breaking changes will be noted in `## Migration Guide` section of each release.
 - Increment `PATCH` for bug fixes with no schema changes
 - Use `-beta` suffix if unstable (e.g., `0.1.0-beta`)
 
-**Keep all three files in sync** — `app.json`, `package.json`, `lib/version.ts`
+**Keep all three files in sync** — `app.json`, `package.json`, `lib/version.ts`. Note: `package.json` may include a prerelease suffix (e.g., `-beta.1`) that is intentionally omitted from `app.json` and `lib/version.ts` due to Expo and runtime limitations.
 
 ---
 
