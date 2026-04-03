@@ -121,7 +121,7 @@ export default function GmailSyncScreen() {
         return;
       }
 
-      const profileRes = await fetch(`${GMAIL_API.BASE}/profile`, {
+      const profileRes = await fetch(GMAIL_API.PROFILE, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (profileRes.ok) {

@@ -168,7 +168,7 @@ export default function HomeScreen() {
               <Text className="text-sm font-bold text-primary-foreground">
                 {userName
                   .split(" ")
-                  .map((w) => w[0])
+                  .map((w: string) => w[0])
                   .join("")
                   .toUpperCase()
                   .slice(0, 2)}
@@ -268,7 +268,7 @@ export default function HomeScreen() {
               onPress={() => router.push(SCREENS.SUBSCRIPTIONS)}
               className="mt-3"
             >
-              <Text className="text-center text-xs text-[#888888]">
+              <Text className="text-center text-xs text-muted-foreground">
                 ↻ {fmt(subsTotal)} in subscriptions this month
               </Text>
             </Pressable>
@@ -277,7 +277,7 @@ export default function HomeScreen() {
 
         {categoryBreakdown.length > 0 && (
           <View className="px-5 pb-4 pt-2">
-            <Text className="mb-3 text-sm font-semibold uppercase text-[#888888]">
+            <Text className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
               {isCurrentMonth ? "This Month" : format(selectedDate, "MMMM")}
             </Text>
             {categoryBreakdown.map((cat) => {
@@ -305,15 +305,18 @@ export default function HomeScreen() {
                   className="mb-3"
                 >
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-base capitalize text-[#f0f0f0]">
+                    <Text className="text-base capitalize text-foreground">
                       {cat.category_name}
                     </Text>
-                    <Text className="text-sm text-[#888888]">
+                    <Text className="text-sm text-muted-foreground">
                       {fmt(cat.total)}
                       {budget ? ` / ${fmt(budget)}` : ""}
                     </Text>
                   </View>
-                  <View className="mt-1.5 h-1 rounded-full bg-[#2a2a2a]">
+                  <View
+                    className="mt-1.5 h-1 rounded-full"
+                    style={{ backgroundColor: COLORS.BAR_BG }}
+                  >
                     <View
                       className="h-1 rounded-full"
                       style={{

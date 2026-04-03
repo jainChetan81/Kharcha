@@ -4,9 +4,9 @@ import { formatCurrency } from "@/lib/format";
 
 export function useCurrency() {
   const { currency } = useConfig();
-  const format = useCallback(
+  const formatAmount = useCallback(
     (amount: number) => formatCurrency(amount, currency),
     [currency],
   );
-  return { currency, format };
+  return { currency, format: formatAmount };
 }

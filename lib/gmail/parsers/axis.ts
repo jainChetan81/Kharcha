@@ -18,7 +18,6 @@ export const axisUpiDebit: Parser = (body) => {
     merchant: merchantMatch ? merchantMatch[1].trim() : "UPI Payment",
     date: parseAxisDate(dateMatch[1], dateMatch[2]),
     type: TRANSACTION_TYPE.EXPENSE,
-    source: "UPI",
   };
 };
 
@@ -39,7 +38,6 @@ export const axisUpiCredit: Parser = (body) => {
     merchant: merchantMatch ? merchantMatch[1].trim() : "Credit",
     date: parseAxisDate(dateMatch[1], dateMatch[2]),
     type: TRANSACTION_TYPE.INCOME,
-    source: "UPI",
   };
 };
 
@@ -69,7 +67,6 @@ export const axisCreditCard: Parser = (body) => {
     merchant: merchantMatch ? merchantMatch[1].trim() : "Credit Card Payment",
     date,
     type: TRANSACTION_TYPE.EXPENSE,
-    source: "credit card",
   };
 };
 
@@ -90,7 +87,6 @@ export const axisGenericDebit: Parser = (body) => {
     merchant: merchantMatch ? merchantMatch[1].trim() : "Card Payment",
     date: parseAxisDate(dateMatch[1], dateMatch[2]),
     type: TRANSACTION_TYPE.EXPENSE,
-    source: "debit card",
   };
 };
 

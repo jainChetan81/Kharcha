@@ -3,18 +3,18 @@ import type { TransactionRow } from "@/lib/db";
 
 export type CurrencyCode = "INR" | "USD" | "GBP" | "EUR";
 
-const CURRENCY_CONFIG: Record<
+export const CURRENCIES: Record<
   CurrencyCode,
-  { symbol: string; locale: string }
+  { symbol: string; name: string; locale: string }
 > = {
-  INR: { symbol: "₹", locale: "en-IN" },
-  USD: { symbol: "$", locale: "en-US" },
-  GBP: { symbol: "£", locale: "en-GB" },
-  EUR: { symbol: "€", locale: "de-DE" },
+  INR: { symbol: "₹", name: "Indian Rupee", locale: "en-IN" },
+  USD: { symbol: "$", name: "US Dollar", locale: "en-US" },
+  GBP: { symbol: "£", name: "British Pound", locale: "en-GB" },
+  EUR: { symbol: "€", name: "Euro", locale: "de-DE" },
 };
 
 export function formatCurrency(n: number, code: CurrencyCode = "INR") {
-  const { symbol, locale } = CURRENCY_CONFIG[code];
+  const { symbol, locale } = CURRENCIES[code];
   return `${symbol}${n.toLocaleString(locale)}`;
 }
 

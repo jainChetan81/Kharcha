@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { ChevronLeft, Plus, Receipt } from "lucide-react-native";
+import { Plus, Receipt } from "lucide-react-native";
 import {
   Alert,
   Pressable,
@@ -8,9 +8,9 @@ import {
   Switch,
   View,
 } from "react-native";
-import Toast from "react-native-toast-message";
 import { ScreenError } from "@/components/error-boundary";
 import { Icon } from "@/components/ui/icon";
+import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
 import { useRefresh } from "@/hooks/use-refresh";
@@ -20,8 +20,8 @@ import {
   useSubscriptions,
   useToggleSubscription,
 } from "@/hooks/use-subscriptions";
-import { editSubscriptionScreen, SCREENS, TOAST_TYPE } from "@/lib/constants";
-import { cn, isIOS } from "@/lib/utils";
+import { COLORS, editSubscriptionScreen, SCREENS } from "@/lib/constants";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 export default function SubscriptionsScreen() {
   const { format: fmt } = useCurrency();
@@ -46,16 +46,9 @@ export default function SubscriptionsScreen() {
           onPress: async () => {
             try {
               await deleteMutation.mutateAsync(sub.id);
-              Toast.show({
-                type: TOAST_TYPE.SUCCESS,
-                text1: "Subscription deleted",
-              });
+              showSuccessToast("Subscription deleted");
             } catch (err) {
-              Toast.show({
-                type: TOAST_TYPE.ERROR,
-                text1: "Failed",
-                text2: String(err),
-              });
+              showErrorToast("Failed", err);
             }
           },
         },
@@ -87,8 +80,8 @@ export default function SubscriptionsScreen() {
             onValueChange={(val) =>
               toggleMutation.mutate({ id: sub.id, isActive: val })
             }
-            trackColor={{ false: "#2a2a2a", true: "#7c3aed" }}
-            thumbColor="#f0f0f0"
+            trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
+            thumbColor={COLORS.FOREGROUND}
           />
         </View>
       </Pressable>
@@ -97,28 +90,14 @@ export default function SubscriptionsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <View
-        className={cn(
-          "flex-row items-center justify-between bg-background px-6 pb-4",
-          isIOS ? "pt-[60px]" : "pt-12",
-        )}
-      >
-        <Pressable
-          onPress={() => router.back()}
-          className="flex-row items-center py-1"
-        >
-          <Icon as={ChevronLeft} className="mr-1 size-6 text-foreground" />
-          <Text className="text-lg font-bold text-foreground">
-            Subscriptions
-          </Text>
-        </Pressable>
+      <ScreenHeader title="Subscriptions">
         <Pressable
           onPress={() => router.push(`${SCREENS.ADD}?mode=subscription`)}
           className="rounded-xl border border-border bg-card px-3 py-2"
         >
           <Icon as={Plus} className="size-4 text-primary" />
         </Pressable>
-      </View>
+      </ScreenHeader>
 
       {subs.length === 0 ? (
         <View className="flex-1 items-center justify-center">
@@ -143,7 +122,7 @@ export default function SubscriptionsScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#7c3aed"
+              tintColor={COLORS.PRIMARY}
               progressViewOffset={40}
             />
           }

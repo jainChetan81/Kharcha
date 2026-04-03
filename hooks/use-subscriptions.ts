@@ -10,29 +10,21 @@ import {
   toggleSubscription,
   updateSubscription,
 } from "@/lib/db/subscriptions";
+import { useInvalidateTransactions } from "./use-transactions";
 
 export type { SubscriptionRow };
 
 function useInvalidateSubscriptions() {
   const queryClient = useQueryClient();
-  return () =>
-    Promise.all([
+  const invalidateTransactions = useInvalidateTransactions();
+  return async () => {
+    await Promise.all([
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.SUBSCRIPTIONS],
       }),
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TRANSACTIONS],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
-      }),
+      invalidateTransactions(),
     ]);
+  };
 }
 
 export function useSubscriptions() {

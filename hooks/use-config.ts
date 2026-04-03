@@ -1,28 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { QUERY_KEYS } from "@/lib/constants";
+import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
 import { getAllConfig, updateConfig } from "@/lib/db/config";
+import { CURRENCIES, type CurrencyCode } from "@/lib/format";
 
-export type CurrencyCode = "INR" | "USD" | "GBP" | "EUR";
+export { CURRENCIES, type CurrencyCode };
 
-export const CURRENCIES: Record<
-  CurrencyCode,
-  { symbol: string; name: string; locale: string }
-> = {
-  INR: { symbol: "₹", name: "Indian Rupee", locale: "en-IN" },
-  USD: { symbol: "$", name: "US Dollar", locale: "en-US" },
-  GBP: { symbol: "£", name: "British Pound", locale: "en-GB" },
-  EUR: { symbol: "€", name: "Euro", locale: "de-DE" },
-};
-
-export type AppConfig = {
-  currency: CurrencyCode;
-  userName: string;
-};
-
-export function useConfig(): AppConfig & {
-  updateCurrency: (code: CurrencyCode) => Promise<void>;
-  updateUserName: (name: string) => Promise<void>;
-} {
+export function useConfig() {
   const queryClient = useQueryClient();
 
   const { data: raw } = useQuery({
@@ -37,15 +20,15 @@ export function useConfig(): AppConfig & {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CONFIG] }),
   });
 
-  const currency = (raw?.currency ?? "INR") as CurrencyCode;
-  const userName = raw?.userName ?? "User";
+  const currency = (raw?.[CONFIG_KEYS.CURRENCY] ?? "INR") as CurrencyCode;
+  const userName = raw?.[CONFIG_KEYS.USER_NAME] ?? "User";
 
   return {
     currency,
     userName,
     updateCurrency: (code: CurrencyCode) =>
-      mutation.mutateAsync({ key: "currency", value: code }),
+      mutation.mutateAsync({ key: CONFIG_KEYS.CURRENCY, value: code }),
     updateUserName: (name: string) =>
-      mutation.mutateAsync({ key: "userName", value: name }),
+      mutation.mutateAsync({ key: CONFIG_KEYS.USER_NAME, value: name }),
   };
 }

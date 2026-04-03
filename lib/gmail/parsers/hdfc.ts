@@ -14,7 +14,6 @@ export const hdfcDebit: Parser = (body) => {
     merchant: match[3].trim(),
     date: parseHdfcDate(match[4], match[5]),
     type: TRANSACTION_TYPE.EXPENSE,
-    source: "credit card",
   };
 };
 
