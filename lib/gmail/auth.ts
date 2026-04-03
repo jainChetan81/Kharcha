@@ -1,13 +1,43 @@
-import {
-  GoogleSignin,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
 import * as AuthSession from "expo-auth-session";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { BUNDLE_ID, OAUTH_REDIRECT_PATH } from "@/lib/constants";
 import { env } from "@/lib/env";
 import { isAndroid } from "@/lib/utils";
+
+// @react-native-google-signin/google-signin uses a native module (RNGoogleSignin)
+// that only exists in dev client / production builds. In Expo Go, the native
+// bridge isn't registered, and require() throws a fatal Invariant Violation
+// that can't be caught with try/catch. We detect Expo Go via
+// Constants.executionEnvironment and skip the require entirely.
+const isExpoGo =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+type GoogleSigninModule = {
+  GoogleSignin: typeof import("@react-native-google-signin/google-signin")["GoogleSignin"];
+  statusCodes: typeof import("@react-native-google-signin/google-signin")["statusCodes"];
+};
+
+let _gsi: GoogleSigninModule | null = null;
+let _gsiChecked = false;
+
+function getGoogleSignin(): GoogleSigninModule | null {
+  if (!_gsiChecked) {
+    _gsiChecked = true;
+    // Only attempt require() in dev client or production builds
+    // where the native module is actually linked
+    if (!isExpoGo) {
+      try {
+        const mod = require("@react-native-google-signin/google-signin");
+        if (mod?.GoogleSignin) _gsi = mod;
+      } catch {
+        // Native module not linked in this build
+      }
+    }
+  }
+  return _gsi;
+}
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -28,16 +58,17 @@ export const SECURE_STORE_KEYS = {
   TOKEN_EXPIRY: "gmail_token_expiry",
 };
 
-GoogleSignin.configure({
-  webClientId: WEB_CLIENT_ID,
-  offlineAccess: true,
-  scopes: SCOPES,
-});
-
 export async function getValidAccessToken(): Promise<string | null> {
   if (isAndroid) {
+    const gsi = getGoogleSignin();
+    if (!gsi) return null;
     try {
-      const tokens = await GoogleSignin.getTokens();
+      gsi.GoogleSignin.configure({
+        webClientId: WEB_CLIENT_ID,
+        offlineAccess: true,
+        scopes: SCOPES,
+      });
+      const tokens = await gsi.GoogleSignin.getTokens();
       return tokens.accessToken;
     } catch {
       return null;
@@ -110,10 +141,17 @@ export function useGoogleAuth() {
   );
 
   const signInAndroid = async (): Promise<boolean> => {
+    const gsi = getGoogleSignin();
+    if (!gsi) return false;
     try {
-      await GoogleSignin.hasPlayServices();
-      await GoogleSignin.signIn();
-      const tokens = await GoogleSignin.getTokens();
+      gsi.GoogleSignin.configure({
+        webClientId: WEB_CLIENT_ID,
+        offlineAccess: true,
+        scopes: SCOPES,
+      });
+      await gsi.GoogleSignin.hasPlayServices();
+      await gsi.GoogleSignin.signIn();
+      const tokens = await gsi.GoogleSignin.getTokens();
       if (!tokens.accessToken) return false;
 
       await SecureStore.setItemAsync(
@@ -123,8 +161,8 @@ export function useGoogleAuth() {
       return true;
     } catch (error: unknown) {
       const err = error as { code?: string };
-      if (err.code === statusCodes.SIGN_IN_CANCELLED) return false;
-      if (err.code === statusCodes.IN_PROGRESS) return false;
+      if (err.code === gsi.statusCodes.SIGN_IN_CANCELLED) return false;
+      if (err.code === gsi.statusCodes.IN_PROGRESS) return false;
       throw error;
     }
   };
@@ -174,9 +212,12 @@ export function useGoogleAuth() {
 
   const signOut = async () => {
     if (isAndroid) {
-      try {
-        await GoogleSignin.signOut();
-      } catch {}
+      const gsi = getGoogleSignin();
+      if (gsi) {
+        try {
+          await gsi.GoogleSignin.signOut();
+        } catch {}
+      }
     }
     await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.ACCESS_TOKEN);
     await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN);
@@ -185,7 +226,9 @@ export function useGoogleAuth() {
 
   const isConnected = async (): Promise<boolean> => {
     if (isAndroid) {
-      return GoogleSignin.getCurrentUser() !== null;
+      const gsi = getGoogleSignin();
+      if (gsi) return gsi.GoogleSignin.getCurrentUser() !== null;
+      return false;
     }
     const token = await SecureStore.getItemAsync(
       SECURE_STORE_KEYS.REFRESH_TOKEN,

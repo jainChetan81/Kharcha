@@ -56,7 +56,9 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
 
       const listResponse = await fetch(
         `${GMAIL_API.MESSAGES}?q=${encodeURIComponent(query)}&maxResults=50`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
       );
       const listData = await listResponse.json();
 
@@ -66,7 +68,9 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         try {
           const msgResponse = await fetch(
             `${GMAIL_API.MESSAGES}/${message.id}?format=metadata&metadataHeaders=Subject`,
-            { headers: { Authorization: `Bearer ${accessToken}` } },
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            },
           );
           const msgData = await msgResponse.json();
           const body = msgData.snippet ?? "";

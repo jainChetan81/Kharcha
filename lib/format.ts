@@ -1,4 +1,5 @@
 import { format, isToday, isYesterday } from "date-fns";
+import { DATE_FORMAT } from "@/lib/constants";
 import type { TransactionRow } from "@/lib/db";
 
 export type CurrencyCode = "INR" | "USD" | "GBP" | "EUR";
@@ -26,7 +27,7 @@ export function getDateLabel(dateStr: string): string {
   const date = parseDate(dateStr);
   if (isToday(date)) return "Today";
   if (isYesterday(date)) return "Yesterday";
-  return format(date, "dd MMM yyyy");
+  return format(date, DATE_FORMAT);
 }
 
 export type ListItem =

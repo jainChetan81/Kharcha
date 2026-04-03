@@ -28,7 +28,8 @@ export const DB_NAME = "kharcha.db";
 export const PAGE_SIZE = 10;
 
 export const DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm";
-export const DATE_DISPLAY_FORMAT = "dd MMM yyyy, hh:mm a";
+export const DATE_FORMAT = "dd MMM yyyy";
+export const DATE_DISPLAY_FORMAT = `${DATE_FORMAT}, hh:mm a`;
 
 export const TRANSACTION_TYPE = {
   ALL: "all",
@@ -92,7 +93,6 @@ export const CONFIG_KEYS = {
 } as const;
 
 export const SUBSCRIPTION_NOTE = "Auto-created from subscription";
-export const GMAIL_SYNC_NOTE = "synced from gmail";
 
 export const BANK_SENDERS = [
   "alerts@axis.bank.com",
@@ -102,6 +102,14 @@ export const BANK_SENDERS = [
   "alerts@hdfcbank.bank.in",
   "indusind_bank@indusind.com",
 ] as const;
+
+export const DEVICE_TYPE_NAME: Record<number, string> = {
+  0: "Unknown",
+  1: "Phone",
+  2: "Tablet",
+  3: "Desktop",
+  4: "TV",
+};
 
 export const QUERY_KEYS = {
   TRANSACTION: "transaction",

@@ -1,6 +1,5 @@
-import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
+import type { InferSelectModel } from "drizzle-orm";
 import type {
-  budgets,
   categories,
   config,
   sources,
@@ -9,13 +8,9 @@ import type {
 } from "./schema";
 
 export type Category = InferSelectModel<typeof categories>;
-export type NewCategory = InferInsertModel<typeof categories>;
 export type Source = InferSelectModel<typeof sources>;
-export type NewSource = InferInsertModel<typeof sources>;
 export type Transaction = InferSelectModel<typeof transactions>;
-export type NewTransaction = InferInsertModel<typeof transactions>;
 export type Subscription = InferSelectModel<typeof subscriptions>;
-export type Budget = InferSelectModel<typeof budgets>;
 export type ConfigRow = InferSelectModel<typeof config>;
 
 export type TransactionRow = Transaction & {

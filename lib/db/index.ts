@@ -13,9 +13,6 @@ export type {
   Category,
   CategoryBreakdownRow,
   MonthlySummary,
-  NewCategory,
-  NewSource,
-  NewTransaction,
   Source,
   Transaction,
   TransactionRow,
@@ -83,6 +80,16 @@ export async function initDB() {
       value TEXT NOT NULL
     )
   `);
+
+  // Add gmail_message_id column if missing (existing DBs won't have it
+  // since CREATE TABLE IF NOT EXISTS doesn't alter existing tables)
+  try {
+    await db.run(
+      sql`ALTER TABLE transactions ADD COLUMN gmail_message_id TEXT`,
+    );
+  } catch {
+    // Column already exists — safe to ignore
+  }
 
   await db.run(
     sql`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,

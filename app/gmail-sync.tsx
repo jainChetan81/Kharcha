@@ -19,6 +19,7 @@ import { Text } from "@/components/ui/text";
 import { useSyncState } from "@/hooks/use-sync-state";
 import {
   COLORS,
+  DATE_FORMAT,
   GMAIL_API,
   QUERY_KEYS,
   SCREENS,
@@ -295,7 +296,7 @@ export default function GmailSyncScreen() {
                   Fetch emails after
                 </Text>
                 <Text className="text-sm text-primary">
-                  {format(syncFromDate, "dd MMM yyyy")}
+                  {format(syncFromDate, DATE_FORMAT)}
                 </Text>
               </Pressable>
               {showDatePicker && (

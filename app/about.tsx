@@ -8,28 +8,14 @@ import { InfoRow } from "@/components/ui/info-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { useDataStats } from "@/hooks/use-stats";
+import { DATE_FORMAT, DEVICE_TYPE_NAME } from "@/lib/constants";
 import { parseDate } from "@/lib/format";
-
-function getDeviceTypeName(type: Device.DeviceType | null): string {
-  switch (type) {
-    case Device.DeviceType.PHONE:
-      return "Phone";
-    case Device.DeviceType.TABLET:
-      return "Tablet";
-    case Device.DeviceType.DESKTOP:
-      return "Desktop";
-    case Device.DeviceType.TV:
-      return "TV";
-    default:
-      return "Unknown";
-  }
-}
 
 export default function AboutScreen() {
   const { data: stats } = useDataStats();
 
   const firstDate = stats?.first_transaction_date
-    ? format(parseDate(stats.first_transaction_date), "dd MMM yyyy")
+    ? format(parseDate(stats.first_transaction_date), DATE_FORMAT)
     : null;
 
   return (
@@ -59,7 +45,7 @@ export default function AboutScreen() {
         />
         <InfoRow
           label="Device Type"
-          value={getDeviceTypeName(Device.deviceType)}
+          value={DEVICE_TYPE_NAME[Device.deviceType ?? 0] ?? "Unknown"}
         />
 
         <SectionHeader title="Data" />
