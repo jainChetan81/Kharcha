@@ -1,6 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Pressable, View } from "react-native";
-import Toast from "react-native-toast-message";
 import { ScreenError } from "@/components/error-boundary";
 import {
   TransactionForm,
@@ -11,7 +10,8 @@ import {
   useTransactionById,
   useUpdateTransaction,
 } from "@/hooks/use-transactions";
-import { TOAST_TYPE, TRANSACTION_TYPE } from "@/lib/constants";
+import { TRANSACTION_TYPE } from "@/lib/constants";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
 export default function EditTransactionScreen() {
@@ -51,14 +51,10 @@ export default function EditTransactionScreen() {
         date: value.date,
         note: value.note || null,
       });
-      Toast.show({ type: TOAST_TYPE.SUCCESS, text1: "Transaction updated" });
+      showSuccessToast("Transaction updated");
       router.back();
     } catch (err) {
-      Toast.show({
-        type: TOAST_TYPE.ERROR,
-        text1: "Failed to update",
-        text2: String(err),
-      });
+      showErrorToast("Failed to update", err);
     }
   }
 

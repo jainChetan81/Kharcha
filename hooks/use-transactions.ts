@@ -4,6 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { Alert } from "react-native";
 import { PAGE_SIZE, QUERY_KEYS } from "@/lib/constants";
 import {
   clearAllTransactions,
@@ -19,7 +20,7 @@ import {
   type TransactionRow,
   updateTransaction,
 } from "@/lib/db";
-import { showErrorToast, showUndoToast } from "@/lib/toast";
+import { showErrorToast, showSuccessToast, showUndoToast } from "@/lib/toast";
 
 export function useInvalidateTransactions() {
   const queryClient = useQueryClient();
@@ -135,6 +136,31 @@ export function useClearAllTransactions() {
     mutationFn: clearAllTransactions,
     onSuccess: () => invalidate(),
   });
+}
+
+export function useClearTransactionsWithConfirm() {
+  const mutation = useClearAllTransactions();
+  return () => {
+    Alert.alert(
+      "Clear All Transactions",
+      "This will permanently delete all your transactions. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete All",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await mutation.mutateAsync();
+              showSuccessToast("All transactions deleted");
+            } catch (err) {
+              showErrorToast("Failed", err);
+            }
+          },
+        },
+      ],
+    );
+  };
 }
 
 export function useSwipeDelete() {

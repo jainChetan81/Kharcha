@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { CONFIG_KEYS } from "@/lib/constants";
 import { getConfig } from "@/lib/db/config";
 import { useGoogleAuth } from "@/lib/gmail/auth";
 
@@ -19,9 +20,9 @@ export function useSyncState() {
   const loadState = useCallback(async () => {
     const [isConn, synced, fetched, added] = await Promise.all([
       isConnected(),
-      getConfig("gmail_last_synced_at"),
-      getConfig("gmail_emails_fetched"),
-      getConfig("gmail_transactions_added"),
+      getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT),
+      getConfig(CONFIG_KEYS.GMAIL_EMAILS_FETCHED),
+      getConfig(CONFIG_KEYS.GMAIL_TRANSACTIONS_ADDED),
     ]);
     setConnected(isConn);
     setLastSynced(synced);

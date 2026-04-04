@@ -93,6 +93,7 @@ export const CONFIG_KEYS = {
 } as const;
 
 export const SUBSCRIPTION_NOTE = "Auto-created from subscription";
+export const GMAIL_SYNC_NOTE = "synced from gmail";
 
 export const BANK_SENDERS = [
   "alerts@axis.bank.com",

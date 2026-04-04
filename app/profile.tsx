@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { ChevronRight, Database, Mail, Trash2 } from "lucide-react-native";
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { CURRENCIES, type CurrencyCode, useConfig } from "@/hooks/use-config";
-import { useClearAllTransactions } from "@/hooks/use-transactions";
+import { useClearTransactionsWithConfirm } from "@/hooks/use-transactions";
 import { COLORS, SCREENS } from "@/lib/constants";
 import { seedSampleData } from "@/lib/db";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
@@ -23,7 +23,7 @@ export default function ProfileScreen() {
   const [showEditName, setShowEditName] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [draftName, setDraftName] = useState("");
-  const clearTransactionsMutation = useClearAllTransactions();
+  const handleClearTransactions = useClearTransactionsWithConfirm();
 
   const initials = userName
     .split(" ")
@@ -31,28 +31,6 @@ export default function ProfileScreen() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
-
-  function handleClearTransactions() {
-    Alert.alert(
-      "Clear All Transactions",
-      "This will permanently delete all your transactions. This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete All",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await clearTransactionsMutation.mutateAsync();
-              showSuccessToast("All transactions deleted");
-            } catch (err) {
-              showErrorToast("Failed", err);
-            }
-          },
-        },
-      ],
-    );
-  }
 
   async function handleSaveName() {
     const trimmed = draftName.trim();
