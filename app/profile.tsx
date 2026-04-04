@@ -8,7 +8,7 @@ import {
   Trash2,
 } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,10 @@ import { Input } from "@/components/ui/input";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { CURRENCIES, type CurrencyCode, useConfig } from "@/hooks/use-config";
+import {
+  useFeatureFlags,
+  useGmailSyncEnabled,
+} from "@/hooks/use-feature-flags";
 import { useClearTransactionsWithConfirm } from "@/hooks/use-transactions";
 import { COLORS, SCREENS } from "@/lib/constants";
 import { seedSampleData } from "@/lib/db";
@@ -30,6 +34,9 @@ export default function ProfileScreen() {
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [draftName, setDraftName] = useState("");
   const handleClearTransactions = useClearTransactionsWithConfirm();
+
+  const { refetch: refetchFlags, isRefetching } = useFeatureFlags();
+  const gmailSyncEnabled = useGmailSyncEnabled(userName);
 
   const initials = userName
     .split(" ")
@@ -53,6 +60,13 @@ export default function ProfileScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={() => refetchFlags()}
+            tintColor={COLORS.PRIMARY}
+          />
+        }
       >
         <View className="items-center py-6">
           <View className="h-20 w-20 items-center justify-center rounded-full bg-primary">
@@ -94,16 +108,18 @@ export default function ProfileScreen() {
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Manage
         </Text>
-        <Pressable
-          onPress={() => router.push(SCREENS.GMAIL_SYNC)}
-          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Icon as={Mail} className="mr-3 size-4 text-muted-foreground" />
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            Gmail Sync
-          </Text>
-          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-        </Pressable>
+        {gmailSyncEnabled && (
+          <Pressable
+            onPress={() => router.push(SCREENS.GMAIL_SYNC)}
+            className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+          >
+            <Icon as={Mail} className="mr-3 size-4 text-muted-foreground" />
+            <Text className="flex-1 text-sm font-medium text-foreground">
+              Gmail Sync
+            </Text>
+            <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
+          </Pressable>
+        )}
         <Pressable
           onPress={() => router.push(SCREENS.BUDGETS)}
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
@@ -195,23 +211,26 @@ export default function ProfileScreen() {
           placeholderTextColor={COLORS.MUTED}
           autoFocus
         />
-        <Button
-          className="mt-4 h-14 rounded-2xl bg-primary"
-          onPress={handleSaveName}
-          disabled={!draftName.trim()}
-        >
-          <Text className="text-base font-semibold text-primary-foreground">
-            Save
-          </Text>
-        </Button>
-        <Pressable
-          onPress={() => setShowEditName(false)}
-          className={cn("mt-3 items-center py-2", isIOS && "mb-4")}
-        >
-          <Text className="text-sm font-medium text-muted-foreground">
-            Cancel
-          </Text>
-        </Pressable>
+        <View className={cn("mt-4 flex-row gap-3", isIOS && "mb-4")}>
+          <Button
+            variant="outline"
+            className="h-12 flex-1 rounded-xl border-border"
+            onPress={() => setShowEditName(false)}
+          >
+            <Text className="text-sm font-medium text-muted-foreground">
+              Cancel
+            </Text>
+          </Button>
+          <Button
+            className="h-12 flex-1 rounded-xl bg-primary"
+            onPress={handleSaveName}
+            disabled={!draftName.trim()}
+          >
+            <Text className="text-sm font-semibold text-primary-foreground">
+              Save
+            </Text>
+          </Button>
+        </View>
       </BottomSheet>
 
       <BottomSheet

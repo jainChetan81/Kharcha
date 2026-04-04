@@ -1,17 +1,11 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
-import { router } from "expo-router";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
+import { SyncResultsSheet } from "@/components/sync-results-sheet";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { InfoRow } from "@/components/ui/info-row";
@@ -25,13 +19,12 @@ import {
   DATE_FORMAT,
   GMAIL_API,
   QUERY_KEYS,
-  SCREENS,
 } from "@/lib/constants";
 import { deleteConfig, getConfig, updateConfig } from "@/lib/db/config";
 import { useGoogleAuth } from "@/lib/gmail/auth";
 import { type SyncResult, syncGmailTransactions } from "@/lib/gmail/sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
-import { cn, isIOS } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export default function GmailSyncScreen() {
   const queryClient = useQueryClient();
@@ -284,7 +277,7 @@ export default function GmailSyncScreen() {
               <View className="mx-5 flex-row gap-3">
                 <Button
                   variant="outline"
-                  className="h-12 flex-1 rounded-xl border-[#2a2a2a]"
+                  className="h-12 flex-1 rounded-xl border-border"
                   onPress={handleVerify}
                   disabled={busy}
                 >
@@ -301,7 +294,7 @@ export default function GmailSyncScreen() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-12 flex-1 rounded-xl border-[#2a2a2a]"
+                  className="h-12 flex-1 rounded-xl border-border"
                   onPress={handleDisconnect}
                   disabled={busy}
                 >
@@ -314,11 +307,52 @@ export default function GmailSyncScreen() {
           )}
         </ScrollView>
       )}
-      <GmailSyncResultsSheet
-        result={syncResult}
-        visible={showResults}
-        onClose={() => setShowResults(false)}
-      />
+      {syncResult && (
+        <SyncResultsSheet
+          visible={showResults}
+          onClose={() => setShowResults(false)}
+          subtitle={`${syncResult.added + syncResult.failed + syncResult.filtered + syncResult.skipped} emails processed`}
+          emptyMessage="No emails found"
+          stats={[
+            {
+              label: "Duplicates skipped",
+              count: syncResult.skipped,
+              color: COLORS.MUTED,
+            },
+          ]}
+          showViewButton={syncResult.added > 0}
+        >
+          <AccordionSection
+            title="Added"
+            count={syncResult.added}
+            color={COLORS.POSITIVE}
+          >
+            {syncResult.addedEmails.map((e) => (
+              <EmailRow key={`a-${e.id}`} sender={e.sender} text={e.text} />
+            ))}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Failed to parse"
+            count={syncResult.failed}
+            color={COLORS.DANGER}
+          >
+            {syncResult.failedEmails.map((e) => (
+              <EmailRow key={`f-${e.id}`} sender={e.sender} text={e.text} />
+            ))}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Filtered"
+            count={syncResult.filtered}
+            color={COLORS.MUTED}
+          >
+            {syncResult.filteredEmails.map((e) => (
+              <EmailRow key={`x-${e.id}`} sender={e.sender} text={e.text} />
+            ))}
+          </AccordionSection>
+        </SyncResultsSheet>
+      )}
     </View>
   );
 }
@@ -373,116 +407,6 @@ function EmailRow({ sender, text }: { sender: string; text: string }) {
       <Text className="text-xs font-medium text-primary">{shortSender}</Text>
       <Text className="mt-0.5 text-sm text-muted-foreground">{text}</Text>
     </View>
-  );
-}
-
-function GmailSyncResultsSheet({
-  result,
-  visible,
-  onClose,
-}: {
-  result: SyncResult | null;
-  visible: boolean;
-  onClose: () => void;
-}) {
-  if (!result) return null;
-
-  const totalProcessed =
-    result.added + result.failed + result.filtered + result.skipped;
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <Pressable className="flex-1 bg-black/50" onPress={onClose} />
-      <View className="rounded-t-2xl bg-card px-5 pb-6 pt-5">
-        <View className="mb-4 flex-row items-center justify-between">
-          <Text className="text-base font-bold text-foreground">
-            Sync Results
-          </Text>
-          <Text className="text-xs text-muted-foreground">
-            {totalProcessed} emails processed
-          </Text>
-        </View>
-
-        {totalProcessed === 0 && (
-          <Text className="py-8 text-center text-sm text-muted-foreground">
-            No emails found
-          </Text>
-        )}
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          style={{ maxHeight: 400 }}
-        >
-          <AccordionSection
-            title="Added"
-            count={result.added}
-            color={COLORS.POSITIVE}
-          >
-            {result.addedEmails.map((e) => (
-              <EmailRow key={`a-${e.id}`} sender={e.sender} text={e.text} />
-            ))}
-          </AccordionSection>
-
-          <AccordionSection
-            title="Failed to parse"
-            count={result.failed}
-            color={COLORS.DANGER}
-          >
-            {result.failedEmails.map((e) => (
-              <EmailRow key={`f-${e.id}`} sender={e.sender} text={e.text} />
-            ))}
-          </AccordionSection>
-
-          <AccordionSection
-            title="Filtered"
-            count={result.filtered}
-            color={COLORS.MUTED}
-          >
-            {result.filteredEmails.map((e) => (
-              <EmailRow key={`x-${e.id}`} sender={e.sender} text={e.text} />
-            ))}
-          </AccordionSection>
-
-          {result.skipped > 0 && (
-            <View className="flex-row items-center gap-2 rounded-xl bg-background px-4 py-3">
-              <View className="h-2 w-2 rounded-full bg-muted-foreground" />
-              <Text className="text-sm text-muted-foreground">
-                {result.skipped} duplicates skipped
-              </Text>
-            </View>
-          )}
-        </ScrollView>
-
-        <View className={cn("mt-4 flex-row gap-3", isIOS && "mb-4")}>
-          {result.added > 0 && (
-            <Pressable
-              onPress={() => {
-                onClose();
-                router.push(`${SCREENS.HISTORY}?source_type=synced`);
-              }}
-              className="flex-1 items-center rounded-xl border border-border py-3"
-            >
-              <Text className="text-sm font-semibold text-foreground">
-                View
-              </Text>
-            </Pressable>
-          )}
-          <Pressable
-            onPress={onClose}
-            className="flex-1 items-center rounded-xl bg-primary py-3"
-          >
-            <Text className="text-sm font-semibold text-primary-foreground">
-              Done
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
   );
 }
 

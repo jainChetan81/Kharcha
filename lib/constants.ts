@@ -128,4 +128,5 @@ export const QUERY_KEYS = {
   CONFIG: "config",
   BUDGETS: "budgets",
   SUBSCRIPTIONS: "subscriptions",
+  FEATURE_FLAGS: "feature-flags",
 } as const;

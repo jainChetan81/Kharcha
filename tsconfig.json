@@ -6,5 +6,6 @@
     "paths": {
       "@/*": ["./*"]
     }
-  }
+  },
+  "exclude": ["kharcha-backend"]
 }

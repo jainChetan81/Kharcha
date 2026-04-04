@@ -1,9 +1,9 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
+import { getIosIdForVendorAsync } from "expo-application";
 import * as Clipboard from "expo-clipboard";
-import { randomUUID } from "expo-crypto";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { SyncResultsSheet } from "@/components/sync-results-sheet";
@@ -15,9 +15,8 @@ import { Text } from "@/components/ui/text";
 import { COLORS, CONFIG_KEYS, DATE_FORMAT, QUERY_KEYS } from "@/lib/constants";
 import { insertTransaction, syncedTransactionExists } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
+import { env } from "@/lib/env";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 async function parseErrorResponse(
   res: Response,
@@ -61,7 +60,8 @@ async function getOrCreateDeviceId(): Promise<string> {
   const existing = await getConfig(CONFIG_KEYS.DEVICE_ID);
   if (existing) return existing;
 
-  const id = `kharcha-${randomUUID()}`;
+  const vendorId = await getIosIdForVendorAsync();
+  const id = `kharcha-${vendorId ?? crypto.randomUUID()}`;
   await updateConfig(CONFIG_KEYS.DEVICE_ID, id);
   return id;
 }
@@ -89,19 +89,13 @@ export default function DeviceSyncScreen() {
 
   const isRegistered = !!settings?.forwardingEmail;
 
-  // Initialize syncFromDate from stored timestamp
-  if (
-    settings?.lastSyncedAt &&
-    syncFromDate.toISOString() !== settings.lastSyncedAt
-  ) {
+  useEffect(() => {
+    if (!settings?.lastSyncedAt) return;
     const stored = new Date(settings.lastSyncedAt);
-    if (
-      !Number.isNaN(stored.getTime()) &&
-      stored.getTime() !== syncFromDate.getTime()
-    ) {
+    if (!Number.isNaN(stored.getTime())) {
       setSyncFromDate(stored);
     }
-  }
+  }, [settings?.lastSyncedAt]);
 
   async function handleUpdateSyncFrom(date: Date) {
     setSyncFromDate(date);
@@ -117,7 +111,7 @@ export default function DeviceSyncScreen() {
       const deviceId = settings?.deviceId;
       if (!deviceId) throw new Error("No device ID");
 
-      const res = await fetch(`${API_URL}/register`, {
+      const res = await fetch(`${env.API_URL}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ device_id: deviceId }),
@@ -151,9 +145,16 @@ export default function DeviceSyncScreen() {
       if (!deviceId) throw new Error("Not registered");
 
       const params = new URLSearchParams();
-      params.set("last_synced_at", syncFromDate.toISOString());
+      const startOfMonth = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        1,
+      );
+      if (syncFromDate.getTime() !== startOfMonth.getTime()) {
+        params.set("last_synced_at", syncFromDate.toISOString());
+      }
 
-      const url = `${API_URL}/sync${params.toString() ? `?${params}` : ""}`;
+      const url = `${env.API_URL}/sync${params.toString() ? `?${params}` : ""}`;
       const res = await fetch(url, {
         headers: { "x-device-id": deviceId },
       });
@@ -238,7 +239,7 @@ export default function DeviceSyncScreen() {
         >
           <SectionHeader title="User ID" />
           <Pressable
-            onLongPress={() => {
+            onPress={() => {
               if (settings?.deviceId)
                 handleCopyToClipboard(settings.deviceId, "User ID");
             }}
@@ -248,7 +249,7 @@ export default function DeviceSyncScreen() {
               {settings?.deviceId ?? "—"}
             </Text>
             <Text className="mt-1 text-xs text-muted-foreground/60">
-              Long press to copy
+              Tap to copy
             </Text>
           </Pressable>
 
@@ -264,7 +265,7 @@ export default function DeviceSyncScreen() {
 
           {isRegistered && settings?.forwardingEmail && (
             <Pressable
-              onLongPress={() =>
+              onPress={() =>
                 handleCopyToClipboard(
                   settings.forwardingEmail ?? "",
                   "Forwarding email",
@@ -276,7 +277,7 @@ export default function DeviceSyncScreen() {
                 {settings.forwardingEmail}
               </Text>
               <Text className="mt-1 text-xs text-muted-foreground/60">
-                Long press to copy
+                Tap to copy
               </Text>
             </Pressable>
           )}
