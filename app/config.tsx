@@ -1,12 +1,9 @@
-import { router } from "expo-router";
-import { ChevronRight, Lock, Plus, Trash2 } from "lucide-react-native";
+import { Lock, Plus, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import { Alert, Pressable, ScrollView, View } from "react-native";
+import { AddItemSheet } from "@/components/add-item-sheet";
 import { ScreenError } from "@/components/error-boundary";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { Input } from "@/components/ui/input";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Text } from "@/components/ui/text";
@@ -20,10 +17,8 @@ import {
   useAllSources,
   useDeleteSource,
 } from "@/hooks/use-sources";
-import { useClearTransactionsWithConfirm } from "@/hooks/use-transactions";
-import { COLORS, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
+import { TRANSACTION_TYPE } from "@/lib/constants";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
-import { cn, isIOS } from "@/lib/utils";
 
 function ConfigRow({
   label,
@@ -62,11 +57,9 @@ function ConfigRow({
 export default function ConfigScreen() {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddSource, setShowAddSource] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryType, setNewCategoryType] = useState<"income" | "expense">(
     TRANSACTION_TYPE.EXPENSE,
   );
-  const [newSourceName, setNewSourceName] = useState("");
 
   const { data: categories = [] } = useAllCategories();
   const { data: sources = [] } = useAllSources();
@@ -75,26 +68,12 @@ export default function ConfigScreen() {
   const deleteCategoryMutation = useDeleteCategory();
   const addSourceMutation = useAddSource();
   const deleteSourceMutation = useDeleteSource();
-  const handleClearTransactions = useClearTransactionsWithConfirm();
   const expenseCategories = categories.filter(
     (c) => c.type === TRANSACTION_TYPE.EXPENSE,
   );
   const incomeCategories = categories.filter(
     (c) => c.type === TRANSACTION_TYPE.INCOME,
   );
-
-  async function handleAddCategory() {
-    const name = newCategoryName.trim();
-    if (!name) return;
-    try {
-      await addCategoryMutation.mutateAsync({ name, type: newCategoryType });
-      setNewCategoryName("");
-      setShowAddCategory(false);
-      showSuccessToast("Category added");
-    } catch (err) {
-      showErrorToast("Failed", err);
-    }
-  }
 
   function handleDeleteCategory(id: number) {
     Alert.alert("Delete Category", "This will remove the category.", [
@@ -112,19 +91,6 @@ export default function ConfigScreen() {
         },
       },
     ]);
-  }
-
-  async function handleAddSource() {
-    const name = newSourceName.trim();
-    if (!name) return;
-    try {
-      await addSourceMutation.mutateAsync(name);
-      setNewSourceName("");
-      setShowAddSource(false);
-      showSuccessToast("Source added");
-    } catch (err) {
-      showErrorToast("Failed", err);
-    }
   }
 
   function handleDeleteSource(id: number) {
@@ -165,7 +131,6 @@ export default function ConfigScreen() {
         <Pressable
           onPress={() => {
             setNewCategoryType(TRANSACTION_TYPE.EXPENSE);
-            setNewCategoryName("");
             setShowAddCategory(true);
           }}
           className="mx-5 mt-2 flex-row items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3"
@@ -188,7 +153,6 @@ export default function ConfigScreen() {
         <Pressable
           onPress={() => {
             setNewCategoryType(TRANSACTION_TYPE.INCOME);
-            setNewCategoryName("");
             setShowAddCategory(true);
           }}
           className="mx-5 mt-2 flex-row items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3"
@@ -209,106 +173,42 @@ export default function ConfigScreen() {
           />
         ))}
         <Pressable
-          onPress={() => {
-            setNewSourceName("");
-            setShowAddSource(true);
-          }}
+          onPress={() => setShowAddSource(true)}
           className="mx-5 mt-2 flex-row items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3"
         >
           <Icon as={Plus} className="size-4 text-primary" />
           <Text className="text-sm font-medium text-primary">Add Source</Text>
         </Pressable>
-
-        <SectionHeader title="Data" />
-        <Pressable
-          onPress={handleClearTransactions}
-          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Text className="flex-1 text-sm font-medium text-negative">
-            Clear All Transactions
-          </Text>
-          <Icon as={Trash2} className="size-4 text-negative" />
-        </Pressable>
-        <Pressable
-          onPress={() => router.push(SCREENS.ABOUT)}
-          className="mx-5 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            About
-          </Text>
-          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-        </Pressable>
       </ScrollView>
 
-      <BottomSheet
+      <AddItemSheet
         visible={showAddCategory}
         onClose={() => setShowAddCategory(false)}
-        avoidKeyboard
-      >
-        <Text className="mb-4 text-base font-bold text-foreground">
-          Add{" "}
-          {newCategoryType === TRANSACTION_TYPE.INCOME ? "Income" : "Expense"}{" "}
-          Category
-        </Text>
-        <Input
-          placeholder="Category name"
-          value={newCategoryName}
-          onChangeText={setNewCategoryName}
-          placeholderTextColor={COLORS.MUTED}
-          autoFocus
-        />
-        <Button
-          className="mt-4 h-14 rounded-2xl bg-primary"
-          onPress={handleAddCategory}
-          disabled={!newCategoryName.trim()}
-        >
-          <Text className="text-base font-semibold text-primary-foreground">
-            Add Category
-          </Text>
-        </Button>
-        <Pressable
-          onPress={() => setShowAddCategory(false)}
-          className={cn("mt-3 items-center py-2", isIOS && "mb-4")}
-        >
-          <Text className="text-sm font-medium text-muted-foreground">
-            Cancel
-          </Text>
-        </Pressable>
-      </BottomSheet>
+        title={`Add ${newCategoryType === TRANSACTION_TYPE.INCOME ? "Income" : "Expense"} Category`}
+        placeholder="Category name"
+        submitLabel="Add Category"
+        onAdd={async (name) => {
+          await addCategoryMutation.mutateAsync({
+            name,
+            type: newCategoryType,
+          });
+          setShowAddCategory(false);
+          showSuccessToast("Category added");
+        }}
+      />
 
-      <BottomSheet
+      <AddItemSheet
         visible={showAddSource}
         onClose={() => setShowAddSource(false)}
-        avoidKeyboard
-      >
-        <Text className="mb-4 text-base font-bold text-foreground">
-          Add Payment Source
-        </Text>
-        <Input
-          placeholder="Source name"
-          value={newSourceName}
-          onChangeText={setNewSourceName}
-          placeholderTextColor={COLORS.MUTED}
-          autoFocus
-        />
-        <Button
-          className="mt-4 h-14 rounded-2xl bg-primary"
-          onPress={handleAddSource}
-          disabled={!newSourceName.trim()}
-        >
-          <Text className="text-base font-semibold text-primary-foreground">
-            Add Source
-          </Text>
-        </Button>
-        <Pressable
-          onPress={() => setShowAddSource(false)}
-          className={cn("mt-3 items-center py-2", isIOS && "mb-4")}
-        >
-          <Text className="text-sm font-medium text-muted-foreground">
-            Cancel
-          </Text>
-        </Pressable>
-      </BottomSheet>
+        title="Add Payment Source"
+        placeholder="Source name"
+        submitLabel="Add Source"
+        onAdd={async (name) => {
+          await addSourceMutation.mutateAsync(name);
+          setShowAddSource(false);
+          showSuccessToast("Source added");
+        }}
+      />
     </View>
   );
 }

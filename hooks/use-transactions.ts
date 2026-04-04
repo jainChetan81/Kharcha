@@ -5,7 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { Alert } from "react-native";
-import { PAGE_SIZE, QUERY_KEYS } from "@/lib/constants";
+import { CONFIG_KEYS, PAGE_SIZE, QUERY_KEYS } from "@/lib/constants";
 import {
   clearAllTransactions,
   deleteTransaction,
@@ -20,6 +20,7 @@ import {
   type TransactionRow,
   updateTransaction,
 } from "@/lib/db";
+import { deleteConfig } from "@/lib/db/config";
 import { showErrorToast, showSuccessToast, showUndoToast } from "@/lib/toast";
 
 export function useInvalidateTransactions() {
@@ -133,7 +134,11 @@ export function useRestoreTransaction() {
 export function useClearAllTransactions() {
   const invalidate = useInvalidateTransactions();
   return useMutation({
-    mutationFn: clearAllTransactions,
+    mutationFn: async () => {
+      await clearAllTransactions();
+      await deleteConfig(CONFIG_KEYS.BACKEND_LAST_SYNCED_AT);
+      await deleteConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT);
+    },
     onSuccess: () => invalidate(),
   });
 }

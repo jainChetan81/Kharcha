@@ -77,21 +77,16 @@ export default function GmailSyncScreen() {
     try {
       const token = await getValidAccessToken();
       if (!token) {
-        showErrorToast(
-          "Connection failed",
-          "No valid access token — try reconnecting",
-        );
+        await handleDisconnect();
+        showErrorToast("Session expired", "Please reconnect your Gmail");
         return;
       }
       const res = await fetch(`${GMAIL_API.MESSAGES}?maxResults=1`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        const err = await res.json();
-        showErrorToast(
-          "Connection failed",
-          err.error?.message ?? "Try reconnecting",
-        );
+        await handleDisconnect();
+        showErrorToast("Session expired", "Please reconnect your Gmail");
         return;
       }
 
@@ -105,7 +100,8 @@ export default function GmailSyncScreen() {
 
       showSuccessToast("Connection verified");
     } catch {
-      showErrorToast("Connection failed", "Try reconnecting");
+      await handleDisconnect();
+      showErrorToast("Session expired", "Please reconnect your Gmail");
     } finally {
       setVerifying(false);
     }
@@ -318,7 +314,7 @@ export default function GmailSyncScreen() {
           )}
         </ScrollView>
       )}
-      <SyncResultsSheet
+      <GmailSyncResultsSheet
         result={syncResult}
         visible={showResults}
         onClose={() => setShowResults(false)}
@@ -380,7 +376,7 @@ function EmailRow({ sender, text }: { sender: string; text: string }) {
   );
 }
 
-function SyncResultsSheet({
+function GmailSyncResultsSheet({
   result,
   visible,
   onClose,

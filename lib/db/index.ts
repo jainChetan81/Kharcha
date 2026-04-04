@@ -405,6 +405,24 @@ export async function getCategoryBreakdown(yearMonth: string) {
   })) as CategoryBreakdownRow[];
 }
 
+export async function syncedTransactionExists(
+  date: string,
+  amount: number,
+): Promise<boolean> {
+  const rows = await db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.date, date),
+        eq(transactions.amount, amount),
+        eq(transactions.source_type, "synced"),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
 export {
   addCategory,
   deleteCategory,

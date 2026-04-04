@@ -1,6 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { ChevronRight, Database, Mail, Trash2 } from "lucide-react-native";
+import {
+  ChevronRight,
+  Database,
+  Mail,
+  RefreshCw,
+  Trash2,
+} from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
@@ -113,6 +119,20 @@ export default function ProfileScreen() {
         >
           <Text className="flex-1 text-sm font-medium text-foreground">
             Subscriptions
+          </Text>
+          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
+        </Pressable>
+
+        <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Sync
+        </Text>
+        <Pressable
+          onPress={() => router.push(SCREENS.DEVICE_SYNC)}
+          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Icon as={RefreshCw} className="mr-3 size-4 text-muted-foreground" />
+          <Text className="flex-1 text-sm font-medium text-foreground">
+            Device Sync
           </Text>
           <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
         </Pressable>

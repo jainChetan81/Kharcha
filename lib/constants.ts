@@ -10,6 +10,7 @@ export const SCREENS = {
   EDIT: "/edit",
   EDIT_SUBSCRIPTION: "/edit-subscription",
   GMAIL_SYNC: "/gmail-sync",
+  DEVICE_SYNC: "/settings/sync",
 } as const;
 
 export const BUNDLE_ID = "com.chetanjain.kharcha" as const;
@@ -90,6 +91,9 @@ export const CONFIG_KEYS = {
   GMAIL_LAST_SYNCED_AT: "gmail_last_synced_at",
   GMAIL_EMAILS_FETCHED: "gmail_emails_fetched",
   GMAIL_TRANSACTIONS_ADDED: "gmail_transactions_added",
+  DEVICE_ID: "device_id",
+  BACKEND_FORWARDING_EMAIL: "backend_forwarding_email",
+  BACKEND_LAST_SYNCED_AT: "backend_last_synced_at",
 } as const;
 
 export const SUBSCRIPTION_NOTE = "Auto-created from subscription";
