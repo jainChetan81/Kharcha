@@ -25,7 +25,6 @@
 	"dependencies": {
 		"@react-native-community/datetimepicker": "8.6.0",
 		"@react-native-google-signin/google-signin": "^16.1.2",
-		"@rn-primitives/select": "^1.2.0",
 		"@rn-primitives/slot": "^1.2.0",
 		"@shopify/flash-list": "2.0.2",
 		"@tanstack/react-form": "^1.28.5",
@@ -38,7 +37,6 @@
 		"expo-application": "~55.0.10",
 		"expo-auth-session": "~55.0.10",
 		"expo-constants": "~55.0.9",
-		"expo-crypto": "~55.0.10",
 		"expo-device": "~55.0.10",
 		"expo-linear-gradient": "^55.0.11",
 		"expo-linking": "~55.0.9",

@@ -63,7 +63,7 @@ components/
   transaction-form.tsx        shared add/edit form (lockType prop for subscriptions)
   subscription-form.tsx       subscription creation with day picker
   transaction-item.tsx        swipeable row with SUB badge for subscriptions
-  ui/                         button, card, icon, input, select, text
+  ui/                         button, icon, input, text, chip-picker, field-error, screen-header, etc.
 
 hooks/                        all data access — screens never call useQuery directly
   use-transactions.ts         queries + mutations + swipe-delete + invalidation
@@ -75,6 +75,7 @@ hooks/                        all data access — screens never call useQuery di
   use-currency.ts             { currency, format } helper
   use-refresh.ts              pull-to-refresh (invalidates all queries)
   use-stats.ts                data stats
+  use-sync-state.ts           gmail sync state (last synced, emails fetched, etc.)
 
 lib/db/
   schema.ts                   drizzle tables + inferred types (InferSelectModel)
@@ -86,12 +87,13 @@ lib/db/
 
 lib/gmail/
   auth.ts                     useGoogleAuth hook (oauth, token refresh, secure store)
-  parser.ts                   axis bank + hdfc email parsing
+  parsers/                    bank email parsers (axis, hdfc, indusind) + filter
   sync.ts                     gmail API fetch + parse + dedup + insert
 
 lib/
   env.ts                      required env validation (crashes on missing vars)
-  constants.ts                SCREENS, QUERY_KEYS, COLORS, TOAST_TYPE, TRANSACTION_TYPE
+  constants.ts                SCREENS, QUERY_KEYS, COLORS, CONFIG_KEYS, TOAST_TYPE, TRANSACTION_TYPE
+  toast.ts                    showErrorToast, showSuccessToast, showUndoToast helpers
   format.ts                   formatCurrency, parseDate, buildListData
   utils.ts                    cn(), isIOS
 ```

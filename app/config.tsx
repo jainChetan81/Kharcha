@@ -20,7 +20,7 @@ import {
   useAllSources,
   useDeleteSource,
 } from "@/hooks/use-sources";
-import { useClearAllTransactions } from "@/hooks/use-transactions";
+import { useClearTransactionsWithConfirm } from "@/hooks/use-transactions";
 import { COLORS, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
@@ -75,29 +75,7 @@ export default function ConfigScreen() {
   const deleteCategoryMutation = useDeleteCategory();
   const addSourceMutation = useAddSource();
   const deleteSourceMutation = useDeleteSource();
-  const clearAllMutation = useClearAllTransactions();
-
-  function handleClearTransactions() {
-    Alert.alert(
-      "Clear All Transactions",
-      "This will permanently delete all your transactions. This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete All",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await clearAllMutation.mutateAsync();
-              showSuccessToast("All transactions deleted");
-            } catch (err) {
-              showErrorToast("Failed", err);
-            }
-          },
-        },
-      ],
-    );
-  }
+  const handleClearTransactions = useClearTransactionsWithConfirm();
   const expenseCategories = categories.filter(
     (c) => c.type === TRANSACTION_TYPE.EXPENSE,
   );

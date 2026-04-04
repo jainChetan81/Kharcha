@@ -1,5 +1,5 @@
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
-import type { SourceType } from "@/lib/constants";
+import { CONFIG_KEYS, type SourceType } from "@/lib/constants";
 import { db } from "./connection";
 import { categories, config, sources, transactions } from "./schema";
 import type {
@@ -113,8 +113,8 @@ export async function initDB() {
   await db
     .insert(config)
     .values([
-      { key: "currency", value: "INR" },
-      { key: "userName", value: "User" },
+      { key: CONFIG_KEYS.CURRENCY, value: "INR" },
+      { key: CONFIG_KEYS.USER_NAME, value: "User" },
     ])
     .onConflictDoNothing();
 

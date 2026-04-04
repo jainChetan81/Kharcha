@@ -1,13 +1,14 @@
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
-import Toast from "react-native-toast-message";
 import { Button } from "@/components/ui/button";
 import { ChipPicker } from "@/components/ui/chip-picker";
+import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { QUERY_KEYS } from "@/lib/constants";
 import { getAllSources, getCategoriesByType } from "@/lib/db";
+import { showErrorToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 export function SubscriptionForm({
@@ -76,11 +77,7 @@ export function SubscriptionForm({
               onChangeText={(v) => field.handleChange(v)}
               placeholderTextColor="#888888"
             />
-            {field.state.meta.errors.length > 0 && (
-              <Text className="mt-1 text-xs text-negative">
-                {field.state.meta.errors[0]}
-              </Text>
-            )}
+            <FieldError errors={field.state.meta.errors as string[]} />
           </View>
         )}
       </form.Field>
@@ -112,11 +109,7 @@ export function SubscriptionForm({
               className="h-14 text-2xl font-bold"
               placeholderTextColor="#888888"
             />
-            {field.state.meta.errors.length > 0 && (
-              <Text className="mt-1 text-xs text-negative">
-                {field.state.meta.errors[0]}
-              </Text>
-            )}
+            <FieldError errors={field.state.meta.errors as string[]} />
           </View>
         )}
       </form.Field>
@@ -172,11 +165,7 @@ export function SubscriptionForm({
                 Renews on day {field.state.value} of every month
               </Text>
             )}
-            {field.state.meta.errors.length > 0 && (
-              <Text className="mt-1 text-xs text-negative">
-                {field.state.meta.errors[0]}
-              </Text>
-            )}
+            <FieldError errors={field.state.meta.errors as string[]} />
           </View>
         )}
       </form.Field>
@@ -200,11 +189,7 @@ export function SubscriptionForm({
               selectedId={field.state.value}
               onSelect={(id) => field.handleChange(id)}
             />
-            {field.state.meta.errors.length > 0 && (
-              <Text className="mt-1 text-xs text-negative">
-                {field.state.meta.errors[0]}
-              </Text>
-            )}
+            <FieldError errors={field.state.meta.errors as string[]} />
           </View>
         )}
       </form.Field>
@@ -238,11 +223,7 @@ export function SubscriptionForm({
                   .flatMap((m) => (m as { errors: string[] }).errors)
                   .filter(Boolean);
                 if (allErrors.length > 0) {
-                  Toast.show({
-                    type: "error",
-                    text1: "Missing fields",
-                    text2: allErrors[0] as string,
-                  });
+                  showErrorToast("Missing fields", allErrors[0]);
                 }
               }
             }}

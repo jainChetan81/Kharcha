@@ -1,5 +1,10 @@
 import { and, eq } from "drizzle-orm";
-import { BANK_SENDERS, GMAIL_API } from "@/lib/constants";
+import {
+  BANK_SENDERS,
+  CONFIG_KEYS,
+  GMAIL_API,
+  GMAIL_SYNC_NOTE,
+} from "@/lib/constants";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import { db } from "@/lib/db/connection";
 import { categories, transactions } from "@/lib/db/schema";
@@ -31,7 +36,14 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
   const accessToken = await getValidAccessToken();
   if (!accessToken) throw new Error("Not authenticated");
 
-  const lastSyncedAt = await getConfig("gmail_last_synced_at");
+  const lastSyncedAt = await getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT);
+
+  const defaultCategory = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(and(eq(categories.name, "other"), eq(categories.type, "expense")))
+    .limit(1);
+
   const result: SyncResult = {
     added: 0,
     skipped: 0,
@@ -122,14 +134,6 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             continue;
           }
 
-          const defaultCategory = await db
-            .select({ id: categories.id })
-            .from(categories)
-            .where(
-              and(eq(categories.name, "other"), eq(categories.type, "expense")),
-            )
-            .limit(1);
-
           await db.insert(transactions).values({
             amount: parsed.amount,
             merchant: parsed.merchant,
@@ -137,7 +141,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             source_id: null,
             gmail_message_id: message.id,
             date: parsed.date,
-            note: "synced from gmail",
+            note: GMAIL_SYNC_NOTE,
             type: parsed.type,
             source_type: "synced",
           });
@@ -174,7 +178,10 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     }
   }
 
-  await updateConfig("gmail_last_synced_at", new Date().toISOString());
+  await updateConfig(
+    CONFIG_KEYS.GMAIL_LAST_SYNCED_AT,
+    new Date().toISOString(),
+  );
 
   return result;
 }

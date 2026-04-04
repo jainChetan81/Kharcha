@@ -8,10 +8,10 @@ import {
   Switch,
   View,
 } from "react-native";
-import Toast from "react-native-toast-message";
 import { ScreenError } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
 import { ChipPicker } from "@/components/ui/chip-picker";
+import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import {
@@ -19,8 +19,9 @@ import {
   useToggleSubscription,
   useUpdateSubscription,
 } from "@/hooks/use-subscriptions";
-import { QUERY_KEYS, TOAST_TYPE } from "@/lib/constants";
+import { QUERY_KEYS } from "@/lib/constants";
 import { getAllSources, getCategoriesByType } from "@/lib/db";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
 export default function EditSubscriptionScreen() {
@@ -62,17 +63,10 @@ export default function EditSubscriptionScreen() {
           categoryId: value.categoryId,
           sourceId: value.sourceId,
         });
-        Toast.show({
-          type: TOAST_TYPE.SUCCESS,
-          text1: "Subscription updated",
-        });
+        showSuccessToast("Subscription updated");
         router.back();
       } catch (err) {
-        Toast.show({
-          type: TOAST_TYPE.ERROR,
-          text1: "Failed to update",
-          text2: String(err),
-        });
+        showErrorToast("Failed to update", err);
       }
     },
   });
@@ -141,11 +135,7 @@ export default function EditSubscriptionScreen() {
                 onChangeText={(v) => field.handleChange(v)}
                 placeholderTextColor="#888888"
               />
-              {field.state.meta.errors.length > 0 && (
-                <Text className="mt-1 text-xs text-negative">
-                  {field.state.meta.errors[0]}
-                </Text>
-              )}
+              <FieldError errors={field.state.meta.errors as string[]} />
             </View>
           )}
         </form.Field>
@@ -175,11 +165,7 @@ export default function EditSubscriptionScreen() {
                 className="h-14 text-2xl font-bold"
                 placeholderTextColor="#888888"
               />
-              {field.state.meta.errors.length > 0 && (
-                <Text className="mt-1 text-xs text-negative">
-                  {field.state.meta.errors[0]}
-                </Text>
-              )}
+              <FieldError errors={field.state.meta.errors as string[]} />
             </View>
           )}
         </form.Field>

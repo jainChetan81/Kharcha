@@ -11,7 +11,6 @@ import {
   ScrollView,
   View,
 } from "react-native";
-import Toast from "react-native-toast-message";
 import { Button } from "@/components/ui/button";
 import { ChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
@@ -25,6 +24,7 @@ import {
 } from "@/lib/constants";
 import { getAllSources, getCategoriesByType } from "@/lib/db";
 import { parseDate } from "@/lib/format";
+import { showErrorToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 export type TransactionFormValues = {
@@ -381,11 +381,7 @@ export function TransactionForm({
                   .flatMap((m) => (m as { errors: string[] }).errors)
                   .filter(Boolean);
                 if (allErrors.length > 0) {
-                  Toast.show({
-                    type: "error",
-                    text1: "Missing fields",
-                    text2: allErrors[0] as string,
-                  });
+                  showErrorToast("Missing fields", allErrors[0]);
                 }
               }
             }}
