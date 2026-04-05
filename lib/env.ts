@@ -18,4 +18,5 @@ export const env = {
   GOOGLE_WEB_CLIENT_ID: required("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID"),
   GOOGLE_CLIENT_SECRET: required("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET"),
   API_URL: optional("EXPO_PUBLIC_API_URL", ""),
+  GEMINI_API_KEY: optional("EXPO_PUBLIC_GEMINI_API_KEY", ""),
 } as const;

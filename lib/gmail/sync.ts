@@ -8,6 +8,7 @@ import {
 import { db } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import { categories, transactions } from "@/lib/db/schema";
+import { parseTransactionWithGemini } from "@/lib/gemini/parser";
 import { getValidAccessToken } from "./auth";
 import { parseEmail } from "./parsers";
 import { filterEmail } from "./parsers/filter";
@@ -119,7 +120,22 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             continue;
           }
 
-          const parsed = parseEmail(sender, body);
+          let parsed = parseEmail(sender, body);
+
+          if (!parsed) {
+            console.log(
+              `[Sync] regex failed, trying Gemini for ${sender}:`,
+              body.slice(0, 100),
+            );
+            const geminiResult = await parseTransactionWithGemini(body);
+            if (geminiResult) {
+              parsed = {
+                ...geminiResult,
+                merchant: geminiResult.merchant ?? "Unknown",
+              };
+            }
+          }
+
           if (!parsed) {
             console.log(
               `[Sync] Failed to parse from ${sender}:`,
