@@ -5,8 +5,8 @@ import {
   GMAIL_API,
   GMAIL_SYNC_NOTE,
 } from "@/lib/constants";
+import { db } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
-import { db } from "@/lib/db/connection";
 import { categories, transactions } from "@/lib/db/schema";
 import { getValidAccessToken } from "./auth";
 import { parseEmail } from "./parsers";

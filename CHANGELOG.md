@@ -45,9 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Frontend**: Expo 55 + React Native + React 19
 - **Database**: SQLite + Drizzle ORM
-- **State**: TanStack Query (data) + Zustand (UI state)
+- **State**: TanStack Query (data) + useState (UI state)
 - **Styling**: NativeWind v4 + Tailwind CSS
-- **Validation**: Zod
 - **Formatting**: Biome 2.4.9
 - **Package Manager**: pnpm 9.0.0
 

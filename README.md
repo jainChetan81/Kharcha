@@ -71,7 +71,7 @@ hooks/                        all data access — screens never call useQuery di
   use-sources.ts              source queries + mutations
   use-budgets.ts              budget queries + mutations
   use-subscriptions.ts        subscription queries + mutations + toggle
-  use-config.ts               currency, userName (AppConfig type)
+  use-config.ts               currency, userName
   use-currency.ts             { currency, format } helper
   use-refresh.ts              pull-to-refresh (invalidates all queries)
   use-stats.ts                data stats
