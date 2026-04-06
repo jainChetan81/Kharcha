@@ -106,7 +106,7 @@ export function SubscriptionForm({
                 const cleaned = v.replace(/[^0-9.]/g, "");
                 field.handleChange(cleaned);
               }}
-              className="h-14 text-2xl font-bold"
+              className="text-lg font-semibold"
               placeholderTextColor="#888888"
             />
             <FieldError errors={field.state.meta.errors as string[]} />
@@ -214,7 +214,7 @@ export function SubscriptionForm({
       >
         {({ isSubmitting }) => (
           <Button
-            className="mb-10 h-14 rounded-2xl bg-primary"
+            className="mb-6 h-12 rounded-2xl bg-primary"
             disabled={isSubmitting}
             onPress={async () => {
               await form.handleSubmit();

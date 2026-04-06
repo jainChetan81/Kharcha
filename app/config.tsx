@@ -1,8 +1,8 @@
 import { Lock, Plus, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import { Alert, Pressable, ScrollView, View } from "react-native";
-import { AddItemSheet } from "@/components/add-item-sheet";
 import { ScreenError } from "@/components/error-boundary";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -181,13 +181,13 @@ export default function ConfigScreen() {
         </Pressable>
       </ScrollView>
 
-      <AddItemSheet
+      <BottomSheet
         visible={showAddCategory}
         onClose={() => setShowAddCategory(false)}
         title={`Add ${newCategoryType === TRANSACTION_TYPE.INCOME ? "Income" : "Expense"} Category`}
         placeholder="Category name"
         submitLabel="Add Category"
-        onAdd={async (name) => {
+        onSave={async (name) => {
           await addCategoryMutation.mutateAsync({
             name,
             type: newCategoryType,
@@ -197,13 +197,13 @@ export default function ConfigScreen() {
         }}
       />
 
-      <AddItemSheet
+      <BottomSheet
         visible={showAddSource}
         onClose={() => setShowAddSource(false)}
         title="Add Payment Source"
         placeholder="Source name"
         submitLabel="Add Source"
-        onAdd={async (name) => {
+        onSave={async (name) => {
           await addSourceMutation.mutateAsync(name);
           setShowAddSource(false);
           showSuccessToast("Source added");

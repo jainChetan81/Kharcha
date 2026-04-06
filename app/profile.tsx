@@ -9,14 +9,13 @@ import {
 } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { CurrencyPicker } from "@/components/currency-picker";
 import { ScreenError } from "@/components/error-boundary";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { Input } from "@/components/ui/input";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
-import { CURRENCIES, type CurrencyCode, useConfig } from "@/hooks/use-config";
+import { CURRENCIES, useConfig } from "@/hooks/use-config";
 import {
   useFeatureFlags,
   useGmailSyncEnabled,
@@ -25,14 +24,12 @@ import { useClearTransactionsWithConfirm } from "@/hooks/use-transactions";
 import { COLORS, SCREENS } from "@/lib/constants";
 import { seedSampleData } from "@/lib/db";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
-import { cn, isIOS } from "@/lib/utils";
 
 export default function ProfileScreen() {
   const queryClient = useQueryClient();
   const { userName, updateUserName, currency, updateCurrency } = useConfig();
   const [showEditName, setShowEditName] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
-  const [draftName, setDraftName] = useState("");
   const handleClearTransactions = useClearTransactionsWithConfirm();
 
   const { refetch: refetchFlags, isRefetching } = useFeatureFlags();
@@ -45,10 +42,8 @@ export default function ProfileScreen() {
     .toUpperCase()
     .slice(0, 2);
 
-  async function handleSaveName() {
-    const trimmed = draftName.trim();
-    if (!trimmed) return;
-    await updateUserName(trimmed);
+  async function handleSaveName(name: string) {
+    await updateUserName(name);
     setShowEditName(false);
     showSuccessToast("Name updated");
   }
@@ -80,10 +75,7 @@ export default function ProfileScreen() {
           Profile
         </Text>
         <Pressable
-          onPress={() => {
-            setDraftName(userName);
-            setShowEditName(true);
-          }}
+          onPress={() => setShowEditName(true)}
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
         >
           <Text className="flex-1 text-sm font-medium text-foreground">
@@ -199,78 +191,22 @@ export default function ProfileScreen() {
       <BottomSheet
         visible={showEditName}
         onClose={() => setShowEditName(false)}
-        avoidKeyboard
-      >
-        <Text className="mb-4 text-base font-bold text-foreground">
-          Edit Name
-        </Text>
-        <Input
-          placeholder="Your name"
-          value={draftName}
-          onChangeText={setDraftName}
-          placeholderTextColor={COLORS.MUTED}
-          autoFocus
-        />
-        <View className={cn("mt-4 flex-row gap-3", isIOS && "mb-4")}>
-          <Button
-            variant="outline"
-            className="h-12 flex-1 rounded-xl border-border"
-            onPress={() => setShowEditName(false)}
-          >
-            <Text className="text-sm font-medium text-muted-foreground">
-              Cancel
-            </Text>
-          </Button>
-          <Button
-            className="h-12 flex-1 rounded-xl bg-primary"
-            onPress={handleSaveName}
-            disabled={!draftName.trim()}
-          >
-            <Text className="text-sm font-semibold text-primary-foreground">
-              Save
-            </Text>
-          </Button>
-        </View>
-      </BottomSheet>
+        title="Edit Name"
+        placeholder="Your name"
+        submitLabel="Save"
+        defaultValue={userName}
+        onSave={handleSaveName}
+      />
 
-      <BottomSheet
+      <CurrencyPicker
         visible={showCurrencyPicker}
         onClose={() => setShowCurrencyPicker(false)}
-      >
-        <Text className="mb-4 text-base font-bold text-foreground">
-          Select Currency
-        </Text>
-        {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => (
-          <Pressable
-            key={code}
-            onPress={async () => {
-              await updateCurrency(code);
-              setShowCurrencyPicker(false);
-            }}
-            className="flex-row items-center rounded-xl px-4 py-3"
-          >
-            <Text className="w-8 text-base font-bold text-foreground">
-              {CURRENCIES[code].symbol}
-            </Text>
-            <Text className="flex-1 text-sm text-foreground">
-              {code} — {CURRENCIES[code].name}
-            </Text>
-            {currency === code && (
-              <View className="h-5 w-5 items-center justify-center rounded-full bg-primary">
-                <Text className="text-xs text-primary-foreground">✓</Text>
-              </View>
-            )}
-          </Pressable>
-        ))}
-        <Pressable
-          onPress={() => setShowCurrencyPicker(false)}
-          className={cn("mt-3 items-center py-2", isIOS && "mb-4")}
-        >
-          <Text className="text-sm font-medium text-muted-foreground">
-            Cancel
-          </Text>
-        </Pressable>
-      </BottomSheet>
+        selected={currency}
+        onSelect={async (code) => {
+          await updateCurrency(code);
+          setShowCurrencyPicker(false);
+        }}
+      />
     </View>
   );
 }

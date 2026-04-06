@@ -1,5 +1,10 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Pressable,
+  View,
+} from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import {
   TransactionForm,
@@ -59,7 +64,7 @@ export default function EditTransactionScreen() {
   }
 
   return (
-    <View className="flex-1 bg-background">
+    <KeyboardAvoidingView className="flex-1 bg-background" behavior="padding">
       <View
         className={cn(
           "flex-row items-center justify-between bg-background px-6 pb-5",
@@ -90,7 +95,7 @@ export default function EditTransactionScreen() {
         onSubmit={handleSubmit}
         lockType={!!transaction.subscription_id}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

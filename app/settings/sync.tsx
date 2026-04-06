@@ -1,7 +1,7 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
-import { getIosIdForVendorAsync } from "expo-application";
+import { getAndroidId, getIosIdForVendorAsync } from "expo-application";
 import * as Clipboard from "expo-clipboard";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
@@ -17,6 +17,7 @@ import { insertTransaction, syncedTransactionExists } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import { env } from "@/lib/env";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { isIOS } from "@/lib/utils";
 
 async function parseErrorResponse(
   res: Response,
@@ -60,7 +61,7 @@ async function getOrCreateDeviceId(): Promise<string> {
   const existing = await getConfig(CONFIG_KEYS.DEVICE_ID);
   if (existing) return existing;
 
-  const vendorId = await getIosIdForVendorAsync();
+  const vendorId = isIOS ? await getIosIdForVendorAsync() : getAndroidId();
   const id = `kharcha-${vendorId ?? crypto.randomUUID()}`;
   await updateConfig(CONFIG_KEYS.DEVICE_ID, id);
   return id;

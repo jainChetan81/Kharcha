@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Pressable, Switch, View } from "react-native";
+import { KeyboardAvoidingView, Pressable, Switch, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { SubscriptionForm } from "@/components/subscription-form";
 import {
@@ -111,7 +111,7 @@ export default function AddTransaction() {
   }
 
   return (
-    <View className="flex-1 bg-background">
+    <KeyboardAvoidingView className="flex-1 bg-background" behavior="padding">
       <View
         className={cn(
           "flex-row items-center justify-between bg-background px-6 pb-3",
@@ -148,7 +148,7 @@ export default function AddTransaction() {
           onSubmit={handleTransactionSubmit}
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Pressable,
   ScrollView,
   Switch,
@@ -80,7 +81,7 @@ export default function EditSubscriptionScreen() {
   }
 
   return (
-    <View className="flex-1 bg-background">
+    <KeyboardAvoidingView className="flex-1 bg-background" behavior="padding">
       <View
         className={cn(
           "flex-row items-center justify-between bg-background px-6 pb-3",
@@ -162,7 +163,7 @@ export default function EditSubscriptionScreen() {
                 onChangeText={(v) => {
                   field.handleChange(v.replace(/[^0-9.]/g, ""));
                 }}
-                className="h-14 text-2xl font-bold"
+                className="text-lg font-semibold"
                 placeholderTextColor="#888888"
               />
               <FieldError errors={field.state.meta.errors as string[]} />
@@ -219,7 +220,7 @@ export default function EditSubscriptionScreen() {
         >
           {({ isSubmitting }) => (
             <Button
-              className="mb-10 h-14 rounded-2xl bg-primary"
+              className="mb-6 h-12 rounded-2xl bg-primary"
               disabled={isSubmitting}
               onPress={() => form.handleSubmit()}
             >
@@ -234,7 +235,7 @@ export default function EditSubscriptionScreen() {
           )}
         </form.Subscribe>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
