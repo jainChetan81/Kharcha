@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
@@ -16,6 +17,7 @@ import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import {
+  useDeleteSubscription,
   useSubscriptionById,
   useToggleSubscription,
   useUpdateSubscription,
@@ -31,6 +33,7 @@ export default function EditSubscriptionScreen() {
 
   const { data: subscription, isLoading } = useSubscriptionById(subscriptionId);
   const updateMutation = useUpdateSubscription();
+  const deleteMutation = useDeleteSubscription();
   const toggleMutation = useToggleSubscription();
 
   const { data: categories = [] } = useQuery({
@@ -219,19 +222,47 @@ export default function EditSubscriptionScreen() {
           selector={(state) => ({ isSubmitting: state.isSubmitting })}
         >
           {({ isSubmitting }) => (
-            <Button
-              className="mb-6 h-12 rounded-2xl bg-primary"
-              disabled={isSubmitting}
-              onPress={() => form.handleSubmit()}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color={COLORS.WHITE} />
-              ) : (
-                <Text className="text-base font-semibold text-primary-foreground">
-                  Save Changes
+            <View className="mb-6 flex-row gap-3">
+              <Button
+                variant="outline"
+                className="h-12 flex-1 rounded-2xl border-negative"
+                onPress={() => {
+                  Alert.alert("Delete Subscription", "This cannot be undone.", [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Delete",
+                      style: "destructive",
+                      onPress: async () => {
+                        try {
+                          await deleteMutation.mutateAsync(subscriptionId);
+                          showSuccessToast("Subscription deleted");
+                          router.back();
+                        } catch (err) {
+                          showErrorToast("Failed to delete", err);
+                        }
+                      },
+                    },
+                  ]);
+                }}
+              >
+                <Text className="text-base font-semibold text-negative">
+                  Delete
                 </Text>
-              )}
-            </Button>
+              </Button>
+              <Button
+                className="h-12 flex-1 rounded-2xl bg-primary"
+                disabled={isSubmitting}
+                onPress={() => form.handleSubmit()}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color={COLORS.WHITE} />
+                ) : (
+                  <Text className="text-base font-semibold text-primary-foreground">
+                    Save Changes
+                  </Text>
+                )}
+              </Button>
+            </View>
           )}
         </form.Subscribe>
       </ScrollView>
