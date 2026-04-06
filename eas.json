@@ -19,6 +19,9 @@
     "production": {
       "ios": {
         "buildConfiguration": "Release"
+      },
+      "android": {
+        "buildType": "app-bundle"
       }
     }
   },
@@ -27,6 +30,10 @@
       "ios": {
         "appleId": "jain.cj.chetan@gmail.com",
         "ascAppId": "your-app-store-connect-app-id"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./play-store-key.json",
+        "track": "internal"
       }
     }
   }
