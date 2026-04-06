@@ -41,11 +41,13 @@ export function TransactionForm({
   defaultValues,
   submitLabel,
   onSubmit,
+  onDelete,
   lockType = false,
 }: {
   defaultValues: TransactionFormValues;
   submitLabel: string;
   onSubmit: (values: TransactionFormValues) => Promise<void>;
+  onDelete?: () => void;
   lockType?: boolean;
 }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -158,7 +160,7 @@ export function TransactionForm({
                 const cleaned = v.replace(/[^0-9.]/g, "");
                 field.handleChange(cleaned);
               }}
-              className="text-lg font-semibold"
+              className="h-14 text-2xl font-bold"
               placeholderTextColor="#888888"
             />
             <FieldError errors={field.state.meta.errors as string[]} />
@@ -371,29 +373,45 @@ export function TransactionForm({
         })}
       >
         {({ isSubmitting }) => (
-          <Button
-            className="mb-6 h-12 rounded-2xl bg-primary"
-            disabled={isSubmitting}
-            onPress={async () => {
-              await form.handleSubmit();
-              if (form.state.canSubmit === false) {
-                const allErrors = Object.values(form.state.fieldMeta)
-                  .flatMap((m) => (m as { errors: string[] }).errors)
-                  .filter(Boolean);
-                if (allErrors.length > 0) {
-                  showErrorToast("Missing fields", allErrors[0]);
-                }
-              }
-            }}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text className="text-base font-semibold text-primary-foreground">
-                {submitLabel}
-              </Text>
+          <View className="mb-6 flex-row gap-3">
+            {onDelete && (
+              <Button
+                variant="outline"
+                className="h-12 flex-1 rounded-2xl border-negative"
+                onPress={onDelete}
+              >
+                <Text className="text-base font-semibold text-negative">
+                  Delete
+                </Text>
+              </Button>
             )}
-          </Button>
+            <Button
+              className={cn(
+                "h-12 rounded-2xl bg-primary",
+                onDelete ? "flex-1" : "w-full",
+              )}
+              disabled={isSubmitting}
+              onPress={async () => {
+                await form.handleSubmit();
+                if (form.state.canSubmit === false) {
+                  const allErrors = Object.values(form.state.fieldMeta)
+                    .flatMap((m) => (m as { errors: string[] }).errors)
+                    .filter(Boolean);
+                  if (allErrors.length > 0) {
+                    showErrorToast("Missing fields", allErrors[0]);
+                  }
+                }
+              }}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text className="text-base font-semibold text-primary-foreground">
+                  {submitLabel}
+                </Text>
+              )}
+            </Button>
+          </View>
         )}
       </form.Subscribe>
     </ScrollView>

@@ -163,7 +163,7 @@ export default function EditSubscriptionScreen() {
                 onChangeText={(v) => {
                   field.handleChange(v.replace(/[^0-9.]/g, ""));
                 }}
-                className="text-lg font-semibold"
+                className="h-14 text-2xl font-bold"
                 placeholderTextColor="#888888"
               />
               <FieldError errors={field.state.meta.errors as string[]} />

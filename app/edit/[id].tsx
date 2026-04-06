@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Pressable,
   View,
@@ -12,6 +13,7 @@ import {
 } from "@/components/transaction-form";
 import { Text } from "@/components/ui/text";
 import {
+  useDeleteTransaction,
   useTransactionById,
   useUpdateTransaction,
 } from "@/hooks/use-transactions";
@@ -23,6 +25,7 @@ export default function EditTransactionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const transactionId = Number(id);
   const updateMutation = useUpdateTransaction(transactionId);
+  const deleteMutation = useDeleteTransaction();
 
   const { data: transaction, isLoading } = useTransactionById(transactionId);
 
@@ -93,6 +96,24 @@ export default function EditTransactionScreen() {
         defaultValues={defaultValues}
         submitLabel="Save Changes"
         onSubmit={handleSubmit}
+        onDelete={() => {
+          Alert.alert("Delete Transaction", "This cannot be undone.", [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Delete",
+              style: "destructive",
+              onPress: async () => {
+                try {
+                  await deleteMutation.mutateAsync(transactionId);
+                  showSuccessToast("Transaction deleted");
+                  router.back();
+                } catch (err) {
+                  showErrorToast("Failed to delete", err);
+                }
+              },
+            },
+          ]);
+        }}
         lockType={!!transaction.subscription_id}
       />
     </KeyboardAvoidingView>

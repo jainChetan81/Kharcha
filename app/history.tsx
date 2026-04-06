@@ -327,7 +327,7 @@ export default function HistoryScreen() {
           value={searchText}
           onChangeText={setSearchText}
           placeholderTextColor={COLORS.MUTED}
-          className="flex-1 border-0 bg-transparent px-0"
+          className="flex-1 border-0 bg-transparent px-0 shadow-none dark:bg-transparent"
         />
         {searchText.length > 0 && (
           <Pressable onPress={() => setSearchText("")} className="p-1">

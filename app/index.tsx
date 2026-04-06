@@ -308,10 +308,16 @@ export default function HomeScreen() {
                     <Text className="text-base capitalize text-foreground">
                       {cat.category_name}
                     </Text>
-                    <Text className="text-sm text-muted-foreground">
-                      {fmt(cat.total)}
-                      {budget ? ` / ${fmt(budget)}` : ""}
-                    </Text>
+                    <View className="flex-row items-center gap-1">
+                      <Text className="text-sm text-muted-foreground">
+                        {fmt(cat.total)}
+                        {budget ? ` / ${fmt(budget)}` : ""}
+                      </Text>
+                      <Icon
+                        as={ChevronRight}
+                        className="size-4 text-muted-foreground"
+                      />
+                    </View>
                   </View>
                   <View
                     className="mt-1.5 h-1 rounded-full"
