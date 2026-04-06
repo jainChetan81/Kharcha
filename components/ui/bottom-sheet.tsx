@@ -122,7 +122,9 @@ export function BottomSheet(props: BottomSheetProps) {
     >
       <Pressable className="flex-1 bg-black/50" onPress={handleClose} />
       {isFormMode || ("avoidKeyboard" in props && props.avoidKeyboard) ? (
-        <KeyboardAvoidingView behavior="padding">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
           {content}
         </KeyboardAvoidingView>
       ) : (
