@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Pressable, Switch, View } from "react-native";
@@ -63,6 +64,7 @@ export default function AddTransaction() {
         date: value.date,
         note: value.note || null,
       });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showSuccessToast(
         "Transaction added",
         `${value.type === TRANSACTION_TYPE.INCOME ? "+" : "-"}${fmt(Number(value.amount))}`,
@@ -100,6 +102,7 @@ export default function AddTransaction() {
       await addSubMutation.mutateAsync(value);
       await processSubscriptions();
       await queryClient.invalidateQueries();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showSuccessToast(
         "Subscription added",
         `Renews on day ${value.billingDay} every month`,

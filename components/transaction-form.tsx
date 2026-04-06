@@ -192,15 +192,7 @@ export function TransactionForm({
         </form.Field>
       )}
 
-      <form.Field
-        name="categoryId"
-        validators={{
-          onSubmit: ({ value }) => {
-            if (!value) return "Category is required";
-            return undefined;
-          },
-        }}
-      >
+      <form.Field name="categoryId">
         {(field) => (
           <View className="mb-5">
             <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
@@ -210,8 +202,8 @@ export function TransactionForm({
               items={categories}
               selectedId={field.state.value}
               onSelect={(id) => field.handleChange(id)}
+              allLabel="None"
             />
-            <FieldError errors={field.state.meta.errors as string[]} />
           </View>
         )}
       </form.Field>

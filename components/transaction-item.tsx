@@ -72,8 +72,8 @@ export function TransactionItem({
 
   const isIncome = item.type === TRANSACTION_TYPE.INCOME;
   const subtitle = isIncome
-    ? (item.category_name ?? "uncategorized")
-    : `${item.category_name ?? "uncategorized"}${item.source_name ? ` · ${item.source_name}` : ""}`;
+    ? (item.category_name ?? "Other")
+    : `${item.category_name ?? "Other"}${item.source_name ? ` · ${item.source_name}` : ""}`;
 
   const content = (
     <Pressable

@@ -1,5 +1,9 @@
 import { and, desc, eq, gte, like, lte, or, sql } from "drizzle-orm";
-import { CONFIG_KEYS, type SourceType } from "@/lib/constants";
+import {
+  CONFIG_KEYS,
+  type SourceType,
+  TRANSACTION_TYPE,
+} from "@/lib/constants";
 import { db } from "./connection";
 import { categories, config, sources, transactions } from "./schema";
 import type {
@@ -133,9 +137,7 @@ async function seedDefaults() {
       { name: "health", type: "expense", is_default: 1 },
       { name: "other", type: "expense", is_default: 1 },
       { name: "salary", type: "income", is_default: 1 },
-      { name: "freelance", type: "income", is_default: 1 },
       { name: "refunds", type: "income", is_default: 1 },
-      { name: "investments", type: "income", is_default: 1 },
       { name: "other", type: "income", is_default: 1 },
     ]);
   }
@@ -143,10 +145,11 @@ async function seedDefaults() {
   const existingSources = await db.select().from(sources).limit(1);
   if (existingSources.length === 0) {
     await db.insert(sources).values([
-      { name: "cash", is_default: 1 },
       { name: "UPI", is_default: 1 },
       { name: "credit card", is_default: 1 },
       { name: "debit card", is_default: 1 },
+      { name: "cash", is_default: 1 },
+      { name: "other", is_default: 1 },
     ]);
   }
 }
@@ -394,7 +397,7 @@ export async function getCategoryBreakdown(yearMonth: string) {
     .leftJoin(categories, eq(transactions.category_id, categories.id))
     .where(
       and(
-        eq(transactions.type, "expense"),
+        eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
         sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
       ),
     )
@@ -406,7 +409,7 @@ export async function getCategoryBreakdown(yearMonth: string) {
 
   return rows.map((r) => ({
     category_id: r.category_id as number,
-    category_name: r.category_name ?? "Unknown",
+    category_name: r.category_name ?? "Other",
     total: r.total,
     percentage: grandTotal > 0 ? (r.total / grandTotal) * 100 : 0,
   })) as CategoryBreakdownRow[];

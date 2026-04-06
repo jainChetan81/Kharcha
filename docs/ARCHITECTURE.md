@@ -55,6 +55,7 @@ hooks/
   use-subscriptions.ts   recurring subscriptions + toggle
   use-config.ts          app config (AppConfig type)
   use-currency.ts        { currency, format } — wraps useCurrency for formatting
+  use-debounce.ts        generic useDebounce hook (used by history search)
   use-refresh.ts         pull-to-refresh (invalidates all queries)
   use-stats.ts           data stats for about screen
 ```
@@ -102,4 +103,13 @@ color constants in `lib/constants.ts` → `COLORS` for values used in JS (not cl
 
 tanstack form for all user input. shared `TransactionForm` component used by add + edit screens. separate `SubscriptionForm` for subscription creation.
 
-`TransactionForm` accepts `lockType` prop to disable income toggle for subscription transactions.
+`TransactionForm` accepts `lockType` prop to disable income toggle for subscription transactions. `onDelete` prop enables a Delete/Save button row in edit mode.
+
+---
+
+## haptic feedback
+
+`expo-haptics` provides tactile feedback on key actions:
+
+- **add transaction**: success notification on insert
+- **device sync**: success notification when new transactions synced (skipped if none added)

@@ -19,7 +19,7 @@ export async function getBudgets(): Promise<BudgetRow[]> {
   return rows.map((r) => ({
     id: r.id as number,
     category_id: r.category_id as number,
-    category_name: r.category_name ?? "Unknown",
+    category_name: r.category_name ?? "Other",
     amount: r.amount,
   }));
 }

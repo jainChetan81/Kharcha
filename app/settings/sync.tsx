@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { getAndroidId, getIosIdForVendorAsync } from "expo-application";
 import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
@@ -211,6 +212,9 @@ export default function DeviceSyncScreen() {
         queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
       });
 
+      if (result.inserted > 0) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
       setSyncResult(result);
       setShowResults(true);
     },
