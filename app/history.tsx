@@ -6,7 +6,9 @@ import {
   ChevronRight,
   Mail,
   Receipt,
+  Search,
   SlidersHorizontal,
+  X,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
@@ -22,9 +24,11 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { ChipPicker } from "@/components/ui/chip-picker";
 import { Icon } from "@/components/ui/icon";
+import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useCategoriesByType } from "@/hooks/use-categories";
 import { useCurrency } from "@/hooks/use-currency";
+import { useDebounce } from "@/hooks/use-debounce";
 import { useRefresh } from "@/hooks/use-refresh";
 import { useAllSources } from "@/hooks/use-sources";
 import {
@@ -72,6 +76,8 @@ export default function HistoryScreen() {
   const { isConnected } = useGoogleAuth();
   const [gmailConnected, setGmailConnected] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const debouncedSearch = useDebounce(searchText);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: isConnected is stable from hook
   useEffect(() => {
@@ -148,6 +154,7 @@ export default function HistoryScreen() {
           "yyyy-MM-dd",
         )
       : null,
+    search: debouncedSearch || undefined,
   };
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -312,6 +319,22 @@ export default function HistoryScreen() {
           </Text>
         </View>
       )}
+
+      <View className="mx-5 mb-3 flex-row items-center rounded-xl border border-border bg-card px-3">
+        <Icon as={Search} className="mr-2 size-4 text-muted-foreground" />
+        <Input
+          placeholder="Search merchant or note..."
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholderTextColor={COLORS.MUTED}
+          className="flex-1 border-0 bg-transparent px-0"
+        />
+        {searchText.length > 0 && (
+          <Pressable onPress={() => setSearchText("")} className="p-1">
+            <Icon as={X} className="size-4 text-muted-foreground" />
+          </Pressable>
+        )}
+      </View>
 
       <FlashList
         data={listData}

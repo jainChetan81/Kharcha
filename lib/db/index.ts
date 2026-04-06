@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, like, lte, or, sql } from "drizzle-orm";
 import { CONFIG_KEYS, type SourceType } from "@/lib/constants";
 import { db } from "./connection";
 import { categories, config, sources, transactions } from "./schema";
@@ -259,6 +259,7 @@ export async function getTransactionsPaginated(
     sourceType?: SourceType | "all";
     dateFrom?: string | null;
     dateTo?: string | null;
+    search?: string;
   },
 ) {
   const conditions = [];
@@ -280,6 +281,12 @@ export async function getTransactionsPaginated(
   }
   if (filters?.dateTo) {
     conditions.push(lte(transactions.date, `${filters.dateTo} 23:59`));
+  }
+  if (filters?.search) {
+    const term = `%${filters.search}%`;
+    conditions.push(
+      or(like(transactions.merchant, term), like(transactions.note, term)),
+    );
   }
 
   const query = transactionSelect()
