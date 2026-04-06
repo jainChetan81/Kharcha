@@ -6,7 +6,7 @@ import { ChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
-import { QUERY_KEYS } from "@/lib/constants";
+import { COLORS, QUERY_KEYS, TRANSACTION_TYPE } from "@/lib/constants";
 import { getAllSources, getCategoriesByType } from "@/lib/db";
 import { showErrorToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -23,8 +23,8 @@ export function SubscriptionForm({
   }) => Promise<void>;
 }) {
   const { data: categories = [] } = useQuery({
-    queryKey: [QUERY_KEYS.CATEGORIES, "expense"],
-    queryFn: () => getCategoriesByType("expense"),
+    queryKey: [QUERY_KEYS.CATEGORIES, TRANSACTION_TYPE.EXPENSE],
+    queryFn: () => getCategoriesByType(TRANSACTION_TYPE.EXPENSE),
   });
 
   const { data: sources = [] } = useQuery({
@@ -75,7 +75,7 @@ export function SubscriptionForm({
               placeholder="e.g. Netflix, Spotify"
               value={field.state.value}
               onChangeText={(v) => field.handleChange(v)}
-              placeholderTextColor="#888888"
+              placeholderTextColor={COLORS.MUTED}
             />
             <FieldError errors={field.state.meta.errors as string[]} />
           </View>
@@ -107,7 +107,7 @@ export function SubscriptionForm({
                 field.handleChange(cleaned);
               }}
               className="h-14 text-2xl font-bold"
-              placeholderTextColor="#888888"
+              placeholderTextColor={COLORS.MUTED}
             />
             <FieldError errors={field.state.meta.errors as string[]} />
           </View>
@@ -229,7 +229,7 @@ export function SubscriptionForm({
             }}
           >
             {isSubmitting ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color={COLORS.WHITE} />
             ) : (
               <Text className="text-base font-semibold text-primary-foreground">
                 Add Subscription

@@ -18,9 +18,11 @@ import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import {
+  COLORS,
   DATE_DISPLAY_FORMAT,
   DATE_TIME_FORMAT,
   QUERY_KEYS,
+  TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { getAllSources, getCategoriesByType } from "@/lib/db";
 import { parseDate } from "@/lib/format";
@@ -85,19 +87,21 @@ export function TransactionForm({
           <View className="mb-5 flex-row gap-3">
             <Pressable
               onPress={() => {
-                field.handleChange("expense");
-                setActiveType("expense");
+                field.handleChange(TRANSACTION_TYPE.EXPENSE);
+                setActiveType(TRANSACTION_TYPE.EXPENSE);
                 form.setFieldValue("categoryId", null);
               }}
               className={cn(
                 "flex-1 items-center rounded-xl py-3",
-                field.state.value === "expense" ? "bg-negative" : "bg-card",
+                field.state.value === TRANSACTION_TYPE.EXPENSE
+                  ? "bg-negative"
+                  : "bg-card",
               )}
             >
               <Text
                 className={cn(
                   "text-sm font-semibold",
-                  field.state.value === "expense"
+                  field.state.value === TRANSACTION_TYPE.EXPENSE
                     ? "text-white"
                     : "text-muted-foreground",
                 )}
@@ -108,21 +112,23 @@ export function TransactionForm({
             <Pressable
               onPress={() => {
                 if (lockType) return;
-                field.handleChange("income");
-                setActiveType("income");
+                field.handleChange(TRANSACTION_TYPE.INCOME);
+                setActiveType(TRANSACTION_TYPE.INCOME);
                 form.setFieldValue("categoryId", null);
                 form.setFieldValue("sourceId", null);
               }}
               className={cn(
                 "flex-1 items-center rounded-xl py-3",
                 lockType && "opacity-40",
-                field.state.value === "income" ? "bg-positive" : "bg-card",
+                field.state.value === TRANSACTION_TYPE.INCOME
+                  ? "bg-positive"
+                  : "bg-card",
               )}
             >
               <Text
                 className={cn(
                   "text-sm font-semibold",
-                  field.state.value === "income"
+                  field.state.value === TRANSACTION_TYPE.INCOME
                     ? "text-white"
                     : "text-muted-foreground",
                 )}
@@ -161,14 +167,14 @@ export function TransactionForm({
                 field.handleChange(cleaned);
               }}
               className="h-14 text-2xl font-bold"
-              placeholderTextColor="#888888"
+              placeholderTextColor={COLORS.MUTED}
             />
             <FieldError errors={field.state.meta.errors as string[]} />
           </View>
         )}
       </form.Field>
 
-      {activeType === "expense" && (
+      {activeType === TRANSACTION_TYPE.EXPENSE && (
         <form.Field name="merchant">
           {(field) => (
             <View className="mb-5">
@@ -179,7 +185,7 @@ export function TransactionForm({
                 placeholder="e.g. Swiggy, Amazon"
                 value={field.state.value}
                 onChangeText={(v) => field.handleChange(v)}
-                placeholderTextColor="#888888"
+                placeholderTextColor={COLORS.MUTED}
               />
             </View>
           )}
@@ -210,7 +216,7 @@ export function TransactionForm({
         )}
       </form.Field>
 
-      {activeType === "income" && (
+      {activeType === TRANSACTION_TYPE.INCOME && (
         <form.Field name="merchant">
           {(field) => (
             <View className="mb-5">
@@ -221,7 +227,7 @@ export function TransactionForm({
                 placeholder="e.g. Employer, Client name"
                 value={field.state.value}
                 onChangeText={(v) => field.handleChange(v)}
-                placeholderTextColor="#888888"
+                placeholderTextColor={COLORS.MUTED}
               />
             </View>
           )}
@@ -232,13 +238,14 @@ export function TransactionForm({
         name="sourceId"
         validators={{
           onSubmit: ({ value }) => {
-            if (activeType === "expense" && !value) return "Source is required";
+            if (activeType === TRANSACTION_TYPE.EXPENSE && !value)
+              return "Source is required";
             return undefined;
           },
         }}
       >
         {(field) =>
-          activeType === "expense" ? (
+          activeType === TRANSACTION_TYPE.EXPENSE ? (
             <View className="mb-5">
               <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
                 Source
@@ -361,7 +368,7 @@ export function TransactionForm({
               onChangeText={(v) => field.handleChange(v)}
               className="h-20 py-2"
               textAlignVertical="top"
-              placeholderTextColor="#888888"
+              placeholderTextColor={COLORS.MUTED}
             />
           </View>
         )}
@@ -404,7 +411,7 @@ export function TransactionForm({
               }}
             >
               {isSubmitting ? (
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color={COLORS.WHITE} />
               ) : (
                 <Text className="text-base font-semibold text-primary-foreground">
                   {submitLabel}

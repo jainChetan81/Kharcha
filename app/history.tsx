@@ -164,10 +164,10 @@ export default function HistoryScreen() {
   const listData = buildListData(allTransactions);
 
   const totalSpent = allTransactions
-    .filter((t) => t.type === "expense")
+    .filter((t) => t.type === TRANSACTION_TYPE.EXPENSE)
     .reduce((sum, t) => sum + t.amount, 0);
   const totalIncome = allTransactions
-    .filter((t) => t.type === "income")
+    .filter((t) => t.type === TRANSACTION_TYPE.INCOME)
     .reduce((sum, t) => sum + t.amount, 0);
 
   async function handleGmailSync() {

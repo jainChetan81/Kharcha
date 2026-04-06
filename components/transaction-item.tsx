@@ -11,7 +11,7 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
-import { SOURCE_TYPE } from "@/lib/constants";
+import { SOURCE_TYPE, TIME_FORMAT, TRANSACTION_TYPE } from "@/lib/constants";
 import type { TransactionRow } from "@/lib/db";
 import { parseDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -70,7 +70,7 @@ export function TransactionItem({
     }),
   ).current;
 
-  const isIncome = item.type === "income";
+  const isIncome = item.type === TRANSACTION_TYPE.INCOME;
   const subtitle = isIncome
     ? (item.category_name ?? "uncategorized")
     : `${item.category_name ?? "uncategorized"}${item.source_name ? ` · ${item.source_name}` : ""}`;
@@ -118,7 +118,7 @@ export function TransactionItem({
         </Text>
         {showTime && (
           <Text className="mt-0.5 text-[10px] text-muted-foreground">
-            {format(parseDate(item.date), "hh:mm a")}
+            {format(parseDate(item.date), TIME_FORMAT)}
           </Text>
         )}
       </View>

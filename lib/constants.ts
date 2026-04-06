@@ -30,7 +30,8 @@ export const PAGE_SIZE = 10;
 
 export const DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm";
 export const DATE_FORMAT = "dd MMM yyyy";
-export const DATE_DISPLAY_FORMAT = `${DATE_FORMAT}, hh:mm a`;
+export const TIME_FORMAT = "hh:mm a";
+export const DATE_DISPLAY_FORMAT = `${DATE_FORMAT}, ${TIME_FORMAT}`;
 
 export const TRANSACTION_TYPE = {
   ALL: "all",

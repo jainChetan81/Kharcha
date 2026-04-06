@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Modal, Pressable, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  type KeyboardTypeOptions,
+  Modal,
+  Pressable,
+  View,
+} from "react-native";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
@@ -28,6 +34,8 @@ type FormMode = BottomSheetBaseProps & {
   submitLabel: string;
   onSave: (value: string) => Promise<void>;
   defaultValue?: string;
+  keyboardType?: KeyboardTypeOptions;
+  validate?: (value: string) => boolean;
 };
 
 type BottomSheetProps = ContentMode | FormMode;
@@ -61,8 +69,18 @@ export function BottomSheet(props: BottomSheetProps) {
           <Input
             placeholder={props.placeholder}
             value={value}
-            onChangeText={setValue}
+            onChangeText={(v) => {
+              if (
+                props.keyboardType === "numeric" ||
+                props.keyboardType === "decimal-pad"
+              ) {
+                setValue(v.replace(/[^0-9.]/g, ""));
+              } else {
+                setValue(v);
+              }
+            }}
             placeholderTextColor={COLORS.MUTED}
+            keyboardType={props.keyboardType}
             autoFocus
           />
           <View className={cn("mt-4 flex-row gap-3", isIOS && "mb-4")}>
@@ -78,7 +96,10 @@ export function BottomSheet(props: BottomSheetProps) {
             <Button
               className="h-12 flex-1 rounded-xl bg-primary"
               onPress={handleSave}
-              disabled={!value.trim()}
+              disabled={
+                !value.trim() ||
+                (props.validate ? !props.validate(value) : false)
+              }
             >
               <Text className="text-sm font-semibold text-primary-foreground">
                 {props.submitLabel}

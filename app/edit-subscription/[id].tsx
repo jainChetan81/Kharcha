@@ -20,7 +20,7 @@ import {
   useToggleSubscription,
   useUpdateSubscription,
 } from "@/hooks/use-subscriptions";
-import { QUERY_KEYS } from "@/lib/constants";
+import { COLORS, QUERY_KEYS, TRANSACTION_TYPE } from "@/lib/constants";
 import { getAllSources, getCategoriesByType } from "@/lib/db";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
@@ -34,8 +34,8 @@ export default function EditSubscriptionScreen() {
   const toggleMutation = useToggleSubscription();
 
   const { data: categories = [] } = useQuery({
-    queryKey: [QUERY_KEYS.CATEGORIES, "expense"],
-    queryFn: () => getCategoriesByType("expense"),
+    queryKey: [QUERY_KEYS.CATEGORIES, TRANSACTION_TYPE.EXPENSE],
+    queryFn: () => getCategoriesByType(TRANSACTION_TYPE.EXPENSE),
   });
 
   const { data: sources = [] } = useQuery({
@@ -75,7 +75,7 @@ export default function EditSubscriptionScreen() {
   if (isLoading || !subscription) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#7c3aed" />
+        <ActivityIndicator color={COLORS.PRIMARY} />
       </View>
     );
   }
@@ -112,8 +112,8 @@ export default function EditSubscriptionScreen() {
                 isActive: val,
               })
             }
-            trackColor={{ false: "#2a2a2a", true: "#7c3aed" }}
-            thumbColor="#f0f0f0"
+            trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
+            thumbColor={COLORS.FOREGROUND}
           />
         </View>
 
@@ -134,7 +134,7 @@ export default function EditSubscriptionScreen() {
               <Input
                 value={field.state.value}
                 onChangeText={(v) => field.handleChange(v)}
-                placeholderTextColor="#888888"
+                placeholderTextColor={COLORS.MUTED}
               />
               <FieldError errors={field.state.meta.errors as string[]} />
             </View>
@@ -164,7 +164,7 @@ export default function EditSubscriptionScreen() {
                   field.handleChange(v.replace(/[^0-9.]/g, ""));
                 }}
                 className="h-14 text-2xl font-bold"
-                placeholderTextColor="#888888"
+                placeholderTextColor={COLORS.MUTED}
               />
               <FieldError errors={field.state.meta.errors as string[]} />
             </View>
@@ -225,7 +225,7 @@ export default function EditSubscriptionScreen() {
               onPress={() => form.handleSubmit()}
             >
               {isSubmitting ? (
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color={COLORS.WHITE} />
               ) : (
                 <Text className="text-base font-semibold text-primary-foreground">
                   Save Changes

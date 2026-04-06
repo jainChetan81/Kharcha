@@ -1,17 +1,17 @@
+import { Trash2 } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Alert, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useBudgets, useDeleteBudget, useSetBudget } from "@/hooks/use-budgets";
 import { useAllCategories } from "@/hooks/use-categories";
 import { useCurrency } from "@/hooks/use-currency";
-import { COLORS, TRANSACTION_TYPE } from "@/lib/constants";
+import { TRANSACTION_TYPE } from "@/lib/constants";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
-import { cn, isIOS } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export default function BudgetsScreen() {
   const { format: fmt } = useCurrency();
@@ -24,7 +24,6 @@ export default function BudgetsScreen() {
     id: number;
     name: string;
   } | null>(null);
-  const [draftAmount, setDraftAmount] = useState("");
 
   const expenseCategories = categories.filter(
     (c) => c.type === TRANSACTION_TYPE.EXPENSE,
@@ -33,36 +32,7 @@ export default function BudgetsScreen() {
   const budgetMap = new Map(budgets.map((b) => [b.category_id, b.amount]));
 
   function openEditor(categoryId: number, categoryName: string) {
-    const existing = budgetMap.get(categoryId);
     setSelectedCategory({ id: categoryId, name: categoryName });
-    setDraftAmount(existing ? String(existing) : "");
-  }
-
-  async function handleSave() {
-    if (!selectedCategory || !draftAmount.trim()) return;
-    const amount = Number(draftAmount);
-    if (amount <= 0) return;
-    try {
-      await setBudgetMutation.mutateAsync({
-        categoryId: selectedCategory.id,
-        amount,
-      });
-      setSelectedCategory(null);
-      showSuccessToast("Budget saved");
-    } catch (err) {
-      showErrorToast("Failed", err);
-    }
-  }
-
-  async function handleDelete() {
-    if (!selectedCategory) return;
-    try {
-      await deleteBudgetMutation.mutateAsync(selectedCategory.id);
-      setSelectedCategory(null);
-      showSuccessToast("Budget removed");
-    } catch (err) {
-      showErrorToast("Failed", err);
-    }
   }
 
   return (
@@ -95,6 +65,27 @@ export default function BudgetsScreen() {
               >
                 {budget ? fmt(budget) : "Not set"}
               </Text>
+              {budget && (
+                <Pressable
+                  onPress={() => {
+                    Alert.alert(
+                      "Remove Budget",
+                      `Remove budget for ${c.name}?`,
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Remove",
+                          style: "destructive",
+                          onPress: () => deleteBudgetMutation.mutate(c.id),
+                        },
+                      ],
+                    );
+                  }}
+                  className="ml-3"
+                >
+                  <Icon as={Trash2} className="size-4 text-negative" />
+                </Pressable>
+              )}
             </Pressable>
           );
         })}
@@ -103,44 +94,33 @@ export default function BudgetsScreen() {
       <BottomSheet
         visible={!!selectedCategory}
         onClose={() => setSelectedCategory(null)}
-        avoidKeyboard
-      >
-        <Text className="mb-4 text-base font-bold capitalize text-foreground">
-          Set Budget for {selectedCategory?.name}
-        </Text>
-        <Input
-          placeholder="Amount"
-          value={draftAmount}
-          onChangeText={setDraftAmount}
-          keyboardType="numeric"
-          placeholderTextColor={COLORS.MUTED}
-          autoFocus
-        />
-        <Button
-          className="mt-4 h-14 rounded-2xl bg-primary"
-          onPress={handleSave}
-          disabled={!draftAmount.trim() || Number(draftAmount) <= 0}
-        >
-          <Text className="text-base font-semibold text-primary-foreground">
-            Save Budget
-          </Text>
-        </Button>
-        {budgetMap.has(selectedCategory?.id ?? -1) && (
-          <Pressable onPress={handleDelete} className="mt-3 items-center py-2">
-            <Text className="text-sm font-medium text-negative">
-              Remove Budget
-            </Text>
-          </Pressable>
-        )}
-        <Pressable
-          onPress={() => setSelectedCategory(null)}
-          className={cn("mt-1 items-center py-2", isIOS && "mb-4")}
-        >
-          <Text className="text-sm font-medium text-muted-foreground">
-            Cancel
-          </Text>
-        </Pressable>
-      </BottomSheet>
+        title={`Set Budget for ${selectedCategory?.name}`}
+        placeholder="Amount"
+        submitLabel="Save Budget"
+        defaultValue={
+          budgetMap.has(selectedCategory?.id ?? -1)
+            ? String(budgetMap.get(selectedCategory?.id ?? -1))
+            : ""
+        }
+        keyboardType="numeric"
+        validate={(v) => {
+          const num = Number(v);
+          return !Number.isNaN(num) && num > 0;
+        }}
+        onSave={async (amount) => {
+          if (!selectedCategory) return;
+          try {
+            await setBudgetMutation.mutateAsync({
+              categoryId: selectedCategory.id,
+              amount: Number(amount),
+            });
+            setSelectedCategory(null);
+            showSuccessToast("Budget saved");
+          } catch (err) {
+            showErrorToast("Failed", err);
+          }
+        }}
+      />
     </View>
   );
 }

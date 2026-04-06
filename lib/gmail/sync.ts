@@ -4,6 +4,7 @@ import {
   CONFIG_KEYS,
   GMAIL_API,
   GMAIL_SYNC_NOTE,
+  TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
@@ -168,7 +169,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             sender,
             text: `${parsed.merchant} — ${parsed.amount}`,
           });
-          if (parsed.type === "expense") {
+          if (parsed.type === TRANSACTION_TYPE.EXPENSE) {
             result.expenseCount++;
             result.expenseTotal += parsed.amount;
           } else {
