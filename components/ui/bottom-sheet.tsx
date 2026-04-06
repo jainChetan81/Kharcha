@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { KeyboardAvoidingView, Modal, Pressable, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  View,
+} from "react-native";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
@@ -101,7 +107,9 @@ export function BottomSheet(props: BottomSheetProps) {
     >
       <Pressable className="flex-1 bg-black/50" onPress={handleClose} />
       {isFormMode || ("avoidKeyboard" in props && props.avoidKeyboard) ? (
-        <KeyboardAvoidingView behavior="padding">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
           {content}
         </KeyboardAvoidingView>
       ) : (

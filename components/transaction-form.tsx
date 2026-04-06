@@ -18,6 +18,7 @@ import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import {
+  COLORS,
   DATE_DISPLAY_FORMAT,
   DATE_TIME_FORMAT,
   QUERY_KEYS,
@@ -159,7 +160,7 @@ export function TransactionForm({
                 field.handleChange(cleaned);
               }}
               className="text-lg font-semibold"
-              placeholderTextColor="#888888"
+              placeholderTextColor={COLORS.MUTED}
             />
             <FieldError errors={field.state.meta.errors as string[]} />
           </View>
@@ -177,7 +178,7 @@ export function TransactionForm({
                 placeholder="e.g. Swiggy, Amazon"
                 value={field.state.value}
                 onChangeText={(v) => field.handleChange(v)}
-                placeholderTextColor="#888888"
+                placeholderTextColor={COLORS.MUTED}
               />
             </View>
           )}
@@ -219,7 +220,7 @@ export function TransactionForm({
                 placeholder="e.g. Employer, Client name"
                 value={field.state.value}
                 onChangeText={(v) => field.handleChange(v)}
-                placeholderTextColor="#888888"
+                placeholderTextColor={COLORS.MUTED}
               />
             </View>
           )}
@@ -359,7 +360,7 @@ export function TransactionForm({
               onChangeText={(v) => field.handleChange(v)}
               className="h-20 py-2"
               textAlignVertical="top"
-              placeholderTextColor="#888888"
+              placeholderTextColor={COLORS.MUTED}
             />
           </View>
         )}
@@ -387,7 +388,7 @@ export function TransactionForm({
             }}
           >
             {isSubmitting ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color={COLORS.WHITE} />
             ) : (
               <Text className="text-base font-semibold text-primary-foreground">
                 {submitLabel}

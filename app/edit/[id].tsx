@@ -15,7 +15,7 @@ import {
   useTransactionById,
   useUpdateTransaction,
 } from "@/hooks/use-transactions";
-import { TRANSACTION_TYPE } from "@/lib/constants";
+import { COLORS, TRANSACTION_TYPE } from "@/lib/constants";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -29,7 +29,7 @@ export default function EditTransactionScreen() {
   if (isLoading || !transaction) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator color="#7c3aed" />
+        <ActivityIndicator color={COLORS.PRIMARY} />
       </View>
     );
   }
