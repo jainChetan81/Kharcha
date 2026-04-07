@@ -1,18 +1,15 @@
 import { GEMINI_ERROR, type GeminiErrorType } from "@/lib/constants";
 import { env } from "@/lib/env";
 
-const GEMINI_MESSAGE_URL =
+const GEMINI_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
-const PROMPT = `Extract the financial transaction from this bank notification or email. Return ONLY a raw JSON object, no markdown:
-{
-  "amount": number (no symbol/commas),
-  "merchant": string or null,
-  "source": string or null (bank or card issuer, e.g. "HDFC", "Axis Bank"),
-  "date": "YYYY-MM-DD",
-  "type": "expense" or "income"
-}
-If not a bank transaction, return the word null and nothing else.`;
+const PROMPT = `Extract the financial transaction from this bank notification or email.
+- amount: principal as a number, no symbols/commas. 0 if not a transaction.
+- merchant: counterparty name. null if absent.
+- source: bank or card issuer (e.g. "HDFC", "Axis Bank"). null if absent.
+- date: strict YYYY-MM-DD.
+- type: "expense" or "income".`;
 
 const MESSAGE_PROMPT = `Extract a financial transaction from an Indian bank SMS, push notification, or email. Treat "INR", "Rs.", "Rs", "NR" as rupees.
 
@@ -20,7 +17,7 @@ const MESSAGE_PROMPT = `Extract a financial transaction from an Indian bank SMS,
 - amount: principal as a number, no symbols/commas. 0 if not a transaction.
 - type: "expense" for debited/spent/sent/paid/withdrawn. "income" for credited/received/refunded.
 - source: bank or card issuer (e.g. "HDFC", "Axis Bank", "Amex"). null if absent.
-- date: strict YYYY-MM-DD. Indian SMS use DD-MM-YY, e.g. "07-04-26" → "2026-04-07". Use today's UTC date if only time is shown.
+- date: strict YYYY-MM-DD. Indian SMS use DD-MM-YY, e.g. "07-04-26" → "2026-04-07". Use the provided Today date if only time is shown.
 - merchant: counterparty (UPI handle, name, store, biller). For "UPI/P2M/123/JOHN DOE" → "JOHN DOE". null if absent.
 - is_subscription: true ONLY if message mentions recurring/subscription/auto-debit/autopay/SI/standing instruction/mandate. One-off UPI payments are NOT subscriptions.
 - billing_day: 1-31 only when is_subscription, else null.
@@ -47,6 +44,18 @@ const MESSAGE_RESPONSE_SCHEMA = {
     "is_subscription",
     "confidence",
   ],
+};
+
+const TRANSACTION_RESPONSE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    amount: { type: "NUMBER" },
+    merchant: { type: "STRING", nullable: true },
+    source: { type: "STRING", nullable: true },
+    date: { type: "STRING" },
+    type: { type: "STRING", enum: ["expense", "income"] },
+  },
+  required: ["amount", "date", "type"],
 };
 
 export interface GeminiParsedTransaction {
@@ -88,14 +97,11 @@ export async function parseMessageWithGemini(
     return { parsed: null, raw: null };
   }
 
-  console.log(
-    "[parseMessageWithGemini] sending request, text length:",
-    text.length,
-  );
+  const today = new Date().toLocaleDateString("en-CA");
 
   try {
     const response = await fetch(
-      `${GEMINI_MESSAGE_URL}?key=${env.GEMINI_API_KEY}`,
+      `${GEMINI_ENDPOINT}?key=${env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,7 +110,7 @@ export async function parseMessageWithGemini(
             {
               parts: [
                 {
-                  text: `${MESSAGE_PROMPT}\n\nText:\n${text.slice(0, 4000)}`,
+                  text: `${MESSAGE_PROMPT}\n\nText:\n${text.slice(0, 4000)}\n\nToday: ${today}`,
                 },
               ],
             },
@@ -120,12 +126,9 @@ export async function parseMessageWithGemini(
       },
     );
 
-    console.log("[parseMessageWithGemini] http status:", response.status);
-
     if (!response.ok) {
       const errBody = await response.text().catch(() => "<no body>");
       if (response.status === 503) {
-        console.log("[gemini] service unavailable, skipping");
         return {
           parsed: null,
           raw: null,
@@ -133,7 +136,6 @@ export async function parseMessageWithGemini(
         };
       }
       if (response.status === 429) {
-        console.log("[gemini] rate limited / quota exhausted");
         return {
           parsed: null,
           raw: null,
@@ -153,13 +155,6 @@ export async function parseMessageWithGemini(
     const raw: string | null =
       candidate?.content?.parts?.[0]?.text?.trim() ?? null;
     const finishReason: string | undefined = candidate?.finishReason;
-
-    console.log(
-      "[parseMessageWithGemini] raw response:",
-      JSON.stringify(candidate?.content),
-      "finishReason:",
-      finishReason,
-    );
 
     if (finishReason === "MAX_TOKENS") {
       console.warn(
@@ -181,8 +176,6 @@ export async function parseMessageWithGemini(
       return { parsed: null, raw };
     }
 
-    console.log("[parseMessageWithGemini] parsed:", parsed);
-
     if (!parsed.is_transaction || parsed.amount <= 0) {
       console.warn("[parseMessageWithGemini] not a transaction or amount <= 0");
       return { parsed: null, raw };
@@ -203,7 +196,7 @@ export async function parseTransactionWithGemini(
 
   try {
     const response = await fetch(
-      `${GEMINI_MESSAGE_URL}?key=${env.GEMINI_API_KEY}`,
+      `${GEMINI_ENDPOINT}?key=${env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -219,7 +212,10 @@ export async function parseTransactionWithGemini(
           ],
           generationConfig: {
             temperature: 0,
-            maxOutputTokens: 200,
+            maxOutputTokens: 500,
+            responseMimeType: "application/json",
+            responseSchema: TRANSACTION_RESPONSE_SCHEMA,
+            thinkingConfig: { thinkingBudget: 0 },
           },
         }),
       },
@@ -227,7 +223,6 @@ export async function parseTransactionWithGemini(
 
     if (!response.ok) {
       if (response.status === 503) {
-        console.log("[gemini] service unavailable, skipping");
         return {
           parsed: null,
           raw: null,
@@ -235,7 +230,6 @@ export async function parseTransactionWithGemini(
         };
       }
       if (response.status === 429) {
-        console.log("[gemini] rate limited / quota exhausted");
         return {
           parsed: null,
           raw: null,
@@ -249,11 +243,10 @@ export async function parseTransactionWithGemini(
     const raw: string | null =
       data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
 
-    if (!raw || raw.toLowerCase() === "null") return { parsed: null, raw };
+    if (!raw) return { parsed: null, raw };
 
     try {
-      const cleaned = raw.replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(cleaned);
+      const parsed = JSON.parse(raw);
 
       if (
         typeof parsed.amount !== "number" ||
