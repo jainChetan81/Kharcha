@@ -1,10 +1,14 @@
+import { format } from "date-fns";
 import { GEMINI_ERROR, type GeminiErrorType } from "@/lib/constants";
 import { env } from "@/lib/env";
 
 const GEMINI_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
+const FINISH_REASON_MAX_TOKENS = "MAX_TOKENS";
+
 const PROMPT = `Extract the financial transaction from this bank notification or email.
+- is_transaction: true for real money movement (debit/credit/payment/refund). false for OTPs, balance enquiries, promos.
 - amount: principal as a number, no symbols/commas. 0 if not a transaction.
 - merchant: counterparty name. null if absent.
 - source: bank or card issuer (e.g. "HDFC", "Axis Bank"). null if absent.
@@ -49,13 +53,14 @@ const MESSAGE_RESPONSE_SCHEMA = {
 const TRANSACTION_RESPONSE_SCHEMA = {
   type: "OBJECT",
   properties: {
+    is_transaction: { type: "BOOLEAN" },
     amount: { type: "NUMBER" },
     merchant: { type: "STRING", nullable: true },
     source: { type: "STRING", nullable: true },
     date: { type: "STRING" },
     type: { type: "STRING", enum: ["expense", "income"] },
   },
-  required: ["amount", "date", "type"],
+  required: ["is_transaction", "amount", "date", "type"],
 };
 
 export interface GeminiParsedTransaction {
@@ -92,12 +97,9 @@ export interface GeminiParseMessageResult {
 export async function parseMessageWithGemini(
   text: string,
 ): Promise<GeminiParseMessageResult> {
-  if (!env.GEMINI_API_KEY) {
-    console.warn("[parseMessageWithGemini] missing GEMINI_API_KEY");
-    return { parsed: null, raw: null };
-  }
+  if (!env.GEMINI_API_KEY) return { parsed: null, raw: null };
 
-  const today = new Date().toLocaleDateString("en-CA");
+  const today = format(new Date(), "yyyy-MM-dd");
 
   try {
     const response = await fetch(
@@ -127,7 +129,6 @@ export async function parseMessageWithGemini(
     );
 
     if (!response.ok) {
-      const errBody = await response.text().catch(() => "<no body>");
       if (response.status === 503) {
         return {
           parsed: null,
@@ -142,11 +143,6 @@ export async function parseMessageWithGemini(
           error: GEMINI_ERROR.RATE_LIMITED,
         };
       }
-      console.warn(
-        "[parseMessageWithGemini] http error",
-        response.status,
-        errBody,
-      );
       return { parsed: null, raw: null };
     }
 
@@ -156,35 +152,26 @@ export async function parseMessageWithGemini(
       candidate?.content?.parts?.[0]?.text?.trim() ?? null;
     const finishReason: string | undefined = candidate?.finishReason;
 
-    if (finishReason === "MAX_TOKENS") {
-      console.warn(
-        "[parseMessageWithGemini] response truncated by MAX_TOKENS, raising maxOutputTokens may help",
-      );
+    if (finishReason === FINISH_REASON_MAX_TOKENS) {
       return { parsed: null, raw };
     }
 
-    if (!raw) {
-      console.warn("[parseMessageWithGemini] empty response from gemini");
-      return { parsed: null, raw: null };
-    }
+    if (!raw) return { parsed: null, raw: null };
 
     let parsed: GeminiParsedMessage & { is_transaction: boolean };
     try {
       parsed = JSON.parse(raw);
-    } catch (err) {
-      console.warn("[parseMessageWithGemini] json parse failed", err);
+    } catch {
       return { parsed: null, raw };
     }
 
     if (!parsed.is_transaction || parsed.amount <= 0) {
-      console.warn("[parseMessageWithGemini] not a transaction or amount <= 0");
       return { parsed: null, raw };
     }
 
     const { is_transaction: _ignored, ...result } = parsed;
     return { parsed: result, raw };
-  } catch (err) {
-    console.warn("[parseMessageWithGemini] fetch failed", err);
+  } catch {
     return { parsed: null, raw: null };
   }
 }
@@ -240,36 +227,41 @@ export async function parseTransactionWithGemini(
     }
 
     const data = await response.json();
+    const candidate = data.candidates?.[0];
     const raw: string | null =
-      data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
+      candidate?.content?.parts?.[0]?.text?.trim() ?? null;
+    const finishReason: string | undefined = candidate?.finishReason;
+
+    if (finishReason === FINISH_REASON_MAX_TOKENS) {
+      return { parsed: null, raw };
+    }
 
     if (!raw) return { parsed: null, raw };
 
+    let parsed: GeminiParsedTransaction & { is_transaction: boolean };
     try {
-      const parsed = JSON.parse(raw);
-
-      if (
-        typeof parsed.amount !== "number" ||
-        parsed.amount <= 0 ||
-        !["income", "expense"].includes(parsed.type) ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
-      ) {
-        return { parsed: null, raw };
-      }
-
-      return {
-        parsed: {
-          amount: parsed.amount,
-          merchant: parsed.merchant || null,
-          source: parsed.source || null,
-          date: parsed.date,
-          type: parsed.type,
-        },
-        raw,
-      };
+      parsed = JSON.parse(raw);
     } catch {
       return { parsed: null, raw };
     }
+
+    if (
+      !parsed.is_transaction ||
+      parsed.amount <= 0 ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
+    ) {
+      return { parsed: null, raw };
+    }
+
+    const { is_transaction: _ignored, ...result } = parsed;
+    return {
+      parsed: {
+        ...result,
+        merchant: result.merchant || null,
+        source: result.source || null,
+      },
+      raw,
+    };
   } catch {
     return { parsed: null, raw: null };
   }
