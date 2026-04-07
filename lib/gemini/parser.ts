@@ -26,11 +26,8 @@ const MESSAGE_PROMPT = `Extract a financial transaction from an Indian bank SMS,
 - source: payment rail — one of "UPI", "credit card", "debit card", "other". Use "UPI" when the message contains "UPI/", "VPA", or a UPI handle. Use "credit card" / "debit card" only when the message explicitly says credit/debit card. Otherwise "other".
 - date: strict YYYY-MM-DD. Indian SMS use DD-MM-YY, e.g. "07-04-26" → "2026-04-07". Use the provided Today date if only time is shown.
 - merchant: counterparty (store, biller, person, UPI handle). ALWAYS extract if any name is present. Examples:
-    - "UPI/P2M/308684736943/Bharat Petroleum Co" → "Bharat Petroleum Co"
     - "UPI/P2A/12345/JOHN DOE@okaxis" → "JOHN DOE"
-    - "to VPA merchant@paytm" → "merchant"
     - "at SWIGGY*ORDER" → "Swiggy"
-    - "paid to AMAZON" → "Amazon"
   Strip transaction codes (P2M/P2A/CR/DR/numeric ids) and UPI suffixes (@okaxis, @paytm). Title-case obvious all-caps words but keep acronyms (HDFC, IRCTC). null only if truly no counterparty exists (e.g. "balance enquiry").
 - is_subscription: true ONLY if message mentions recurring/subscription/auto-debit/autopay/SI/standing instruction/mandate. One-off UPI payments are NOT subscriptions.
 - billing_day: 1-31 only when is_subscription, else null.
