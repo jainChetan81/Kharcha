@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, like, lte, or, sql } from "drizzle-orm";
 import {
   CONFIG_KEYS,
+  OTHER_CATEGORY_LABEL,
   type SourceType,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
@@ -409,7 +410,7 @@ export async function getCategoryBreakdown(yearMonth: string) {
 
   return rows.map((r) => ({
     category_id: r.category_id as number,
-    category_name: r.category_name ?? "Other",
+    category_name: r.category_name ?? OTHER_CATEGORY_LABEL,
     total: r.total,
     percentage: grandTotal > 0 ? (r.total / grandTotal) * 100 : 0,
   })) as CategoryBreakdownRow[];

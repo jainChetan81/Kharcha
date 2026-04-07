@@ -64,7 +64,6 @@ export default function AddTransaction() {
         date: value.date,
         note: value.note || null,
       });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showSuccessToast(
         "Transaction added",
         `${value.type === TRANSACTION_TYPE.INCOME ? "+" : "-"}${fmt(Number(value.amount))}`,
@@ -102,7 +101,6 @@ export default function AddTransaction() {
       await addSubMutation.mutateAsync(value);
       await processSubscriptions();
       await queryClient.invalidateQueries();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showSuccessToast(
         "Subscription added",
         `Renews on day ${value.billingDay} every month`,
@@ -136,7 +134,10 @@ export default function AddTransaction() {
         </Text>
         <Switch
           value={isSubscription}
-          onValueChange={setIsSubscription}
+          onValueChange={(val) => {
+            Haptics.selectionAsync();
+            setIsSubscription(val);
+          }}
           trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
           thumbColor={COLORS.FOREGROUND}
         />

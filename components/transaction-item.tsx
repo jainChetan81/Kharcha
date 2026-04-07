@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import * as Haptics from "expo-haptics";
 import { ChevronRight } from "lucide-react-native";
 import { useRef } from "react";
 import {
@@ -11,7 +12,12 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
-import { SOURCE_TYPE, TIME_FORMAT, TRANSACTION_TYPE } from "@/lib/constants";
+import {
+  OTHER_CATEGORY_LABEL,
+  SOURCE_TYPE,
+  TIME_FORMAT,
+  TRANSACTION_TYPE,
+} from "@/lib/constants";
 import type { TransactionRow } from "@/lib/db";
 import { parseDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -45,6 +51,7 @@ export function TransactionItem({
       },
       onPanResponderRelease: (_, gesture) => {
         if (Math.abs(gesture.dx) > SWIPE_THRESHOLD) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           Animated.parallel([
             Animated.timing(translateX, {
               toValue: -SCREEN_WIDTH,
@@ -72,8 +79,8 @@ export function TransactionItem({
 
   const isIncome = item.type === TRANSACTION_TYPE.INCOME;
   const subtitle = isIncome
-    ? (item.category_name ?? "Other")
-    : `${item.category_name ?? "Other"}${item.source_name ? ` · ${item.source_name}` : ""}`;
+    ? (item.category_name ?? OTHER_CATEGORY_LABEL)
+    : `${item.category_name ?? OTHER_CATEGORY_LABEL}${item.source_name ? ` · ${item.source_name}` : ""}`;
 
   const content = (
     <Pressable
@@ -89,7 +96,7 @@ export function TransactionItem({
       <View className="ml-3 flex-1">
         <View className="flex-row items-center gap-1">
           <Text className="text-sm font-semibold text-foreground">
-            {item.merchant || item.category_name || item.type}
+            {item.merchant || item.category_name || OTHER_CATEGORY_LABEL}
           </Text>
           {item.source_type === SOURCE_TYPE.SYNCED && (
             <View className="rounded-md bg-[#1d4ed8] px-1.5 py-0.5">

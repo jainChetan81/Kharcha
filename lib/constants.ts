@@ -109,6 +109,8 @@ export const BANK_SENDERS = [
   "indusind_bank@indusind.com",
 ] as const;
 
+export const OTHER_CATEGORY_LABEL = "Other";
+
 export const DEVICE_TYPE_NAME: Record<number, string> = {
   0: "Unknown",
   1: "Phone",

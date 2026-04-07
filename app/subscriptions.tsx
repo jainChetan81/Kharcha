@@ -1,3 +1,4 @@
+import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { Plus, Receipt } from "lucide-react-native";
 import {
@@ -35,6 +36,7 @@ export default function SubscriptionsScreen() {
   const upcoming = subs.filter((s) => s.billing_day > today);
 
   function handleDelete(sub: SubscriptionRow) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     Alert.alert(
       "Delete Subscription",
       `Delete "${sub.name}" and all its transactions?`,
@@ -77,9 +79,10 @@ export default function SubscriptionsScreen() {
           </View>
           <Switch
             value={sub.is_active === 1}
-            onValueChange={(val) =>
-              toggleMutation.mutate({ id: sub.id, isActive: val })
-            }
+            onValueChange={(val) => {
+              Haptics.selectionAsync();
+              toggleMutation.mutate({ id: sub.id, isActive: val });
+            }}
             trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
             thumbColor={COLORS.FOREGROUND}
           />

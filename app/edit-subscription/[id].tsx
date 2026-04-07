@@ -1,5 +1,6 @@
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
+import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
@@ -109,12 +110,13 @@ export default function EditSubscriptionScreen() {
           <Text className="text-sm font-medium text-foreground">Active</Text>
           <Switch
             value={subscription.is_active === 1}
-            onValueChange={(val) =>
+            onValueChange={(val) => {
+              Haptics.selectionAsync();
               toggleMutation.mutate({
                 id: subscriptionId,
                 isActive: val,
-              })
-            }
+              });
+            }}
             trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
             thumbColor={COLORS.FOREGROUND}
           />
@@ -198,6 +200,7 @@ export default function EditSubscriptionScreen() {
                 items={categories}
                 selectedId={field.state.value}
                 onSelect={(id) => field.handleChange(id)}
+                allLabel="None"
               />
             </View>
           )}
