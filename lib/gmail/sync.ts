@@ -17,6 +17,10 @@ import { categories, transactions } from "@/lib/db/schema";
 import { getValidAccessToken } from "./auth";
 import { type ParseSource, parseEmailWithFallback } from "./parsers";
 
+// Cap stored note to keep db rows bounded. Gmail snippets are ~200 chars in
+// practice; 300 leaves headroom without truncating real snippets.
+const MAX_NOTE_CHARS = 300;
+
 export type EmailLogStatus = EmailLogStatusType;
 
 export interface EmailLog {
@@ -213,6 +217,11 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         continue;
       }
 
+      const trimmedBody = body.trim();
+      const note = trimmedBody
+        ? trimmedBody.slice(0, MAX_NOTE_CHARS)
+        : GMAIL_SYNC_NOTE;
+
       await db.insert(transactions).values({
         amount: outcome.parsed.amount,
         merchant: outcome.parsed.merchant,
@@ -221,7 +230,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         gmail_message_id: message.id,
         date: outcome.parsed.date,
         // store the original email snippet so the user can see exactly what was parsed
-        note: body.trim() || GMAIL_SYNC_NOTE,
+        note,
         type: outcome.parsed.type,
         source_type: "synced",
       });
