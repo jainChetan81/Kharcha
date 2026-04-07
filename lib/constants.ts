@@ -123,6 +123,8 @@ export type EmailLogStatusType =
 
 export const EMAIL_LOG_REASON = {
   GEMINI_UNAVAILABLE: "gemini_unavailable",
+  GEMINI_TIMEOUT: "gemini_timeout",
+  GEMINI_TRUNCATED: "gemini_truncated",
   NO_PARSER_MATCHED: "no parser matched",
 } as const;
 
@@ -132,6 +134,8 @@ export type EmailLogReasonType =
 export const GEMINI_ERROR = {
   SERVICE_UNAVAILABLE: "service_unavailable",
   RATE_LIMITED: "rate_limited",
+  TIMEOUT: "timeout",
+  TRUNCATED: "truncated",
 } as const;
 
 export type GeminiErrorType = (typeof GEMINI_ERROR)[keyof typeof GEMINI_ERROR];

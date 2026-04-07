@@ -52,6 +52,16 @@ export function ParseMessageSheet({
         );
         return;
       }
+      if (result.error === GEMINI_ERROR.TIMEOUT) {
+        setParsing(false);
+        showErrorToast("Gemini timed out, try again");
+        return;
+      }
+      if (result.error === GEMINI_ERROR.TRUNCATED) {
+        setParsing(false);
+        showErrorToast("Message too long, try a shorter snippet");
+        return;
+      }
       if (!result.parsed) {
         setParseError(true);
         setParsing(false);

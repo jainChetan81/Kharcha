@@ -2,10 +2,13 @@ import { format } from "date-fns";
 import { GEMINI_ERROR, type GeminiErrorType } from "@/lib/constants";
 import { env } from "@/lib/env";
 
-const GEMINI_ENDPOINT =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
+const MAX_INPUT_CHARS = 4000;
+const GEMINI_TIMEOUT_MS = 15_000;
 const FINISH_REASON_MAX_TOKENS = "MAX_TOKENS";
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 const PROMPT = `Extract the financial transaction from this bank notification or email.
 - is_transaction: true for real money movement (debit/credit/payment/refund). false for OTPs, balance enquiries, promos.
@@ -63,6 +66,8 @@ const TRANSACTION_RESPONSE_SCHEMA = {
   required: ["is_transaction", "amount", "date", "type"],
 };
 
+// note: deliberately omits is_subscription/billing_day — only the paste-message
+// flow infers subscriptions; the gmail sync path does not.
 export interface GeminiParsedTransaction {
   amount: number;
   merchant: string | null;
@@ -94,12 +99,18 @@ export interface GeminiParseMessageResult {
   error?: GeminiErrorType;
 }
 
-export async function parseMessageWithGemini(
-  text: string,
-): Promise<GeminiParseMessageResult> {
-  if (!env.GEMINI_API_KEY) return { parsed: null, raw: null };
+interface GeminiApiResponse {
+  candidates?: Array<{
+    content?: { parts?: Array<{ text?: string }> };
+    finishReason?: string;
+  }>;
+}
 
-  const today = format(new Date(), "yyyy-MM-dd");
+async function callGemini<T>(
+  userContent: string,
+  schema: object,
+): Promise<{ parsed: T | null; raw: string | null; error?: GeminiErrorType }> {
+  if (!env.GEMINI_API_KEY) return { parsed: null, raw: null };
 
   try {
     const response = await fetch(
@@ -107,21 +118,14 @@ export async function parseMessageWithGemini(
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `${MESSAGE_PROMPT}\n\nText:\n${text.slice(0, 4000)}\n\nToday: ${today}`,
-                },
-              ],
-            },
-          ],
+          contents: [{ parts: [{ text: userContent }] }],
           generationConfig: {
             temperature: 0,
             maxOutputTokens: 500,
             responseMimeType: "application/json",
-            responseSchema: MESSAGE_RESPONSE_SCHEMA,
+            responseSchema: schema,
             thinkingConfig: { thinkingBudget: 0 },
           },
         }),
@@ -146,123 +150,95 @@ export async function parseMessageWithGemini(
       return { parsed: null, raw: null };
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as GeminiApiResponse;
     const candidate = data.candidates?.[0];
     const raw: string | null =
       candidate?.content?.parts?.[0]?.text?.trim() ?? null;
     const finishReason: string | undefined = candidate?.finishReason;
 
     if (finishReason === FINISH_REASON_MAX_TOKENS) {
-      return { parsed: null, raw };
+      return { parsed: null, raw, error: GEMINI_ERROR.TRUNCATED };
     }
 
     if (!raw) return { parsed: null, raw: null };
 
-    let parsed: GeminiParsedMessage & { is_transaction: boolean };
     try {
-      parsed = JSON.parse(raw);
+      const parsed = JSON.parse(raw) as T;
+      return { parsed, raw };
     } catch {
       return { parsed: null, raw };
     }
-
-    if (!parsed.is_transaction || parsed.amount <= 0) {
-      return { parsed: null, raw };
+  } catch (err) {
+    const name = (err as { name?: string } | null)?.name;
+    if (name === "TimeoutError" || name === "AbortError") {
+      return { parsed: null, raw: null, error: GEMINI_ERROR.TIMEOUT };
     }
-
-    const { is_transaction: _ignored, ...result } = parsed;
-    return { parsed: result, raw };
-  } catch {
     return { parsed: null, raw: null };
   }
+}
+
+export async function parseMessageWithGemini(
+  text: string,
+): Promise<GeminiParseMessageResult> {
+  const today = format(new Date(), "yyyy-MM-dd");
+  const userContent = `${MESSAGE_PROMPT}\n\nText:\n${text.slice(0, MAX_INPUT_CHARS)}\n\nToday: ${today}`;
+
+  const result = await callGemini<
+    GeminiParsedMessage & { is_transaction: boolean }
+  >(userContent, MESSAGE_RESPONSE_SCHEMA);
+
+  if (!result.parsed) {
+    return { parsed: null, raw: result.raw, error: result.error };
+  }
+
+  const parsed = result.parsed;
+
+  if (
+    !parsed.is_transaction ||
+    parsed.amount <= 0 ||
+    !DATE_REGEX.test(parsed.date)
+  ) {
+    return { parsed: null, raw: result.raw };
+  }
+
+  // discard is_transaction — already validated above
+  const { is_transaction, ...rest } = parsed;
+  void is_transaction;
+  return { parsed: rest, raw: result.raw };
 }
 
 export async function parseTransactionWithGemini(
   text: string,
 ): Promise<GeminiParseResult> {
-  if (!env.GEMINI_API_KEY) return { parsed: null, raw: null };
+  const userContent = `${PROMPT}\n\nText:\n${text.slice(0, MAX_INPUT_CHARS)}`;
 
-  try {
-    const response = await fetch(
-      `${GEMINI_ENDPOINT}?key=${env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `${PROMPT}\n\nText:\n${text.slice(0, 4000)}`,
-                },
-              ],
-            },
-          ],
-          generationConfig: {
-            temperature: 0,
-            maxOutputTokens: 500,
-            responseMimeType: "application/json",
-            responseSchema: TRANSACTION_RESPONSE_SCHEMA,
-            thinkingConfig: { thinkingBudget: 0 },
-          },
-        }),
-      },
-    );
+  const result = await callGemini<
+    GeminiParsedTransaction & { is_transaction: boolean }
+  >(userContent, TRANSACTION_RESPONSE_SCHEMA);
 
-    if (!response.ok) {
-      if (response.status === 503) {
-        return {
-          parsed: null,
-          raw: null,
-          error: GEMINI_ERROR.SERVICE_UNAVAILABLE,
-        };
-      }
-      if (response.status === 429) {
-        return {
-          parsed: null,
-          raw: null,
-          error: GEMINI_ERROR.RATE_LIMITED,
-        };
-      }
-      return { parsed: null, raw: null };
-    }
-
-    const data = await response.json();
-    const candidate = data.candidates?.[0];
-    const raw: string | null =
-      candidate?.content?.parts?.[0]?.text?.trim() ?? null;
-    const finishReason: string | undefined = candidate?.finishReason;
-
-    if (finishReason === FINISH_REASON_MAX_TOKENS) {
-      return { parsed: null, raw };
-    }
-
-    if (!raw) return { parsed: null, raw };
-
-    let parsed: GeminiParsedTransaction & { is_transaction: boolean };
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      return { parsed: null, raw };
-    }
-
-    if (
-      !parsed.is_transaction ||
-      parsed.amount <= 0 ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
-    ) {
-      return { parsed: null, raw };
-    }
-
-    const { is_transaction: _ignored, ...result } = parsed;
-    return {
-      parsed: {
-        ...result,
-        merchant: result.merchant || null,
-        source: result.source || null,
-      },
-      raw,
-    };
-  } catch {
-    return { parsed: null, raw: null };
+  if (!result.parsed) {
+    return { parsed: null, raw: result.raw, error: result.error };
   }
+
+  const parsed = result.parsed;
+
+  if (
+    !parsed.is_transaction ||
+    parsed.amount <= 0 ||
+    !DATE_REGEX.test(parsed.date)
+  ) {
+    return { parsed: null, raw: result.raw };
+  }
+
+  // discard is_transaction — already validated above
+  const { is_transaction, ...rest } = parsed;
+  void is_transaction;
+  return {
+    parsed: {
+      ...rest,
+      merchant: rest.merchant || null,
+      source: rest.source || null,
+    },
+    raw: result.raw,
+  };
 }

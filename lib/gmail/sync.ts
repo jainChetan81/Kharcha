@@ -6,6 +6,7 @@ import {
   type EmailLogReasonType,
   type EmailLogStatusType,
   GEMINI_ERROR,
+  type GeminiErrorType,
   GMAIL_API,
   GMAIL_SYNC_NOTE,
 } from "@/lib/constants";
@@ -58,6 +59,22 @@ function extractHeader(
 function senderEmail(from: string): string {
   const m = from.match(/<([^>]+)>/);
   return (m ? m[1] : from).trim().toLowerCase();
+}
+
+function geminiErrorToReason(
+  error: GeminiErrorType | undefined,
+  hasResponse: boolean,
+): EmailLogReasonType | undefined {
+  if (error === GEMINI_ERROR.TIMEOUT) return EMAIL_LOG_REASON.GEMINI_TIMEOUT;
+  if (error === GEMINI_ERROR.TRUNCATED)
+    return EMAIL_LOG_REASON.GEMINI_TRUNCATED;
+  if (
+    error === GEMINI_ERROR.SERVICE_UNAVAILABLE ||
+    error === GEMINI_ERROR.RATE_LIMITED
+  ) {
+    return EMAIL_LOG_REASON.GEMINI_UNAVAILABLE;
+  }
+  return hasResponse ? undefined : EMAIL_LOG_REASON.NO_PARSER_MATCHED;
 }
 
 export async function syncGmailTransactions(): Promise<SyncResult> {
@@ -187,13 +204,10 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             ? EMAIL_LOG_STATUS.NOT_TRANSACTION
             : EMAIL_LOG_STATUS.FAILED,
           geminiResponse: outcome.geminiResponse,
-          reason:
-            outcome.geminiError === GEMINI_ERROR.SERVICE_UNAVAILABLE ||
-            outcome.geminiError === GEMINI_ERROR.RATE_LIMITED
-              ? EMAIL_LOG_REASON.GEMINI_UNAVAILABLE
-              : outcome.geminiResponse
-                ? undefined
-                : EMAIL_LOG_REASON.NO_PARSER_MATCHED,
+          reason: geminiErrorToReason(
+            outcome.geminiError,
+            Boolean(outcome.geminiResponse),
+          ),
         });
         continue;
       }
