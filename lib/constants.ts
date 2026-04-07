@@ -111,6 +111,31 @@ export const DEVICE_TYPE_NAME: Record<number, string> = {
   4: "TV",
 };
 
+export const EMAIL_LOG_STATUS = {
+  ADDED: "added",
+  DUPLICATE: "duplicate",
+  FAILED: "failed",
+  NOT_TRANSACTION: "not_transaction",
+} as const;
+
+export type EmailLogStatusType =
+  (typeof EMAIL_LOG_STATUS)[keyof typeof EMAIL_LOG_STATUS];
+
+export const EMAIL_LOG_REASON = {
+  GEMINI_UNAVAILABLE: "gemini_unavailable",
+  NO_PARSER_MATCHED: "no parser matched",
+} as const;
+
+export type EmailLogReasonType =
+  (typeof EMAIL_LOG_REASON)[keyof typeof EMAIL_LOG_REASON];
+
+export const GEMINI_ERROR = {
+  SERVICE_UNAVAILABLE: "service_unavailable",
+  RATE_LIMITED: "rate_limited",
+} as const;
+
+export type GeminiErrorType = (typeof GEMINI_ERROR)[keyof typeof GEMINI_ERROR];
+
 export const QUERY_KEYS = {
   TRANSACTION: "transaction",
   TRANSACTIONS: "transactions",

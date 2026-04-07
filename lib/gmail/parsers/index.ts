@@ -1,3 +1,4 @@
+import type { GeminiErrorType } from "@/lib/constants";
 import { parseTransactionWithGemini } from "@/lib/gemini/parser";
 import { AXIS_PARSERS } from "./axis";
 import { HDFC_PARSERS } from "./hdfc";
@@ -17,6 +18,7 @@ export interface ParseOutcome {
   parsed: ParsedTransaction | null;
   parsedBy: ParseSource;
   geminiResponse?: string;
+  geminiError?: GeminiErrorType;
 }
 
 const PARSER_MAP: Record<string, Parser[]> = {
@@ -52,5 +54,6 @@ export async function parseEmailWithFallback(
     parsed: null,
     parsedBy: "failed",
     geminiResponse: gemini.raw ?? undefined,
+    geminiError: gemini.error,
   };
 }

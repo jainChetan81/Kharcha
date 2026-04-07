@@ -2,21 +2,35 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
+import { Sparkles } from "lucide-react-native";
 import { useState } from "react";
 import { KeyboardAvoidingView, Pressable, Switch, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
-import { SubscriptionForm } from "@/components/subscription-form";
+import { ParseMessageSheet } from "@/components/parse-message-sheet";
+import {
+  SubscriptionForm,
+  type SubscriptionFormDefaults,
+} from "@/components/subscription-form";
 import {
   TransactionForm,
   type TransactionFormValues,
 } from "@/components/transaction-form";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
 import { useAddSubscription } from "@/hooks/use-subscriptions";
 import { useInsertTransaction } from "@/hooks/use-transactions";
-import { COLORS, DATE_TIME_FORMAT, TRANSACTION_TYPE } from "@/lib/constants";
+import {
+  COLORS,
+  DATE_TIME_FORMAT,
+  QUERY_KEYS,
+  TRANSACTION_TYPE,
+} from "@/lib/constants";
+import { getAllSources } from "@/lib/db";
 import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
 import { processSubscriptions } from "@/lib/db/subscriptions";
+import type { Source } from "@/lib/db/types";
+import type { GeminiParsedMessage } from "@/lib/gemini/parser";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -33,6 +47,13 @@ export default function AddTransaction() {
   const [isSubscription, setIsSubscription] = useState(
     modeParam === "subscription",
   );
+
+  const [parseSheetVisible, setParseSheetVisible] = useState(false);
+  const [parsedTxDefaults, setParsedTxDefaults] =
+    useState<TransactionFormValues | null>(null);
+  const [parsedSubDefaults, setParsedSubDefaults] =
+    useState<SubscriptionFormDefaults | null>(null);
+  const [formKey, setFormKey] = useState(0);
 
   const defaultValues: TransactionFormValues = {
     type: TRANSACTION_TYPE.EXPENSE,
@@ -51,6 +72,73 @@ export default function AddTransaction() {
         ? TRANSACTION_TYPE.INCOME
         : TRANSACTION_TYPE.EXPENSE,
   };
+
+  function matchSourceId(
+    name: string | null,
+    sources: Source[],
+  ): number | null {
+    if (!name) return null;
+    const needle = name.toLowerCase().trim();
+    if (!needle) return null;
+    const exact = sources.find((s) => s.name.toLowerCase() === needle);
+    if (exact) return exact.id;
+    if (needle.length < 3) return null;
+    const partial = sources.find((s) => {
+      const sourceName = s.name.toLowerCase();
+      if (sourceName.length < 3) return false;
+      return sourceName.includes(needle) || needle.includes(sourceName);
+    });
+    return partial?.id ?? null;
+  }
+
+  async function handleParsed(
+    parsed: GeminiParsedMessage,
+    originalText: string,
+  ) {
+    const sources =
+      queryClient.getQueryData<Source[]>([QUERY_KEYS.SOURCES]) ??
+      (await getAllSources());
+    const sourceId = matchSourceId(parsed.source, sources);
+
+    const txDefaults: TransactionFormValues = {
+      type: parsed.type,
+      amount: String(parsed.amount),
+      merchant: parsed.merchant ?? "",
+      categoryId: null,
+      sourceId,
+      date: `${parsed.date} 12:00`,
+      note: originalText.trim(),
+    };
+    setParsedTxDefaults(txDefaults);
+
+    if (parsed.is_subscription) {
+      setParsedSubDefaults({
+        name: parsed.merchant ?? "",
+        amount: String(parsed.amount),
+        billingDay: parsed.billing_day ? String(parsed.billing_day) : "",
+        sourceId,
+      });
+      setIsSubscription(true);
+    } else {
+      setParsedSubDefaults(null);
+      setIsSubscription(false);
+    }
+
+    setFormKey((k) => k + 1);
+    setParseSheetVisible(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    if (parsed.confidence === "high") {
+      showSuccessToast("form filled from message ✨");
+    } else if (parsed.confidence === "medium") {
+      showSuccessToast(
+        "form filled from message ✨",
+        "please verify the parsed details",
+      );
+    } else {
+      showErrorToast("low confidence — please check all fields");
+    }
+  }
 
   async function handleTransactionSubmit(value: TransactionFormValues) {
     try {
@@ -125,7 +213,16 @@ export default function AddTransaction() {
         <Text className="text-lg font-bold text-foreground">
           {isSubscription ? "Add Subscription" : "Add Transaction"}
         </Text>
-        <View className="w-14" />
+        <Pressable
+          onPress={() => {
+            Haptics.selectionAsync();
+            setParseSheetVisible(true);
+          }}
+          className="w-14 items-end py-1"
+          hitSlop={8}
+        >
+          <Icon as={Sparkles} className="size-6 text-primary" />
+        </Pressable>
       </View>
 
       <View className="mx-5 mb-3 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-2.5">
@@ -144,14 +241,25 @@ export default function AddTransaction() {
       </View>
 
       {isSubscription ? (
-        <SubscriptionForm onSubmit={handleSubscriptionSubmit} />
+        <SubscriptionForm
+          key={`sub-${formKey}`}
+          defaultValues={parsedSubDefaults ?? undefined}
+          onSubmit={handleSubscriptionSubmit}
+        />
       ) : (
         <TransactionForm
-          defaultValues={oneTimeDefaults}
+          key={`tx-${formKey}`}
+          defaultValues={parsedTxDefaults ?? oneTimeDefaults}
           submitLabel="Add Transaction"
           onSubmit={handleTransactionSubmit}
         />
       )}
+
+      <ParseMessageSheet
+        visible={parseSheetVisible}
+        onClose={() => setParseSheetVisible(false)}
+        onParsed={handleParsed}
+      />
     </KeyboardAvoidingView>
   );
 }

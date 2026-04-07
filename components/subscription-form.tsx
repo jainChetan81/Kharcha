@@ -11,8 +11,17 @@ import { getAllSources, getCategoriesByType } from "@/lib/db";
 import { showErrorToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
+export type SubscriptionFormDefaults = {
+  name?: string;
+  amount?: string;
+  billingDay?: string;
+  categoryId?: number | null;
+  sourceId?: number | null;
+};
+
 export function SubscriptionForm({
   onSubmit,
+  defaultValues,
 }: {
   onSubmit: (value: {
     name: string;
@@ -21,6 +30,7 @@ export function SubscriptionForm({
     categoryId: number | null;
     sourceId: number | null;
   }) => Promise<void>;
+  defaultValues?: SubscriptionFormDefaults;
 }) {
   const { data: categories = [] } = useQuery({
     queryKey: [QUERY_KEYS.CATEGORIES, TRANSACTION_TYPE.EXPENSE],
@@ -34,11 +44,11 @@ export function SubscriptionForm({
 
   const form = useForm({
     defaultValues: {
-      name: "",
-      amount: "",
-      billingDay: "",
-      categoryId: null as number | null,
-      sourceId: null as number | null,
+      name: defaultValues?.name ?? "",
+      amount: defaultValues?.amount ?? "",
+      billingDay: defaultValues?.billingDay ?? "",
+      categoryId: (defaultValues?.categoryId ?? null) as number | null,
+      sourceId: (defaultValues?.sourceId ?? null) as number | null,
     },
     onSubmit: async ({ value }) => {
       await onSubmit({

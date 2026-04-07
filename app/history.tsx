@@ -37,6 +37,7 @@ import {
 } from "@/hooks/use-transactions";
 import {
   COLORS,
+  EMAIL_LOG_STATUS,
   editScreen,
   SOURCE_TYPE,
   type SourceFilterType,
@@ -177,7 +178,7 @@ export default function HistoryScreen() {
       const lines: string[] = [];
       let total = 0;
       for (const log of result.emailLogs) {
-        if (log.status === "added" && log.transaction) {
+        if (log.status === EMAIL_LOG_STATUS.ADDED && log.transaction) {
           total += log.transaction.amount;
         }
       }

@@ -190,11 +190,13 @@ async function seedDefaults() {
     const seeds: {
       name: string;
       parser_key: string | null;
+      is_active: boolean;
       emails: string[];
     }[] = [
       {
         name: "Axis Bank",
         parser_key: "axis",
+        is_active: true,
         emails: [
           "alerts@axis.bank.in",
           "alerts@axisbank.com",
@@ -204,6 +206,7 @@ async function seedDefaults() {
       {
         name: "HDFC Bank",
         parser_key: "hdfc",
+        is_active: true,
         emails: [
           "alerts@hdfcbank.net",
           "alerts@hdfcbank.com",
@@ -213,15 +216,27 @@ async function seedDefaults() {
       {
         name: "IndusInd Bank",
         parser_key: "indusind",
+        is_active: false,
         emails: ["indusind_bank@indusind.com"],
       },
       {
         name: "ICICI Bank",
         parser_key: null,
+        is_active: false,
         emails: ["alerts@icicibank.com"],
       },
-      { name: "SBI", parser_key: null, emails: ["alerts@sbi.co.in"] },
-      { name: "Kotak", parser_key: null, emails: ["alerts@kotak.com"] },
+      {
+        name: "SBI",
+        parser_key: null,
+        is_active: false,
+        emails: ["alerts@sbi.co.in"],
+      },
+      {
+        name: "Kotak",
+        parser_key: null,
+        is_active: false,
+        emails: ["alerts@kotak.com"],
+      },
     ];
 
     for (const seed of seeds) {
@@ -229,7 +244,7 @@ async function seedDefaults() {
         name: seed.name,
         parser_key: seed.parser_key,
         is_default: 1,
-        is_active: 1,
+        is_active: seed.is_active ? 1 : 0,
       });
       const bankId = Number(result.lastInsertRowId);
       await db.insert(bankEmails).values(

@@ -1,5 +1,14 @@
 import { and, eq } from "drizzle-orm";
-import { CONFIG_KEYS, GMAIL_API, GMAIL_SYNC_NOTE } from "@/lib/constants";
+import {
+  CONFIG_KEYS,
+  EMAIL_LOG_REASON,
+  EMAIL_LOG_STATUS,
+  type EmailLogReasonType,
+  type EmailLogStatusType,
+  GEMINI_ERROR,
+  GMAIL_API,
+  GMAIL_SYNC_NOTE,
+} from "@/lib/constants";
 import { db } from "@/lib/db";
 import { getActiveBanksWithEmails } from "@/lib/db/banks";
 import { getConfig, updateConfig } from "@/lib/db/config";
@@ -7,11 +16,7 @@ import { categories, transactions } from "@/lib/db/schema";
 import { getValidAccessToken } from "./auth";
 import { type ParseSource, parseEmailWithFallback } from "./parsers";
 
-export type EmailLogStatus =
-  | "added"
-  | "duplicate"
-  | "failed"
-  | "not_transaction";
+export type EmailLogStatus = EmailLogStatusType;
 
 export interface EmailLog {
   id: string;
@@ -25,7 +30,8 @@ export interface EmailLog {
     date: string;
   };
   geminiResponse?: string;
-  reason?: string;
+  reason?: EmailLogReasonType;
+  errorMessage?: string;
 }
 
 export interface SyncResult {
@@ -96,7 +102,9 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
       const query = `from:${sender} after:${formatted}`;
       const listResponse = await fetch(
         `${GMAIL_API.MESSAGES}?q=${encodeURIComponent(query)}&maxResults=50`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
       );
       const listData = (await listResponse.json()) as {
         messages?: { id: string }[];
@@ -113,8 +121,8 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         from: sender,
         subject: "",
         parsedBy: "failed",
-        status: "failed",
-        reason: String(err).slice(0, 200),
+        status: EMAIL_LOG_STATUS.FAILED,
+        errorMessage: String(err).slice(0, 200),
       });
     }
   }
@@ -133,7 +141,9 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     try {
       const msgResponse = await fetch(
         `${GMAIL_API.MESSAGES}/${message.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
       );
       const msgData = await msgResponse.json();
       const headers = msgData.payload?.headers as
@@ -156,7 +166,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
           from,
           subject,
           parsedBy: "regex",
-          status: "duplicate",
+          status: EMAIL_LOG_STATUS.DUPLICATE,
         });
         continue;
       }
@@ -173,9 +183,17 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
           from,
           subject,
           parsedBy: outcome.parsedBy,
-          status: outcome.geminiResponse ? "not_transaction" : "failed",
+          status: outcome.geminiResponse
+            ? EMAIL_LOG_STATUS.NOT_TRANSACTION
+            : EMAIL_LOG_STATUS.FAILED,
           geminiResponse: outcome.geminiResponse,
-          reason: outcome.geminiResponse ? undefined : "no parser matched",
+          reason:
+            outcome.geminiError === GEMINI_ERROR.SERVICE_UNAVAILABLE ||
+            outcome.geminiError === GEMINI_ERROR.RATE_LIMITED
+              ? EMAIL_LOG_REASON.GEMINI_UNAVAILABLE
+              : outcome.geminiResponse
+                ? undefined
+                : EMAIL_LOG_REASON.NO_PARSER_MATCHED,
         });
         continue;
       }
@@ -198,7 +216,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         from,
         subject,
         parsedBy: outcome.parsedBy,
-        status: "added",
+        status: EMAIL_LOG_STATUS.ADDED,
         transaction: {
           amount: outcome.parsed.amount,
           merchant: outcome.parsed.merchant,
@@ -214,8 +232,8 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         from: from || "(unknown)",
         subject,
         parsedBy: "failed",
-        status: "failed",
-        reason: String(err).slice(0, 200),
+        status: EMAIL_LOG_STATUS.FAILED,
+        errorMessage: String(err).slice(0, 200),
       });
     }
   }

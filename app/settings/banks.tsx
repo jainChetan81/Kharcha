@@ -175,6 +175,10 @@ export default function BanksScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 120, paddingTop: 8 }}
         >
+          <Text className="mx-5 mb-3 text-xs text-muted-foreground">
+            Only keep the banks you actually use as active.
+          </Text>
+
           {isLoading ? (
             <Text className="mt-10 text-center text-sm text-muted-foreground">
               Loading…

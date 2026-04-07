@@ -19,6 +19,7 @@ import {
   COLORS,
   CONFIG_KEYS,
   DATE_FORMAT,
+  EMAIL_LOG_STATUS,
   GMAIL_API,
   QUERY_KEYS,
   SCREENS,
@@ -476,10 +477,10 @@ function Badge({ text, color }: { text: string; color: string }) {
 
 function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
   const statusColor: Record<EmailLog["status"], string> = {
-    added: COLORS.POSITIVE,
-    duplicate: COLORS.WARNING,
-    failed: COLORS.DANGER,
-    not_transaction: COLORS.MUTED,
+    [EMAIL_LOG_STATUS.ADDED]: COLORS.POSITIVE,
+    [EMAIL_LOG_STATUS.DUPLICATE]: COLORS.WARNING,
+    [EMAIL_LOG_STATUS.FAILED]: COLORS.DANGER,
+    [EMAIL_LOG_STATUS.NOT_TRANSACTION]: COLORS.MUTED,
   };
   const parsedColor =
     log.parsedBy === "regex"
@@ -487,7 +488,8 @@ function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
       : log.parsedBy === "gemini"
         ? COLORS.PRIMARY
         : COLORS.DANGER;
-  const statusLabel = log.status === "not_transaction" ? "not txn" : log.status;
+  const statusLabel =
+    log.status === EMAIL_LOG_STATUS.NOT_TRANSACTION ? "not txn" : log.status;
 
   return (
     <View className="mb-2 rounded-xl bg-background px-3 py-2.5">
@@ -525,6 +527,11 @@ function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
       )}
       {log.reason && (
         <Text className="mt-1 text-[10px] text-negative">{log.reason}</Text>
+      )}
+      {log.errorMessage && (
+        <Text className="mt-1 text-[10px] text-negative" numberOfLines={2}>
+          {log.errorMessage}
+        </Text>
       )}
     </View>
   );
