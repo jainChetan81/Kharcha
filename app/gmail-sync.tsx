@@ -89,21 +89,24 @@ export default function GmailSyncScreen() {
     }
   }
 
+  async function handleSessionExpired() {
+    await handleDisconnect();
+    showErrorToast("Session expired", "Please reconnect your Gmail");
+  }
+
   async function handleVerify() {
     setVerifying(true);
     try {
       const token = await getValidAccessToken();
       if (!token) {
-        await handleDisconnect();
-        showErrorToast("Session expired", "Please reconnect your Gmail");
+        await handleSessionExpired();
         return;
       }
       const res = await fetch(`${GMAIL_API.MESSAGES}?maxResults=1`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        await handleDisconnect();
-        showErrorToast("Session expired", "Please reconnect your Gmail");
+        await handleSessionExpired();
         return;
       }
 
@@ -117,8 +120,7 @@ export default function GmailSyncScreen() {
 
       showSuccessToast("Connection verified");
     } catch {
-      await handleDisconnect();
-      showErrorToast("Session expired", "Please reconnect your Gmail");
+      await handleSessionExpired();
     } finally {
       setVerifying(false);
     }

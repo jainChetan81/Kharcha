@@ -74,9 +74,9 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     }
   }
 
-  const lastSyncedAt = await getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT);
-  const sinceDate = lastSyncedAt
-    ? new Date(lastSyncedAt)
+  const syncFromCursor = await getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT);
+  const sinceDate = syncFromCursor
+    ? new Date(syncFromCursor)
     : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const formatted = `${sinceDate.getFullYear()}/${sinceDate.getMonth() + 1}/${sinceDate.getDate()}`;
 
