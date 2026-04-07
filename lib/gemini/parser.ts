@@ -14,7 +14,7 @@ const PROMPT = `Extract the financial transaction from this bank notification or
 - is_transaction: true for real money movement (debit/credit/payment/refund). false for OTPs, balance enquiries, promos.
 - amount: principal as a number, no symbols/commas. 0 if not a transaction.
 - merchant: counterparty name. null if absent.
-- source: "credit card", "debit card", "UPI", "other" if absent
+- source: payment rail — one of "UPI", "credit card", "debit card", "other". Use "UPI" for VPA/UPI handles, card only when explicitly stated, else "other".
 - date: strict YYYY-MM-DD.
 - type: "expense" or "income".`;
 
@@ -26,11 +26,8 @@ const MESSAGE_PROMPT = `Extract a financial transaction from an Indian bank SMS,
 - source: payment rail — one of "UPI", "credit card", "debit card", "other". Use "UPI" when the message contains "UPI/", "VPA", or a UPI handle. Use "credit card" / "debit card" only when the message explicitly says credit/debit card. Otherwise "other".
 - date: strict YYYY-MM-DD. Indian SMS use DD-MM-YY, e.g. "07-04-26" → "2026-04-07". Use the provided Today date if only time is shown.
 - merchant: counterparty (store, biller, person, UPI handle). ALWAYS extract if any name is present. Examples:
-    - "UPI/P2M/308684736943/Bharat Petroleum Co" → "Bharat Petroleum Co"
     - "UPI/P2A/12345/JOHN DOE@okaxis" → "JOHN DOE"
-    - "to VPA merchant@paytm" → "merchant"
     - "at SWIGGY*ORDER" → "Swiggy"
-    - "paid to AMAZON" → "Amazon"
   Strip transaction codes (P2M/P2A/CR/DR/numeric ids) and UPI suffixes (@okaxis, @paytm). Title-case obvious all-caps words but keep acronyms (HDFC, IRCTC). null only if truly no counterparty exists (e.g. "balance enquiry").
 - is_subscription: true ONLY if message mentions recurring/subscription/auto-debit/autopay/SI/standing instruction/mandate. One-off UPI payments are NOT subscriptions.
 - billing_day: 1-31 only when is_subscription, else null.
@@ -112,6 +109,20 @@ interface GeminiApiResponse {
     content?: { parts?: Array<{ text?: string }> };
     finishReason?: string;
   }>;
+}
+
+// Shared validation for both parse paths. Returns null when valid, otherwise an error message.
+function validateGeminiTransaction(parsed: {
+  is_transaction: boolean;
+  amount: number;
+  date: string;
+}): string | null {
+  if (!parsed.is_transaction) return "model returned is_transaction=false";
+  if (parsed.amount <= 0)
+    return `model returned non-positive amount: ${parsed.amount}`;
+  if (!DATE_REGEX.test(parsed.date))
+    return `model returned invalid date: ${parsed.date}`;
+  return null;
 }
 
 async function callGemini<T>(
@@ -265,32 +276,13 @@ export async function parseMessageWithGemini(
     };
   }
 
-  const parsed = result.parsed;
-
-  if (!parsed.is_transaction) {
-    return {
-      parsed: null,
-      raw: result.raw,
-      errorMessage: "model returned is_transaction=false",
-    };
-  }
-  if (parsed.amount <= 0) {
-    return {
-      parsed: null,
-      raw: result.raw,
-      errorMessage: `model returned non-positive amount: ${parsed.amount}`,
-    };
-  }
-  if (!DATE_REGEX.test(parsed.date)) {
-    return {
-      parsed: null,
-      raw: result.raw,
-      errorMessage: `model returned invalid date: ${parsed.date}`,
-    };
+  const validationError = validateGeminiTransaction(result.parsed);
+  if (validationError) {
+    return { parsed: null, raw: result.raw, errorMessage: validationError };
   }
 
   // discard is_transaction — already validated above
-  const { is_transaction, ...rest } = parsed;
+  const { is_transaction, ...rest } = result.parsed;
   void is_transaction;
   return { parsed: rest, raw: result.raw };
 }
@@ -313,32 +305,13 @@ export async function parseTransactionWithGemini(
     };
   }
 
-  const parsed = result.parsed;
-
-  if (!parsed.is_transaction) {
-    return {
-      parsed: null,
-      raw: result.raw,
-      errorMessage: "model returned is_transaction=false",
-    };
-  }
-  if (parsed.amount <= 0) {
-    return {
-      parsed: null,
-      raw: result.raw,
-      errorMessage: `model returned non-positive amount: ${parsed.amount}`,
-    };
-  }
-  if (!DATE_REGEX.test(parsed.date)) {
-    return {
-      parsed: null,
-      raw: result.raw,
-      errorMessage: `model returned invalid date: ${parsed.date}`,
-    };
+  const validationError = validateGeminiTransaction(result.parsed);
+  if (validationError) {
+    return { parsed: null, raw: result.raw, errorMessage: validationError };
   }
 
   // discard is_transaction — already validated above
-  const { is_transaction, ...rest } = parsed;
+  const { is_transaction, ...rest } = result.parsed;
   void is_transaction;
   return {
     parsed: {
