@@ -111,6 +111,20 @@ interface GeminiApiResponse {
   }>;
 }
 
+// Shared validation for both parse paths. Returns null when valid, otherwise an error message.
+function validateGeminiTransaction(parsed: {
+  is_transaction: boolean;
+  amount: number;
+  date: string;
+}): string | null {
+  if (!parsed.is_transaction) return "model returned is_transaction=false";
+  if (parsed.amount <= 0)
+    return `model returned non-positive amount: ${parsed.amount}`;
+  if (!DATE_REGEX.test(parsed.date))
+    return `model returned invalid date: ${parsed.date}`;
+  return null;
+}
+
 async function callGemini<T>(
   userContent: string,
   schema: object,
@@ -262,32 +276,13 @@ export async function parseMessageWithGemini(
     };
   }
 
-  const parsed = result.parsed;
-
-  if (!parsed.is_transaction) {
-    return {
-      parsed: null,
-      raw: result.raw,
-      errorMessage: "model returned is_transaction=false",
-    };
-  }
-  if (parsed.amount <= 0) {
-    return {
-      parsed: null,
-      raw: result.raw,
-      errorMessage: `model returned non-positive amount: ${parsed.amount}`,
-    };
-  }
-  if (!DATE_REGEX.test(parsed.date)) {
-    return {
-      parsed: null,
-      raw: result.raw,
-      errorMessage: `model returned invalid date: ${parsed.date}`,
-    };
+  const validationError = validateGeminiTransaction(result.parsed);
+  if (validationError) {
+    return { parsed: null, raw: result.raw, errorMessage: validationError };
   }
 
   // discard is_transaction — already validated above
-  const { is_transaction, ...rest } = parsed;
+  const { is_transaction, ...rest } = result.parsed;
   void is_transaction;
   return { parsed: rest, raw: result.raw };
 }
@@ -310,32 +305,13 @@ export async function parseTransactionWithGemini(
     };
   }
 
-  const parsed = result.parsed;
-
-  if (!parsed.is_transaction) {
-    return {
-      parsed: null,
-      raw: result.raw,
-      errorMessage: "model returned is_transaction=false",
-    };
-  }
-  if (parsed.amount <= 0) {
-    return {
-      parsed: null,
-      raw: result.raw,
-      errorMessage: `model returned non-positive amount: ${parsed.amount}`,
-    };
-  }
-  if (!DATE_REGEX.test(parsed.date)) {
-    return {
-      parsed: null,
-      raw: result.raw,
-      errorMessage: `model returned invalid date: ${parsed.date}`,
-    };
+  const validationError = validateGeminiTransaction(result.parsed);
+  if (validationError) {
+    return { parsed: null, raw: result.raw, errorMessage: validationError };
   }
 
   // discard is_transaction — already validated above
-  const { is_transaction, ...rest } = parsed;
+  const { is_transaction, ...rest } = result.parsed;
   void is_transaction;
   return {
     parsed: {
