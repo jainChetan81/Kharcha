@@ -14,7 +14,7 @@ const PROMPT = `Extract the financial transaction from this bank notification or
 - is_transaction: true for real money movement (debit/credit/payment/refund). false for OTPs, balance enquiries, promos.
 - amount: principal as a number, no symbols/commas. 0 if not a transaction.
 - merchant: counterparty name. null if absent.
-- source: "credit card", "debit card", "UPI", "other" if absent
+- source: payment rail — one of "UPI", "credit card", "debit card", "other". Use "UPI" for VPA/UPI handles, card only when explicitly stated, else "other".
 - date: strict YYYY-MM-DD.
 - type: "expense" or "income".`;
 
