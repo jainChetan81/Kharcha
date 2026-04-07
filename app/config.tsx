@@ -188,8 +188,18 @@ export default function ConfigScreen() {
         placeholder="Category name"
         submitLabel="Add Category"
         onSave={async (name) => {
+          const trimmed = name.trim();
+          const exists = categories.some(
+            (c) =>
+              c.type === newCategoryType &&
+              c.name.toLowerCase() === trimmed.toLowerCase(),
+          );
+          if (exists) {
+            showErrorToast("Duplicate", `${trimmed} already exists`);
+            return;
+          }
           await addCategoryMutation.mutateAsync({
-            name,
+            name: trimmed,
             type: newCategoryType,
           });
           setShowAddCategory(false);
@@ -204,7 +214,14 @@ export default function ConfigScreen() {
         placeholder="Source name"
         submitLabel="Add Source"
         onSave={async (name) => {
-          await addSourceMutation.mutateAsync(name);
+          const trimmed = name.trim();
+          if (
+            sources.some((s) => s.name.toLowerCase() === trimmed.toLowerCase())
+          ) {
+            showErrorToast("Duplicate", `${trimmed} already exists`);
+            return;
+          }
+          await addSourceMutation.mutateAsync(trimmed);
           setShowAddSource(false);
           showSuccessToast("Source added");
         }}

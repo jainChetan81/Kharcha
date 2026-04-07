@@ -1,5 +1,7 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type {
+  bankEmails,
+  banks,
   categories,
   config,
   sources,
@@ -12,6 +14,9 @@ export type Source = InferSelectModel<typeof sources>;
 export type Transaction = InferSelectModel<typeof transactions>;
 export type Subscription = InferSelectModel<typeof subscriptions>;
 export type ConfigRow = InferSelectModel<typeof config>;
+export type Bank = InferSelectModel<typeof banks>;
+export type BankEmail = InferSelectModel<typeof bankEmails>;
+export type BankWithEmails = Bank & { emails: BankEmail[] };
 
 export type TransactionRow = Transaction & {
   category_name: string | null;

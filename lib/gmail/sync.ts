@@ -1,44 +1,84 @@
 import { and, eq } from "drizzle-orm";
-import {
-  BANK_SENDERS,
-  CONFIG_KEYS,
-  GMAIL_API,
-  GMAIL_SYNC_NOTE,
-  TRANSACTION_TYPE,
-} from "@/lib/constants";
+import { CONFIG_KEYS, GMAIL_API, GMAIL_SYNC_NOTE } from "@/lib/constants";
 import { db } from "@/lib/db";
+import { getActiveBanksWithEmails } from "@/lib/db/banks";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import { categories, transactions } from "@/lib/db/schema";
-import { parseTransactionWithGemini } from "@/lib/gemini/parser";
 import { getValidAccessToken } from "./auth";
-import { parseEmail } from "./parsers";
-import { filterEmail } from "./parsers/filter";
+import { type ParseSource, parseEmailWithFallback } from "./parsers";
 
-export interface SyncEmailDetail {
+export type EmailLogStatus =
+  | "added"
+  | "duplicate"
+  | "failed"
+  | "not_transaction";
+
+export interface EmailLog {
   id: string;
-  sender: string;
-  text: string;
+  from: string;
+  subject: string;
+  parsedBy: ParseSource;
+  status: EmailLogStatus;
+  transaction?: {
+    amount: number;
+    merchant: string | null;
+    date: string;
+  };
+  geminiResponse?: string;
+  reason?: string;
 }
 
 export interface SyncResult {
   added: number;
   skipped: number;
-  filtered: number;
   failed: number;
-  expenseCount: number;
-  expenseTotal: number;
-  incomeCount: number;
-  incomeTotal: number;
-  addedEmails: SyncEmailDetail[];
-  failedEmails: SyncEmailDetail[];
-  filteredEmails: SyncEmailDetail[];
+  nobanks?: boolean;
+  emailLogs: EmailLog[];
+}
+
+function emptyResult(nobanks = false): SyncResult {
+  return { added: 0, skipped: 0, failed: 0, emailLogs: [], nobanks };
+}
+
+function extractHeader(
+  headers: { name: string; value: string }[] | undefined,
+  name: string,
+): string {
+  if (!headers) return "";
+  const h = headers.find((x) => x.name.toLowerCase() === name.toLowerCase());
+  return h?.value ?? "";
+}
+
+function senderEmail(from: string): string {
+  const m = from.match(/<([^>]+)>/);
+  return (m ? m[1] : from).trim().toLowerCase();
 }
 
 export async function syncGmailTransactions(): Promise<SyncResult> {
   const accessToken = await getValidAccessToken();
   if (!accessToken) throw new Error("Not authenticated");
 
+  const activeBanks = await getActiveBanksWithEmails();
+  if (activeBanks.length === 0) return emptyResult(true);
+
+  const emailToBank = new Map<
+    string,
+    { name: string; parserKey: string | null }
+  >();
+  const allEmails: string[] = [];
+  for (const bank of activeBanks) {
+    for (const e of bank.emails) {
+      const lower = e.email.toLowerCase();
+      emailToBank.set(lower, { name: bank.name, parserKey: bank.parser_key });
+      allEmails.push(e.email);
+    }
+  }
+
   const lastSyncedAt = await getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT);
+  const sinceDate = lastSyncedAt
+    ? new Date(lastSyncedAt)
+    : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const formatted = `${sinceDate.getFullYear()}/${sinceDate.getMonth() + 1}/${sinceDate.getDate()}`;
 
   const defaultCategory = await db
     .select({ id: categories.id })
@@ -46,151 +86,136 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     .where(and(eq(categories.name, "other"), eq(categories.type, "expense")))
     .limit(1);
 
-  const result: SyncResult = {
-    added: 0,
-    skipped: 0,
-    filtered: 0,
-    failed: 0,
-    expenseCount: 0,
-    expenseTotal: 0,
-    incomeCount: 0,
-    incomeTotal: 0,
-    addedEmails: [],
-    failedEmails: [],
-    filteredEmails: [],
-  };
+  const result = emptyResult();
 
-  for (const sender of BANK_SENDERS) {
+  // Fetch per-sender (Gmail's combined `from:a OR from:b` query is unreliable)
+  const seenIds = new Set<string>();
+  const messages: { id: string }[] = [];
+  for (const sender of allEmails) {
     try {
-      const sinceDate = lastSyncedAt
-        ? new Date(lastSyncedAt)
-        : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-      const formatted = `${sinceDate.getFullYear()}/${sinceDate.getMonth() + 1}/${sinceDate.getDate()}`;
       const query = `from:${sender} after:${formatted}`;
-
       const listResponse = await fetch(
         `${GMAIL_API.MESSAGES}?q=${encodeURIComponent(query)}&maxResults=50`,
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
       );
-      const listData = await listResponse.json();
-
-      if (!listData.messages) continue;
-
-      for (const message of listData.messages) {
-        try {
-          const msgResponse = await fetch(
-            `${GMAIL_API.MESSAGES}/${message.id}?format=metadata&metadataHeaders=Subject`,
-            {
-              headers: { Authorization: `Bearer ${accessToken}` },
-            },
-          );
-          const msgData = await msgResponse.json();
-          const body = msgData.snippet ?? "";
-
-          if (!body) {
-            result.filtered++;
-            result.filteredEmails.push({
-              id: message.id,
-              sender,
-              text: "empty email",
-            });
-            continue;
-          }
-
-          const filterResult = filterEmail(body);
-          if (!filterResult.accepted) {
-            result.filtered++;
-            result.filteredEmails.push({
-              id: message.id,
-              sender,
-              text: filterResult.reason ?? "unknown",
-            });
-            continue;
-          }
-
-          const existing = await db
-            .select({ id: transactions.id })
-            .from(transactions)
-            .where(eq(transactions.gmail_message_id, message.id))
-            .limit(1);
-
-          if (existing.length > 0) {
-            result.skipped++;
-            continue;
-          }
-
-          let parsed = parseEmail(sender, body);
-
-          if (!parsed) {
-            console.log(
-              `[Sync] regex failed, trying Gemini for ${sender}:`,
-              body.slice(0, 100),
-            );
-            const geminiResult = await parseTransactionWithGemini(body);
-            if (geminiResult) {
-              parsed = {
-                ...geminiResult,
-                merchant: geminiResult.merchant ?? "Unknown",
-              };
-            }
-          }
-
-          if (!parsed) {
-            console.log(
-              `[Sync] Failed to parse from ${sender}:`,
-              body.slice(0, 300),
-            );
-            result.failed++;
-            result.failedEmails.push({
-              id: message.id,
-              sender,
-              text: body.slice(0, 100),
-            });
-            continue;
-          }
-
-          await db.insert(transactions).values({
-            amount: parsed.amount,
-            merchant: parsed.merchant,
-            category_id: defaultCategory[0]?.id ?? null,
-            source_id: null,
-            gmail_message_id: message.id,
-            date: parsed.date,
-            note: GMAIL_SYNC_NOTE,
-            type: parsed.type,
-            source_type: "synced",
-          });
-
-          result.added++;
-          result.addedEmails.push({
-            id: message.id,
-            sender,
-            text: `${parsed.merchant} — ${parsed.amount}`,
-          });
-          if (parsed.type === TRANSACTION_TYPE.EXPENSE) {
-            result.expenseCount++;
-            result.expenseTotal += parsed.amount;
-          } else {
-            result.incomeCount++;
-            result.incomeTotal += parsed.amount;
-          }
-        } catch (err) {
-          result.failed++;
-          result.failedEmails.push({
-            id: message.id,
-            sender,
-            text: String(err).slice(0, 100),
-          });
-        }
+      const listData = (await listResponse.json()) as {
+        messages?: { id: string }[];
+      };
+      for (const m of listData.messages ?? []) {
+        if (seenIds.has(m.id)) continue;
+        seenIds.add(m.id);
+        messages.push(m);
       }
     } catch (err) {
       result.failed++;
-      result.failedEmails.push({
-        id: `sender-${sender}`,
-        sender,
-        text: String(err).slice(0, 100),
+      result.emailLogs.push({
+        id: `query-${sender}`,
+        from: sender,
+        subject: "",
+        parsedBy: "failed",
+        status: "failed",
+        reason: String(err).slice(0, 200),
+      });
+    }
+  }
+
+  if (messages.length === 0) {
+    await updateConfig(
+      CONFIG_KEYS.GMAIL_LAST_SYNCED_AT,
+      new Date().toISOString(),
+    );
+    return result;
+  }
+
+  for (const message of messages) {
+    let from = "";
+    let subject = "";
+    try {
+      const msgResponse = await fetch(
+        `${GMAIL_API.MESSAGES}/${message.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      const msgData = await msgResponse.json();
+      const headers = msgData.payload?.headers as
+        | { name: string; value: string }[]
+        | undefined;
+      from = senderEmail(extractHeader(headers, "From"));
+      subject = extractHeader(headers, "Subject");
+      const body: string = msgData.snippet ?? "";
+
+      const existing = await db
+        .select({ id: transactions.id })
+        .from(transactions)
+        .where(eq(transactions.gmail_message_id, message.id))
+        .limit(1);
+
+      if (existing.length > 0) {
+        result.skipped++;
+        result.emailLogs.push({
+          id: message.id,
+          from,
+          subject,
+          parsedBy: "regex",
+          status: "duplicate",
+        });
+        continue;
+      }
+
+      const bankInfo = emailToBank.get(from);
+      const parserKey = bankInfo?.parserKey ?? null;
+
+      const outcome = await parseEmailWithFallback(body, parserKey);
+
+      if (!outcome.parsed) {
+        result.failed++;
+        result.emailLogs.push({
+          id: message.id,
+          from,
+          subject,
+          parsedBy: outcome.parsedBy,
+          status: outcome.geminiResponse ? "not_transaction" : "failed",
+          geminiResponse: outcome.geminiResponse,
+          reason: outcome.geminiResponse ? undefined : "no parser matched",
+        });
+        continue;
+      }
+
+      await db.insert(transactions).values({
+        amount: outcome.parsed.amount,
+        merchant: outcome.parsed.merchant,
+        category_id: defaultCategory[0]?.id ?? null,
+        source_id: null,
+        gmail_message_id: message.id,
+        date: outcome.parsed.date,
+        note: GMAIL_SYNC_NOTE,
+        type: outcome.parsed.type,
+        source_type: "synced",
+      });
+
+      result.added++;
+      result.emailLogs.push({
+        id: message.id,
+        from,
+        subject,
+        parsedBy: outcome.parsedBy,
+        status: "added",
+        transaction: {
+          amount: outcome.parsed.amount,
+          merchant: outcome.parsed.merchant,
+          date: outcome.parsed.date,
+        },
+        geminiResponse:
+          outcome.parsedBy === "gemini" ? outcome.geminiResponse : undefined,
+      });
+    } catch (err) {
+      result.failed++;
+      result.emailLogs.push({
+        id: message.id,
+        from: from || "(unknown)",
+        subject,
+        parsedBy: "failed",
+        status: "failed",
+        reason: String(err).slice(0, 200),
       });
     }
   }

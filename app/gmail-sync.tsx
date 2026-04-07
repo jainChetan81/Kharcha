@@ -1,7 +1,8 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
-import { ChevronDown, ChevronUp } from "lucide-react-native";
+import { router } from "expo-router";
+import { ChevronRight, Landmark } from "lucide-react-native";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
@@ -12,6 +13,7 @@ import { InfoRow } from "@/components/ui/info-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Text } from "@/components/ui/text";
+import { useBanksWithEmails } from "@/hooks/use-banks";
 import { useSyncState } from "@/hooks/use-sync-state";
 import {
   COLORS,
@@ -19,10 +21,15 @@ import {
   DATE_FORMAT,
   GMAIL_API,
   QUERY_KEYS,
+  SCREENS,
 } from "@/lib/constants";
 import { deleteConfig, getConfig, updateConfig } from "@/lib/db/config";
 import { useGoogleAuth } from "@/lib/gmail/auth";
-import { type SyncResult, syncGmailTransactions } from "@/lib/gmail/sync";
+import {
+  type EmailLog,
+  type SyncResult,
+  syncGmailTransactions,
+} from "@/lib/gmail/sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +55,11 @@ export default function GmailSyncScreen() {
   const [showResults, setShowResults] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const { data: banksData = [] } = useBanksWithEmails();
+  const activeBanks = banksData.filter(
+    (b) => b.is_active === 1 && b.emails.length > 0,
+  );
+  const noActiveBanks = activeBanks.length === 0;
   const busy = loading || syncing || verifying;
 
   async function handleConnect() {
@@ -228,6 +240,39 @@ export default function GmailSyncScreen() {
                 value={transactionsAdded ?? "0"}
               />
 
+              <SectionHeader title="Banks" />
+              <Pressable
+                onPress={() => router.push(SCREENS.BANKS)}
+                className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+              >
+                <Icon as={Landmark} className="mr-3 size-4 text-primary" />
+                <Text className="flex-1 text-sm font-medium text-foreground">
+                  Manage Banks
+                </Text>
+                <Text className="mr-2 text-xs text-muted-foreground">
+                  {activeBanks.length} active
+                </Text>
+                <Icon
+                  as={ChevronRight}
+                  className="size-4 text-muted-foreground"
+                />
+              </Pressable>
+              {noActiveBanks && (
+                <View className="mx-5 mb-2 rounded-xl border border-border bg-card px-4 py-3">
+                  <Text className="text-sm font-semibold text-foreground">
+                    No banks configured
+                  </Text>
+                  <Pressable
+                    onPress={() => router.push(SCREENS.BANKS)}
+                    className="mt-1"
+                  >
+                    <Text className="text-xs text-primary">
+                      Go to Settings → Banks to add your bank
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+
               <SectionHeader title="Sync From" />
               <Pressable
                 onPress={() => setShowDatePicker(!showDatePicker)}
@@ -260,7 +305,7 @@ export default function GmailSyncScreen() {
                 <Button
                   className="h-12 rounded-xl bg-primary"
                   onPress={handleSync}
-                  disabled={busy}
+                  disabled={busy || noActiveBanks}
                 >
                   {syncing ? (
                     <ActivityIndicator
@@ -311,101 +356,149 @@ export default function GmailSyncScreen() {
         <SyncResultsSheet
           visible={showResults}
           onClose={() => setShowResults(false)}
-          subtitle={`${syncResult.added + syncResult.failed + syncResult.filtered + syncResult.skipped} emails processed`}
+          subtitle={`${syncResult.added + syncResult.failed + syncResult.skipped} emails processed`}
           emptyMessage="No emails found"
-          stats={[
-            {
-              label: "Duplicates skipped",
-              count: syncResult.skipped,
-              color: COLORS.MUTED,
-            },
-          ]}
+          stats={[]}
           showViewButton={syncResult.added > 0}
         >
-          <AccordionSection
-            title="Added"
-            count={syncResult.added}
-            color={COLORS.POSITIVE}
-          >
-            {syncResult.addedEmails.map((e) => (
-              <EmailRow key={`a-${e.id}`} sender={e.sender} text={e.text} />
-            ))}
-          </AccordionSection>
+          <View className="mb-3">
+            <Text className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Transactions
+            </Text>
+            <StatLine
+              label="Added"
+              count={syncResult.added}
+              icon="✅"
+              color={COLORS.POSITIVE}
+            />
+            <StatLine
+              label="Duplicates skipped"
+              count={syncResult.skipped}
+              icon="⚠️"
+              color={COLORS.WARNING}
+            />
+            <StatLine
+              label="Failed"
+              count={syncResult.failed}
+              icon="❌"
+              color={COLORS.DANGER}
+            />
+          </View>
 
-          <AccordionSection
-            title="Failed to parse"
-            count={syncResult.failed}
-            color={COLORS.DANGER}
-          >
-            {syncResult.failedEmails.map((e) => (
-              <EmailRow key={`f-${e.id}`} sender={e.sender} text={e.text} />
-            ))}
-          </AccordionSection>
-
-          <AccordionSection
-            title="Filtered"
-            count={syncResult.filtered}
-            color={COLORS.MUTED}
-          >
-            {syncResult.filteredEmails.map((e) => (
-              <EmailRow key={`x-${e.id}`} sender={e.sender} text={e.text} />
-            ))}
-          </AccordionSection>
+          {syncResult.emailLogs.length > 0 && (
+            <View className="mb-2">
+              <Text className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Parsed By
+              </Text>
+              {syncResult.emailLogs.map((log) => (
+                <EmailLogRow key={log.id} log={log} />
+              ))}
+            </View>
+          )}
         </SyncResultsSheet>
       )}
     </View>
   );
 }
 
-function AccordionSection({
-  title,
+function StatLine({
+  label,
   count,
+  icon,
   color,
-  children,
 }: {
-  title: string;
+  label: string;
   count: number;
+  icon: string;
   color: string;
-  children: React.ReactNode;
 }) {
-  const [expanded, setExpanded] = useState(false);
-
-  if (count === 0) return null;
-
   return (
-    <View className="mb-4">
-      <Pressable
-        onPress={() => setExpanded(!expanded)}
-        className="flex-row items-center justify-between rounded-xl bg-background px-4 py-3"
+    <View className="mb-2 flex-row items-center gap-3 rounded-xl bg-background px-4 py-3">
+      <Text className="text-base">{icon}</Text>
+      <Text className="flex-1 text-sm font-medium text-foreground">
+        {label}
+      </Text>
+      <View
+        className="rounded-full px-2 py-0.5"
+        style={{ backgroundColor: `${color}22` }}
       >
-        <View className="flex-row items-center gap-2">
-          <View
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: color }}
-          />
-          <Text className="text-sm font-semibold text-foreground">{title}</Text>
-          <View className="rounded-full bg-muted px-2 py-0.5">
-            <Text className="text-[10px] font-medium text-muted-foreground">
-              {count}
-            </Text>
-          </View>
-        </View>
-        <Icon
-          as={expanded ? ChevronUp : ChevronDown}
-          className="size-4 text-muted-foreground"
-        />
-      </Pressable>
-      {expanded && <View className="mt-1 px-2">{children}</View>}
+        <Text className="text-[11px] font-semibold" style={{ color }}>
+          {count}
+        </Text>
+      </View>
     </View>
   );
 }
 
-function EmailRow({ sender, text }: { sender: string; text: string }) {
-  const shortSender = sender.split("@")[0] ?? sender;
+function Badge({ text, color }: { text: string; color: string }) {
   return (
-    <View className="border-b border-border/50 py-2.5">
-      <Text className="text-xs font-medium text-primary">{shortSender}</Text>
-      <Text className="mt-0.5 text-sm text-muted-foreground">{text}</Text>
+    <View
+      className="rounded-full px-2 py-0.5"
+      style={{ backgroundColor: `${color}22` }}
+    >
+      <Text
+        className="text-[9px] font-bold uppercase tracking-wide"
+        style={{ color }}
+      >
+        {text}
+      </Text>
+    </View>
+  );
+}
+
+function EmailLogRow({ log }: { log: EmailLog }) {
+  const statusColor: Record<EmailLog["status"], string> = {
+    added: COLORS.POSITIVE,
+    duplicate: COLORS.WARNING,
+    failed: COLORS.DANGER,
+    not_transaction: COLORS.MUTED,
+  };
+  const parsedColor =
+    log.parsedBy === "regex"
+      ? COLORS.BADGE_BLUE
+      : log.parsedBy === "gemini"
+        ? COLORS.PRIMARY
+        : COLORS.DANGER;
+  const statusLabel = log.status === "not_transaction" ? "not txn" : log.status;
+  const shortSender = log.from.split("@")[0] ?? log.from;
+
+  return (
+    <View className="mb-2 rounded-xl bg-background px-3 py-2.5">
+      <View className="flex-row items-center gap-2">
+        <Text
+          className="flex-1 text-xs font-medium text-foreground"
+          numberOfLines={1}
+        >
+          {shortSender}
+        </Text>
+        <Badge text={log.parsedBy} color={parsedColor} />
+        <Badge text={statusLabel} color={statusColor[log.status]} />
+      </View>
+      {log.subject ? (
+        <Text
+          className="mt-1 text-[11px] text-muted-foreground"
+          numberOfLines={1}
+        >
+          {log.subject}
+        </Text>
+      ) : null}
+      {log.transaction && (
+        <Text className="mt-1 text-[11px] text-muted-foreground">
+          {log.transaction.merchant ?? "—"} · ₹{log.transaction.amount} ·{" "}
+          {log.transaction.date}
+        </Text>
+      )}
+      {log.parsedBy === "gemini" && log.geminiResponse && (
+        <Text
+          className="mt-1 text-[10px] text-muted-foreground/80"
+          numberOfLines={2}
+        >
+          gemini: {log.geminiResponse}
+        </Text>
+      )}
+      {log.reason && (
+        <Text className="mt-1 text-[10px] text-negative">{log.reason}</Text>
+      )}
     </View>
   );
 }

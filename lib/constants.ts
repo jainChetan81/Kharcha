@@ -11,6 +11,7 @@ export const SCREENS = {
   EDIT_SUBSCRIPTION: "/edit-subscription",
   GMAIL_SYNC: "/gmail-sync",
   DEVICE_SYNC: "/settings/sync",
+  BANKS: "/settings/banks",
 } as const;
 
 export const BUNDLE_ID = "com.chetanjain.kharcha" as const;
@@ -100,15 +101,6 @@ export const CONFIG_KEYS = {
 export const SUBSCRIPTION_NOTE = "Auto-created from subscription";
 export const GMAIL_SYNC_NOTE = "synced from gmail";
 
-export const BANK_SENDERS = [
-  "alerts@axis.bank.com",
-  "alerts@axis.bank.in",
-  "alerts@hdfcbank.net",
-  "alerts@hdfcbank.com",
-  "alerts@hdfcbank.bank.in",
-  "indusind_bank@indusind.com",
-] as const;
-
 export const OTHER_CATEGORY_LABEL = "Other";
 
 export const DEVICE_TYPE_NAME: Record<number, string> = {
@@ -132,4 +124,5 @@ export const QUERY_KEYS = {
   BUDGETS: "budgets",
   SUBSCRIPTIONS: "subscriptions",
   FEATURE_FLAGS: "feature-flags",
+  BANKS: "banks",
 } as const;

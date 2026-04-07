@@ -175,13 +175,14 @@ export default function HistoryScreen() {
     try {
       const result = await syncGmailTransactions();
       const lines: string[] = [];
-      if (result.expenseCount > 0) {
-        lines.push(
-          `${result.expenseCount} expense (${fmt(result.expenseTotal)})`,
-        );
+      let total = 0;
+      for (const log of result.emailLogs) {
+        if (log.status === "added" && log.transaction) {
+          total += log.transaction.amount;
+        }
       }
-      if (result.incomeCount > 0) {
-        lines.push(`${result.incomeCount} income (${fmt(result.incomeTotal)})`);
+      if (result.added > 0) {
+        lines.push(`${result.added} added (${fmt(total)})`);
       }
       if (result.skipped > 0) {
         lines.push(`${result.skipped} duplicates skipped`);

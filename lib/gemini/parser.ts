@@ -21,10 +21,15 @@ export interface GeminiParsedTransaction {
   type: "expense" | "income";
 }
 
+export interface GeminiParseResult {
+  parsed: GeminiParsedTransaction | null;
+  raw: string | null;
+}
+
 export async function parseTransactionWithGemini(
   text: string,
-): Promise<GeminiParsedTransaction | null> {
-  if (!env.GEMINI_API_KEY) return null;
+): Promise<GeminiParseResult> {
+  if (!env.GEMINI_API_KEY) return { parsed: null, raw: null };
 
   try {
     const response = await fetch(`${GEMINI_URL}?key=${env.GEMINI_API_KEY}`, {
@@ -47,32 +52,40 @@ export async function parseTransactionWithGemini(
       }),
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) return { parsed: null, raw: null };
 
     const data = await response.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const raw: string | null =
+      data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? null;
 
-    if (!raw || raw.toLowerCase() === "null") return null;
+    if (!raw || raw.toLowerCase() === "null") return { parsed: null, raw };
 
-    const cleaned = raw.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(cleaned);
+    try {
+      const cleaned = raw.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(cleaned);
 
-    if (
-      typeof parsed.amount !== "number" ||
-      parsed.amount <= 0 ||
-      !["income", "expense"].includes(parsed.type) ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
-    ) {
-      return null;
+      if (
+        typeof parsed.amount !== "number" ||
+        parsed.amount <= 0 ||
+        !["income", "expense"].includes(parsed.type) ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
+      ) {
+        return { parsed: null, raw };
+      }
+
+      return {
+        parsed: {
+          amount: parsed.amount,
+          merchant: parsed.merchant || null,
+          date: parsed.date,
+          type: parsed.type,
+        },
+        raw,
+      };
+    } catch {
+      return { parsed: null, raw };
     }
-
-    return {
-      amount: parsed.amount,
-      merchant: parsed.merchant || null,
-      date: parsed.date,
-      type: parsed.type,
-    };
   } catch {
-    return null;
+    return { parsed: null, raw: null };
   }
 }

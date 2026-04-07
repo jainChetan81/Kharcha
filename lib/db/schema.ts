@@ -59,6 +59,23 @@ export const budgets = sqliteTable("budgets", {
   amount: real("amount").notNull(),
 });
 
+export const banks = sqliteTable("banks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  parser_key: text("parser_key"),
+  is_default: integer("is_default").default(0),
+  is_active: integer("is_active").default(1),
+});
+
+export const bankEmails = sqliteTable("bank_emails", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  bank_id: integer("bank_id")
+    .references(() => banks.id)
+    .notNull(),
+  email: text("email").notNull(),
+  is_default: integer("is_default").default(0),
+});
+
 export const config = sqliteTable("config", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),

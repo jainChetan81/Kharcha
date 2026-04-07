@@ -6,7 +6,14 @@ import {
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { db } from "./connection";
-import { categories, config, sources, transactions } from "./schema";
+import {
+  bankEmails,
+  banks,
+  categories,
+  config,
+  sources,
+  transactions,
+} from "./schema";
 import type {
   CategoryBreakdownRow,
   MonthlySummary,
@@ -86,6 +93,29 @@ export async function initDB() {
     )
   `);
 
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS banks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      parser_key TEXT,
+      is_default INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1
+    )
+  `);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS bank_emails (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      bank_id INTEGER NOT NULL REFERENCES banks(id),
+      email TEXT NOT NULL,
+      is_default INTEGER DEFAULT 0
+    )
+  `);
+
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_bank_emails_bank_id ON bank_emails(bank_id)`,
+  );
+
   // Add gmail_message_id column if missing (existing DBs won't have it
   // since CREATE TABLE IF NOT EXISTS doesn't alter existing tables)
   try {
@@ -152,6 +182,63 @@ async function seedDefaults() {
       { name: "cash", is_default: 1 },
       { name: "other", is_default: 1 },
     ]);
+  }
+
+  const existingBanks = await db.select().from(banks).limit(1);
+  if (existingBanks.length === 0) {
+    const seeds: {
+      name: string;
+      parser_key: string | null;
+      emails: string[];
+    }[] = [
+      {
+        name: "Axis Bank",
+        parser_key: "axis",
+        emails: [
+          "alerts@axis.bank.in",
+          "alerts@axisbank.com",
+          "alerts@axis.bank.com",
+        ],
+      },
+      {
+        name: "HDFC Bank",
+        parser_key: "hdfc",
+        emails: [
+          "alerts@hdfcbank.net",
+          "alerts@hdfcbank.com",
+          "alerts@hdfcbank.bank.in",
+        ],
+      },
+      {
+        name: "IndusInd Bank",
+        parser_key: "indusind",
+        emails: ["indusind_bank@indusind.com"],
+      },
+      {
+        name: "ICICI Bank",
+        parser_key: null,
+        emails: ["alerts@icicibank.com"],
+      },
+      { name: "SBI", parser_key: null, emails: ["alerts@sbi.co.in"] },
+      { name: "Kotak", parser_key: null, emails: ["alerts@kotak.com"] },
+    ];
+
+    for (const seed of seeds) {
+      const result = await db.insert(banks).values({
+        name: seed.name,
+        parser_key: seed.parser_key,
+        is_default: 1,
+        is_active: 1,
+      });
+      const bankId = Number(result.lastInsertRowId);
+      await db.insert(bankEmails).values(
+        seed.emails.map((email, i) => ({
+          bank_id: bankId,
+          email,
+          is_default: i === 0 ? 1 : 0,
+        })),
+      );
+    }
   }
 }
 
@@ -434,6 +521,15 @@ export async function syncedTransactionExists(
   return rows.length > 0;
 }
 
+export {
+  addBank,
+  addBankEmail,
+  deleteBank,
+  deleteBankEmail,
+  getActiveBanksWithEmails,
+  getAllBanksWithEmails,
+  setBankActive,
+} from "./banks";
 export {
   addCategory,
   deleteCategory,
