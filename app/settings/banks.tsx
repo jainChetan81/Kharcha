@@ -1,3 +1,4 @@
+import * as Haptics from "expo-haptics";
 import {
   ChevronDown,
   ChevronUp,
@@ -11,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
+  Switch,
   View,
 } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
@@ -60,6 +62,7 @@ export default function BanksScreen() {
   }
 
   async function handleToggleActive(bank: BankWithEmails) {
+    Haptics.selectionAsync();
     try {
       await setActive.mutateAsync({
         id: bank.id,
@@ -192,41 +195,35 @@ export default function BanksScreen() {
                     !isActive && "opacity-50",
                   )}
                 >
-                  <Pressable
-                    onPress={() => toggleExpand(bank.id)}
-                    className="flex-row items-center px-4 py-3"
-                  >
-                    <Text className="flex-1 text-sm font-medium text-foreground">
-                      {bank.name}
-                    </Text>
-                    <View className="mr-3 rounded-full bg-muted px-2 py-0.5">
-                      <Text className="text-[10px] font-medium text-muted-foreground">
-                        {bank.emails.length}
-                      </Text>
-                    </View>
+                  <View className="flex-row items-center px-4 py-3">
                     <Pressable
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleToggleActive(bank);
-                      }}
-                      hitSlop={8}
-                      className={cn(
-                        "mr-3 h-6 w-11 justify-center rounded-full px-0.5",
-                        isActive ? "bg-primary" : "bg-muted",
-                      )}
+                      onPress={() => toggleExpand(bank.id)}
+                      className="flex-1 flex-row items-center"
                     >
-                      <View
-                        className={cn(
-                          "h-5 w-5 rounded-full bg-white",
-                          isActive ? "self-end" : "self-start",
-                        )}
+                      <Text className="flex-1 text-sm font-medium text-foreground">
+                        {bank.name}
+                      </Text>
+                      <View className="mr-3 rounded-full bg-muted px-2 py-0.5">
+                        <Text className="text-[10px] font-medium text-muted-foreground">
+                          {bank.emails.length}
+                        </Text>
+                      </View>
+                      <Icon
+                        as={isExpanded ? ChevronUp : ChevronDown}
+                        className="mr-2 size-4 text-muted-foreground"
                       />
                     </Pressable>
-                    <Icon
-                      as={isExpanded ? ChevronUp : ChevronDown}
-                      className="size-4 text-muted-foreground"
+                    <Switch
+                      value={isActive}
+                      onValueChange={() => handleToggleActive(bank)}
+                      trackColor={{
+                        false: COLORS.BAR_BG,
+                        true: COLORS.PRIMARY,
+                      }}
+                      thumbColor={COLORS.FOREGROUND}
+                      style={{ marginLeft: 8 }}
                     />
-                  </Pressable>
+                  </View>
 
                   {isExpanded && (
                     <View className="border-t border-border px-4 py-3">

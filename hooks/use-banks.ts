@@ -19,7 +19,7 @@ export function useBanksWithEmails() {
 export function useAddBank() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       name,
       email,
       parserKey,
@@ -27,10 +27,20 @@ export function useAddBank() {
       name: string;
       email: string;
       parserKey?: string | null;
-    }) =>
-      addBank(name, parserKey ?? null).then((bankId) =>
-        addBankEmail(bankId, email),
-      ),
+    }) => {
+      const bankId = await addBank(name, parserKey ?? null);
+      try {
+        await addBankEmail(bankId, email);
+      } catch (err) {
+        try {
+          await deleteBank(bankId);
+        } catch {
+          // swallow rollback failure so original error surfaces
+        }
+        throw err;
+      }
+      return bankId;
+    },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: [QUERY_KEYS.BANKS] });
     },

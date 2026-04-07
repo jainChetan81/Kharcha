@@ -62,6 +62,18 @@ export default function GmailSyncScreen() {
   const noActiveBanks = activeBanks.length === 0;
   const busy = loading || syncing || verifying;
 
+  const emailToBankName = new Map<string, string>();
+  for (const b of banksData) {
+    for (const e of b.emails)
+      emailToBankName.set(e.email.toLowerCase(), b.name);
+  }
+
+  function lookupBankName(from: string): string {
+    return (
+      emailToBankName.get(from.toLowerCase()) ?? from.split("@")[0] ?? from
+    );
+  }
+
   async function handleConnect() {
     try {
       const success = await signIn();
@@ -123,6 +135,11 @@ export default function GmailSyncScreen() {
     setSyncing(true);
     try {
       const result = await syncGmailTransactions();
+
+      if (result.nobanks) {
+        showErrorToast("No active banks", "Add a bank in settings to sync");
+        return;
+      }
 
       const newFetched = String(
         Number(emailsFetched ?? "0") +
@@ -390,9 +407,18 @@ export default function GmailSyncScreen() {
               <Text className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 Parsed By
               </Text>
-              {syncResult.emailLogs.map((log) => (
-                <EmailLogRow key={log.id} log={log} />
+              {syncResult.emailLogs.slice(0, 50).map((log) => (
+                <EmailLogRow
+                  key={log.id}
+                  log={log}
+                  bankName={lookupBankName(log.from)}
+                />
               ))}
+              {syncResult.emailLogs.length > 50 && (
+                <Text className="mt-2 text-center text-xs text-muted-foreground">
+                  …and {syncResult.emailLogs.length - 50} more
+                </Text>
+              )}
             </View>
           )}
         </SyncResultsSheet>
@@ -446,7 +472,7 @@ function Badge({ text, color }: { text: string; color: string }) {
   );
 }
 
-function EmailLogRow({ log }: { log: EmailLog }) {
+function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
   const statusColor: Record<EmailLog["status"], string> = {
     added: COLORS.POSITIVE,
     duplicate: COLORS.WARNING,
@@ -460,7 +486,6 @@ function EmailLogRow({ log }: { log: EmailLog }) {
         ? COLORS.PRIMARY
         : COLORS.DANGER;
   const statusLabel = log.status === "not_transaction" ? "not txn" : log.status;
-  const shortSender = log.from.split("@")[0] ?? log.from;
 
   return (
     <View className="mb-2 rounded-xl bg-background px-3 py-2.5">
@@ -469,7 +494,7 @@ function EmailLogRow({ log }: { log: EmailLog }) {
           className="flex-1 text-xs font-medium text-foreground"
           numberOfLines={1}
         >
-          {shortSender}
+          {bankName}
         </Text>
         <Badge text={log.parsedBy} color={parsedColor} />
         <Badge text={statusLabel} color={statusColor[log.status]} />
