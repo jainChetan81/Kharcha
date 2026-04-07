@@ -136,6 +136,7 @@ export const GEMINI_ERROR = {
   RATE_LIMITED: "rate_limited",
   TIMEOUT: "timeout",
   TRUNCATED: "truncated",
+  UNKNOWN: "unknown",
 } as const;
 
 export type GeminiErrorType = (typeof GEMINI_ERROR)[keyof typeof GEMINI_ERROR];

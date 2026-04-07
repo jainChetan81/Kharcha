@@ -23,6 +23,19 @@ export function parseDate(dateStr: string): Date {
   return new Date(dateStr.replace(" ", "T"));
 }
 
+// Title-cases each word but preserves all-uppercase tokens (acronyms like UPI, EMI).
+// "credit card" → "Credit Card"; "UPI" → "UPI"; "other" → "Other".
+export function smartCapitalize(s: string): string {
+  return s
+    .split(" ")
+    .map((word) => {
+      if (!word) return word;
+      if (word === word.toUpperCase()) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+}
+
 export function getDateLabel(dateStr: string): string {
   const date = parseDate(dateStr);
   if (isToday(date)) return "Today";

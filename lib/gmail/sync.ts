@@ -70,7 +70,8 @@ function geminiErrorToReason(
     return EMAIL_LOG_REASON.GEMINI_TRUNCATED;
   if (
     error === GEMINI_ERROR.SERVICE_UNAVAILABLE ||
-    error === GEMINI_ERROR.RATE_LIMITED
+    error === GEMINI_ERROR.RATE_LIMITED ||
+    error === GEMINI_ERROR.UNKNOWN
   ) {
     return EMAIL_LOG_REASON.GEMINI_UNAVAILABLE;
   }
@@ -219,7 +220,8 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         source_id: null,
         gmail_message_id: message.id,
         date: outcome.parsed.date,
-        note: GMAIL_SYNC_NOTE,
+        // store the original email snippet so the user can see exactly what was parsed
+        note: body.trim() || GMAIL_SYNC_NOTE,
         type: outcome.parsed.type,
         source_type: "synced",
       });

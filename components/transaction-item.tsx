@@ -19,7 +19,7 @@ import {
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import type { TransactionRow } from "@/lib/db";
-import { parseDate } from "@/lib/format";
+import { parseDate, smartCapitalize } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -78,9 +78,12 @@ export function TransactionItem({
   ).current;
 
   const isIncome = item.type === TRANSACTION_TYPE.INCOME;
+  const categoryLabel = smartCapitalize(
+    item.category_name ?? OTHER_CATEGORY_LABEL,
+  );
   const subtitle = isIncome
-    ? (item.category_name ?? OTHER_CATEGORY_LABEL)
-    : `${item.category_name ?? OTHER_CATEGORY_LABEL}${item.source_name ? ` · ${item.source_name}` : ""}`;
+    ? categoryLabel
+    : `${categoryLabel}${item.source_name ? ` · ${smartCapitalize(item.source_name)}` : ""}`;
 
   const content = (
     <Pressable
@@ -99,19 +102,19 @@ export function TransactionItem({
             {item.merchant || item.category_name || OTHER_CATEGORY_LABEL}
           </Text>
           {item.source_type === SOURCE_TYPE.SYNCED && (
-            <View className="rounded-md bg-[#1d4ed8] px-1.5 py-0.5">
+            <View className="rounded-md bg-blue-700 px-1.5 py-0.5">
               <Text className="text-[10px] font-medium text-white">GMAIL</Text>
             </View>
           )}
           {item.source_type === SOURCE_TYPE.RECURRING && (
             <View className="rounded-md bg-primary px-1.5 py-0.5">
-              <Text className="text-[10px] font-medium text-white">SUB</Text>
+              <Text className="text-[10px] font-medium text-primary-foreground">
+                SUB
+              </Text>
             </View>
           )}
         </View>
-        <Text className="mt-0.5 text-xs capitalize text-muted-foreground">
-          {subtitle}
-        </Text>
+        <Text className="mt-0.5 text-xs text-muted-foreground">{subtitle}</Text>
       </View>
       <View className="items-end">
         <Text
