@@ -6,6 +6,21 @@ const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const MAX_INPUT_CHARS = 4000;
+
+/** Strip common prompt-injection patterns from untrusted text before sending to Gemini. */
+function sanitizeForPrompt(text: string): string {
+  return (
+    text
+      // collapse newline runs so injected "sections" lose visual separation
+      .replace(/\n{3,}/g, "\n\n")
+      // strip lines that look like prompt overrides
+      .replace(
+        /^.*(ignore|disregard|forget|override|bypass).*(above|previous|prior|system|instruction|prompt).*/gim,
+        "",
+      )
+      .trim()
+  );
+}
 const GEMINI_TIMEOUT_MS = 15_000;
 const FINISH_REASON_MAX_TOKENS = "MAX_TOKENS";
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -261,7 +276,7 @@ export async function parseMessageWithGemini(
   text: string,
 ): Promise<GeminiParseMessageResult> {
   const today = format(new Date(), "yyyy-MM-dd");
-  const userContent = `${MESSAGE_PROMPT}\n\nText:\n${text.slice(0, MAX_INPUT_CHARS)}\n\nToday: ${today}`;
+  const userContent = `${MESSAGE_PROMPT}\n\nText:\n${sanitizeForPrompt(text).slice(0, MAX_INPUT_CHARS)}\n\nToday: ${today}`;
 
   const result = await callGemini<
     GeminiParsedMessage & { is_transaction: boolean }
@@ -290,7 +305,7 @@ export async function parseMessageWithGemini(
 export async function parseTransactionWithGemini(
   text: string,
 ): Promise<GeminiParseResult> {
-  const userContent = `${PROMPT}\n\nText:\n${text.slice(0, MAX_INPUT_CHARS)}`;
+  const userContent = `${PROMPT}\n\nText:\n${sanitizeForPrompt(text).slice(0, MAX_INPUT_CHARS)}`;
 
   const result = await callGemini<
     GeminiParsedTransaction & { is_transaction: boolean }

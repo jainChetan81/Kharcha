@@ -26,7 +26,6 @@ lib/db/config.ts  stores gmail_connected, gmail_last_synced_at, gmail_emails_fet
 ```
 EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=...     # iOS OAuth client
 EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=...     # Web client (used for Android + token exchange)
-EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET=... # Web client secret
 ```
 
 the Android OAuth client ID is NOT in env — it's matched by SHA-1 + package name at the native level.

@@ -13,9 +13,6 @@ function warnIfMissing(name: string, value: string): string {
 
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "";
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
-const GOOGLE_CLIENT_SECRET =
-  process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET ?? "";
-
 export const env = {
   GOOGLE_IOS_CLIENT_ID: warnIfMissing(
     "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID",
@@ -24,10 +21,6 @@ export const env = {
   GOOGLE_WEB_CLIENT_ID: warnIfMissing(
     "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID",
     GOOGLE_WEB_CLIENT_ID,
-  ),
-  GOOGLE_CLIENT_SECRET: warnIfMissing(
-    "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET",
-    GOOGLE_CLIENT_SECRET,
   ),
   API_URL: process.env.EXPO_PUBLIC_API_URL ?? "",
   GEMINI_API_KEY: process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? "",

@@ -43,7 +43,6 @@ WebBrowser.maybeCompleteAuthSession();
 
 const IOS_CLIENT_ID = env.GOOGLE_IOS_CLIENT_ID;
 const WEB_CLIENT_ID = env.GOOGLE_WEB_CLIENT_ID;
-const WEB_CLIENT_SECRET = env.GOOGLE_CLIENT_SECRET;
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 
 const discovery = {
@@ -94,8 +93,7 @@ export async function getValidAccessToken(): Promise<string | null> {
   try {
     const tokenResult = await AuthSession.refreshAsync(
       {
-        clientId: WEB_CLIENT_ID,
-        clientSecret: WEB_CLIENT_SECRET,
+        clientId: IOS_CLIENT_ID,
         refreshToken,
       },
       discovery,

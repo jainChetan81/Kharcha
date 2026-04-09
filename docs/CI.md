@@ -176,7 +176,6 @@ cp .env.example .env.local
 | `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | Google OAuth iOS | Development, iOS build |
 | `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | Google OAuth Android | Development, Android build |
 | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Google OAuth Web | Gmail sync |
-| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_SECRET` | Google OAuth Web secret | Gmail sync |
 | `EXPO_DEVTOOLS_LISTEN_ADDRESS` | Metro bundler address | Local development |
 | `RCT_METRO_PORT` | Metro bundler port | Local development |
 
