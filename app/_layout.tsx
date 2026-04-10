@@ -7,6 +7,7 @@ import { SplashScreen, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
+import { startNetworkLogging } from "react-native-network-logger";
 import Toast, { type ToastConfig } from "react-native-toast-message";
 import { Text } from "@/components/ui/text";
 import { COLORS, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
@@ -88,6 +89,7 @@ const toastConfig: ToastConfig = {
 
 export default function RootLayout() {
   if (__DEV__) {
+    startNetworkLogging();
     // biome-ignore lint/correctness/useHookAtTopLevel: __DEV__ is a compile-time constant, hook order is stable
     useReactQueryDevTools(queryClient);
   }

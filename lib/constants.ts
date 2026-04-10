@@ -12,6 +12,7 @@ export const SCREENS = {
   GMAIL_SYNC: "/gmail-sync",
   DEVICE_SYNC: "/settings/sync",
   BANKS: "/settings/banks",
+  NETWORK_LOGS: "/network-logs",
 } as const;
 
 export const BUNDLE_ID = "com.chetanjain.kharcha" as const;

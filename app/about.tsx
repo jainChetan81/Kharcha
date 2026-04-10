@@ -2,21 +2,37 @@ import { format } from "date-fns";
 import * as Application from "expo-application";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
-import { ScrollView, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { InfoRow } from "@/components/ui/info-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { useDataStats } from "@/hooks/use-stats";
-import { DATE_FORMAT, DEVICE_TYPE_NAME } from "@/lib/constants";
+import { DATE_FORMAT, DEVICE_TYPE_NAME, SCREENS } from "@/lib/constants";
 import { parseDate } from "@/lib/format";
+import { showSuccessToast } from "@/lib/toast";
 
 export default function AboutScreen() {
   const { data: stats } = useDataStats();
+  const router = useRouter();
+  const [tapCount, setTapCount] = useState(0);
 
   const firstDate = stats?.first_transaction_date
     ? format(parseDate(stats.first_transaction_date), DATE_FORMAT)
     : null;
+
+  const handleVersionTap = () => {
+    const next = tapCount + 1;
+    if (next >= 5) {
+      setTapCount(0);
+      showSuccessToast("Opening network logs");
+      router.push(SCREENS.NETWORK_LOGS);
+    } else {
+      setTapCount(next);
+    }
+  };
 
   return (
     <View className="flex-1 bg-background">
@@ -27,13 +43,15 @@ export default function AboutScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
       >
         <SectionHeader title="App" />
-        <InfoRow
-          label="App Version"
-          value={
-            Constants.expoConfig?.version ??
-            Application.nativeApplicationVersion
-          }
-        />
+        <Pressable onPress={handleVersionTap}>
+          <InfoRow
+            label="App Version"
+            value={
+              Constants.expoConfig?.version ??
+              Application.nativeApplicationVersion
+            }
+          />
+        </Pressable>
         <InfoRow label="Build Number" value={Application.nativeBuildVersion} />
         <InfoRow label="Bundle ID" value={Application.applicationId} />
 

@@ -59,6 +59,7 @@
 		"react-dom": "19.2.0",
 		"react-native": "0.83.4",
 		"react-native-gifted-charts": "^1.4.76",
+		"react-native-network-logger": "^2.0.1",
 		"react-native-reanimated": "^4.2.1",
 		"react-native-safe-area-context": "~5.6.2",
 		"react-native-screens": "^4.23.0",
