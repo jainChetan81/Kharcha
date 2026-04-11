@@ -21,7 +21,8 @@ export type BankWithEmails = Bank & { emails: BankEmail[] };
 export type TransactionRow = Transaction & {
   category_name: string | null;
   source_name: string | null;
-  source_type: "manual" | "synced" | "recurring";
+  destination_source_name: string | null;
+  source_type: "manual" | "synced" | "recurring" | "transfer";
 };
 
 export type MonthlySummary = {
@@ -45,4 +46,16 @@ export type BudgetRow = {
   category_id: number;
   category_name: string;
   amount: number;
+};
+
+export type MonthlyInsights = {
+  topCategoryChange: {
+    category: string;
+    categoryId: number | null;
+    percent: number;
+    direction: "up" | "down";
+  } | null;
+  projectedSpend: number | null;
+  daysElapsed: number;
+  daysInMonth: number;
 };

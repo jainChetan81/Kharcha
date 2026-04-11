@@ -183,7 +183,8 @@ export default function HistoryScreen() {
   useEffect(() => {
     if (
       params.filter === TRANSACTION_TYPE.INCOME ||
-      params.filter === TRANSACTION_TYPE.EXPENSE
+      params.filter === TRANSACTION_TYPE.EXPENSE ||
+      params.filter === TRANSACTION_TYPE.TRANSFER
     ) {
       setTypeFilter(params.filter);
     }
@@ -196,7 +197,8 @@ export default function HistoryScreen() {
     if (
       params.source_type === SOURCE_TYPE.MANUAL ||
       params.source_type === SOURCE_TYPE.SYNCED ||
-      params.source_type === SOURCE_TYPE.RECURRING
+      params.source_type === SOURCE_TYPE.RECURRING ||
+      params.source_type === SOURCE_TYPE.TRANSFER
     ) {
       setSourceTypeFilter(params.source_type);
     }
@@ -249,10 +251,17 @@ export default function HistoryScreen() {
     }
   }, [params.category_id, otherLookupCategories]);
 
-  const { data: categories = [] } = useCategoriesByType(draftType, showFilters);
+  const categoryFilterType =
+    draftType === TRANSACTION_TYPE.TRANSFER ? TRANSACTION_TYPE.ALL : draftType;
+  const { data: categories = [] } = useCategoriesByType(
+    categoryFilterType,
+    showFilters && draftType !== TRANSACTION_TYPE.TRANSFER,
+  );
 
   const { data: sources = [] } = useAllSources(
-    showFilters && draftType !== TRANSACTION_TYPE.INCOME,
+    showFilters &&
+      draftType !== TRANSACTION_TYPE.INCOME &&
+      draftType !== TRANSACTION_TYPE.TRANSFER,
   );
 
   const activeFilterCount = useMemo(() => {
@@ -301,6 +310,9 @@ export default function HistoryScreen() {
     .reduce((sum, t) => sum + t.amount, 0);
   const totalIncome = allTransactions
     .filter((t) => t.type === TRANSACTION_TYPE.INCOME)
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalTransfers = allTransactions
+    .filter((t) => t.type === TRANSACTION_TYPE.TRANSFER)
     .reduce((sum, t) => sum + t.amount, 0);
 
   async function handleGmailSync() {
@@ -527,29 +539,38 @@ export default function HistoryScreen() {
         </View>
       </View>
 
-      {allTransactions.length > 0 && (totalSpent > 0 || totalIncome > 0) && (
-        <View className="mx-5 mb-3 rounded-xl bg-card p-3">
-          <Text className="text-xs text-muted-foreground">
-            {allTransactions.length} transactions
-            {totalSpent > 0 && (
-              <>
-                {"  ·  "}
-                <Text className="text-xs font-semibold text-negative">
-                  {fmt(totalSpent)} spent
-                </Text>
-              </>
-            )}
-            {totalIncome > 0 && (
-              <>
-                {"  ·  "}
-                <Text className="text-xs font-semibold text-positive">
-                  {fmt(totalIncome)} income
-                </Text>
-              </>
-            )}
-          </Text>
-        </View>
-      )}
+      {allTransactions.length > 0 &&
+        (totalSpent > 0 || totalIncome > 0 || totalTransfers > 0) && (
+          <View className="mx-5 mb-3 rounded-xl bg-card p-3">
+            <Text className="text-xs text-muted-foreground">
+              {allTransactions.length} transactions
+              {totalSpent > 0 && (
+                <>
+                  {"  ·  "}
+                  <Text className="text-xs font-semibold text-negative">
+                    {fmt(totalSpent)} spent
+                  </Text>
+                </>
+              )}
+              {totalIncome > 0 && (
+                <>
+                  {"  ·  "}
+                  <Text className="text-xs font-semibold text-positive">
+                    {fmt(totalIncome)} income
+                  </Text>
+                </>
+              )}
+              {totalTransfers > 0 && (
+                <>
+                  {"  ·  "}
+                  <Text className="text-xs font-semibold text-muted-foreground">
+                    {fmt(totalTransfers)} transferred
+                  </Text>
+                </>
+              )}
+            </Text>
+          </View>
+        )}
 
       <View className="mx-5 mb-3 flex-row items-center rounded-xl border border-border bg-card px-3">
         <Icon as={Search} className="mr-2 size-4 text-muted-foreground" />
@@ -678,33 +699,38 @@ export default function HistoryScreen() {
           ))}
         </View>
 
-        <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Category
-        </Text>
-        <View className="mb-5">
-          <ChipPicker
-            items={categories}
-            selectedId={draftCategoryId}
-            onSelect={setDraftCategoryId}
-            allLabel="All Categories"
-          />
-        </View>
-
-        {draftType !== TRANSACTION_TYPE.INCOME && (
+        {draftType !== TRANSACTION_TYPE.TRANSFER && (
           <>
             <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Payment Source
+              Category
             </Text>
             <View className="mb-5">
               <ChipPicker
-                items={sources}
-                selectedId={draftSourceId}
-                onSelect={setDraftSourceId}
-                allLabel="All Sources"
+                items={categories}
+                selectedId={draftCategoryId}
+                onSelect={setDraftCategoryId}
+                allLabel="All Categories"
               />
             </View>
           </>
         )}
+
+        {draftType !== TRANSACTION_TYPE.INCOME &&
+          draftType !== TRANSACTION_TYPE.TRANSFER && (
+            <>
+              <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Payment Source
+              </Text>
+              <View className="mb-5">
+                <ChipPicker
+                  items={sources}
+                  selectedId={draftSourceId}
+                  onSelect={setDraftSourceId}
+                  allLabel="All Sources"
+                />
+              </View>
+            </>
+          )}
 
         <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Source Type

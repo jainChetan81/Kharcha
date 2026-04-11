@@ -1,17 +1,15 @@
 import { format } from "date-fns";
 import { File, Paths } from "expo-file-system";
 import { shareAsync } from "expo-sharing";
+import { CSV_DATE_FORMAT, CSV_TIME_FORMAT } from "@/lib/constants";
 import type { TransactionRow } from "@/lib/db/types";
 import { parseDate } from "@/lib/format";
-
-const CSV_DATE_FORMAT = "dd/MM/yyyy";
-const CSV_TIME_FORMAT = "HH:mm";
 
 const csvEscape = (val: string) => `"${val.replace(/"/g, '""')}"`;
 
 function buildCSV(transactions: TransactionRow[]): string {
   return [
-    "Date,Time,Merchant,Amount,Type,Category,Source,Source Type,Note",
+    "Date,Time,Merchant,Amount,Type,Category,Source,Destination Source,Source Type,Note",
     ...transactions.map((t) => {
       const parsed = parseDate(t.date);
       return [
@@ -20,8 +18,9 @@ function buildCSV(transactions: TransactionRow[]): string {
         csvEscape(t.merchant ?? ""),
         t.amount,
         csvEscape(t.type),
-        csvEscape(t.category_name ?? "Other"),
+        csvEscape(t.type === "transfer" ? "" : (t.category_name ?? "Other")),
         csvEscape(t.source_name ?? ""),
+        csvEscape(t.destination_source_name ?? ""),
         csvEscape(t.source_type),
         csvEscape(t.note ?? ""),
       ].join(",");

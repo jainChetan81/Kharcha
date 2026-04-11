@@ -12,7 +12,9 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { startNetworkLogging } from "react-native-network-logger";
 import Toast, { type ToastConfig } from "react-native-toast-message";
 import { ComponentErrorBoundary } from "@/components/error-boundary";
+import { LockedScreen } from "@/components/locked-screen";
 import { Text } from "@/components/ui/text";
+import { useAppLock } from "@/hooks/use-app-lock";
 import { COLORS, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
 import { initDB } from "@/lib/db";
 import { processSubscriptions } from "@/lib/db/subscriptions";
@@ -100,6 +102,7 @@ export default function RootLayout() {
   useQuickActionRouting();
 
   const [dbReady, setDbReady] = useState(false);
+  const { locked, authenticate } = useAppLock(dbReady);
 
   useEffect(() => {
     initDB()
@@ -152,7 +155,13 @@ export default function RootLayout() {
               </View>
             }
           >
-            {dbReady ? <Stack screenOptions={{ headerShown: false }} /> : null}
+            {dbReady ? (
+              locked ? (
+                <LockedScreen onUnlock={authenticate} />
+              ) : (
+                <Stack screenOptions={{ headerShown: false }} />
+              )
+            ) : null}
           </Suspense>
         </ComponentErrorBoundary>
         <Toast config={toastConfig} position="top" topOffset={60} />

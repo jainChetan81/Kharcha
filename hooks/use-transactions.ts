@@ -10,6 +10,7 @@ import {
   clearAllTransactions,
   deleteTransaction,
   getCategoryBreakdown,
+  getMonthlyInsights,
   getMonthlySummary,
   getMonthTransactions,
   getRecentTransactions,
@@ -39,6 +40,9 @@ export function useInvalidateTransactions() {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
       }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.MONTHLY_INSIGHTS],
+      }),
     ]);
 }
 
@@ -63,6 +67,13 @@ export function useMonthlySummary(yearMonth: string) {
   });
 }
 
+export function useMonthlyInsights(year: number, month: number) {
+  return useQuery({
+    queryKey: [QUERY_KEYS.MONTHLY_INSIGHTS, year, month],
+    queryFn: () => getMonthlyInsights(year, month),
+  });
+}
+
 export function useCategoryBreakdown(yearMonth: string) {
   return useQuery({
     queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN, yearMonth],
@@ -79,10 +90,10 @@ export function useTransactionById(id: number) {
 }
 
 export function useTransactionsPaginated(filters: {
-  type?: "income" | "expense" | "all";
+  type?: "income" | "expense" | "transfer" | "all";
   categoryId?: number | null;
   sourceId?: number | null;
-  sourceType?: "manual" | "synced" | "recurring" | "all";
+  sourceType?: "manual" | "synced" | "recurring" | "transfer" | "all";
   dateFrom?: string | null;
   dateTo?: string | null;
   amountMin?: number | null;

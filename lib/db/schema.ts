@@ -32,18 +32,21 @@ export const subscriptions = sqliteTable("subscriptions", {
 
 export const transactions = sqliteTable("transactions", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  type: text("type", { enum: ["income", "expense"] })
+  type: text("type", { enum: ["income", "expense", "transfer"] })
     .notNull()
     .default("expense"),
   amount: real("amount").notNull(),
   merchant: text("merchant"),
   category_id: integer("category_id").references(() => categories.id),
   source_id: integer("source_id").references(() => sources.id),
+  destination_source_id: integer("destination_source_id").references(
+    () => sources.id,
+  ),
   subscription_id: integer("subscription_id").references(
     () => subscriptions.id,
   ),
   source_type: text("source_type", {
-    enum: ["manual", "synced", "recurring"],
+    enum: ["manual", "synced", "recurring", "transfer"],
   })
     .notNull()
     .default("manual"),

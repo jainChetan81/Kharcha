@@ -80,6 +80,7 @@ export default function AddTransaction() {
     merchant: "",
     categoryId: null,
     sourceId: upiSourceId,
+    destinationSourceId: null,
     date: format(new Date(), DATE_TIME_FORMAT),
     note: "",
   };
@@ -89,7 +90,9 @@ export default function AddTransaction() {
     type:
       typeParam === TRANSACTION_TYPE.INCOME
         ? TRANSACTION_TYPE.INCOME
-        : TRANSACTION_TYPE.EXPENSE,
+        : typeParam === TRANSACTION_TYPE.TRANSFER
+          ? TRANSACTION_TYPE.TRANSFER
+          : TRANSACTION_TYPE.EXPENSE,
   };
 
   function matchSourceId(
@@ -125,6 +128,7 @@ export default function AddTransaction() {
       merchant: parsed.merchant ?? "",
       categoryId: null,
       sourceId,
+      destinationSourceId: null,
       date: `${parsed.date} 12:00`,
       note: originalText.trim(),
     };
@@ -160,19 +164,27 @@ export default function AddTransaction() {
   }
 
   async function commitTransaction(value: TransactionFormValues) {
+    const isTransfer = value.type === TRANSACTION_TYPE.TRANSFER;
     await insertMutation.mutateAsync({
       type: value.type,
       amount: Number(value.amount),
       merchant: value.merchant || null,
-      categoryId: value.categoryId,
+      categoryId: isTransfer ? null : value.categoryId,
       sourceId: value.type === TRANSACTION_TYPE.INCOME ? null : value.sourceId,
+      destinationSourceId: isTransfer ? value.destinationSourceId : null,
+      sourceType: isTransfer ? "transfer" : undefined,
       date: value.date,
       note: value.note || null,
     });
-    showSuccessToast(
-      "Transaction added",
-      `${value.type === TRANSACTION_TYPE.INCOME ? "+" : "-"}${fmt(Number(value.amount))}`,
-    );
+
+    if (isTransfer) {
+      showSuccessToast("Transfer added", fmt(Number(value.amount)));
+    } else {
+      showSuccessToast(
+        "Transaction added",
+        `${value.type === TRANSACTION_TYPE.INCOME ? "+" : "-"}${fmt(Number(value.amount))}`,
+      );
+    }
 
     if (value.type === TRANSACTION_TYPE.EXPENSE && value.categoryId) {
       const budget = await getBudgetForCategory(value.categoryId);

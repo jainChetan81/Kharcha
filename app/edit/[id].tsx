@@ -47,19 +47,33 @@ export default function EditTransactionScreen() {
     merchant: transaction.merchant ?? "",
     categoryId: transaction.category_id,
     sourceId: transaction.source_id,
+    destinationSourceId: transaction.destination_source_id,
     date: transaction.date,
     note: transaction.note ?? "",
   };
 
   async function handleSubmit(value: TransactionFormValues) {
     try {
+      const isTransfer = value.type === TRANSACTION_TYPE.TRANSFER;
+      const originallyTransfer = transaction?.source_type === "transfer";
+      // Only pass sourceType when the transfer flag is changing — otherwise
+      // leave it alone so Gmail-synced / subscription-recurring provenance
+      // is preserved across non-transfer edits.
+      let sourceType: "manual" | "transfer" | undefined;
+      if (isTransfer && !originallyTransfer) {
+        sourceType = "transfer";
+      } else if (!isTransfer && originallyTransfer) {
+        sourceType = "manual";
+      }
       await updateMutation.mutateAsync({
         type: value.type,
         amount: Number(value.amount),
         merchant: value.merchant || null,
-        categoryId: value.categoryId,
+        categoryId: isTransfer ? null : value.categoryId,
         sourceId:
           value.type === TRANSACTION_TYPE.INCOME ? null : value.sourceId,
+        destinationSourceId: isTransfer ? value.destinationSourceId : null,
+        sourceType,
         date: value.date,
         note: value.note || null,
       });
