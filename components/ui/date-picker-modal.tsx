@@ -96,12 +96,14 @@ export function DateTimePickerModal({
   maximumDate,
   onConfirm,
   onCancel,
+  onClear,
 }: {
   visible: boolean;
   value: Date;
   maximumDate?: Date;
   onConfirm: (date: Date) => void;
   onCancel: () => void;
+  onClear?: () => void;
 }) {
   const [tempDate, setTempDate] = useState(value);
   const [step, setStep] = useState<"date" | "time">("date");
@@ -134,11 +136,20 @@ export function DateTimePickerModal({
           <Text className="text-base font-semibold text-foreground">
             {step === "date" ? "Select Date" : "Select Time"}
           </Text>
-          <Pressable onPress={handleNext}>
-            <Text className="text-base font-semibold text-primary">
-              {step === "date" ? "Next" : "Done"}
-            </Text>
-          </Pressable>
+          <View className="flex-row items-center gap-4">
+            {onClear && (
+              <Pressable onPress={onClear}>
+                <Text className="text-base font-medium text-negative">
+                  Clear
+                </Text>
+              </Pressable>
+            )}
+            <Pressable onPress={handleNext}>
+              <Text className="text-base font-semibold text-primary">
+                {step === "date" ? "Next" : "Done"}
+              </Text>
+            </Pressable>
+          </View>
         </View>
         <ComponentErrorBoundary onDismiss={onCancel}>
           <Suspense fallback={<PickerLoader />}>
