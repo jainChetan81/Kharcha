@@ -13,6 +13,7 @@ export const SCREENS = {
   DEVICE_SYNC: "/settings/sync",
   BANKS: "/settings/banks",
   NETWORK_LOGS: "/network-logs",
+  EXPORT: "/export",
 } as const;
 
 export const BUNDLE_ID = "com.chetanjain.kharcha" as const;

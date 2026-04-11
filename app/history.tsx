@@ -1,44 +1,29 @@
 import { FlashList } from "@shopify/flash-list";
-import {
-  endOfMonth,
-  format,
-  parse,
-  startOfMonth,
-  startOfWeek,
-  startOfYear,
-  subDays,
-  subMonths,
-} from "date-fns";
+import { format, parse } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ChevronLeft,
+  FileDown,
   Mail,
   Receipt,
   Search,
   SlidersHorizontal,
   X,
 } from "lucide-react-native";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
   RefreshControl,
-  ScrollView,
   View,
 } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
+import { getPresetRange, PeriodPicker } from "@/components/period-picker";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { ChipPicker } from "@/components/ui/chip-picker";
-
-const DatePickerModal = lazy(() =>
-  import("@/components/ui/date-picker-modal").then((m) => ({
-    default: m.DatePickerModal,
-  })),
-);
-
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
@@ -53,7 +38,6 @@ import {
 } from "@/hooks/use-transactions";
 import {
   COLORS,
-  DATE_FORMAT,
   DATE_ISO_FORMAT,
   EMAIL_LOG_STATUS,
   editScreen,
@@ -64,50 +48,16 @@ import {
   TRANSACTION_TYPE,
   type TransactionFilterType,
 } from "@/lib/constants";
+import { getAllTransactionsFiltered } from "@/lib/db";
+import { exportToCSV } from "@/lib/export/csv";
 import { buildListData, type ListItem } from "@/lib/format";
 import { useGoogleAuth } from "@/lib/gmail/auth";
 import { syncGmailTransactions } from "@/lib/gmail/sync";
-import { showErrorToast } from "@/lib/toast";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
 const TYPE_FILTERS = Object.values(TRANSACTION_TYPE);
 const SOURCE_TYPE_FILTERS = Object.values(SOURCE_TYPE);
-
-const PRESET_LABELS: Record<PeriodPresetType, string> = {
-  [PERIOD_PRESET.TODAY]: "Today",
-  [PERIOD_PRESET.THIS_WEEK]: "This Week",
-  [PERIOD_PRESET.LAST_7_DAYS]: "Last 7 Days",
-  [PERIOD_PRESET.THIS_MONTH]: "This Month",
-  [PERIOD_PRESET.LAST_MONTH]: "Last Month",
-  [PERIOD_PRESET.THIS_YEAR]: "This Year",
-  [PERIOD_PRESET.CUSTOM]: "Custom",
-};
-
-function getPresetRange(preset: PeriodPresetType): {
-  from: string;
-  to: string;
-} {
-  const now = new Date();
-  const fmt = (d: Date) => format(d, DATE_ISO_FORMAT);
-  switch (preset) {
-    case PERIOD_PRESET.TODAY:
-      return { from: fmt(now), to: fmt(now) };
-    case PERIOD_PRESET.THIS_WEEK:
-      return { from: fmt(startOfWeek(now, { weekStartsOn: 1 })), to: fmt(now) };
-    case PERIOD_PRESET.LAST_7_DAYS:
-      return { from: fmt(subDays(now, 7)), to: fmt(now) };
-    case PERIOD_PRESET.THIS_MONTH:
-      return { from: fmt(startOfMonth(now)), to: fmt(now) };
-    case PERIOD_PRESET.LAST_MONTH: {
-      const prev = subMonths(now, 1);
-      return { from: fmt(startOfMonth(prev)), to: fmt(endOfMonth(prev)) };
-    }
-    case PERIOD_PRESET.THIS_YEAR:
-      return { from: fmt(startOfYear(now)), to: fmt(now) };
-    default:
-      return { from: fmt(now), to: fmt(now) };
-  }
-}
 
 export default function HistoryScreen() {
   const { format: fmt } = useCurrency();
@@ -143,6 +93,7 @@ export default function HistoryScreen() {
   const [syncing, setSyncing] = useState(false);
   const [searchText, setSearchText] = useState("");
   const debouncedSearch = useDebounce(searchText);
+  const [exporting, setExporting] = useState(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: isConnected is stable from hook
   useEffect(() => {
@@ -164,9 +115,6 @@ export default function HistoryScreen() {
   const [draftDateTo, setDraftDateTo] = useState<string | null>(null);
   const [draftAmountMin, setDraftAmountMin] = useState("");
   const [draftAmountMax, setDraftAmountMax] = useState("");
-  const [showFromPicker, setShowFromPicker] = useState(false);
-  const [showToPicker, setShowToPicker] = useState(false);
-
   useEffect(() => {
     if (
       params.filter === TRANSACTION_TYPE.INCOME ||
@@ -326,18 +274,31 @@ export default function HistoryScreen() {
     }
   }
 
-  function handlePresetSelect(preset: PeriodPresetType) {
-    if (preset === draftPreset) {
-      setDraftPreset(null);
-      setDraftDateFrom(null);
-      setDraftDateTo(null);
-      return;
-    }
-    setDraftPreset(preset);
-    if (preset !== PERIOD_PRESET.CUSTOM) {
-      const range = getPresetRange(preset);
-      setDraftDateFrom(range.from);
-      setDraftDateTo(range.to);
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const all = await getAllTransactionsFiltered(filters);
+      if (all.length === 0) {
+        showErrorToast("No transactions to export");
+        return;
+      }
+      const parts = ["kharcha"];
+      if (typeFilter !== TRANSACTION_TYPE.ALL) parts.push(typeFilter);
+      if (dateFrom) {
+        const label = format(
+          parse(dateFrom, DATE_ISO_FORMAT, new Date()),
+          "MMMM-yyyy",
+        ).toLowerCase();
+        parts.push(label);
+      } else {
+        parts.push(format(new Date(), "yyyy-MM-dd"));
+      }
+      await exportToCSV(all, parts.join("-"));
+      showSuccessToast("Exported", `${all.length} transactions`);
+    } catch (err) {
+      showErrorToast("Export failed", err);
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -434,6 +395,17 @@ export default function HistoryScreen() {
               </Text>
             </Pressable>
           )}
+          <Pressable
+            onPress={handleExport}
+            disabled={exporting}
+            className="flex-row items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2"
+          >
+            {exporting ? (
+              <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+            ) : (
+              <Icon as={FileDown} className="size-4 text-muted-foreground" />
+            )}
+          </Pressable>
           <Pressable
             onPress={openFilters}
             className="relative flex-row items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2"
@@ -650,109 +622,14 @@ export default function HistoryScreen() {
           ))}
         </View>
 
-        <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Period
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="mb-3"
-          contentContainerStyle={{ gap: 8, paddingRight: 24 }}
-        >
-          {Object.values(PERIOD_PRESET).map((p) => (
-            <Pressable
-              key={p}
-              onPress={() => handlePresetSelect(p)}
-              className={cn(
-                "rounded-full px-4 py-2.5",
-                draftPreset === p
-                  ? "bg-primary"
-                  : "border border-border bg-card",
-              )}
-            >
-              <Text
-                className={cn(
-                  "text-sm font-medium",
-                  draftPreset === p
-                    ? "text-primary-foreground"
-                    : "text-muted-foreground",
-                )}
-              >
-                {PRESET_LABELS[p]}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-        {draftPreset === PERIOD_PRESET.CUSTOM && (
-          <View className="mb-3 flex-row gap-3">
-            <Pressable
-              onPress={() => setShowFromPicker(true)}
-              className="flex-1 rounded-xl bg-muted px-4 py-3"
-            >
-              <Text className="text-xs text-muted-foreground">From</Text>
-              <Text className="text-sm font-medium text-foreground">
-                {draftDateFrom
-                  ? format(
-                      parse(draftDateFrom, DATE_ISO_FORMAT, new Date()),
-                      DATE_FORMAT,
-                    )
-                  : "Select"}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setShowToPicker(true)}
-              className="flex-1 rounded-xl bg-muted px-4 py-3"
-            >
-              <Text className="text-xs text-muted-foreground">To</Text>
-              <Text className="text-sm font-medium text-foreground">
-                {draftDateTo
-                  ? format(
-                      parse(draftDateTo, DATE_ISO_FORMAT, new Date()),
-                      DATE_FORMAT,
-                    )
-                  : "Select"}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-        <Suspense fallback={null}>
-          <DatePickerModal
-            visible={showFromPicker}
-            value={
-              draftDateFrom
-                ? parse(draftDateFrom, DATE_ISO_FORMAT, new Date())
-                : new Date()
-            }
-            title="From Date"
-            onConfirm={(date) => {
-              setShowFromPicker(false);
-              setDraftDateFrom(format(date, DATE_ISO_FORMAT));
-            }}
-            onCancel={() => setShowFromPicker(false)}
-            onClear={() => {
-              setShowFromPicker(false);
-              setDraftDateFrom(null);
-            }}
-          />
-          <DatePickerModal
-            visible={showToPicker}
-            value={
-              draftDateTo
-                ? parse(draftDateTo, DATE_ISO_FORMAT, new Date())
-                : new Date()
-            }
-            title="To Date"
-            onConfirm={(date) => {
-              setShowToPicker(false);
-              setDraftDateTo(format(date, DATE_ISO_FORMAT));
-            }}
-            onCancel={() => setShowToPicker(false)}
-            onClear={() => {
-              setShowToPicker(false);
-              setDraftDateTo(null);
-            }}
-          />
-        </Suspense>
+        <PeriodPicker
+          preset={draftPreset}
+          dateFrom={draftDateFrom}
+          dateTo={draftDateTo}
+          onPresetChange={setDraftPreset}
+          onDateFromChange={setDraftDateFrom}
+          onDateToChange={setDraftDateTo}
+        />
         <View className="mb-5" />
 
         <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

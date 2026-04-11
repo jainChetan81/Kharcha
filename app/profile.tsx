@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import {
   ChevronRight,
   Database,
+  FileText,
   Mail,
   RefreshCw,
   Trash2,
@@ -147,6 +148,20 @@ export default function ProfileScreen() {
           <Icon as={RefreshCw} className="mr-3 size-4 text-muted-foreground" />
           <Text className="flex-1 text-sm font-medium text-foreground">
             Device Sync
+          </Text>
+          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
+        </Pressable>
+
+        <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Export
+        </Text>
+        <Pressable
+          onPress={() => router.push(SCREENS.EXPORT)}
+          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Icon as={FileText} className="mr-3 size-4 text-muted-foreground" />
+          <Text className="flex-1 text-sm font-medium text-foreground">
+            Export & Backup
           </Text>
           <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
         </Pressable>
