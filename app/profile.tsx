@@ -185,7 +185,7 @@ export default function ProfileScreen() {
           </Text>
           <Switch
             value={appLockEnabled}
-            onValueChange={toggleAppLock}
+            onValueChange={() => void toggleAppLock()}
             trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
             thumbColor={COLORS.WHITE}
           />
