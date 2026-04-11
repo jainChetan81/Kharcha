@@ -1,3 +1,4 @@
+import "react-native-gesture-handler";
 import "../global.css";
 import { useReactQueryDevTools } from "@dev-plugins/react-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -7,6 +8,7 @@ import { SplashScreen, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { startNetworkLogging } from "react-native-network-logger";
 import Toast, { type ToastConfig } from "react-native-toast-message";
 import { Text } from "@/components/ui/text";
@@ -138,10 +140,12 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <StatusBar style="light" />
-      {dbReady ? <Stack screenOptions={{ headerShown: false }} /> : null}
-      <Toast config={toastConfig} position="top" topOffset={60} />
-    </QueryClientProvider>
+    <GestureHandlerRootView className="flex-1">
+      <QueryClientProvider client={queryClient}>
+        <StatusBar style="light" />
+        {dbReady ? <Stack screenOptions={{ headerShown: false }} /> : null}
+        <Toast config={toastConfig} position="top" topOffset={60} />
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

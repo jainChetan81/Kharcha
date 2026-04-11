@@ -9,12 +9,14 @@ export const categories = sqliteTable("categories", {
     .notNull()
     .default("expense"),
   is_default: integer("is_default").default(0),
+  sort_order: integer("sort_order").default(0),
 });
 
 export const sources = sqliteTable("sources", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   is_default: integer("is_default").default(0),
+  sort_order: integer("sort_order").default(0),
 });
 
 export const subscriptions = sqliteTable("subscriptions", {

@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/lib/constants";
-import { addSource, deleteSource, getAllSources } from "@/lib/db";
+import {
+  addSource,
+  deleteSource,
+  getAllSources,
+  updateSourceOrder,
+} from "@/lib/db";
 
 export function useAllSources(enabled = true) {
   return useQuery({
@@ -23,6 +28,16 @@ export function useDeleteSource() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => deleteSource(id),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.SOURCES] }),
+  });
+}
+
+export function useReorderSources() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (items: { id: number; sort_order: number }[]) =>
+      updateSourceOrder(items),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.SOURCES] }),
   });

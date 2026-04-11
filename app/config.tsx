@@ -1,6 +1,10 @@
-import { Lock, Plus, Trash2 } from "lucide-react-native";
+import { GripVertical, Lock, Plus, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import { Alert, Pressable, ScrollView, View } from "react-native";
+import DraggableFlatList, {
+  type RenderItemParams,
+  ScaleDecorator,
+} from "react-native-draggable-flatlist";
 import { ScreenError } from "@/components/error-boundary";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Icon } from "@/components/ui/icon";
@@ -11,46 +15,83 @@ import {
   useAddCategory,
   useAllCategories,
   useDeleteCategory,
+  useReorderCategories,
 } from "@/hooks/use-categories";
 import {
   useAddSource,
   useAllSources,
   useDeleteSource,
+  useReorderSources,
 } from "@/hooks/use-sources";
-import { TRANSACTION_TYPE } from "@/lib/constants";
+import { COLORS, TRANSACTION_TYPE } from "@/lib/constants";
+import type { Category, Source } from "@/lib/db";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
-function ConfigRow({
-  label,
-  badge,
-  isDefault,
+function CategoryRow({
+  item,
+  drag,
+  isActive,
   onDelete,
-}: {
-  label: string;
-  badge?: string;
-  isDefault: boolean;
-  onDelete: () => void;
-}) {
+}: RenderItemParams<Category> & { onDelete: (id: number) => void }) {
   return (
-    <View className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3">
-      <Text className="flex-1 text-sm font-medium capitalize text-foreground">
-        {label}
-      </Text>
-      {badge && (
-        <View className="mr-3 rounded-full bg-muted px-2 py-0.5">
-          <Text className="text-[10px] font-medium capitalize text-muted-foreground">
-            {badge}
-          </Text>
-        </View>
-      )}
-      {isDefault ? (
-        <Icon as={Lock} className="size-4 text-muted-foreground" />
-      ) : (
-        <Pressable onPress={onDelete}>
-          <Icon as={Trash2} className="size-4 text-negative" />
-        </Pressable>
-      )}
-    </View>
+    <ScaleDecorator activeScale={1.02}>
+      <Pressable
+        onLongPress={drag}
+        disabled={isActive}
+        className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+      >
+        <Icon
+          as={GripVertical}
+          size={16}
+          color={COLORS.MUTED}
+          className="mr-3"
+        />
+        <Text className="flex-1 text-sm font-medium capitalize text-foreground">
+          {item.name}
+        </Text>
+        {item.is_default === 1 ? (
+          <Icon as={Lock} className="size-4 text-muted-foreground" />
+        ) : (
+          <Pressable onPress={() => onDelete(item.id)}>
+            <Icon as={Trash2} className="size-4 text-negative" />
+          </Pressable>
+        )}
+      </Pressable>
+    </ScaleDecorator>
+  );
+}
+
+function SourceRow({
+  item,
+  drag,
+  isActive,
+  onDelete,
+}: RenderItemParams<Source> & { onDelete: (id: number) => void }) {
+  return (
+    <ScaleDecorator activeScale={1.02}>
+      <Pressable
+        onLongPress={drag}
+        disabled={isActive}
+        className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+      >
+        <Icon
+          as={GripVertical}
+          size={16}
+          color={COLORS.MUTED}
+          className="mr-3"
+        />
+        <Text className="flex-1 text-sm font-medium capitalize text-foreground">
+          {item.name}
+        </Text>
+        {item.is_default === 1 ? (
+          <Icon as={Lock} className="size-4 text-muted-foreground" />
+        ) : (
+          <Pressable onPress={() => onDelete(item.id)}>
+            <Icon as={Trash2} className="size-4 text-negative" />
+          </Pressable>
+        )}
+      </Pressable>
+    </ScaleDecorator>
   );
 }
 
@@ -66,8 +107,11 @@ export default function ConfigScreen() {
 
   const addCategoryMutation = useAddCategory();
   const deleteCategoryMutation = useDeleteCategory();
+  const reorderCategoriesMutation = useReorderCategories();
   const addSourceMutation = useAddSource();
   const deleteSourceMutation = useDeleteSource();
+  const reorderSourcesMutation = useReorderSources();
+
   const expenseCategories = categories.filter(
     (c) => c.type === TRANSACTION_TYPE.EXPENSE,
   );
@@ -111,6 +155,18 @@ export default function ConfigScreen() {
     ]);
   }
 
+  function renderExpenseCategory(params: RenderItemParams<Category>) {
+    return <CategoryRow {...params} onDelete={handleDeleteCategory} />;
+  }
+
+  function renderIncomeCategory(params: RenderItemParams<Category>) {
+    return <CategoryRow {...params} onDelete={handleDeleteCategory} />;
+  }
+
+  function renderSource(params: RenderItemParams<Source>) {
+    return <SourceRow {...params} onDelete={handleDeleteSource} />;
+  }
+
   return (
     <View className="flex-1 bg-background">
       <ScreenHeader title="Config" />
@@ -120,14 +176,17 @@ export default function ConfigScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
       >
         <SectionHeader title="Expense Categories" />
-        {expenseCategories.map((c) => (
-          <ConfigRow
-            key={c.id}
-            label={c.name}
-            isDefault={c.is_default === 1}
-            onDelete={() => handleDeleteCategory(c.id)}
-          />
-        ))}
+        <DraggableFlatList<Category>
+          data={expenseCategories}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderExpenseCategory}
+          onDragEnd={({ data }) => {
+            reorderCategoriesMutation.mutate(
+              data.map((item, index) => ({ id: item.id, sort_order: index })),
+            );
+          }}
+          scrollEnabled={false}
+        />
         <Pressable
           onPress={() => {
             setNewCategoryType(TRANSACTION_TYPE.EXPENSE);
@@ -142,14 +201,17 @@ export default function ConfigScreen() {
         </Pressable>
 
         <SectionHeader title="Income Categories" />
-        {incomeCategories.map((c) => (
-          <ConfigRow
-            key={c.id}
-            label={c.name}
-            isDefault={c.is_default === 1}
-            onDelete={() => handleDeleteCategory(c.id)}
-          />
-        ))}
+        <DraggableFlatList<Category>
+          data={incomeCategories}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderIncomeCategory}
+          onDragEnd={({ data }) => {
+            reorderCategoriesMutation.mutate(
+              data.map((item, index) => ({ id: item.id, sort_order: index })),
+            );
+          }}
+          scrollEnabled={false}
+        />
         <Pressable
           onPress={() => {
             setNewCategoryType(TRANSACTION_TYPE.INCOME);
@@ -164,14 +226,17 @@ export default function ConfigScreen() {
         </Pressable>
 
         <SectionHeader title="Payment Sources" />
-        {sources.map((s) => (
-          <ConfigRow
-            key={s.id}
-            label={s.name}
-            isDefault={s.is_default === 1}
-            onDelete={() => handleDeleteSource(s.id)}
-          />
-        ))}
+        <DraggableFlatList<Source>
+          data={sources}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderSource}
+          onDragEnd={({ data }) => {
+            reorderSourcesMutation.mutate(
+              data.map((item, index) => ({ id: item.id, sort_order: index })),
+            );
+          }}
+          scrollEnabled={false}
+        />
         <Pressable
           onPress={() => setShowAddSource(true)}
           className="mx-5 mt-2 flex-row items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3"

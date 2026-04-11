@@ -74,6 +74,13 @@ export function TransactionItem({
           }).start();
         }
       },
+      onPanResponderTerminate: () => {
+        Animated.spring(translateX, {
+          toValue: 0,
+          useNativeDriver: true,
+          bounciness: 10,
+        }).start();
+      },
     }),
   ).current;
 

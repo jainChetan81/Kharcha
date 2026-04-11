@@ -37,7 +37,8 @@ export async function initDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       type TEXT NOT NULL DEFAULT 'expense',
-      is_default INTEGER DEFAULT 0
+      is_default INTEGER DEFAULT 0,
+      sort_order INTEGER DEFAULT 0
     )
   `);
 
@@ -45,7 +46,8 @@ export async function initDB() {
     CREATE TABLE IF NOT EXISTS sources (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      is_default INTEGER DEFAULT 0
+      is_default INTEGER DEFAULT 0,
+      sort_order INTEGER DEFAULT 0
     )
   `);
 
@@ -127,6 +129,22 @@ export async function initDB() {
     // Column already exists — safe to ignore
   }
 
+  try {
+    await db.run(
+      sql`ALTER TABLE categories ADD COLUMN sort_order INTEGER DEFAULT 0`,
+    );
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
+  try {
+    await db.run(
+      sql`ALTER TABLE sources ADD COLUMN sort_order INTEGER DEFAULT 0`,
+    );
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
   await db.run(
     sql`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
   );
@@ -161,27 +179,27 @@ async function seedDefaults() {
   const existing = await db.select().from(categories).limit(1);
   if (existing.length === 0) {
     await db.insert(categories).values([
-      { name: "food", type: "expense", is_default: 1 },
-      { name: "transport", type: "expense", is_default: 1 },
-      { name: "shopping", type: "expense", is_default: 1 },
-      { name: "utilities", type: "expense", is_default: 1 },
-      { name: "entertainment", type: "expense", is_default: 1 },
-      { name: "health", type: "expense", is_default: 1 },
-      { name: "other", type: "expense", is_default: 1 },
-      { name: "salary", type: "income", is_default: 1 },
-      { name: "refunds", type: "income", is_default: 1 },
-      { name: "other", type: "income", is_default: 1 },
+      { name: "food", type: "expense", is_default: 1, sort_order: 0 },
+      { name: "transport", type: "expense", is_default: 1, sort_order: 1 },
+      { name: "shopping", type: "expense", is_default: 1, sort_order: 2 },
+      { name: "utilities", type: "expense", is_default: 1, sort_order: 3 },
+      { name: "entertainment", type: "expense", is_default: 1, sort_order: 4 },
+      { name: "health", type: "expense", is_default: 1, sort_order: 5 },
+      { name: "other", type: "expense", is_default: 1, sort_order: 6 },
+      { name: "salary", type: "income", is_default: 1, sort_order: 0 },
+      { name: "refunds", type: "income", is_default: 1, sort_order: 1 },
+      { name: "other", type: "income", is_default: 1, sort_order: 2 },
     ]);
   }
 
   const existingSources = await db.select().from(sources).limit(1);
   if (existingSources.length === 0) {
     await db.insert(sources).values([
-      { name: "UPI", is_default: 1 },
-      { name: "credit card", is_default: 1 },
-      { name: "debit card", is_default: 1 },
-      { name: "cash", is_default: 1 },
-      { name: "other", is_default: 1 },
+      { name: "UPI", is_default: 1, sort_order: 0 },
+      { name: "credit card", is_default: 1, sort_order: 1 },
+      { name: "debit card", is_default: 1, sort_order: 2 },
+      { name: "cash", is_default: 1, sort_order: 3 },
+      { name: "other", is_default: 1, sort_order: 4 },
     ]);
   }
 
@@ -942,6 +960,12 @@ export {
   deleteCategory,
   getAllCategories,
   getCategoriesByType,
+  updateCategoryOrder,
 } from "./categories";
-export { addSource, deleteSource, getAllSources } from "./sources";
+export {
+  addSource,
+  deleteSource,
+  getAllSources,
+  updateSourceOrder,
+} from "./sources";
 export { getDataStats } from "./stats";

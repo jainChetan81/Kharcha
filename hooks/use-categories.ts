@@ -5,6 +5,7 @@ import {
   deleteCategory,
   getAllCategories,
   getCategoriesByType,
+  updateCategoryOrder,
 } from "@/lib/db";
 
 export function useAllCategories() {
@@ -47,6 +48,16 @@ export function useDeleteCategory() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => deleteCategory(id),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CATEGORIES] }),
+  });
+}
+
+export function useReorderCategories() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (items: { id: number; sort_order: number }[]) =>
+      updateCategoryOrder(items),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CATEGORIES] }),
   });
