@@ -104,7 +104,7 @@ export default function HistoryScreen() {
     ) {
       setTypeFilter(params.filter);
     }
-    if (params.category_id) {
+    if (params.category_id && params.category_id !== "other") {
       const parsed = Number(params.category_id);
       if (!Number.isNaN(parsed)) {
         setCategoryId(parsed);
@@ -129,6 +129,20 @@ export default function HistoryScreen() {
     setDraftCategoryId(null);
     setDraftSourceId(null);
   }, [draftType]);
+
+  const { data: otherLookupCategories = [] } = useCategoriesByType(
+    "expense",
+    params.category_id === "other",
+  );
+
+  useEffect(() => {
+    if (params.category_id === "other") {
+      const other = otherLookupCategories.find(
+        (c) => c.name.toLowerCase() === "other",
+      );
+      if (other) setCategoryId(other.id);
+    }
+  }, [params.category_id, otherLookupCategories]);
 
   const { data: categories = [] } = useCategoriesByType(draftType, showFilters);
 

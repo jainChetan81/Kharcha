@@ -18,6 +18,7 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
+import { useAllSources } from "@/hooks/use-sources";
 import { useAddSubscription } from "@/hooks/use-subscriptions";
 import { useInsertTransaction } from "@/hooks/use-transactions";
 import {
@@ -48,6 +49,10 @@ export default function AddTransaction() {
     modeParam === "subscription",
   );
 
+  const { data: sourcesList = [] } = useAllSources();
+  const upiSourceId =
+    sourcesList.find((s) => s.name.toLowerCase() === "upi")?.id ?? null;
+
   const [parseSheetVisible, setParseSheetVisible] = useState(false);
   const [parsedTxDefaults, setParsedTxDefaults] =
     useState<TransactionFormValues | null>(null);
@@ -60,7 +65,7 @@ export default function AddTransaction() {
     amount: "",
     merchant: "",
     categoryId: null,
-    sourceId: null,
+    sourceId: upiSourceId,
     date: format(new Date(), DATE_TIME_FORMAT),
     note: "",
   };
@@ -248,7 +253,7 @@ export default function AddTransaction() {
         />
       ) : (
         <TransactionForm
-          key={`tx-${formKey}`}
+          key={`tx-${formKey}-${upiSourceId}`}
           defaultValues={parsedTxDefaults ?? oneTimeDefaults}
           submitLabel="Add Transaction"
           onSubmit={handleTransactionSubmit}

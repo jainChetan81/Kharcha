@@ -30,7 +30,7 @@ export type MonthlySummary = {
 };
 
 export type CategoryBreakdownRow = {
-  category_id: number;
+  category_id: number | null;
   category_name: string;
   total: number;
   percentage: number;

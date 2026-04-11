@@ -202,7 +202,6 @@ export function TransactionForm({
               items={categories}
               selectedId={field.state.value}
               onSelect={(id) => field.handleChange(id)}
-              allLabel="None"
             />
           </View>
         )}

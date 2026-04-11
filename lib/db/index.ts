@@ -1,5 +1,5 @@
 import { addDays, format, startOfMonth, subDays, subMonths } from "date-fns";
-import { and, desc, eq, gte, like, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, like, lte, or, sql } from "drizzle-orm";
 import {
   CONFIG_KEYS,
   OTHER_CATEGORY_LABEL,
@@ -739,7 +739,20 @@ export async function getTransactionsPaginated(
     conditions.push(eq(transactions.type, filters.type));
   }
   if (filters?.categoryId) {
-    conditions.push(eq(transactions.category_id, filters.categoryId));
+    const [cat] = await db
+      .select({ name: categories.name })
+      .from(categories)
+      .where(eq(categories.id, filters.categoryId))
+      .limit(1);
+    if (cat?.name.toLowerCase() === "other") {
+      const match = or(
+        eq(transactions.category_id, filters.categoryId),
+        isNull(transactions.category_id),
+      );
+      if (match) conditions.push(match);
+    } else {
+      conditions.push(eq(transactions.category_id, filters.categoryId));
+    }
   }
   if (filters?.sourceId) {
     conditions.push(eq(transactions.source_id, filters.sourceId));
@@ -870,13 +883,27 @@ export async function getCategoryBreakdown(yearMonth: string) {
       ),
     )
     .groupBy(transactions.category_id)
-    .orderBy(sql`SUM(${transactions.amount}) DESC`)
-    .limit(5);
+    .orderBy(sql`SUM(${transactions.amount}) DESC`);
 
-  const grandTotal = rows.reduce((sum, r) => sum + r.total, 0);
+  const otherIndex = rows.findIndex(
+    (r) => r.category_id !== null && r.category_name?.toLowerCase() === "other",
+  );
+  const nullIndex = rows.findIndex((r) => r.category_id === null);
 
-  return rows.map((r) => ({
-    category_id: r.category_id as number,
+  if (otherIndex !== -1 && nullIndex !== -1) {
+    rows[otherIndex] = {
+      ...rows[otherIndex],
+      total: rows[otherIndex].total + rows[nullIndex].total,
+    };
+    rows.splice(nullIndex, 1);
+  }
+
+  rows.sort((a, b) => b.total - a.total);
+  const top = rows.slice(0, 5);
+  const grandTotal = top.reduce((sum, r) => sum + r.total, 0);
+
+  return top.map((r) => ({
+    category_id: r.category_id,
     category_name: r.category_name ?? OTHER_CATEGORY_LABEL,
     total: r.total,
     percentage: grandTotal > 0 ? (r.total / grandTotal) * 100 : 0,

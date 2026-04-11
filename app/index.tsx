@@ -281,7 +281,9 @@ export default function HomeScreen() {
               {isCurrentMonth ? "This Month" : format(selectedDate, "MMMM")}
             </Text>
             {categoryBreakdown.map((cat) => {
-              const budget = budgetMap.get(cat.category_id);
+              const budget = cat.category_id
+                ? budgetMap.get(cat.category_id)
+                : undefined;
               const ratio = budget ? cat.total / budget : 0;
               const barColor = !budget
                 ? COLORS.PRIMARY
@@ -296,10 +298,10 @@ export default function HomeScreen() {
 
               return (
                 <Pressable
-                  key={cat.category_id}
+                  key={cat.category_id ?? "other"}
                   onPress={() =>
                     router.push(
-                      `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${cat.category_id}&month=${selectedMonth}`,
+                      `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${cat.category_id ?? "other"}&month=${selectedMonth}`,
                     )
                   }
                   className="mb-3"
