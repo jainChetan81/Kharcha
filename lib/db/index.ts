@@ -813,6 +813,12 @@ export async function getTransactionsPaginated(
   return (await query) as TransactionRow[];
 }
 
+export async function getAllTransactionsFiltered(
+  filters?: Parameters<typeof getTransactionsPaginated>[2],
+) {
+  return getTransactionsPaginated(100_000, 0, filters);
+}
+
 export async function getTransactionById(id: number) {
   const result = await transactionSelect().where(eq(transactions.id, id));
   return (result[0] ?? null) as TransactionRow | null;
