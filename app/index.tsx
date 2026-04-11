@@ -283,87 +283,87 @@ export default function HomeScreen() {
 
         {categoryBreakdown.length > 0 && (
           <ComponentErrorBoundary name="home.category-breakdown">
-          <View className="px-5 pb-4 pt-2">
-            <Text className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
-              {isCurrentMonth ? "This Month" : format(selectedDate, "MMMM")}
-            </Text>
-            {categoryBreakdown.map((cat) => {
-              const budget = cat.category_id
-                ? budgetMap.get(cat.category_id)
-                : undefined;
-              const ratio = budget ? cat.total / budget : 0;
-              const barColor = !budget
-                ? COLORS.PRIMARY
-                : ratio >= 1
-                  ? COLORS.DANGER
-                  : ratio >= 0.75
-                    ? COLORS.WARNING
-                    : COLORS.PRIMARY;
-              const barWidth = budget
-                ? Math.min(ratio * 100, 100)
-                : cat.percentage;
+            <View className="px-5 pb-4 pt-2">
+              <Text className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
+                {isCurrentMonth ? "This Month" : format(selectedDate, "MMMM")}
+              </Text>
+              {categoryBreakdown.map((cat) => {
+                const budget = cat.category_id
+                  ? budgetMap.get(cat.category_id)
+                  : undefined;
+                const ratio = budget ? cat.total / budget : 0;
+                const barColor = !budget
+                  ? COLORS.PRIMARY
+                  : ratio >= 1
+                    ? COLORS.DANGER
+                    : ratio >= 0.75
+                      ? COLORS.WARNING
+                      : COLORS.PRIMARY;
+                const barWidth = budget
+                  ? Math.min(ratio * 100, 100)
+                  : cat.percentage;
 
-              return (
-                <Pressable
-                  key={cat.category_id ?? "other"}
-                  onPress={() =>
-                    router.push(
-                      `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${cat.category_id ?? "other"}&month=${selectedMonth}`,
-                    )
-                  }
-                  className="mb-3"
-                >
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-base text-foreground">
-                      {cat.category_name}
-                    </Text>
-                    <View className="flex-row items-center gap-1">
-                      <Text className="text-sm text-muted-foreground">
-                        {fmt(cat.total)}
-                        {budget ? ` / ${fmt(budget)}` : ""}
+                return (
+                  <Pressable
+                    key={cat.category_id ?? "other"}
+                    onPress={() =>
+                      router.push(
+                        `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${cat.category_id ?? "other"}&month=${selectedMonth}`,
+                      )
+                    }
+                    className="mb-3"
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-base text-foreground">
+                        {cat.category_name}
                       </Text>
-                      <Icon
-                        as={ChevronRight}
-                        className="size-4 text-muted-foreground"
+                      <View className="flex-row items-center gap-1">
+                        <Text className="text-sm text-muted-foreground">
+                          {fmt(cat.total)}
+                          {budget ? ` / ${fmt(budget)}` : ""}
+                        </Text>
+                        <Icon
+                          as={ChevronRight}
+                          className="size-4 text-muted-foreground"
+                        />
+                      </View>
+                    </View>
+                    <View
+                      className="mt-1.5 h-1 rounded-full"
+                      style={{ backgroundColor: COLORS.BAR_BG }}
+                    >
+                      <View
+                        className="h-1 rounded-full"
+                        style={{
+                          width: `${barWidth}%`,
+                          backgroundColor: barColor,
+                        }}
                       />
                     </View>
-                  </View>
-                  <View
-                    className="mt-1.5 h-1 rounded-full"
-                    style={{ backgroundColor: COLORS.BAR_BG }}
-                  >
-                    <View
-                      className="h-1 rounded-full"
-                      style={{
-                        width: `${barWidth}%`,
-                        backgroundColor: barColor,
-                      }}
-                    />
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
+                  </Pressable>
+                );
+              })}
+            </View>
           </ComponentErrorBoundary>
         )}
 
         <ComponentErrorBoundary name="home.transaction-list">
-        <View className="px-5 pt-2">
-          <Text className="mb-3 text-sm font-semibold text-muted-foreground">
-            {isCurrentMonth ? "Recent Transactions" : "Transactions"}
-          </Text>
-          {listData.map((item) =>
-            item.type === "header" ? (
-              <DateHeader key={`h-${item.label}`} label={item.label} />
-            ) : (
-              <TransactionItem
-                key={`t-${item.data.id}`}
-                item={item.data}
-                onPress={(id) => router.push(editScreen(id))}
-              />
-            ),
-          )}
-        </View>
+          <View className="px-5 pt-2">
+            <Text className="mb-3 text-sm font-semibold text-muted-foreground">
+              {isCurrentMonth ? "Recent Transactions" : "Transactions"}
+            </Text>
+            {listData.map((item) =>
+              item.type === "header" ? (
+                <DateHeader key={`h-${item.label}`} label={item.label} />
+              ) : (
+                <TransactionItem
+                  key={`t-${item.data.id}`}
+                  item={item.data}
+                  onPress={(id) => router.push(editScreen(id))}
+                />
+              ),
+            )}
+          </View>
         </ComponentErrorBoundary>
       </ScrollView>
 

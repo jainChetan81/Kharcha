@@ -20,8 +20,8 @@ import {
 } from "lucide-react-native";
 import {
   lazy,
-  startTransition,
   Suspense,
+  startTransition,
   useEffect,
   useMemo,
   useState,
@@ -526,60 +526,63 @@ export default function HistoryScreen() {
 
       <ComponentErrorBoundary>
         <FlashList
-        data={listData}
-        keyExtractor={(item) =>
-          item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
-        }
-        getItemType={(item) => item.type}
-        renderItem={({ item }: { item: ListItem }) =>
-          item.type === "header" ? (
-            <View className="px-5">
-              <DateHeader label={item.label} />
-            </View>
-          ) : (
-            <View className="px-5">
-              <TransactionItem
-                item={item.data}
-                showTime
-                onPress={(id) => router.push(editScreen(id))}
-                onSwipeDelete={handleSwipeDelete}
+          data={listData}
+          keyExtractor={(item) =>
+            item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
+          }
+          getItemType={(item) => item.type}
+          renderItem={({ item }: { item: ListItem }) =>
+            item.type === "header" ? (
+              <View className="px-5">
+                <DateHeader label={item.label} />
+              </View>
+            ) : (
+              <View className="px-5">
+                <TransactionItem
+                  item={item.data}
+                  showTime
+                  onPress={(id) => router.push(editScreen(id))}
+                  onSwipeDelete={handleSwipeDelete}
+                />
+              </View>
+            )
+          }
+          onEndReached={() => {
+            if (hasNextPage) fetchNextPage();
+          }}
+          onEndReachedThreshold={0.5}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.PRIMARY}
+              progressViewOffset={40}
+            />
+          }
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View className="items-center py-6">
+                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View className="items-center pt-20">
+              <Icon
+                as={Receipt}
+                className="mb-3 size-12 text-muted-foreground"
               />
+              <Text className="text-sm text-muted-foreground">
+                No transactions found
+              </Text>
+              {hasActiveFilters && (
+                <Pressable onPress={resetAllFilters} className="mt-2">
+                  <Text className="text-xs text-primary">Clear filters</Text>
+                </Pressable>
+              )}
             </View>
-          )
-        }
-        onEndReached={() => {
-          if (hasNextPage) fetchNextPage();
-        }}
-        onEndReachedThreshold={0.5}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.PRIMARY}
-            progressViewOffset={40}
-          />
-        }
-        ListFooterComponent={
-          isFetchingNextPage ? (
-            <View className="items-center py-6">
-              <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-            </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          <View className="items-center pt-20">
-            <Icon as={Receipt} className="mb-3 size-12 text-muted-foreground" />
-            <Text className="text-sm text-muted-foreground">
-              No transactions found
-            </Text>
-            {hasActiveFilters && (
-              <Pressable onPress={resetAllFilters} className="mt-2">
-                <Text className="text-xs text-primary">Clear filters</Text>
-              </Pressable>
-            )}
-          </View>
-        }
-        contentContainerStyle={{ paddingBottom: 24 }}
+          }
+          contentContainerStyle={{ paddingBottom: 24 }}
         />
       </ComponentErrorBoundary>
 
