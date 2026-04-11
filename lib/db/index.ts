@@ -796,7 +796,11 @@ export async function getTransactionsPaginated(
   if (filters?.search) {
     const term = `%${filters.search}%`;
     conditions.push(
-      or(like(transactions.merchant, term), like(transactions.note, term)),
+      or(
+        like(transactions.merchant, term),
+        like(transactions.note, term),
+        like(sql`CAST(${transactions.amount} AS TEXT)`, term),
+      ),
     );
   }
 

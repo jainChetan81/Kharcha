@@ -508,10 +508,10 @@ export default function HistoryScreen() {
         </View>
       )}
 
-      <View className="mx-5 mb-3 flex-row items-center rounded-xl border border-border bg-card px-3">
+      <View className="mx-5 mb-3 flex-row items-center rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] px-3">
         <Icon as={Search} className="mr-2 size-4 text-muted-foreground" />
         <Input
-          placeholder="Search merchant or note..."
+          placeholder="search transactions..."
           value={searchText}
           onChangeText={setSearchText}
           placeholderTextColor={COLORS.MUTED}
@@ -569,13 +569,20 @@ export default function HistoryScreen() {
           ListEmptyComponent={
             <View className="items-center pt-20">
               <Icon
-                as={Receipt}
+                as={debouncedSearch ? Search : Receipt}
                 className="mb-3 size-12 text-muted-foreground"
               />
               <Text className="text-sm text-muted-foreground">
-                No transactions found
+                {debouncedSearch
+                  ? `no results for '${debouncedSearch}'`
+                  : "No transactions found"}
               </Text>
-              {hasActiveFilters && (
+              {debouncedSearch && hasActiveFilters && (
+                <Text className="mt-1 text-xs text-muted-foreground">
+                  try clearing filters or changing your search
+                </Text>
+              )}
+              {!debouncedSearch && hasActiveFilters && (
                 <Pressable onPress={resetAllFilters} className="mt-2">
                   <Text className="text-xs text-primary">Clear filters</Text>
                 </Pressable>
