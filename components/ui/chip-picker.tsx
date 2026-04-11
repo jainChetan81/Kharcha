@@ -53,7 +53,7 @@ export function ChipPicker({
             >
               <Text
                 className={cn(
-                  "text-sm font-medium capitalize",
+                  "text-sm font-medium",
                   selected
                     ? "text-primary-foreground"
                     : "text-muted-foreground",

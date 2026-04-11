@@ -179,16 +179,16 @@ async function seedDefaults() {
   const existing = await db.select().from(categories).limit(1);
   if (existing.length === 0) {
     await db.insert(categories).values([
-      { name: "food", type: "expense", is_default: 1, sort_order: 0 },
-      { name: "transport", type: "expense", is_default: 1, sort_order: 1 },
-      { name: "shopping", type: "expense", is_default: 1, sort_order: 2 },
-      { name: "utilities", type: "expense", is_default: 1, sort_order: 3 },
-      { name: "entertainment", type: "expense", is_default: 1, sort_order: 4 },
-      { name: "health", type: "expense", is_default: 1, sort_order: 5 },
-      { name: "other", type: "expense", is_default: 1, sort_order: 6 },
-      { name: "salary", type: "income", is_default: 1, sort_order: 0 },
-      { name: "refunds", type: "income", is_default: 1, sort_order: 1 },
-      { name: "other", type: "income", is_default: 1, sort_order: 2 },
+      { name: "Food", type: "expense", is_default: 1, sort_order: 0 },
+      { name: "Transport", type: "expense", is_default: 1, sort_order: 1 },
+      { name: "Shopping", type: "expense", is_default: 1, sort_order: 2 },
+      { name: "Utilities", type: "expense", is_default: 1, sort_order: 3 },
+      { name: "Entertainment", type: "expense", is_default: 1, sort_order: 4 },
+      { name: "Health", type: "expense", is_default: 1, sort_order: 5 },
+      { name: "Other", type: "expense", is_default: 1, sort_order: 6 },
+      { name: "Salary", type: "income", is_default: 1, sort_order: 0 },
+      { name: "Refunds", type: "income", is_default: 1, sort_order: 1 },
+      { name: "Other", type: "income", is_default: 1, sort_order: 2 },
     ]);
   }
 
@@ -196,10 +196,10 @@ async function seedDefaults() {
   if (existingSources.length === 0) {
     await db.insert(sources).values([
       { name: "UPI", is_default: 1, sort_order: 0 },
-      { name: "credit card", is_default: 1, sort_order: 1 },
-      { name: "debit card", is_default: 1, sort_order: 2 },
-      { name: "cash", is_default: 1, sort_order: 3 },
-      { name: "other", is_default: 1, sort_order: 4 },
+      { name: "Credit Card", is_default: 1, sort_order: 1 },
+      { name: "Debit Card", is_default: 1, sort_order: 2 },
+      { name: "Cash", is_default: 1, sort_order: 3 },
+      { name: "Other", is_default: 1, sort_order: 4 },
     ]);
   }
 
@@ -288,19 +288,19 @@ export async function seedSampleData(): Promise<boolean> {
   const srcId = (name: string) =>
     srcRows.find((s) => s.name === name)?.id ?? null;
 
-  const FOOD = catId("food", "expense");
-  const TRANSPORT = catId("transport", "expense");
-  const SHOPPING = catId("shopping", "expense");
-  const UTILITIES = catId("utilities", "expense");
-  const ENTERTAINMENT = catId("entertainment", "expense");
-  const HEALTH = catId("health", "expense");
-  const SALARY = catId("salary", "income");
-  const REFUNDS = catId("refunds", "income");
-  const OTHER_INCOME = catId("other", "income");
+  const FOOD = catId("Food", "expense");
+  const TRANSPORT = catId("Transport", "expense");
+  const SHOPPING = catId("Shopping", "expense");
+  const UTILITIES = catId("Utilities", "expense");
+  const ENTERTAINMENT = catId("Entertainment", "expense");
+  const HEALTH = catId("Health", "expense");
+  const SALARY = catId("Salary", "income");
+  const REFUNDS = catId("Refunds", "income");
+  const OTHER_INCOME = catId("Other", "income");
 
-  const CASH = srcId("cash");
+  const CASH = srcId("Cash");
   const UPI = srcId("UPI");
-  const CREDIT = srcId("credit card");
+  const CREDIT = srcId("Credit Card");
 
   const today = new Date();
   const lastMonthStart = startOfMonth(subMonths(today, 1));

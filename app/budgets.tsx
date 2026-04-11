@@ -54,7 +54,7 @@ export default function BudgetsScreen() {
               onPress={() => openEditor(c.id, c.name)}
               className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
             >
-              <Text className="flex-1 text-sm font-medium capitalize text-foreground">
+              <Text className="flex-1 text-sm font-medium text-foreground">
                 {c.name}
               </Text>
               <Text

@@ -80,7 +80,7 @@ function Row({
       >
         <Icon as={ChevronDown} className="size-4 text-muted-foreground" />
       </Pressable>
-      <Text className="ml-2 flex-1 text-sm font-medium capitalize text-foreground">
+      <Text className="ml-2 flex-1 text-sm font-medium text-foreground">
         {name}
       </Text>
       {isDefault ? (
@@ -154,11 +154,7 @@ export default function ConfigScreen() {
     ]);
   }
 
-  function moveCategory(
-    list: Category[],
-    index: number,
-    direction: -1 | 1,
-  ) {
+  function moveCategory(list: Category[], index: number, direction: -1 | 1) {
     const updates = reorder(list, index, direction);
     if (!updates) return;
     reorderCategoriesMutation.mutate(updates);

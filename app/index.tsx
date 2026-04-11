@@ -307,7 +307,7 @@ export default function HomeScreen() {
                   className="mb-3"
                 >
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-base capitalize text-foreground">
+                    <Text className="text-base text-foreground">
                       {cat.category_name}
                     </Text>
                     <View className="flex-row items-center gap-1">
