@@ -1,10 +1,12 @@
-import { GripVertical, Lock, Plus, Trash2 } from "lucide-react-native";
+import {
+  ChevronDown,
+  ChevronUp,
+  Lock,
+  Plus,
+  Trash2,
+} from "lucide-react-native";
 import { useState } from "react";
 import { Alert, Pressable, ScrollView, View } from "react-native";
-import DraggableFlatList, {
-  type RenderItemParams,
-  ScaleDecorator,
-} from "react-native-draggable-flatlist";
 import { ScreenError } from "@/components/error-boundary";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Icon } from "@/components/ui/icon";
@@ -23,75 +25,72 @@ import {
   useDeleteSource,
   useReorderSources,
 } from "@/hooks/use-sources";
-import { COLORS, TRANSACTION_TYPE } from "@/lib/constants";
+import { TRANSACTION_TYPE } from "@/lib/constants";
 import type { Category, Source } from "@/lib/db";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 
-function CategoryRow({
-  item,
-  drag,
-  isActive,
-  onDelete,
-}: RenderItemParams<Category> & { onDelete: (id: number) => void }) {
-  return (
-    <ScaleDecorator activeScale={1.02}>
-      <Pressable
-        onLongPress={drag}
-        disabled={isActive}
-        className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-      >
-        <Icon
-          as={GripVertical}
-          size={16}
-          color={COLORS.MUTED}
-          className="mr-3"
-        />
-        <Text className="flex-1 text-sm font-medium capitalize text-foreground">
-          {item.name}
-        </Text>
-        {item.is_default === 1 ? (
-          <Icon as={Lock} className="size-4 text-muted-foreground" />
-        ) : (
-          <Pressable onPress={() => onDelete(item.id)}>
-            <Icon as={Trash2} className="size-4 text-negative" />
-          </Pressable>
-        )}
-      </Pressable>
-    </ScaleDecorator>
-  );
+type ReorderItem = { id: number; sort_order: number };
+
+function reorder<T extends { id: number }>(
+  items: T[],
+  index: number,
+  direction: -1 | 1,
+): ReorderItem[] | null {
+  const target = index + direction;
+  if (target < 0 || target >= items.length) return null;
+  const next = items.slice();
+  const [moved] = next.splice(index, 1);
+  next.splice(target, 0, moved);
+  return next.map((item, i) => ({ id: item.id, sort_order: i }));
 }
 
-function SourceRow({
-  item,
-  drag,
-  isActive,
+function Row({
+  name,
+  isDefault,
+  isFirst,
+  isLast,
+  onMoveUp,
+  onMoveDown,
   onDelete,
-}: RenderItemParams<Source> & { onDelete: (id: number) => void }) {
+}: {
+  name: string;
+  isDefault: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onDelete: () => void;
+}) {
   return (
-    <ScaleDecorator activeScale={1.02}>
+    <View className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-3 py-2">
       <Pressable
-        onLongPress={drag}
-        disabled={isActive}
-        className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        onPress={onMoveUp}
+        disabled={isFirst}
+        hitSlop={6}
+        className={cn("p-1.5", isFirst && "opacity-30")}
       >
-        <Icon
-          as={GripVertical}
-          size={16}
-          color={COLORS.MUTED}
-          className="mr-3"
-        />
-        <Text className="flex-1 text-sm font-medium capitalize text-foreground">
-          {item.name}
-        </Text>
-        {item.is_default === 1 ? (
-          <Icon as={Lock} className="size-4 text-muted-foreground" />
-        ) : (
-          <Pressable onPress={() => onDelete(item.id)}>
-            <Icon as={Trash2} className="size-4 text-negative" />
-          </Pressable>
-        )}
+        <Icon as={ChevronUp} className="size-4 text-muted-foreground" />
       </Pressable>
-    </ScaleDecorator>
+      <Pressable
+        onPress={onMoveDown}
+        disabled={isLast}
+        hitSlop={6}
+        className={cn("p-1.5", isLast && "opacity-30")}
+      >
+        <Icon as={ChevronDown} className="size-4 text-muted-foreground" />
+      </Pressable>
+      <Text className="ml-2 flex-1 text-sm font-medium capitalize text-foreground">
+        {name}
+      </Text>
+      {isDefault ? (
+        <Icon as={Lock} className="size-4 text-muted-foreground" />
+      ) : (
+        <Pressable onPress={onDelete} hitSlop={8} className="p-1">
+          <Icon as={Trash2} className="size-4 text-negative" />
+        </Pressable>
+      )}
+    </View>
   );
 }
 
@@ -155,16 +154,50 @@ export default function ConfigScreen() {
     ]);
   }
 
-  function renderExpenseCategory(params: RenderItemParams<Category>) {
-    return <CategoryRow {...params} onDelete={handleDeleteCategory} />;
+  function moveCategory(
+    list: Category[],
+    index: number,
+    direction: -1 | 1,
+  ) {
+    const updates = reorder(list, index, direction);
+    if (!updates) return;
+    reorderCategoriesMutation.mutate(updates);
   }
 
-  function renderIncomeCategory(params: RenderItemParams<Category>) {
-    return <CategoryRow {...params} onDelete={handleDeleteCategory} />;
+  function moveSource(index: number, direction: -1 | 1) {
+    const updates = reorder(sources, index, direction);
+    if (!updates) return;
+    reorderSourcesMutation.mutate(updates);
   }
 
-  function renderSource(params: RenderItemParams<Source>) {
-    return <SourceRow {...params} onDelete={handleDeleteSource} />;
+  function renderCategoryRows(list: Category[]) {
+    return list.map((cat, index) => (
+      <Row
+        key={cat.id}
+        name={cat.name}
+        isDefault={cat.is_default === 1}
+        isFirst={index === 0}
+        isLast={index === list.length - 1}
+        onMoveUp={() => moveCategory(list, index, -1)}
+        onMoveDown={() => moveCategory(list, index, 1)}
+        onDelete={() => handleDeleteCategory(cat.id)}
+      />
+    ));
+  }
+
+  function renderSourceRows(list: Source[]) {
+    return list.map((src, index) => (
+      <Row
+        key={src.id}
+        name={src.name}
+        isDefault={src.is_default === 1}
+        isFirst={index === 0}
+        isLast={index === list.length - 1}
+        onMoveUp={() => moveSource(index, -1)}
+        onMoveDown={() => moveSource(index, 1)}
+        onDelete={() => handleDeleteSource(src.id)}
+      />
+    ));
   }
 
   return (
@@ -176,17 +209,7 @@ export default function ConfigScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
       >
         <SectionHeader title="Expense Categories" />
-        <DraggableFlatList<Category>
-          data={expenseCategories}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderExpenseCategory}
-          onDragEnd={({ data }) => {
-            reorderCategoriesMutation.mutate(
-              data.map((item, index) => ({ id: item.id, sort_order: index })),
-            );
-          }}
-          scrollEnabled={false}
-        />
+        {renderCategoryRows(expenseCategories)}
         <Pressable
           onPress={() => {
             setNewCategoryType(TRANSACTION_TYPE.EXPENSE);
@@ -201,17 +224,7 @@ export default function ConfigScreen() {
         </Pressable>
 
         <SectionHeader title="Income Categories" />
-        <DraggableFlatList<Category>
-          data={incomeCategories}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderIncomeCategory}
-          onDragEnd={({ data }) => {
-            reorderCategoriesMutation.mutate(
-              data.map((item, index) => ({ id: item.id, sort_order: index })),
-            );
-          }}
-          scrollEnabled={false}
-        />
+        {renderCategoryRows(incomeCategories)}
         <Pressable
           onPress={() => {
             setNewCategoryType(TRANSACTION_TYPE.INCOME);
@@ -226,17 +239,7 @@ export default function ConfigScreen() {
         </Pressable>
 
         <SectionHeader title="Payment Sources" />
-        <DraggableFlatList<Source>
-          data={sources}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderSource}
-          onDragEnd={({ data }) => {
-            reorderSourcesMutation.mutate(
-              data.map((item, index) => ({ id: item.id, sort_order: index })),
-            );
-          }}
-          scrollEnabled={false}
-        />
+        {renderSourceRows(sources)}
         <Pressable
           onPress={() => setShowAddSource(true)}
           className="mx-5 mt-2 flex-row items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3"
