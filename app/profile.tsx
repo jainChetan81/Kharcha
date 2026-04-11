@@ -4,17 +4,25 @@ import {
   ChevronRight,
   Database,
   FileText,
+  Lock,
   Mail,
   RefreshCw,
   Trash2,
 } from "lucide-react-native";
 import { lazy, Suspense, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, View } from "react-native";
+import {
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Switch,
+  View,
+} from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
+import { useAppLockSetting } from "@/hooks/use-app-lock";
 import { CURRENCIES, useConfig } from "@/hooks/use-config";
 import {
   useFeatureFlags,
@@ -37,6 +45,8 @@ export default function ProfileScreen() {
   const [showEditName, setShowEditName] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const handleClearTransactions = useClearTransactionsWithConfirm();
+  const { enabled: appLockEnabled, toggle: toggleAppLock } =
+    useAppLockSetting();
 
   const { refetch: refetchFlags, isRefetching } = useFeatureFlags();
   const gmailSyncEnabled = useGmailSyncEnabled(userName);
@@ -164,6 +174,22 @@ export default function ProfileScreen() {
           </Text>
           <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
         </Pressable>
+
+        <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Security
+        </Text>
+        <View className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3">
+          <Icon as={Lock} className="mr-3 size-4 text-muted-foreground" />
+          <Text className="flex-1 text-sm font-medium text-foreground">
+            App Lock
+          </Text>
+          <Switch
+            value={appLockEnabled}
+            onValueChange={toggleAppLock}
+            trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
+            thumbColor={COLORS.WHITE}
+          />
+        </View>
 
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           App

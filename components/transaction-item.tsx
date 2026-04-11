@@ -85,12 +85,15 @@ export function TransactionItem({
   ).current;
 
   const isIncome = item.type === TRANSACTION_TYPE.INCOME;
+  const isTransfer = item.type === TRANSACTION_TYPE.TRANSFER;
   const categoryLabel = smartCapitalize(
     item.category_name ?? OTHER_CATEGORY_LABEL,
   );
-  const subtitle = isIncome
-    ? categoryLabel
-    : `${categoryLabel}${item.source_name ? ` · ${smartCapitalize(item.source_name)}` : ""}`;
+  const subtitle = isTransfer
+    ? `${item.source_name ?? "?"} → ${item.destination_source_name ?? "?"}`
+    : isIncome
+      ? categoryLabel
+      : `${categoryLabel}${item.source_name ? ` · ${smartCapitalize(item.source_name)}` : ""}`;
 
   const content = (
     <Pressable
@@ -108,6 +111,13 @@ export function TransactionItem({
           <Text className="text-sm font-semibold text-foreground">
             {item.merchant || item.category_name || OTHER_CATEGORY_LABEL}
           </Text>
+          {isTransfer && (
+            <View className="rounded-md bg-muted-foreground px-1.5 py-0.5">
+              <Text className="text-[10px] font-medium text-white">
+                TRANSFER
+              </Text>
+            </View>
+          )}
           {item.source_type === SOURCE_TYPE.SYNCED && (
             <View className="rounded-md bg-blue-700 px-1.5 py-0.5">
               <Text className="text-[10px] font-medium text-white">GMAIL</Text>
@@ -127,10 +137,14 @@ export function TransactionItem({
         <Text
           className={cn(
             "text-sm font-bold",
-            isIncome ? "text-positive" : "text-negative",
+            isTransfer
+              ? "text-muted-foreground"
+              : isIncome
+                ? "text-positive"
+                : "text-negative",
           )}
         >
-          {isIncome ? "+" : "-"}
+          {isTransfer ? "" : isIncome ? "+" : "-"}
           {fmt(item.amount)}
         </Text>
         {showTime && (

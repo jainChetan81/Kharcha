@@ -47,19 +47,23 @@ export default function EditTransactionScreen() {
     merchant: transaction.merchant ?? "",
     categoryId: transaction.category_id,
     sourceId: transaction.source_id,
+    destinationSourceId: transaction.destination_source_id,
     date: transaction.date,
     note: transaction.note ?? "",
   };
 
   async function handleSubmit(value: TransactionFormValues) {
     try {
+      const isTransfer = value.type === TRANSACTION_TYPE.TRANSFER;
       await updateMutation.mutateAsync({
         type: value.type,
         amount: Number(value.amount),
         merchant: value.merchant || null,
-        categoryId: value.categoryId,
+        categoryId: isTransfer ? null : value.categoryId,
         sourceId:
           value.type === TRANSACTION_TYPE.INCOME ? null : value.sourceId,
+        destinationSourceId: isTransfer ? value.destinationSourceId : null,
+        sourceType: isTransfer ? "transfer" : "manual",
         date: value.date,
         note: value.note || null,
       });

@@ -33,11 +33,12 @@ const DateTimePickerModal = lazy(() =>
 );
 
 export type TransactionFormValues = {
-  type: "income" | "expense";
+  type: "income" | "expense" | "transfer";
   amount: string;
   merchant: string;
   categoryId: number | null;
   sourceId: number | null;
+  destinationSourceId: number | null;
   date: string;
   note: string;
 };
@@ -57,23 +58,26 @@ export function TransactionForm({
 }) {
   const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [datePickerValue, setDatePickerValue] = useState(new Date());
-  const [activeType, setActiveType] = useState<"income" | "expense">(
-    defaultValues.type,
-  );
+  const [activeType, setActiveType] = useState<
+    "income" | "expense" | "transfer"
+  >(defaultValues.type);
   const [userChangedCategory, setUserChangedCategory] = useState(false);
   const [autoFilledMerchant, setAutoFilledMerchant] = useState<string | null>(
     null,
   );
 
+  const isTransfer = activeType === TRANSACTION_TYPE.TRANSFER;
+  const categoryType = isTransfer ? "expense" : activeType;
+
   async function autoCategoryFromMerchant(merchant: string) {
     const trimmed = merchant.trim();
-    if (trimmed.length < 3 || userChangedCategory) return;
+    if (trimmed.length < 3 || userChangedCategory || isTransfer) return;
     // Don't re-run for the same merchant text that we already auto-filled.
     if (autoFilledMerchant?.toLowerCase() === trimmed.toLowerCase()) return;
     try {
       const categoryId = await getMostUsedCategoryForMerchant(
         trimmed,
-        activeType,
+        categoryType,
       );
       if (categoryId && !userChangedCategory) {
         form.setFieldValue("categoryId", categoryId);
@@ -87,8 +91,9 @@ export function TransactionForm({
   }
 
   const { data: categories = [] } = useQuery({
-    queryKey: [QUERY_KEYS.CATEGORIES, activeType],
-    queryFn: () => getCategoriesByType(activeType),
+    queryKey: [QUERY_KEYS.CATEGORIES, categoryType],
+    queryFn: () => getCategoriesByType(categoryType),
+    enabled: !isTransfer,
   });
 
   const { data: sources = [] } = useQuery({
@@ -110,61 +115,67 @@ export function TransactionForm({
       showsVerticalScrollIndicator={false}
     >
       <form.Field name="type">
-        {(field) => (
-          <View className="mb-5 flex-row gap-3">
-            <Pressable
-              onPress={() => {
-                field.handleChange(TRANSACTION_TYPE.EXPENSE);
-                setActiveType(TRANSACTION_TYPE.EXPENSE);
-                form.setFieldValue("categoryId", null);
-              }}
-              className={cn(
-                "flex-1 items-center rounded-xl py-3",
-                field.state.value === TRANSACTION_TYPE.EXPENSE
-                  ? "bg-negative"
-                  : "bg-card",
-              )}
-            >
-              <Text
-                className={cn(
-                  "text-sm font-semibold",
-                  field.state.value === TRANSACTION_TYPE.EXPENSE
-                    ? "text-white"
-                    : "text-muted-foreground",
-                )}
-              >
-                Expense
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                if (lockType) return;
-                field.handleChange(TRANSACTION_TYPE.INCOME);
-                setActiveType(TRANSACTION_TYPE.INCOME);
-                form.setFieldValue("categoryId", null);
-                form.setFieldValue("sourceId", null);
-              }}
-              className={cn(
-                "flex-1 items-center rounded-xl py-3",
-                lockType && "opacity-40",
-                field.state.value === TRANSACTION_TYPE.INCOME
-                  ? "bg-positive"
-                  : "bg-card",
-              )}
-            >
-              <Text
-                className={cn(
-                  "text-sm font-semibold",
-                  field.state.value === TRANSACTION_TYPE.INCOME
-                    ? "text-white"
-                    : "text-muted-foreground",
-                )}
-              >
-                Income
-              </Text>
-            </Pressable>
-          </View>
-        )}
+        {(field) => {
+          const typeButtons: {
+            key: "expense" | "income" | "transfer";
+            label: string;
+            activeClass: string;
+          }[] = [
+            {
+              key: TRANSACTION_TYPE.EXPENSE,
+              label: "Expense",
+              activeClass: "bg-negative",
+            },
+            {
+              key: TRANSACTION_TYPE.INCOME,
+              label: "Income",
+              activeClass: "bg-positive",
+            },
+            {
+              key: TRANSACTION_TYPE.TRANSFER,
+              label: "Transfer",
+              activeClass: "bg-muted-foreground",
+            },
+          ];
+          return (
+            <View className="mb-5 flex-row gap-3">
+              {typeButtons.map((btn) => (
+                <Pressable
+                  key={btn.key}
+                  onPress={() => {
+                    if (lockType && btn.key !== defaultValues.type) return;
+                    field.handleChange(btn.key);
+                    setActiveType(btn.key);
+                    form.setFieldValue("categoryId", null);
+                    if (btn.key === TRANSACTION_TYPE.INCOME) {
+                      form.setFieldValue("sourceId", null);
+                      form.setFieldValue("destinationSourceId", null);
+                    }
+                    if (btn.key === TRANSACTION_TYPE.EXPENSE) {
+                      form.setFieldValue("destinationSourceId", null);
+                    }
+                  }}
+                  className={cn(
+                    "flex-1 items-center rounded-xl py-3",
+                    lockType && btn.key !== defaultValues.type && "opacity-40",
+                    field.state.value === btn.key ? btn.activeClass : "bg-card",
+                  )}
+                >
+                  <Text
+                    className={cn(
+                      "text-sm font-semibold",
+                      field.state.value === btn.key
+                        ? "text-white"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {btn.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          );
+        }}
       </form.Field>
 
       <form.Field
@@ -220,23 +231,43 @@ export function TransactionForm({
         </form.Field>
       )}
 
-      <form.Field name="categoryId">
-        {(field) => (
-          <View className="mb-5">
-            <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-              Category
-            </Text>
-            <ChipPicker
-              items={categories}
-              selectedId={field.state.value}
-              onSelect={(id) => {
-                setUserChangedCategory(true);
-                field.handleChange(id);
-              }}
-            />
-          </View>
-        )}
-      </form.Field>
+      {isTransfer && (
+        <form.Field name="merchant">
+          {(field) => (
+            <View className="mb-5">
+              <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
+                Description
+              </Text>
+              <Input
+                placeholder="Optional description"
+                value={field.state.value}
+                onChangeText={(v) => field.handleChange(v)}
+                placeholderTextColor={COLORS.MUTED}
+              />
+            </View>
+          )}
+        </form.Field>
+      )}
+
+      {!isTransfer && (
+        <form.Field name="categoryId">
+          {(field) => (
+            <View className="mb-5">
+              <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
+                Category
+              </Text>
+              <ChipPicker
+                items={categories}
+                selectedId={field.state.value}
+                onSelect={(id) => {
+                  setUserChangedCategory(true);
+                  field.handleChange(id);
+                }}
+              />
+            </View>
+          )}
+        </form.Field>
+      )}
 
       {activeType === TRANSACTION_TYPE.INCOME && (
         <form.Field name="merchant">
@@ -261,17 +292,17 @@ export function TransactionForm({
         name="sourceId"
         validators={{
           onSubmit: ({ value }) => {
-            if (activeType === TRANSACTION_TYPE.EXPENSE && !value)
+            if (activeType !== TRANSACTION_TYPE.INCOME && !value)
               return "Source is required";
             return undefined;
           },
         }}
       >
         {(field) =>
-          activeType === TRANSACTION_TYPE.EXPENSE ? (
+          activeType !== TRANSACTION_TYPE.INCOME ? (
             <View className="mb-5">
               <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-                Source
+                {isTransfer ? "From" : "Source"}
               </Text>
               <ChipPicker
                 items={sources}
@@ -283,6 +314,32 @@ export function TransactionForm({
           ) : null
         }
       </form.Field>
+
+      {isTransfer && (
+        <form.Field
+          name="destinationSourceId"
+          validators={{
+            onSubmit: ({ value }) => {
+              if (!value) return "Destination is required";
+              return undefined;
+            },
+          }}
+        >
+          {(field) => (
+            <View className="mb-5">
+              <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
+                To
+              </Text>
+              <ChipPicker
+                items={sources}
+                selectedId={field.state.value}
+                onSelect={(id) => field.handleChange(id)}
+              />
+              <FieldError errors={field.state.meta.errors as string[]} />
+            </View>
+          )}
+        </form.Field>
+      )}
 
       <form.Field
         name="date"

@@ -26,6 +26,7 @@ import { useRefresh } from "@/hooks/use-refresh";
 import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
 import {
   useCategoryBreakdown,
+  useMonthlyInsights,
   useMonthlySummary,
   useMonthTransactions,
   useRecentTransactions,
@@ -134,7 +135,12 @@ export default function HomeScreen() {
   const { data: categoryBreakdown = [] } = useCategoryBreakdown(selectedMonth);
   const { data: budgetsList = [] } = useBudgets();
   const { data: subsTotal = 0 } = useSubscriptionsTotal();
+  const { data: insights, isLoading: insightsLoading } = useMonthlyInsights(
+    selectedDate.getFullYear(),
+    selectedDate.getMonth() + 1,
+  );
   const budgetMap = new Map(budgetsList.map((b) => [b.category_id, b.amount]));
+  const totalBudget = budgetsList.reduce((sum, b) => sum + b.amount, 0);
 
   const income = summary?.total_income ?? 0;
   const expenses = summary?.total_expenses ?? 0;
@@ -346,6 +352,79 @@ export default function HomeScreen() {
             </View>
           </ComponentErrorBoundary>
         )}
+
+        <ComponentErrorBoundary name="home.insights">
+          {insightsLoading ? (
+            <View
+              className="mx-5 mb-4 rounded-xl p-3"
+              style={{ backgroundColor: "#1a1a1a" }}
+            >
+              <View className="h-4 w-3/4 rounded bg-white/5" />
+              <View className="mt-2 h-4 w-2/3 rounded bg-white/5" />
+            </View>
+          ) : insights?.topCategoryChange ||
+            insights?.projectedSpend !== null ? (
+            <View
+              className="mx-5 mb-4 rounded-xl p-3"
+              style={{ backgroundColor: "#1a1a1a" }}
+            >
+              {insights?.topCategoryChange && (
+                <Pressable
+                  onPress={() =>
+                    router.push(
+                      `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${insights.topCategoryChange?.categoryId ?? "other"}&month=${selectedMonth}`,
+                    )
+                  }
+                >
+                  <Text className="text-xs">
+                    <Text style={{ color: COLORS.MUTED }}>
+                      {insights.topCategoryChange.direction === "up"
+                        ? "↑"
+                        : "↓"}{" "}
+                    </Text>
+                    <Text
+                      style={{
+                        color:
+                          insights.topCategoryChange.direction === "up"
+                            ? "#ef4444"
+                            : "#22c55e",
+                      }}
+                    >
+                      {insights.topCategoryChange.percent}%{" "}
+                      {insights.topCategoryChange.direction === "up"
+                        ? "more"
+                        : "less"}
+                    </Text>
+                    <Text style={{ color: COLORS.MUTED }}>
+                      {" "}
+                      on {insights.topCategoryChange.category} vs last month
+                    </Text>
+                  </Text>
+                </Pressable>
+              )}
+              {insights?.projectedSpend !== null &&
+                insights?.projectedSpend !== undefined && (
+                  <Text
+                    className={cn(
+                      "text-xs",
+                      insights.topCategoryChange ? "mt-2" : "",
+                    )}
+                    style={{
+                      color:
+                        totalBudget > 0
+                          ? insights.projectedSpend > totalBudget
+                            ? "#ef4444"
+                            : "#22c55e"
+                          : COLORS.MUTED,
+                    }}
+                  >
+                    on track to spend {fmt(Math.round(insights.projectedSpend))}{" "}
+                    this month
+                  </Text>
+                )}
+            </View>
+          ) : null}
+        </ComponentErrorBoundary>
 
         <ComponentErrorBoundary name="home.transaction-list">
           <View className="px-5 pt-2">

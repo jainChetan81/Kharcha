@@ -1,8 +1,28 @@
-import { addDays, format, startOfMonth, subDays, subMonths } from "date-fns";
-import { and, desc, eq, gte, isNull, like, lte, or, sql } from "drizzle-orm";
+import {
+  addDays,
+  differenceInDays,
+  format,
+  getDaysInMonth,
+  startOfMonth,
+  subDays,
+  subMonths,
+} from "date-fns";
+import {
+  aliasedTable,
+  and,
+  desc,
+  eq,
+  gte,
+  isNull,
+  like,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import {
   CONFIG_KEYS,
   DATE_ISO_FORMAT,
+  MONTH_FORMAT,
   OTHER_CATEGORY_LABEL,
   type SourceType,
   TRANSACTION_TYPE,
@@ -18,6 +38,7 @@ import {
 } from "./schema";
 import type {
   CategoryBreakdownRow,
+  MonthlyInsights,
   MonthlySummary,
   TransactionRow,
 } from "./types";
@@ -26,6 +47,7 @@ export { db } from "./connection";
 export type {
   Category,
   CategoryBreakdownRow,
+  MonthlyInsights,
   MonthlySummary,
   Source,
   Transaction,
@@ -125,6 +147,14 @@ export async function initDB() {
   try {
     await db.run(
       sql`ALTER TABLE transactions ADD COLUMN gmail_message_id TEXT`,
+    );
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
+  try {
+    await db.run(
+      sql`ALTER TABLE transactions ADD COLUMN destination_source_id INTEGER REFERENCES sources(id)`,
     );
   } catch {
     // Column already exists — safe to ignore
@@ -693,6 +723,8 @@ export async function seedSampleData(): Promise<boolean> {
   return true;
 }
 
+const destinationSources = aliasedTable(sources, "destination_sources");
+
 function transactionSelect() {
   return db
     .select({
@@ -702,6 +734,7 @@ function transactionSelect() {
       merchant: transactions.merchant,
       category_id: transactions.category_id,
       source_id: transactions.source_id,
+      destination_source_id: transactions.destination_source_id,
       subscription_id: transactions.subscription_id,
       source_type: transactions.source_type,
       date: transactions.date,
@@ -709,10 +742,15 @@ function transactionSelect() {
       created_at: transactions.created_at,
       category_name: categories.name,
       source_name: sources.name,
+      destination_source_name: destinationSources.name,
     })
     .from(transactions)
     .leftJoin(categories, eq(transactions.category_id, categories.id))
-    .leftJoin(sources, eq(transactions.source_id, sources.id));
+    .leftJoin(sources, eq(transactions.source_id, sources.id))
+    .leftJoin(
+      destinationSources,
+      eq(transactions.destination_source_id, destinationSources.id),
+    );
 }
 
 export async function getRecentTransactions(limit = 20) {
@@ -735,7 +773,12 @@ export async function getMonthlySummary(yearMonth: string) {
       total_expenses: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
     })
     .from(transactions)
-    .where(sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`);
+    .where(
+      and(
+        sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+        sql`${transactions.type} != 'transfer'`,
+      ),
+    );
   return result[0] as MonthlySummary;
 }
 
@@ -743,7 +786,7 @@ export async function getTransactionsPaginated(
   limit = 10,
   offset = 0,
   filters?: {
-    type?: "income" | "expense" | "all";
+    type?: "income" | "expense" | "transfer" | "all";
     categoryId?: number | null;
     sourceId?: number | null;
     sourceType?: SourceType | "all";
@@ -825,11 +868,12 @@ export async function getTransactionById(id: number) {
 }
 
 export async function insertTransaction(params: {
-  type: "income" | "expense";
+  type: "income" | "expense" | "transfer";
   amount: number;
   merchant: string | null;
   categoryId: number | null;
   sourceId: number | null;
+  destinationSourceId?: number | null;
   subscriptionId?: number | null;
   sourceType?: SourceType;
   date: string;
@@ -841,6 +885,7 @@ export async function insertTransaction(params: {
     merchant: params.merchant,
     category_id: params.categoryId,
     source_id: params.sourceId,
+    destination_source_id: params.destinationSourceId ?? null,
     subscription_id: params.subscriptionId ?? null,
     source_type: params.sourceType ?? "manual",
     date: params.date,
@@ -851,11 +896,13 @@ export async function insertTransaction(params: {
 export async function updateTransaction(
   id: number,
   params: {
-    type: "income" | "expense";
+    type: "income" | "expense" | "transfer";
     amount: number;
     merchant: string | null;
     categoryId: number | null;
     sourceId: number | null;
+    destinationSourceId?: number | null;
+    sourceType?: SourceType;
     date: string;
     note: string | null;
   },
@@ -868,6 +915,8 @@ export async function updateTransaction(
       merchant: params.merchant,
       category_id: params.categoryId,
       source_id: params.sourceId,
+      destination_source_id: params.destinationSourceId ?? null,
+      source_type: params.sourceType ?? "manual",
       date: params.date,
       note: params.note,
     })
@@ -879,11 +928,12 @@ export async function deleteTransaction(id: number) {
 }
 
 export async function restoreTransaction(row: {
-  type: "income" | "expense";
+  type: "income" | "expense" | "transfer";
   amount: number;
   merchant: string | null;
   category_id: number | null;
   source_id: number | null;
+  destination_source_id: number | null;
   date: string;
   note: string | null;
   created_at: string | null;
@@ -894,6 +944,7 @@ export async function restoreTransaction(row: {
     merchant: row.merchant,
     category_id: row.category_id,
     source_id: row.source_id,
+    destination_source_id: row.destination_source_id,
     date: row.date,
     created_at: row.created_at,
     note: row.note,
@@ -1007,6 +1058,90 @@ export async function findDuplicateTransaction(
     )
     .limit(1);
   return rows.length > 0;
+}
+
+export async function getMonthlyInsights(
+  year: number,
+  month: number,
+): Promise<MonthlyInsights> {
+  const yearMonth = `${year}-${String(month).padStart(2, "0")}`;
+  const prevDate = subMonths(new Date(year, month - 1, 1), 1);
+  const prevYearMonth = format(prevDate, MONTH_FORMAT);
+
+  const monthDate = new Date(year, month - 1, 1);
+  const daysInMonth = getDaysInMonth(monthDate);
+  const today = new Date();
+  const daysElapsed = Math.max(1, differenceInDays(today, monthDate) + 1);
+
+  const [thisMonthCategories, prevMonthCategories, currentSpendResult] =
+    await Promise.all([
+      db
+        .select({
+          category_id: transactions.category_id,
+          category_name: categories.name,
+          total: sql<number>`SUM(${transactions.amount})`,
+        })
+        .from(transactions)
+        .leftJoin(categories, eq(transactions.category_id, categories.id))
+        .where(
+          and(
+            eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+            sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+          ),
+        )
+        .groupBy(transactions.category_id)
+        .orderBy(sql`SUM(${transactions.amount}) DESC`)
+        .limit(1),
+
+      db
+        .select({
+          category_id: transactions.category_id,
+          total: sql<number>`SUM(${transactions.amount})`,
+        })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+            sql`strftime('%Y-%m', ${transactions.date}) = ${prevYearMonth}`,
+          ),
+        )
+        .groupBy(transactions.category_id),
+
+      db
+        .select({
+          total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+        })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+            sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+          ),
+        ),
+    ]);
+
+  let topCategoryChange: MonthlyInsights["topCategoryChange"] = null;
+  if (thisMonthCategories.length > 0) {
+    const top = thisMonthCategories[0];
+    const prevMatch = prevMonthCategories.find(
+      (p) => p.category_id === top.category_id,
+    );
+    if (prevMatch && prevMatch.total > 0) {
+      const change = ((top.total - prevMatch.total) / prevMatch.total) * 100;
+      topCategoryChange = {
+        category: top.category_name ?? OTHER_CATEGORY_LABEL,
+        categoryId: top.category_id,
+        percent: Math.abs(Math.round(change)),
+        direction: change >= 0 ? "up" : "down",
+      };
+    }
+  }
+
+  const currentSpend = currentSpendResult[0]?.total ?? 0;
+  const projectedSpend =
+    daysElapsed >= 7 ? (currentSpend * daysInMonth) / daysElapsed : null;
+
+  return { topCategoryChange, projectedSpend, daysElapsed, daysInMonth };
 }
 
 export {

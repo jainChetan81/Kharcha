@@ -38,11 +38,14 @@ export const MONTH_FORMAT = "yyyy-MM";
 export const DATE_FORMAT = "dd MMM yyyy";
 export const TIME_FORMAT = "hh:mm a";
 export const DATE_DISPLAY_FORMAT = `${DATE_FORMAT}, ${TIME_FORMAT}`;
+export const CSV_DATE_FORMAT = "dd/MM/yyyy";
+export const CSV_TIME_FORMAT = "HH:mm";
 
 export const TRANSACTION_TYPE = {
   ALL: "all",
   EXPENSE: "expense",
   INCOME: "income",
+  TRANSFER: "transfer",
 } as const;
 
 export type TransactionFilterType =
@@ -53,6 +56,7 @@ export const SOURCE_TYPE = {
   MANUAL: "manual",
   SYNCED: "synced",
   RECURRING: "recurring",
+  TRANSFER: "transfer",
 } as const;
 
 export type SourceFilterType = (typeof SOURCE_TYPE)[keyof typeof SOURCE_TYPE];
@@ -114,6 +118,7 @@ export const CONFIG_KEYS = {
   DEVICE_ID: "device_id",
   BACKEND_FORWARDING_EMAIL: "backend_forwarding_email",
   BACKEND_LAST_SYNCED_AT: "backend_last_synced_at",
+  APP_LOCK_ENABLED: "app_lock_enabled",
 } as const;
 
 export const SUBSCRIPTION_NOTE = "Auto-created from subscription";
@@ -165,6 +170,7 @@ export const QUERY_KEYS = {
   TRANSACTIONS_PAGINATED: "transactions-paginated",
   MONTHLY_SUMMARY: "monthly-summary",
   CATEGORY_BREAKDOWN: "category-breakdown",
+  MONTHLY_INSIGHTS: "monthly-insights",
   CATEGORIES: "categories",
   SOURCES: "sources",
   DATA_STATS: "data-stats",
