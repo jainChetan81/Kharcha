@@ -1,4 +1,5 @@
 import { format, parse } from "date-fns";
+import { DATE_TIME_FORMAT } from "@/lib/constants";
 
 export interface ParsedTransaction {
   amount: number;
@@ -23,7 +24,7 @@ export function decodeHtmlEntities(str: string): string {
 export function parseAxisDate(rawDate: string, rawTime?: string): string {
   const time = rawTime ?? "00:00:00";
   const parsed = parse(`${rawDate} ${time}`, "dd-MM-yy HH:mm:ss", new Date());
-  return format(parsed, "yyyy-MM-dd HH:mm");
+  return format(parsed, DATE_TIME_FORMAT);
 }
 
 export function parseHdfcDate(rawDate: string, rawTime?: string): string {
@@ -33,7 +34,7 @@ export function parseHdfcDate(rawDate: string, rawTime?: string): string {
     "dd MMM, yyyy HH:mm:ss",
     new Date(),
   );
-  return format(parsed, "yyyy-MM-dd HH:mm");
+  return format(parsed, DATE_TIME_FORMAT);
 }
 
 export function parseAmount(str: string): number {

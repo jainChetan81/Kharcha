@@ -6,6 +6,7 @@ import {
   Pressable,
   View,
 } from "react-native";
+import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
@@ -61,55 +62,57 @@ export function BottomSheet(props: BottomSheetProps) {
 
   const content = (
     <View className="rounded-t-2xl bg-card p-6">
-      {isFormMode ? (
-        <>
-          <Text className="mb-4 text-base font-bold text-foreground">
-            {props.title}
-          </Text>
-          <Input
-            placeholder={props.placeholder}
-            value={value}
-            onChangeText={(v) => {
-              if (
-                props.keyboardType === "numeric" ||
-                props.keyboardType === "decimal-pad"
-              ) {
-                setValue(v.replace(/[^0-9.]/g, ""));
-              } else {
-                setValue(v);
-              }
-            }}
-            placeholderTextColor={COLORS.MUTED}
-            keyboardType={props.keyboardType}
-            autoFocus
-          />
-          <View className={cn("mt-4 flex-row gap-3", isIOS && "mb-4")}>
-            <Button
-              variant="outline"
-              className="h-12 flex-1 rounded-xl border-border"
-              onPress={handleClose}
-            >
-              <Text className="text-sm font-medium text-muted-foreground">
-                Cancel
-              </Text>
-            </Button>
-            <Button
-              className="h-12 flex-1 rounded-xl bg-primary"
-              onPress={handleSave}
-              disabled={
-                !value.trim() ||
-                (props.validate ? !props.validate(value) : false)
-              }
-            >
-              <Text className="text-sm font-semibold text-primary-foreground">
-                {props.submitLabel}
-              </Text>
-            </Button>
-          </View>
-        </>
-      ) : (
-        props.children
-      )}
+      <ComponentErrorBoundary onDismiss={handleClose}>
+        {isFormMode ? (
+          <>
+            <Text className="mb-4 text-base font-bold text-foreground">
+              {props.title}
+            </Text>
+            <Input
+              placeholder={props.placeholder}
+              value={value}
+              onChangeText={(v) => {
+                if (
+                  props.keyboardType === "numeric" ||
+                  props.keyboardType === "decimal-pad"
+                ) {
+                  setValue(v.replace(/[^0-9.]/g, ""));
+                } else {
+                  setValue(v);
+                }
+              }}
+              placeholderTextColor={COLORS.MUTED}
+              keyboardType={props.keyboardType}
+              autoFocus
+            />
+            <View className={cn("mt-4 flex-row gap-3", isIOS && "mb-4")}>
+              <Button
+                variant="outline"
+                className="h-12 flex-1 rounded-xl border-border"
+                onPress={handleClose}
+              >
+                <Text className="text-sm font-medium text-muted-foreground">
+                  Cancel
+                </Text>
+              </Button>
+              <Button
+                className="h-12 flex-1 rounded-xl bg-primary"
+                onPress={handleSave}
+                disabled={
+                  !value.trim() ||
+                  (props.validate ? !props.validate(value) : false)
+                }
+              >
+                <Text className="text-sm font-semibold text-primary-foreground">
+                  {props.submitLabel}
+                </Text>
+              </Button>
+            </View>
+          </>
+        ) : (
+          props.children
+        )}
+      </ComponentErrorBoundary>
     </View>
   );
 

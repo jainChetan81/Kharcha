@@ -3,10 +3,9 @@ import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { Sparkles } from "lucide-react-native";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { KeyboardAvoidingView, Pressable, Switch, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
-import { ParseMessageSheet } from "@/components/parse-message-sheet";
 import {
   SubscriptionForm,
   type SubscriptionFormDefaults,
@@ -34,6 +33,12 @@ import type { Source } from "@/lib/db/types";
 import type { GeminiParsedMessage } from "@/lib/gemini/parser";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
+
+const ParseMessageSheet = lazy(() =>
+  import("@/components/parse-message-sheet").then((m) => ({
+    default: m.ParseMessageSheet,
+  })),
+);
 
 export default function AddTransaction() {
   const { type: typeParam, mode: modeParam } = useLocalSearchParams<{
@@ -260,11 +265,13 @@ export default function AddTransaction() {
         />
       )}
 
-      <ParseMessageSheet
-        visible={parseSheetVisible}
-        onClose={() => setParseSheetVisible(false)}
-        onParsed={handleParsed}
-      />
+      <Suspense fallback={null}>
+        <ParseMessageSheet
+          visible={parseSheetVisible}
+          onClose={() => setParseSheetVisible(false)}
+          onParsed={handleParsed}
+        />
+      </Suspense>
     </KeyboardAvoidingView>
   );
 }

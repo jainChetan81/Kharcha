@@ -1,6 +1,6 @@
 import { format, getDaysInMonth } from "date-fns";
 import { and, eq, sql } from "drizzle-orm";
-import { SUBSCRIPTION_NOTE } from "@/lib/constants";
+import { MONTH_FORMAT, SUBSCRIPTION_NOTE } from "@/lib/constants";
 import expo, { db } from "./connection";
 import { categories, sources, subscriptions, transactions } from "./schema";
 import type { SubscriptionRow } from "./types";
@@ -102,7 +102,7 @@ export async function getActiveSubscriptionsTotal(): Promise<number> {
 export async function processSubscriptions(): Promise<string[]> {
   const now = new Date();
   const today = now.getDate();
-  const yearMonth = format(now, "yyyy-MM");
+  const yearMonth = format(now, MONTH_FORMAT);
   const daysInMonth = getDaysInMonth(now);
   const created: string[] = [];
 

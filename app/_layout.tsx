@@ -6,11 +6,12 @@ import * as QuickActions from "expo-quick-actions";
 import { useQuickActionRouting } from "expo-quick-actions/router";
 import { SplashScreen, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
-import { Pressable, View } from "react-native";
+import { Suspense, useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { startNetworkLogging } from "react-native-network-logger";
 import Toast, { type ToastConfig } from "react-native-toast-message";
+import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { Text } from "@/components/ui/text";
 import { COLORS, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
 import { initDB } from "@/lib/db";
@@ -143,7 +144,17 @@ export default function RootLayout() {
     <GestureHandlerRootView className="flex-1">
       <QueryClientProvider client={queryClient}>
         <StatusBar style="light" />
-        {dbReady ? <Stack screenOptions={{ headerShown: false }} /> : null}
+        <ComponentErrorBoundary name="root">
+          <Suspense
+            fallback={
+              <View className="flex-1 items-center justify-center bg-background">
+                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+              </View>
+            }
+          >
+            {dbReady ? <Stack screenOptions={{ headerShown: false }} /> : null}
+          </Suspense>
+        </ComponentErrorBoundary>
         <Toast config={toastConfig} position="top" topOffset={60} />
       </QueryClientProvider>
     </GestureHandlerRootView>

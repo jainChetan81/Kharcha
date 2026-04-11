@@ -1,12 +1,10 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { getAndroidId, getIosIdForVendorAsync } from "expo-application";
 import * as Clipboard from "expo-clipboard";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
-import { SyncResultsSheet } from "@/components/sync-results-sheet";
 import { Button } from "@/components/ui/button";
 import { InfoRow } from "@/components/ui/info-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
@@ -18,6 +16,17 @@ import { getConfig, updateConfig } from "@/lib/db/config";
 import { env } from "@/lib/env";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { isIOS } from "@/lib/utils";
+
+const SyncResultsSheet = lazy(() =>
+  import("@/components/sync-results-sheet").then((m) => ({
+    default: m.SyncResultsSheet,
+  })),
+);
+const DatePickerModal = lazy(() =>
+  import("@/components/ui/date-picker-modal").then((m) => ({
+    default: m.DatePickerModal,
+  })),
+);
 
 async function parseErrorResponse(
   res: Response,
@@ -330,21 +339,19 @@ export default function DeviceSyncScreen() {
                   {format(syncFromDate, DATE_FORMAT)}
                 </Text>
               </Pressable>
-              {showDatePicker && (
-                <View className="mx-5 mb-2 rounded-xl border border-border bg-card">
-                  <DateTimePicker
-                    value={syncFromDate}
-                    mode="date"
-                    display="spinner"
-                    maximumDate={new Date()}
-                    themeVariant="dark"
-                    onChange={(_event, date) => {
-                      if (date) handleUpdateSyncFrom(date);
-                    }}
-                    style={{ height: 150 }}
-                  />
-                </View>
-              )}
+              <Suspense fallback={null}>
+                <DatePickerModal
+                  visible={showDatePicker}
+                  value={syncFromDate}
+                  title="Fetch Transactions After"
+                  maximumDate={new Date()}
+                  onConfirm={(date) => {
+                    setShowDatePicker(false);
+                    handleUpdateSyncFrom(date);
+                  }}
+                  onCancel={() => setShowDatePicker(false)}
+                />
+              </Suspense>
 
               <View className="mx-5 mt-4">
                 <Button
@@ -369,33 +376,35 @@ export default function DeviceSyncScreen() {
         </ScrollView>
       )}
 
-      <SyncResultsSheet
-        visible={showResults}
-        onClose={() => setShowResults(false)}
-        subtitle={
-          syncResult
-            ? `${syncResult.total} transaction${syncResult.total !== 1 ? "s" : ""} found`
-            : undefined
-        }
-        emptyMessage="Already up to date"
-        stats={
-          syncResult
-            ? [
-                {
-                  label: "Added",
-                  count: syncResult.inserted,
-                  color: COLORS.POSITIVE,
-                },
-                {
-                  label: "Duplicates skipped",
-                  count: syncResult.skipped,
-                  color: COLORS.MUTED,
-                },
-              ]
-            : []
-        }
-        showViewButton={!!syncResult && syncResult.inserted > 0}
-      />
+      <Suspense fallback={null}>
+        <SyncResultsSheet
+          visible={showResults}
+          onClose={() => setShowResults(false)}
+          subtitle={
+            syncResult
+              ? `${syncResult.total} transaction${syncResult.total !== 1 ? "s" : ""} found`
+              : undefined
+          }
+          emptyMessage="Already up to date"
+          stats={
+            syncResult
+              ? [
+                  {
+                    label: "Added",
+                    count: syncResult.inserted,
+                    color: COLORS.POSITIVE,
+                  },
+                  {
+                    label: "Duplicates skipped",
+                    count: syncResult.skipped,
+                    color: COLORS.MUTED,
+                  },
+                ]
+              : []
+          }
+          showViewButton={!!syncResult && syncResult.inserted > 0}
+        />
+      </Suspense>
     </View>
   );
 }

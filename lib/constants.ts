@@ -31,6 +31,8 @@ export const DB_NAME = "kharcha.db";
 export const PAGE_SIZE = 10;
 
 export const DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm";
+export const DATE_ISO_FORMAT = "yyyy-MM-dd";
+export const MONTH_FORMAT = "yyyy-MM";
 export const DATE_FORMAT = "dd MMM yyyy";
 export const TIME_FORMAT = "hh:mm a";
 export const DATE_DISPLAY_FORMAT = `${DATE_FORMAT}, ${TIME_FORMAT}`;
@@ -53,6 +55,19 @@ export const SOURCE_TYPE = {
 
 export type SourceFilterType = (typeof SOURCE_TYPE)[keyof typeof SOURCE_TYPE];
 export type SourceType = Exclude<SourceFilterType, "all">;
+
+export const PERIOD_PRESET = {
+  CUSTOM: "custom",
+  TODAY: "today",
+  THIS_WEEK: "this_week",
+  LAST_7_DAYS: "last_7_days",
+  THIS_MONTH: "this_month",
+  LAST_MONTH: "last_month",
+  THIS_YEAR: "this_year",
+} as const;
+
+export type PeriodPresetType =
+  (typeof PERIOD_PRESET)[keyof typeof PERIOD_PRESET];
 
 export const TOAST_TYPE = {
   SUCCESS: "success",

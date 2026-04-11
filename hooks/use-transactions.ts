@@ -85,6 +85,8 @@ export function useTransactionsPaginated(filters: {
   sourceType?: "manual" | "synced" | "recurring" | "all";
   dateFrom?: string | null;
   dateTo?: string | null;
+  amountMin?: number | null;
+  amountMax?: number | null;
   search?: string;
 }) {
   return useInfiniteQuery({

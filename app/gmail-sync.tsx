@@ -1,12 +1,10 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { router } from "expo-router";
 import { ChevronRight, Landmark } from "lucide-react-native";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
-import { SyncResultsSheet } from "@/components/sync-results-sheet";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { InfoRow } from "@/components/ui/info-row";
@@ -33,6 +31,17 @@ import {
 } from "@/lib/gmail/sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+
+const SyncResultsSheet = lazy(() =>
+  import("@/components/sync-results-sheet").then((m) => ({
+    default: m.SyncResultsSheet,
+  })),
+);
+const DatePickerModal = lazy(() =>
+  import("@/components/ui/date-picker-modal").then((m) => ({
+    default: m.DatePickerModal,
+  })),
+);
 
 export default function GmailSyncScreen() {
   const queryClient = useQueryClient();
@@ -305,21 +314,19 @@ export default function GmailSyncScreen() {
                   {format(syncFromDate, DATE_FORMAT)}
                 </Text>
               </Pressable>
-              {showDatePicker && (
-                <View className="mx-5 mb-2 rounded-xl border border-border bg-card">
-                  <DateTimePicker
-                    value={syncFromDate}
-                    mode="date"
-                    display="spinner"
-                    maximumDate={new Date()}
-                    themeVariant="dark"
-                    onChange={(_event, date) => {
-                      if (date) handleUpdateSyncFrom(date);
-                    }}
-                    style={{ height: 150 }}
-                  />
-                </View>
-              )}
+              <Suspense fallback={null}>
+                <DatePickerModal
+                  visible={showDatePicker}
+                  value={syncFromDate}
+                  title="Fetch Emails After"
+                  maximumDate={new Date()}
+                  onConfirm={(date) => {
+                    setShowDatePicker(false);
+                    handleUpdateSyncFrom(date);
+                  }}
+                  onCancel={() => setShowDatePicker(false)}
+                />
+              </Suspense>
 
               <View className="mx-5 mb-3 mt-6">
                 <Button
@@ -373,58 +380,60 @@ export default function GmailSyncScreen() {
         </ScrollView>
       )}
       {syncResult && (
-        <SyncResultsSheet
-          visible={showResults}
-          onClose={() => setShowResults(false)}
-          subtitle={`${syncResult.added + syncResult.failed + syncResult.skipped} emails processed`}
-          emptyMessage="No emails found"
-          stats={[]}
-          showViewButton={syncResult.added > 0}
-        >
-          <View className="mb-3">
-            <Text className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-              Transactions
-            </Text>
-            <StatLine
-              label="Added"
-              count={syncResult.added}
-              icon="✅"
-              color={COLORS.POSITIVE}
-            />
-            <StatLine
-              label="Duplicates skipped"
-              count={syncResult.skipped}
-              icon="⚠️"
-              color={COLORS.WARNING}
-            />
-            <StatLine
-              label="Failed"
-              count={syncResult.failed}
-              icon="❌"
-              color={COLORS.DANGER}
-            />
-          </View>
-
-          {syncResult.emailLogs.length > 0 && (
-            <View className="mb-2">
+        <Suspense fallback={null}>
+          <SyncResultsSheet
+            visible={showResults}
+            onClose={() => setShowResults(false)}
+            subtitle={`${syncResult.added + syncResult.failed + syncResult.skipped} emails processed`}
+            emptyMessage="No emails found"
+            stats={[]}
+            showViewButton={syncResult.added > 0}
+          >
+            <View className="mb-3">
               <Text className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Parsed By
+                Transactions
               </Text>
-              {syncResult.emailLogs.slice(0, 50).map((log) => (
-                <EmailLogRow
-                  key={log.id}
-                  log={log}
-                  bankName={lookupBankName(log.from)}
-                />
-              ))}
-              {syncResult.emailLogs.length > 50 && (
-                <Text className="mt-2 text-center text-xs text-muted-foreground">
-                  …and {syncResult.emailLogs.length - 50} more
-                </Text>
-              )}
+              <StatLine
+                label="Added"
+                count={syncResult.added}
+                icon="✅"
+                color={COLORS.POSITIVE}
+              />
+              <StatLine
+                label="Duplicates skipped"
+                count={syncResult.skipped}
+                icon="⚠️"
+                color={COLORS.WARNING}
+              />
+              <StatLine
+                label="Failed"
+                count={syncResult.failed}
+                icon="❌"
+                color={COLORS.DANGER}
+              />
             </View>
-          )}
-        </SyncResultsSheet>
+
+            {syncResult.emailLogs.length > 0 && (
+              <View className="mb-2">
+                <Text className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Parsed By
+                </Text>
+                {syncResult.emailLogs.slice(0, 50).map((log) => (
+                  <EmailLogRow
+                    key={log.id}
+                    log={log}
+                    bankName={lookupBankName(log.from)}
+                  />
+                ))}
+                {syncResult.emailLogs.length > 50 && (
+                  <Text className="mt-2 text-center text-xs text-muted-foreground">
+                    …and {syncResult.emailLogs.length - 50} more
+                  </Text>
+                )}
+              </View>
+            )}
+          </SyncResultsSheet>
+        </Suspense>
       )}
     </View>
   );

@@ -1,16 +1,9 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { format, parse } from "date-fns";
 import { Calendar } from "lucide-react-native";
-import { useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  View,
-} from "react-native";
+import { lazy, Suspense, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { ChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
@@ -28,6 +21,12 @@ import { getAllSources, getCategoriesByType } from "@/lib/db";
 import { parseDate } from "@/lib/format";
 import { showErrorToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+
+const DateTimePickerModal = lazy(() =>
+  import("@/components/ui/date-picker-modal").then((m) => ({
+    default: m.DateTimePickerModal,
+  })),
+);
 
 export type TransactionFormValues = {
   type: "income" | "expense";
@@ -52,9 +51,8 @@ export function TransactionForm({
   onDelete?: () => void;
   lockType?: boolean;
 }) {
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [tempDate, setTempDate] = useState(new Date());
+  const [showDateTimePicker, setShowDateTimePicker] = useState(false);
+  const [datePickerValue, setDatePickerValue] = useState(new Date());
   const [activeType, setActiveType] = useState<"income" | "expense">(
     defaultValues.type,
   );
@@ -272,8 +270,8 @@ export function TransactionForm({
               </Text>
               <Pressable
                 onPress={() => {
-                  setTempDate(currentDate);
-                  setShowDatePicker(true);
+                  setDatePickerValue(currentDate);
+                  setShowDateTimePicker(true);
                 }}
                 className="h-10 flex-row items-center justify-between rounded-xl border border-border bg-card px-3"
               >
@@ -284,62 +282,18 @@ export function TransactionForm({
               </Pressable>
               <FieldError errors={field.state.meta.errors as string[]} />
 
-              <Modal
-                visible={showDatePicker || showTimePicker}
-                transparent
-                animationType="slide"
-              >
-                <View className="flex-1 justify-end bg-black/50">
-                  <View className="rounded-t-2xl bg-card pb-8">
-                    <View className="flex-row items-center justify-between border-b border-border px-5 py-3">
-                      <Pressable
-                        onPress={() => {
-                          setShowDatePicker(false);
-                          setShowTimePicker(false);
-                        }}
-                      >
-                        <Text className="text-base font-medium text-muted-foreground">
-                          Cancel
-                        </Text>
-                      </Pressable>
-                      <Text className="text-base font-semibold text-foreground">
-                        {showDatePicker ? "Select Date" : "Select Time"}
-                      </Text>
-                      <Pressable
-                        onPress={() => {
-                          if (showDatePicker) {
-                            setShowDatePicker(false);
-                            setShowTimePicker(true);
-                          } else {
-                            setShowTimePicker(false);
-                            field.handleChange(
-                              format(tempDate, DATE_TIME_FORMAT),
-                            );
-                          }
-                        }}
-                      >
-                        <Text className="text-base font-semibold text-primary">
-                          {showDatePicker ? "Next" : "Done"}
-                        </Text>
-                      </Pressable>
-                    </View>
-                    <View className="mx-[-16px]">
-                      <DateTimePicker
-                        value={tempDate}
-                        mode={showDatePicker ? "date" : "time"}
-                        display="spinner"
-                        themeVariant="dark"
-                        maximumDate={new Date()}
-                        onChange={(_event, selectedDate) => {
-                          if (selectedDate) {
-                            setTempDate(selectedDate);
-                          }
-                        }}
-                      />
-                    </View>
-                  </View>
-                </View>
-              </Modal>
+              <Suspense fallback={null}>
+                <DateTimePickerModal
+                  visible={showDateTimePicker}
+                  value={datePickerValue}
+                  maximumDate={new Date()}
+                  onConfirm={(date) => {
+                    setShowDateTimePicker(false);
+                    field.handleChange(format(date, DATE_TIME_FORMAT));
+                  }}
+                  onCancel={() => setShowDateTimePicker(false)}
+                />
+              </Suspense>
             </View>
           );
         }}
