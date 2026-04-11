@@ -63,10 +63,7 @@ export function useAppLock(dbReady: boolean) {
     const subscription = AppState.addEventListener(
       "change",
       (nextState: AppStateStatus) => {
-        if (
-          appState.current.match(/inactive|background/) &&
-          nextState === "active"
-        ) {
+        if (appState.current === "background" && nextState === "active") {
           // Skip the re-auth trigger while a biometric prompt is still up.
           if (authInFlight.current) {
             appState.current = nextState;

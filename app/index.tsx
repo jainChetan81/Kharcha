@@ -7,6 +7,7 @@ import {
   House,
   Plus,
   Settings,
+  TrendingUp,
   User,
 } from "lucide-react-native";
 import { useState } from "react";
@@ -355,56 +356,65 @@ export default function HomeScreen() {
 
         <ComponentErrorBoundary name="home.insights">
           {insightsLoading ? (
-            <View className="mx-5 mb-4 rounded-xl bg-card p-3">
+            <View className="mx-5 mb-4 mt-2 rounded-xl bg-card p-4">
               <View className="h-4 w-3/4 rounded bg-muted" />
               <View className="mt-2 h-4 w-2/3 rounded bg-muted" />
             </View>
           ) : insights?.topCategoryChange ||
             insights?.projectedSpend != null ? (
-            <View className="mx-5 mb-4 rounded-xl bg-card p-3">
-              {insights?.topCategoryChange && (
-                <Pressable
-                  onPress={() =>
-                    router.push(
-                      `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${insights.topCategoryChange?.categoryId ?? "other"}&month=${selectedMonth}`,
-                    )
-                  }
-                >
-                  <Text className="text-xs text-muted-foreground">
-                    {insights.topCategoryChange.direction === "up" ? "↑" : "↓"}{" "}
-                    <Text
-                      className={cn(
-                        "text-xs font-semibold",
-                        insights.topCategoryChange.direction === "up"
-                          ? "text-negative"
-                          : "text-positive",
-                      )}
-                    >
-                      {insights.topCategoryChange.percent}%{" "}
+            <View className="mx-5 mb-4 mt-2 flex-row items-start gap-3 rounded-xl bg-card p-4">
+              <Icon
+                as={TrendingUp}
+                className="mt-0.5 text-muted-foreground"
+                size={16}
+              />
+              <View className="flex-1">
+                {insights?.topCategoryChange && (
+                  <Pressable
+                    onPress={() =>
+                      router.push(
+                        `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${insights.topCategoryChange?.categoryId ?? "other"}&month=${selectedMonth}`,
+                      )
+                    }
+                  >
+                    <Text className="text-xs text-muted-foreground">
                       {insights.topCategoryChange.direction === "up"
-                        ? "more"
-                        : "less"}
-                    </Text>{" "}
-                    on {insights.topCategoryChange.category} vs last month
+                        ? "↑"
+                        : "↓"}{" "}
+                      <Text
+                        className={cn(
+                          "text-xs font-semibold",
+                          insights.topCategoryChange.direction === "up"
+                            ? "text-negative"
+                            : "text-positive",
+                        )}
+                      >
+                        {insights.topCategoryChange.percent}%{" "}
+                        {insights.topCategoryChange.direction === "up"
+                          ? "more"
+                          : "less"}
+                      </Text>{" "}
+                      on {insights.topCategoryChange.category} vs last month
+                    </Text>
+                  </Pressable>
+                )}
+                {insights?.projectedSpend != null && (
+                  <Text
+                    className={cn(
+                      "text-xs",
+                      insights.topCategoryChange && "mt-2",
+                      totalBudget > 0
+                        ? insights.projectedSpend > totalBudget
+                          ? "text-negative"
+                          : "text-positive"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    projected {fmt(Math.round(insights.projectedSpend))} this
+                    month
                   </Text>
-                </Pressable>
-              )}
-              {insights?.projectedSpend != null && (
-                <Text
-                  className={cn(
-                    "text-xs",
-                    insights.topCategoryChange && "mt-2",
-                    totalBudget > 0
-                      ? insights.projectedSpend > totalBudget
-                        ? "text-negative"
-                        : "text-positive"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  on track to spend {fmt(Math.round(insights.projectedSpend))}{" "}
-                  this month
-                </Text>
-              )}
+                )}
+              </View>
             </View>
           ) : null}
         </ComponentErrorBoundary>
