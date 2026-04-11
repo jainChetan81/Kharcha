@@ -6,8 +6,9 @@
       "Bash(git diff:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(git push:*)"
     ],
-    "deny": ["Bash(git push:*)", "Bash(rm -rf:*)"]
+    "deny": ["Bash(rm -rf:*)"]
   }
 }
