@@ -31,6 +31,7 @@ import {
   COLORS,
   editScreen,
   LABELS,
+  MONTH_FORMAT,
   SCREENS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
@@ -117,8 +118,8 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState(now);
   const isCurrentMonth = isSameMonth(selectedDate, now);
 
-  const selectedMonth = format(selectedDate, "yyyy-MM");
-  const prevMonth = format(subMonths(selectedDate, 1), "yyyy-MM");
+  const selectedMonth = format(selectedDate, MONTH_FORMAT);
+  const prevMonth = format(subMonths(selectedDate, 1), MONTH_FORMAT);
 
   const { data: recentTransactions = [] } = useRecentTransactions(10);
   const { data: monthTransactions = [] } = useMonthTransactions(

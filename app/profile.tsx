@@ -7,9 +7,15 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react-native";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, View } from "react-native";
-import { CurrencyPicker } from "@/components/currency-picker";
+
+const CurrencyPicker = lazy(() =>
+  import("@/components/currency-picker").then((m) => ({
+    default: m.CurrencyPicker,
+  })),
+);
+
 import { ScreenError } from "@/components/error-boundary";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Icon } from "@/components/ui/icon";
@@ -198,15 +204,17 @@ export default function ProfileScreen() {
         onSave={handleSaveName}
       />
 
-      <CurrencyPicker
-        visible={showCurrencyPicker}
-        onClose={() => setShowCurrencyPicker(false)}
-        selected={currency}
-        onSelect={async (code) => {
-          await updateCurrency(code);
-          setShowCurrencyPicker(false);
-        }}
-      />
+      <Suspense fallback={null}>
+        <CurrencyPicker
+          visible={showCurrencyPicker}
+          onClose={() => setShowCurrencyPicker(false)}
+          selected={currency}
+          onSelect={async (code) => {
+            await updateCurrency(code);
+            setShowCurrencyPicker(false);
+          }}
+        />
+      </Suspense>
     </View>
   );
 }

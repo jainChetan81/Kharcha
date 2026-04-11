@@ -1,8 +1,8 @@
 import { format } from "date-fns";
-import { TRANSACTION_TYPE } from "@/lib/constants";
+import { DATE_TIME_FORMAT, TRANSACTION_TYPE } from "@/lib/constants";
 import { type Parser, parseAmount } from "./utils";
 
-const today = () => format(new Date(), "yyyy-MM-dd HH:mm");
+const today = () => format(new Date(), DATE_TIME_FORMAT);
 
 // "Debited for INR 200.00 towards UPI/140853857998/DR/TRIS/FDRL/..."
 export const indusindUpiDebit: Parser = (body) => {

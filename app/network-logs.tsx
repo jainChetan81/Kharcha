@@ -1,5 +1,6 @@
 import { View } from "react-native";
 import NetworkLogger from "react-native-network-logger";
+import { ScreenError } from "@/components/error-boundary";
 import { ScreenHeader } from "@/components/ui/screen-header";
 
 export default function NetworkLogsScreen() {
@@ -10,3 +11,5 @@ export default function NetworkLogsScreen() {
     </View>
   );
 }
+
+export const ErrorBoundary = ScreenError;
