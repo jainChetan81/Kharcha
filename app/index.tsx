@@ -12,7 +12,10 @@ import {
 import { useState } from "react";
 import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
-import { ScreenError } from "@/components/error-boundary";
+import {
+  ComponentErrorBoundary,
+  ScreenError,
+} from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
@@ -208,7 +211,9 @@ export default function HomeScreen() {
           </View>
 
           <View className="mt-3">
-            <SpendingRing income={income} expenses={expenses} fmt={fmt} />
+            <ComponentErrorBoundary name="home.spending-ring">
+              <SpendingRing income={income} expenses={expenses} fmt={fmt} />
+            </ComponentErrorBoundary>
           </View>
 
           <View className="mt-3 flex-row gap-3">
@@ -277,6 +282,7 @@ export default function HomeScreen() {
         </View>
 
         {categoryBreakdown.length > 0 && (
+          <ComponentErrorBoundary name="home.category-breakdown">
           <View className="px-5 pb-4 pt-2">
             <Text className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
               {isCurrentMonth ? "This Month" : format(selectedDate, "MMMM")}
@@ -338,8 +344,10 @@ export default function HomeScreen() {
               );
             })}
           </View>
+          </ComponentErrorBoundary>
         )}
 
+        <ComponentErrorBoundary name="home.transaction-list">
         <View className="px-5 pt-2">
           <Text className="mb-3 text-sm font-semibold text-muted-foreground">
             {isCurrentMonth ? "Recent Transactions" : "Transactions"}
@@ -356,6 +364,7 @@ export default function HomeScreen() {
             ),
           )}
         </View>
+        </ComponentErrorBoundary>
       </ScrollView>
 
       <View

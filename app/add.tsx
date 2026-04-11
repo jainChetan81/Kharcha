@@ -6,13 +6,6 @@ import { Sparkles } from "lucide-react-native";
 import { lazy, Suspense, useState } from "react";
 import { KeyboardAvoidingView, Pressable, Switch, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
-
-const ParseMessageSheet = lazy(() =>
-  import("@/components/parse-message-sheet").then((m) => ({
-    default: m.ParseMessageSheet,
-  })),
-);
-
 import {
   SubscriptionForm,
   type SubscriptionFormDefaults,
@@ -40,6 +33,12 @@ import type { Source } from "@/lib/db/types";
 import type { GeminiParsedMessage } from "@/lib/gemini/parser";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
+
+const ParseMessageSheet = lazy(() =>
+  import("@/components/parse-message-sheet").then((m) => ({
+    default: m.ParseMessageSheet,
+  })),
+);
 
 export default function AddTransaction() {
   const { type: typeParam, mode: modeParam } = useLocalSearchParams<{
