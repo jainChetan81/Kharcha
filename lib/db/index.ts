@@ -965,6 +965,50 @@ export async function syncedTransactionExists(
   return rows.length > 0;
 }
 
+export async function getMostUsedCategoryForMerchant(
+  merchant: string,
+  type: "expense" | "income",
+): Promise<number | null> {
+  const rows = await db
+    .select({
+      category_id: transactions.category_id,
+      count: sql<number>`COUNT(*)`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        sql`LOWER(${transactions.merchant}) = LOWER(${merchant})`,
+        eq(transactions.type, type),
+        sql`${transactions.category_id} IS NOT NULL`,
+      ),
+    )
+    .groupBy(transactions.category_id)
+    .orderBy(sql`COUNT(*) DESC`)
+    .limit(1);
+
+  return rows[0]?.category_id ?? null;
+}
+
+export async function findDuplicateTransaction(
+  date: string,
+  amount: number,
+  merchant: string,
+): Promise<boolean> {
+  const dayPrefix = date.slice(0, 10);
+  const rows = await db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(
+      and(
+        like(transactions.date, `${dayPrefix}%`),
+        eq(transactions.amount, amount),
+        sql`LOWER(${transactions.merchant}) = ${merchant.toLowerCase()}`,
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
 export {
   addBank,
   addBankEmail,

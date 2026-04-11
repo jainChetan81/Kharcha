@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { Plus, Receipt } from "lucide-react-native";
+import { ClipboardCheck, Plus, Receipt } from "lucide-react-native";
 import {
   Alert,
   Pressable,
@@ -94,12 +94,20 @@ export default function SubscriptionsScreen() {
   return (
     <View className="flex-1 bg-background">
       <ScreenHeader title="Subscriptions">
-        <Pressable
-          onPress={() => router.push(`${SCREENS.ADD}?mode=subscription`)}
-          className="rounded-xl border border-border bg-card px-3 py-2"
-        >
-          <Icon as={Plus} className="size-4 text-primary" />
-        </Pressable>
+        <View className="flex-row items-center gap-2">
+          <Pressable
+            onPress={() => router.push(SCREENS.SUBSCRIPTION_AUDIT)}
+            className="rounded-xl border border-border bg-card px-3 py-2"
+          >
+            <Icon as={ClipboardCheck} className="size-4 text-primary" />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push(`${SCREENS.ADD}?mode=subscription`)}
+            className="rounded-xl border border-border bg-card px-3 py-2"
+          >
+            <Icon as={Plus} className="size-4 text-primary" />
+          </Pressable>
+        </View>
       </ScreenHeader>
 
       {subs.length === 0 ? (

@@ -17,9 +17,13 @@ import {
   QUERY_KEYS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { getAllSources, getCategoriesByType } from "@/lib/db";
+import {
+  getAllSources,
+  getCategoriesByType,
+  getMostUsedCategoryForMerchant,
+} from "@/lib/db";
 import { parseDate } from "@/lib/format";
-import { showErrorToast } from "@/lib/toast";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const DateTimePickerModal = lazy(() =>
@@ -56,6 +60,20 @@ export function TransactionForm({
   const [activeType, setActiveType] = useState<"income" | "expense">(
     defaultValues.type,
   );
+  const [userChangedCategory, setUserChangedCategory] = useState(false);
+
+  async function autoCategoryFromMerchant(merchant: string) {
+    const trimmed = merchant.trim();
+    if (trimmed.length < 3 || userChangedCategory) return;
+    const categoryId = await getMostUsedCategoryForMerchant(
+      trimmed,
+      activeType,
+    );
+    if (categoryId && !userChangedCategory) {
+      form.setFieldValue("categoryId", categoryId);
+      showSuccessToast("category set from history ✨");
+    }
+  }
 
   const { data: categories = [] } = useQuery({
     queryKey: [QUERY_KEYS.CATEGORIES, activeType],
@@ -183,6 +201,7 @@ export function TransactionForm({
                 placeholder="e.g. Swiggy, Amazon"
                 value={field.state.value}
                 onChangeText={(v) => field.handleChange(v)}
+                onBlur={() => autoCategoryFromMerchant(field.state.value)}
                 placeholderTextColor={COLORS.MUTED}
               />
             </View>
@@ -199,7 +218,10 @@ export function TransactionForm({
             <ChipPicker
               items={categories}
               selectedId={field.state.value}
-              onSelect={(id) => field.handleChange(id)}
+              onSelect={(id) => {
+                setUserChangedCategory(true);
+                field.handleChange(id);
+              }}
             />
           </View>
         )}
@@ -216,6 +238,7 @@ export function TransactionForm({
                 placeholder="e.g. Employer, Client name"
                 value={field.state.value}
                 onChangeText={(v) => field.handleChange(v)}
+                onBlur={() => autoCategoryFromMerchant(field.state.value)}
                 placeholderTextColor={COLORS.MUTED}
               />
             </View>
