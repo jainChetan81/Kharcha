@@ -22,6 +22,7 @@ module.exports = {
         popover: { DEFAULT: '#1a1a1a', foreground: '#f0f0f0' },
         positive: '#22c55e',
         negative: '#ef4444',
+        warning: '#f59e0b',
       },
     },
   },

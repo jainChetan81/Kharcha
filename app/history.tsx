@@ -551,7 +551,7 @@ export default function HistoryScreen() {
         </View>
       )}
 
-      <View className="mx-5 mb-3 flex-row items-center rounded-xl border border-[#2a2a2a] bg-[#1a1a1a] px-3">
+      <View className="mx-5 mb-3 flex-row items-center rounded-xl border border-border bg-card px-3">
         <Icon as={Search} className="mr-2 size-4 text-muted-foreground" />
         <Input
           placeholder="search transactions..."

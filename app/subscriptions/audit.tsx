@@ -16,7 +16,12 @@ import {
   useSubscriptionsTotal,
   useUnusedSubscriptions,
 } from "@/hooks/use-subscriptions";
-import { COLORS, DATE_FORMAT, SCREENS } from "@/lib/constants";
+import {
+  COLORS,
+  DATE_FORMAT,
+  editSubscriptionScreen,
+  SCREENS,
+} from "@/lib/constants";
 import { parseDate } from "@/lib/format";
 
 type CategoryGroup = {
@@ -45,11 +50,13 @@ export default function SubscriptionAuditScreen() {
   const { data: totalCost = 0 } = useSubscriptionsTotal();
 
   const categoryGroups = groupByCategory(activeSubs);
+  const isEmpty = activeSubs.length === 0;
 
-  if (activeSubs.length === 0) {
-    return (
-      <View className="flex-1 bg-background">
-        <ScreenHeader title="Audit" />
+  return (
+    <View className="flex-1 bg-background">
+      <ScreenHeader title="Audit" />
+
+      {isEmpty ? (
         <View className="flex-1 items-center justify-center">
           <Icon as={Receipt} className="mb-3 size-12 text-muted-foreground" />
           <Text className="text-sm text-muted-foreground">
@@ -64,93 +71,87 @@ export default function SubscriptionAuditScreen() {
             </Text>
           </Pressable>
         </View>
-      </View>
-    );
-  }
-
-  return (
-    <View className="flex-1 bg-background">
-      <ScreenHeader title="Audit" />
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.PRIMARY}
-            progressViewOffset={40}
-          />
-        }
-      >
-        <View className="mx-5 mt-2 rounded-xl border border-border bg-card px-4 py-4">
-          <Text className="text-2xl font-bold text-foreground">
-            {fmt(totalCost)}
-            <Text className="text-sm font-normal text-muted-foreground">
-              /month
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.PRIMARY}
+              progressViewOffset={40}
+            />
+          }
+        >
+          <View className="mx-5 mt-2 rounded-xl border border-border bg-card px-4 py-4">
+            <Text className="text-2xl font-bold text-foreground">
+              {fmt(totalCost)}
+              <Text className="text-sm font-normal text-muted-foreground">
+                /month
+              </Text>
             </Text>
-          </Text>
-          <Text className="mt-1 text-xs text-muted-foreground">
-            across {activeSubs.length} subscription
-            {activeSubs.length !== 1 ? "s" : ""}
-          </Text>
-        </View>
-
-        {unusedSubs.length > 0 && (
-          <>
-            <SectionHeader title="Possibly Unused" />
-            {unusedSubs.map((sub) => (
-              <UnusedSubCard key={sub.id} sub={sub} fmt={fmt} />
-            ))}
-          </>
-        )}
-
-        <SectionHeader title="By Category" />
-        {categoryGroups.map((group) => (
-          <View
-            key={group.name}
-            className="mx-5 mb-2 rounded-xl border border-border bg-card px-4 py-3"
-          >
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm font-semibold text-foreground">
-                {group.name}
-              </Text>
-              <Text className="text-sm font-semibold text-foreground">
-                {fmt(group.total)}
-              </Text>
-            </View>
-            <Text className="mt-0.5 text-xs text-muted-foreground">
-              {group.count} subscription{group.count !== 1 ? "s" : ""}
+            <Text className="mt-1 text-xs text-muted-foreground">
+              across {activeSubs.length} subscription
+              {activeSubs.length !== 1 ? "s" : ""}
             </Text>
           </View>
-        ))}
 
-        <SectionHeader title="All Subscriptions" />
-        {activeSubs.map((sub) => (
-          <Pressable
-            key={sub.id}
-            onPress={() => router.push(SCREENS.SUBSCRIPTIONS)}
-            className="mx-5 mb-2 rounded-xl border border-border bg-card px-4 py-3"
-          >
-            <View className="flex-row items-center justify-between">
-              <Text className="text-sm font-semibold text-foreground">
-                {sub.name}
-              </Text>
-              <Text className="text-sm font-semibold text-foreground">
-                {fmt(sub.amount)}
-                <Text className="text-xs font-normal text-muted-foreground">
-                  /mo
+          {unusedSubs.length > 0 && (
+            <>
+              <SectionHeader title="Possibly Unused" />
+              {unusedSubs.map((sub) => (
+                <UnusedSubCard key={sub.id} sub={sub} fmt={fmt} />
+              ))}
+            </>
+          )}
+
+          <SectionHeader title="By Category" />
+          {categoryGroups.map((group) => (
+            <View
+              key={group.name}
+              className="mx-5 mb-2 rounded-xl border border-border bg-card px-4 py-3"
+            >
+              <View className="flex-row items-center justify-between">
+                <Text className="text-sm font-semibold text-foreground">
+                  {group.name}
                 </Text>
+                <Text className="text-sm font-semibold text-foreground">
+                  {fmt(group.total)}
+                </Text>
+              </View>
+              <Text className="mt-0.5 text-xs text-muted-foreground">
+                {group.count} subscription{group.count !== 1 ? "s" : ""}
               </Text>
             </View>
-            <Text className="mt-0.5 text-xs text-muted-foreground">
-              Day {sub.billing_day}
-              {sub.category_name ? ` · ${sub.category_name}` : ""}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+          ))}
+
+          <SectionHeader title="All Subscriptions" />
+          {activeSubs.map((sub) => (
+            <Pressable
+              key={sub.id}
+              onPress={() => router.push(editSubscriptionScreen(sub.id))}
+              className="mx-5 mb-2 rounded-xl border border-border bg-card px-4 py-3"
+            >
+              <View className="flex-row items-center justify-between">
+                <Text className="text-sm font-semibold text-foreground">
+                  {sub.name}
+                </Text>
+                <Text className="text-sm font-semibold text-foreground">
+                  {fmt(sub.amount)}
+                  <Text className="text-xs font-normal text-muted-foreground">
+                    /mo
+                  </Text>
+                </Text>
+              </View>
+              <Text className="mt-0.5 text-xs text-muted-foreground">
+                Day {sub.billing_day}
+                {sub.category_name ? ` · ${sub.category_name}` : ""}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -167,16 +168,16 @@ function UnusedSubCard({
     : "Never charged";
 
   return (
-    <View className="mx-5 mb-2 rounded-xl border border-amber-500 bg-card px-4 py-3">
+    <View className="mx-5 mb-2 rounded-xl border border-warning bg-card px-4 py-3">
       <View className="flex-row items-center justify-between">
         <View className="flex-1">
           <View className="flex-row items-center gap-2">
-            <Icon as={AlertTriangle} className="size-4 text-amber-500" />
+            <Icon as={AlertTriangle} className="size-4 text-warning" />
             <Text className="text-sm font-semibold text-foreground">
               {sub.name}
             </Text>
           </View>
-          <Text className="mt-0.5 text-xs text-amber-500">
+          <Text className="mt-0.5 text-xs text-warning">
             {lastChargedLabel}
           </Text>
           <Text className="mt-0.5 text-xs text-muted-foreground">

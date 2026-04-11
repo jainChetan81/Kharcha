@@ -4,6 +4,7 @@ import { Text } from "@/components/ui/text";
 
 type DuplicateTransactionSheetProps = {
   visible: boolean;
+  /** Pre-formatted currency string (e.g. "₹450") shown in the body. */
   amount: string;
   merchant: string;
   date: string;
@@ -33,16 +34,17 @@ export function DuplicateTransactionSheet({
           className="flex-1 items-center rounded-xl py-3"
           onPress={onCancel}
         >
-          <Text className="text-sm font-medium" style={{ color: "#888888" }}>
+          <Text className="text-sm font-medium text-muted-foreground">
             Cancel
           </Text>
         </Pressable>
         <Pressable
-          className="flex-1 items-center rounded-xl py-3"
-          style={{ backgroundColor: "#7c3aed" }}
+          className="flex-1 items-center rounded-xl bg-primary py-3"
           onPress={onConfirm}
         >
-          <Text className="text-sm font-semibold text-white">Add Anyway</Text>
+          <Text className="text-sm font-semibold text-primary-foreground">
+            Add Anyway
+          </Text>
         </Pressable>
       </View>
     </BottomSheet>

@@ -195,6 +195,9 @@ export default function AddTransaction() {
   async function handleTransactionSubmit(value: TransactionFormValues) {
     try {
       const merchant = value.merchant?.trim();
+      // Skip duplicate check when no merchant is provided — merchant is the
+      // strongest dedupe signal, and date+amount alone produce too many
+      // false positives (e.g. multiple ₹100 cash expenses on the same day).
       if (merchant) {
         const isDuplicate = await findDuplicateTransaction(
           value.date,

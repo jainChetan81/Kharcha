@@ -61,17 +61,28 @@ export function TransactionForm({
     defaultValues.type,
   );
   const [userChangedCategory, setUserChangedCategory] = useState(false);
+  const [autoFilledMerchant, setAutoFilledMerchant] = useState<string | null>(
+    null,
+  );
 
   async function autoCategoryFromMerchant(merchant: string) {
     const trimmed = merchant.trim();
     if (trimmed.length < 3 || userChangedCategory) return;
-    const categoryId = await getMostUsedCategoryForMerchant(
-      trimmed,
-      activeType,
-    );
-    if (categoryId && !userChangedCategory) {
-      form.setFieldValue("categoryId", categoryId);
-      showSuccessToast("category set from history ✨");
+    // Don't re-run for the same merchant text that we already auto-filled.
+    if (autoFilledMerchant?.toLowerCase() === trimmed.toLowerCase()) return;
+    try {
+      const categoryId = await getMostUsedCategoryForMerchant(
+        trimmed,
+        activeType,
+      );
+      if (categoryId && !userChangedCategory) {
+        form.setFieldValue("categoryId", categoryId);
+        setAutoFilledMerchant(trimmed);
+        showSuccessToast("category set from history ✨");
+      }
+    } catch (err) {
+      // Best-effort feature — swallow DB errors so the form stays usable.
+      console.warn("autoCategoryFromMerchant failed:", err);
     }
   }
 

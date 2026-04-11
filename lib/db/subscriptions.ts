@@ -1,6 +1,10 @@
-import { format, getDaysInMonth } from "date-fns";
+import { format, getDaysInMonth, subDays } from "date-fns";
 import { and, eq, sql } from "drizzle-orm";
-import { MONTH_FORMAT, SUBSCRIPTION_NOTE } from "@/lib/constants";
+import {
+  DATE_ISO_FORMAT,
+  MONTH_FORMAT,
+  SUBSCRIPTION_NOTE,
+} from "@/lib/constants";
 import expo, { db } from "./connection";
 import { categories, sources, subscriptions, transactions } from "./schema";
 import type { SubscriptionRow } from "./types";
@@ -159,10 +163,7 @@ export type SubscriptionAuditRow = SubscriptionRow & {
 export async function getUnusedSubscriptions(): Promise<
   SubscriptionAuditRow[]
 > {
-  const cutoff = format(
-    new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-    "yyyy-MM-dd",
-  );
+  const cutoff = format(subDays(new Date(), 60), DATE_ISO_FORMAT);
 
   const rows = await db
     .select({
