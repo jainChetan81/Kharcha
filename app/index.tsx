@@ -12,7 +12,10 @@ import {
 import { useState } from "react";
 import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
-import { ScreenError } from "@/components/error-boundary";
+import {
+  ComponentErrorBoundary,
+  ScreenError,
+} from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
@@ -208,7 +211,9 @@ export default function HomeScreen() {
           </View>
 
           <View className="mt-3">
-            <SpendingRing income={income} expenses={expenses} fmt={fmt} />
+            <ComponentErrorBoundary name="home.spending-ring">
+              <SpendingRing income={income} expenses={expenses} fmt={fmt} />
+            </ComponentErrorBoundary>
           </View>
 
           <View className="mt-3 flex-row gap-3">
@@ -277,85 +282,89 @@ export default function HomeScreen() {
         </View>
 
         {categoryBreakdown.length > 0 && (
-          <View className="px-5 pb-4 pt-2">
-            <Text className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
-              {isCurrentMonth ? "This Month" : format(selectedDate, "MMMM")}
-            </Text>
-            {categoryBreakdown.map((cat) => {
-              const budget = cat.category_id
-                ? budgetMap.get(cat.category_id)
-                : undefined;
-              const ratio = budget ? cat.total / budget : 0;
-              const barColor = !budget
-                ? COLORS.PRIMARY
-                : ratio >= 1
-                  ? COLORS.DANGER
-                  : ratio >= 0.75
-                    ? COLORS.WARNING
-                    : COLORS.PRIMARY;
-              const barWidth = budget
-                ? Math.min(ratio * 100, 100)
-                : cat.percentage;
+          <ComponentErrorBoundary name="home.category-breakdown">
+            <View className="px-5 pb-4 pt-2">
+              <Text className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
+                {isCurrentMonth ? "This Month" : format(selectedDate, "MMMM")}
+              </Text>
+              {categoryBreakdown.map((cat) => {
+                const budget = cat.category_id
+                  ? budgetMap.get(cat.category_id)
+                  : undefined;
+                const ratio = budget ? cat.total / budget : 0;
+                const barColor = !budget
+                  ? COLORS.PRIMARY
+                  : ratio >= 1
+                    ? COLORS.DANGER
+                    : ratio >= 0.75
+                      ? COLORS.WARNING
+                      : COLORS.PRIMARY;
+                const barWidth = budget
+                  ? Math.min(ratio * 100, 100)
+                  : cat.percentage;
 
-              return (
-                <Pressable
-                  key={cat.category_id ?? "other"}
-                  onPress={() =>
-                    router.push(
-                      `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${cat.category_id ?? "other"}&month=${selectedMonth}`,
-                    )
-                  }
-                  className="mb-3"
-                >
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-base text-foreground">
-                      {cat.category_name}
-                    </Text>
-                    <View className="flex-row items-center gap-1">
-                      <Text className="text-sm text-muted-foreground">
-                        {fmt(cat.total)}
-                        {budget ? ` / ${fmt(budget)}` : ""}
+                return (
+                  <Pressable
+                    key={cat.category_id ?? "other"}
+                    onPress={() =>
+                      router.push(
+                        `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${cat.category_id ?? "other"}&month=${selectedMonth}`,
+                      )
+                    }
+                    className="mb-3"
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-base text-foreground">
+                        {cat.category_name}
                       </Text>
-                      <Icon
-                        as={ChevronRight}
-                        className="size-4 text-muted-foreground"
+                      <View className="flex-row items-center gap-1">
+                        <Text className="text-sm text-muted-foreground">
+                          {fmt(cat.total)}
+                          {budget ? ` / ${fmt(budget)}` : ""}
+                        </Text>
+                        <Icon
+                          as={ChevronRight}
+                          className="size-4 text-muted-foreground"
+                        />
+                      </View>
+                    </View>
+                    <View
+                      className="mt-1.5 h-1 rounded-full"
+                      style={{ backgroundColor: COLORS.BAR_BG }}
+                    >
+                      <View
+                        className="h-1 rounded-full"
+                        style={{
+                          width: `${barWidth}%`,
+                          backgroundColor: barColor,
+                        }}
                       />
                     </View>
-                  </View>
-                  <View
-                    className="mt-1.5 h-1 rounded-full"
-                    style={{ backgroundColor: COLORS.BAR_BG }}
-                  >
-                    <View
-                      className="h-1 rounded-full"
-                      style={{
-                        width: `${barWidth}%`,
-                        backgroundColor: barColor,
-                      }}
-                    />
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ComponentErrorBoundary>
         )}
 
-        <View className="px-5 pt-2">
-          <Text className="mb-3 text-sm font-semibold text-muted-foreground">
-            {isCurrentMonth ? "Recent Transactions" : "Transactions"}
-          </Text>
-          {listData.map((item) =>
-            item.type === "header" ? (
-              <DateHeader key={`h-${item.label}`} label={item.label} />
-            ) : (
-              <TransactionItem
-                key={`t-${item.data.id}`}
-                item={item.data}
-                onPress={(id) => router.push(editScreen(id))}
-              />
-            ),
-          )}
-        </View>
+        <ComponentErrorBoundary name="home.transaction-list">
+          <View className="px-5 pt-2">
+            <Text className="mb-3 text-sm font-semibold text-muted-foreground">
+              {isCurrentMonth ? "Recent Transactions" : "Transactions"}
+            </Text>
+            {listData.map((item) =>
+              item.type === "header" ? (
+                <DateHeader key={`h-${item.label}`} label={item.label} />
+              ) : (
+                <TransactionItem
+                  key={`t-${item.data.id}`}
+                  item={item.data}
+                  onPress={(id) => router.push(editScreen(id))}
+                />
+              ),
+            )}
+          </View>
+        </ComponentErrorBoundary>
       </ScrollView>
 
       <View

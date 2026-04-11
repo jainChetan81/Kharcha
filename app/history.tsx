@@ -1,5 +1,14 @@
 import { FlashList } from "@shopify/flash-list";
-import { format, parse } from "date-fns";
+import {
+  endOfMonth,
+  format,
+  parse,
+  startOfMonth,
+  startOfWeek,
+  startOfYear,
+  subDays,
+  subMonths,
+} from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ChevronLeft,
@@ -10,16 +19,26 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  startTransition,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
   Pressable,
   RefreshControl,
+  ScrollView,
   View,
 } from "react-native";
-import { ScreenError } from "@/components/error-boundary";
-import { getPresetRange, PeriodPicker } from "@/components/period-picker";
+import {
+  ComponentErrorBoundary,
+  ScreenError,
+} from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
@@ -38,6 +57,7 @@ import {
 } from "@/hooks/use-transactions";
 import {
   COLORS,
+  DATE_FORMAT,
   DATE_ISO_FORMAT,
   EMAIL_LOG_STATUS,
   editScreen,
@@ -56,8 +76,50 @@ import { syncGmailTransactions } from "@/lib/gmail/sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
+const DatePickerModal = lazy(() =>
+  import("@/components/ui/date-picker-modal").then((m) => ({
+    default: m.DatePickerModal,
+  })),
+);
+
 const TYPE_FILTERS = Object.values(TRANSACTION_TYPE);
 const SOURCE_TYPE_FILTERS = Object.values(SOURCE_TYPE);
+
+const PRESET_LABELS: Record<PeriodPresetType, string> = {
+  [PERIOD_PRESET.TODAY]: "Today",
+  [PERIOD_PRESET.THIS_WEEK]: "This Week",
+  [PERIOD_PRESET.LAST_7_DAYS]: "Last 7 Days",
+  [PERIOD_PRESET.THIS_MONTH]: "This Month",
+  [PERIOD_PRESET.LAST_MONTH]: "Last Month",
+  [PERIOD_PRESET.THIS_YEAR]: "This Year",
+  [PERIOD_PRESET.CUSTOM]: "Custom",
+};
+
+function getPresetRange(preset: PeriodPresetType): {
+  from: string;
+  to: string;
+} {
+  const now = new Date();
+  const fmt = (d: Date) => format(d, DATE_ISO_FORMAT);
+  switch (preset) {
+    case PERIOD_PRESET.TODAY:
+      return { from: fmt(now), to: fmt(now) };
+    case PERIOD_PRESET.THIS_WEEK:
+      return { from: fmt(startOfWeek(now, { weekStartsOn: 1 })), to: fmt(now) };
+    case PERIOD_PRESET.LAST_7_DAYS:
+      return { from: fmt(subDays(now, 7)), to: fmt(now) };
+    case PERIOD_PRESET.THIS_MONTH:
+      return { from: fmt(startOfMonth(now)), to: fmt(now) };
+    case PERIOD_PRESET.LAST_MONTH: {
+      const prev = subMonths(now, 1);
+      return { from: fmt(startOfMonth(prev)), to: fmt(endOfMonth(prev)) };
+    }
+    case PERIOD_PRESET.THIS_YEAR:
+      return { from: fmt(startOfYear(now)), to: fmt(now) };
+    default:
+      return { from: fmt(now), to: fmt(now) };
+  }
+}
 
 export default function HistoryScreen() {
   const { format: fmt } = useCurrency();
@@ -115,6 +177,9 @@ export default function HistoryScreen() {
   const [draftDateTo, setDraftDateTo] = useState<string | null>(null);
   const [draftAmountMin, setDraftAmountMin] = useState("");
   const [draftAmountMax, setDraftAmountMax] = useState("");
+  const [showFromPicker, setShowFromPicker] = useState(false);
+  const [showToPicker, setShowToPicker] = useState(false);
+
   useEffect(() => {
     if (
       params.filter === TRANSACTION_TYPE.INCOME ||
@@ -163,12 +228,12 @@ export default function HistoryScreen() {
     params.amount_max,
   ]);
 
-  // Reset draft category/source when draft type changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset on draftType change
-  useEffect(() => {
+  function handleDraftTypeChange(next: TransactionFilterType) {
+    if (next === draftType) return;
+    setDraftType(next);
     setDraftCategoryId(null);
     setDraftSourceId(null);
-  }, [draftType]);
+  }
 
   const { data: otherLookupCategories = [] } = useCategoriesByType(
     "expense",
@@ -197,8 +262,8 @@ export default function HistoryScreen() {
     if (sourceId !== null) count++;
     if (sourceTypeFilter !== SOURCE_TYPE.ALL) count++;
     if (dateFrom || dateTo) count++;
-    if (amountMin !== null) count++;
-    if (amountMax !== null) count++;
+    if (amountMin != null && amountMin > 0) count++;
+    if (amountMax != null && amountMax > 0) count++;
     return count;
   }, [
     typeFilter,
@@ -291,7 +356,7 @@ export default function HistoryScreen() {
         ).toLowerCase();
         parts.push(label);
       } else {
-        parts.push(format(new Date(), "yyyy-MM-dd"));
+        parts.push(format(new Date(), DATE_ISO_FORMAT));
       }
       await exportToCSV(all, parts.join("-"));
       showSuccessToast("Exported", `${all.length} transactions`);
@@ -302,31 +367,65 @@ export default function HistoryScreen() {
     }
   }
 
+  function handlePresetSelect(preset: PeriodPresetType) {
+    if (preset === draftPreset) {
+      setDraftPreset(null);
+      setDraftDateFrom(null);
+      setDraftDateTo(null);
+      return;
+    }
+    setDraftPreset(preset);
+    if (preset !== PERIOD_PRESET.CUSTOM) {
+      const range = getPresetRange(preset);
+      setDraftDateFrom(range.from);
+      setDraftDateTo(range.to);
+    }
+  }
+
   function openFilters() {
     setDraftType(typeFilter);
     setDraftCategoryId(categoryId);
     setDraftSourceId(sourceId);
     setDraftSourceType(sourceTypeFilter);
     setDraftPreset(periodPreset);
-    setDraftDateFrom(dateFrom);
-    setDraftDateTo(dateTo);
+    // Recompute preset range on open so non-custom presets stay fresh
+    if (periodPreset && periodPreset !== PERIOD_PRESET.CUSTOM) {
+      const range = getPresetRange(periodPreset);
+      setDraftDateFrom(range.from);
+      setDraftDateTo(range.to);
+    } else {
+      setDraftDateFrom(dateFrom);
+      setDraftDateTo(dateTo);
+    }
     setDraftAmountMin(amountMin != null ? String(amountMin) : "");
     setDraftAmountMax(amountMax != null ? String(amountMax) : "");
     setShowFilters(true);
   }
 
+  function parseAmountInput(raw: string): number | null {
+    if (!raw.trim()) return null;
+    const parsed = Number(raw);
+    if (Number.isNaN(parsed) || parsed <= 0) return null;
+    return parsed;
+  }
+
   function applyFilters() {
-    setTypeFilter(draftType);
-    setCategoryId(draftCategoryId);
-    setSourceId(draftSourceId);
-    setSourceTypeFilter(draftSourceType);
-    setPeriodPreset(draftPreset);
-    setDateFrom(draftDateFrom);
-    setDateTo(draftDateTo);
-    const minVal = draftAmountMin ? Number(draftAmountMin) : null;
-    const maxVal = draftAmountMax ? Number(draftAmountMax) : null;
-    setAmountMin(Number.isNaN(minVal) ? null : minVal);
-    setAmountMax(Number.isNaN(maxVal) ? null : maxVal);
+    // Treat a Custom preset with no dates chosen as "no period filter"
+    const effectivePreset =
+      draftPreset === PERIOD_PRESET.CUSTOM && !draftDateFrom && !draftDateTo
+        ? null
+        : draftPreset;
+    startTransition(() => {
+      setTypeFilter(draftType);
+      setCategoryId(draftCategoryId);
+      setSourceId(draftSourceId);
+      setSourceTypeFilter(draftSourceType);
+      setPeriodPreset(effectivePreset);
+      setDateFrom(effectivePreset ? draftDateFrom : null);
+      setDateTo(effectivePreset ? draftDateTo : null);
+      setAmountMin(parseAmountInput(draftAmountMin));
+      setAmountMax(parseAmountInput(draftAmountMax));
+    });
     setShowFilters(false);
   }
 
@@ -398,7 +497,7 @@ export default function HistoryScreen() {
           <Pressable
             onPress={handleExport}
             disabled={exporting}
-            className="flex-row items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2"
+            className="items-center justify-center rounded-xl border border-border bg-card px-3 py-2"
           >
             {exporting ? (
               <ActivityIndicator size="small" color={COLORS.PRIMARY} />
@@ -468,62 +567,67 @@ export default function HistoryScreen() {
         )}
       </View>
 
-      <FlashList
-        data={listData}
-        keyExtractor={(item) =>
-          item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
-        }
-        getItemType={(item) => item.type}
-        renderItem={({ item }: { item: ListItem }) =>
-          item.type === "header" ? (
-            <View className="px-5">
-              <DateHeader label={item.label} />
-            </View>
-          ) : (
-            <View className="px-5">
-              <TransactionItem
-                item={item.data}
-                showTime
-                onPress={(id) => router.push(editScreen(id))}
-                onSwipeDelete={handleSwipeDelete}
+      <ComponentErrorBoundary>
+        <FlashList
+          data={listData}
+          keyExtractor={(item) =>
+            item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
+          }
+          getItemType={(item) => item.type}
+          renderItem={({ item }: { item: ListItem }) =>
+            item.type === "header" ? (
+              <View className="px-5">
+                <DateHeader label={item.label} />
+              </View>
+            ) : (
+              <View className="px-5">
+                <TransactionItem
+                  item={item.data}
+                  showTime
+                  onPress={(id) => router.push(editScreen(id))}
+                  onSwipeDelete={handleSwipeDelete}
+                />
+              </View>
+            )
+          }
+          onEndReached={() => {
+            if (hasNextPage) fetchNextPage();
+          }}
+          onEndReachedThreshold={0.5}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.PRIMARY}
+              progressViewOffset={40}
+            />
+          }
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View className="items-center py-6">
+                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            <View className="items-center pt-20">
+              <Icon
+                as={Receipt}
+                className="mb-3 size-12 text-muted-foreground"
               />
+              <Text className="text-sm text-muted-foreground">
+                No transactions found
+              </Text>
+              {hasActiveFilters && (
+                <Pressable onPress={resetAllFilters} className="mt-2">
+                  <Text className="text-xs text-primary">Clear filters</Text>
+                </Pressable>
+              )}
             </View>
-          )
-        }
-        onEndReached={() => {
-          if (hasNextPage) fetchNextPage();
-        }}
-        onEndReachedThreshold={0.5}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.PRIMARY}
-            progressViewOffset={40}
-          />
-        }
-        ListFooterComponent={
-          isFetchingNextPage ? (
-            <View className="items-center py-6">
-              <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-            </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          <View className="items-center pt-20">
-            <Icon as={Receipt} className="mb-3 size-12 text-muted-foreground" />
-            <Text className="text-sm text-muted-foreground">
-              No transactions found
-            </Text>
-            {hasActiveFilters && (
-              <Pressable onPress={resetAllFilters} className="mt-2">
-                <Text className="text-xs text-primary">Clear filters</Text>
-              </Pressable>
-            )}
-          </View>
-        }
-        contentContainerStyle={{ paddingBottom: 24 }}
-      />
+          }
+          contentContainerStyle={{ paddingBottom: 24 }}
+        />
+      </ComponentErrorBoundary>
 
       <BottomSheet visible={showFilters} onClose={() => setShowFilters(false)}>
         <View className="mb-6 flex-row items-center justify-between">
@@ -547,7 +651,7 @@ export default function HistoryScreen() {
           {TYPE_FILTERS.map((f) => (
             <Pressable
               key={f}
-              onPress={() => setDraftType(f)}
+              onPress={() => handleDraftTypeChange(f)}
               className={cn(
                 "flex-1 items-center rounded-xl py-2.5",
                 draftType === f ? "bg-primary" : "bg-muted",
@@ -610,7 +714,7 @@ export default function HistoryScreen() {
             >
               <Text
                 className={cn(
-                  "text-xs font-medium capitalize",
+                  "text-sm font-medium capitalize",
                   draftSourceType === f
                     ? "text-primary-foreground"
                     : "text-muted-foreground",
@@ -622,24 +726,80 @@ export default function HistoryScreen() {
           ))}
         </View>
 
-        <PeriodPicker
-          preset={draftPreset}
-          dateFrom={draftDateFrom}
-          dateTo={draftDateTo}
-          onPresetChange={setDraftPreset}
-          onDateFromChange={setDraftDateFrom}
-          onDateToChange={setDraftDateTo}
-        />
-        <View className="mb-5" />
-
         <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Period
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="mb-3"
+          contentContainerStyle={{ gap: 8, paddingRight: 24 }}
+        >
+          {Object.values(PERIOD_PRESET).map((p) => (
+            <Pressable
+              key={p}
+              onPress={() => handlePresetSelect(p)}
+              className={cn(
+                "rounded-full px-4 py-2.5",
+                draftPreset === p
+                  ? "bg-primary"
+                  : "border border-border bg-card",
+              )}
+            >
+              <Text
+                className={cn(
+                  "text-sm font-medium",
+                  draftPreset === p
+                    ? "text-primary-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
+                {PRESET_LABELS[p]}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+        {draftPreset === PERIOD_PRESET.CUSTOM && (
+          <View className="mb-3 flex-row gap-3">
+            <Pressable
+              onPress={() => setShowFromPicker(true)}
+              className="flex-1 rounded-xl bg-muted px-4 py-3"
+            >
+              <Text className="text-xs text-muted-foreground">From</Text>
+              <Text className="text-sm font-medium text-foreground">
+                {draftDateFrom
+                  ? format(
+                      parse(draftDateFrom, DATE_ISO_FORMAT, new Date()),
+                      DATE_FORMAT,
+                    )
+                  : "Select"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setShowToPicker(true)}
+              className="flex-1 rounded-xl bg-muted px-4 py-3"
+            >
+              <Text className="text-xs text-muted-foreground">To</Text>
+              <Text className="text-sm font-medium text-foreground">
+                {draftDateTo
+                  ? format(
+                      parse(draftDateTo, DATE_ISO_FORMAT, new Date()),
+                      DATE_FORMAT,
+                    )
+                  : "Select"}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
+        <Text className="mb-2 mt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Amount
         </Text>
         <View className="mb-5 flex-row gap-3">
           <Input
             placeholder="Min ₹"
             placeholderTextColor={COLORS.MUTED}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             value={draftAmountMin}
             onChangeText={setDraftAmountMin}
             className="flex-1"
@@ -647,7 +807,7 @@ export default function HistoryScreen() {
           <Input
             placeholder="Max ₹"
             placeholderTextColor={COLORS.MUTED}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             value={draftAmountMax}
             onChangeText={setDraftAmountMax}
             className="flex-1"
@@ -673,6 +833,47 @@ export default function HistoryScreen() {
           </Button>
         </View>
       </BottomSheet>
+
+      {/* DatePickerModal instances are hoisted outside BottomSheet to avoid
+          nested RN Modal issues on Android. */}
+      <Suspense fallback={null}>
+        <DatePickerModal
+          visible={showFromPicker}
+          value={
+            draftDateFrom
+              ? parse(draftDateFrom, DATE_ISO_FORMAT, new Date())
+              : new Date()
+          }
+          title="From Date"
+          onConfirm={(date) => {
+            setShowFromPicker(false);
+            setDraftDateFrom(format(date, DATE_ISO_FORMAT));
+          }}
+          onCancel={() => setShowFromPicker(false)}
+          onClear={() => {
+            setShowFromPicker(false);
+            setDraftDateFrom(null);
+          }}
+        />
+        <DatePickerModal
+          visible={showToPicker}
+          value={
+            draftDateTo
+              ? parse(draftDateTo, DATE_ISO_FORMAT, new Date())
+              : new Date()
+          }
+          title="To Date"
+          onConfirm={(date) => {
+            setShowToPicker(false);
+            setDraftDateTo(format(date, DATE_ISO_FORMAT));
+          }}
+          onCancel={() => setShowToPicker(false)}
+          onClear={() => {
+            setShowToPicker(false);
+            setDraftDateTo(null);
+          }}
+        />
+      </Suspense>
     </View>
   );
 }

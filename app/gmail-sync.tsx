@@ -23,6 +23,14 @@ import {
   SCREENS,
 } from "@/lib/constants";
 import { deleteConfig, getConfig, updateConfig } from "@/lib/db/config";
+import { useGoogleAuth } from "@/lib/gmail/auth";
+import {
+  type EmailLog,
+  type SyncResult,
+  syncGmailTransactions,
+} from "@/lib/gmail/sync";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 
 const SyncResultsSheet = lazy(() =>
   import("@/components/sync-results-sheet").then((m) => ({
@@ -34,15 +42,6 @@ const DatePickerModal = lazy(() =>
     default: m.DatePickerModal,
   })),
 );
-
-import { useGoogleAuth } from "@/lib/gmail/auth";
-import {
-  type EmailLog,
-  type SyncResult,
-  syncGmailTransactions,
-} from "@/lib/gmail/sync";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
 
 export default function GmailSyncScreen() {
   const queryClient = useQueryClient();

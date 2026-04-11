@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { AlertTriangle } from "lucide-react-native";
-import { Component, type ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
@@ -46,6 +46,7 @@ type ErrorBoundaryProps = {
   children: ReactNode;
   fallback?: ReactNode;
   onDismiss?: () => void;
+  name?: string;
 };
 
 type ErrorBoundaryState = {
@@ -60,6 +61,15 @@ export class ComponentErrorBoundary extends Component<
 
   static getDerivedStateFromError(error: Error) {
     return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    const scope = this.props.name ? `[${this.props.name}] ` : "";
+    console.error(
+      `${scope}ComponentErrorBoundary caught:`,
+      error,
+      info.componentStack,
+    );
   }
 
   reset = () => {

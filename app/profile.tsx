@@ -10,13 +10,6 @@ import {
 } from "lucide-react-native";
 import { lazy, Suspense, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, View } from "react-native";
-
-const CurrencyPicker = lazy(() =>
-  import("@/components/currency-picker").then((m) => ({
-    default: m.CurrencyPicker,
-  })),
-);
-
 import { ScreenError } from "@/components/error-boundary";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Icon } from "@/components/ui/icon";
@@ -31,6 +24,12 @@ import { useClearTransactionsWithConfirm } from "@/hooks/use-transactions";
 import { COLORS, SCREENS } from "@/lib/constants";
 import { seedSampleData } from "@/lib/db";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
+
+const CurrencyPicker = lazy(() =>
+  import("@/components/currency-picker").then((m) => ({
+    default: m.CurrencyPicker,
+  })),
+);
 
 export default function ProfileScreen() {
   const queryClient = useQueryClient();
