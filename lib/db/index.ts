@@ -2,6 +2,7 @@ import { addDays, format, startOfMonth, subDays, subMonths } from "date-fns";
 import { and, desc, eq, gte, isNull, like, lte, or, sql } from "drizzle-orm";
 import {
   CONFIG_KEYS,
+  DATE_ISO_FORMAT,
   OTHER_CATEGORY_LABEL,
   type SourceType,
   TRANSACTION_TYPE,
@@ -304,9 +305,9 @@ export async function seedSampleData(): Promise<boolean> {
 
   const today = new Date();
   const lastMonthStart = startOfMonth(subMonths(today, 1));
-  const day = (n: number) => format(subDays(today, n), "yyyy-MM-dd");
+  const day = (n: number) => format(subDays(today, n), DATE_ISO_FORMAT);
   const lastMonthDay = (n: number) =>
-    format(addDays(lastMonthStart, n), "yyyy-MM-dd");
+    format(addDays(lastMonthStart, n), DATE_ISO_FORMAT);
 
   await db.insert(transactions).values([
     {
@@ -748,6 +749,8 @@ export async function getTransactionsPaginated(
     sourceType?: SourceType | "all";
     dateFrom?: string | null;
     dateTo?: string | null;
+    amountMin?: number | null;
+    amountMax?: number | null;
     search?: string;
   },
 ) {
@@ -783,6 +786,12 @@ export async function getTransactionsPaginated(
   }
   if (filters?.dateTo) {
     conditions.push(lte(transactions.date, `${filters.dateTo} 23:59`));
+  }
+  if (filters?.amountMin != null) {
+    conditions.push(gte(transactions.amount, filters.amountMin));
+  }
+  if (filters?.amountMax != null) {
+    conditions.push(lte(transactions.amount, filters.amountMax));
   }
   if (filters?.search) {
     const term = `%${filters.search}%`;

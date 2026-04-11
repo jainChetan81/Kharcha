@@ -3,10 +3,16 @@ import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { Sparkles } from "lucide-react-native";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { KeyboardAvoidingView, Pressable, Switch, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
-import { ParseMessageSheet } from "@/components/parse-message-sheet";
+
+const ParseMessageSheet = lazy(() =>
+  import("@/components/parse-message-sheet").then((m) => ({
+    default: m.ParseMessageSheet,
+  })),
+);
+
 import {
   SubscriptionForm,
   type SubscriptionFormDefaults,
@@ -260,11 +266,13 @@ export default function AddTransaction() {
         />
       )}
 
-      <ParseMessageSheet
-        visible={parseSheetVisible}
-        onClose={() => setParseSheetVisible(false)}
-        onParsed={handleParsed}
-      />
+      <Suspense fallback={null}>
+        <ParseMessageSheet
+          visible={parseSheetVisible}
+          onClose={() => setParseSheetVisible(false)}
+          onParsed={handleParsed}
+        />
+      </Suspense>
     </KeyboardAvoidingView>
   );
 }

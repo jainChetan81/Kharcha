@@ -1,5 +1,9 @@
 import { format } from "date-fns";
-import { GEMINI_ERROR, type GeminiErrorType } from "@/lib/constants";
+import {
+  DATE_ISO_FORMAT,
+  GEMINI_ERROR,
+  type GeminiErrorType,
+} from "@/lib/constants";
 import { env } from "@/lib/env";
 
 const GEMINI_MODEL = "gemini-2.5-flash";
@@ -275,7 +279,7 @@ async function callGemini<T>(
 export async function parseMessageWithGemini(
   text: string,
 ): Promise<GeminiParseMessageResult> {
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = format(new Date(), DATE_ISO_FORMAT);
   const userContent = `${MESSAGE_PROMPT}\n\nText:\n${sanitizeForPrompt(text).slice(0, MAX_INPUT_CHARS)}\n\nToday: ${today}`;
 
   const result = await callGemini<
