@@ -6,6 +6,16 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
+import { InfoRow } from "@/components/ui/info-row";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Text } from "@/components/ui/text";
+import { COLORS, CONFIG_KEYS, DATE_FORMAT, QUERY_KEYS } from "@/lib/constants";
+import { insertTransaction, syncedTransactionExists } from "@/lib/db";
+import { getConfig, updateConfig } from "@/lib/db/config";
+import { env } from "@/lib/env";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { isIOS } from "@/lib/utils";
 
 const SyncResultsSheet = lazy(() =>
   import("@/components/sync-results-sheet").then((m) => ({
@@ -17,17 +27,6 @@ const DatePickerModal = lazy(() =>
     default: m.DatePickerModal,
   })),
 );
-
-import { InfoRow } from "@/components/ui/info-row";
-import { ScreenHeader } from "@/components/ui/screen-header";
-import { SectionHeader } from "@/components/ui/section-header";
-import { Text } from "@/components/ui/text";
-import { COLORS, CONFIG_KEYS, DATE_FORMAT, QUERY_KEYS } from "@/lib/constants";
-import { insertTransaction, syncedTransactionExists } from "@/lib/db";
-import { getConfig, updateConfig } from "@/lib/db/config";
-import { env } from "@/lib/env";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
-import { isIOS } from "@/lib/utils";
 
 async function parseErrorResponse(
   res: Response,

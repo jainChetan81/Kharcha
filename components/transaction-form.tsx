@@ -6,13 +6,6 @@ import { lazy, Suspense, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { ChipPicker } from "@/components/ui/chip-picker";
-
-const DateTimePickerModal = lazy(() =>
-  import("@/components/ui/date-picker-modal").then((m) => ({
-    default: m.DateTimePickerModal,
-  })),
-);
-
 import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
@@ -28,6 +21,12 @@ import { getAllSources, getCategoriesByType } from "@/lib/db";
 import { parseDate } from "@/lib/format";
 import { showErrorToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+
+const DateTimePickerModal = lazy(() =>
+  import("@/components/ui/date-picker-modal").then((m) => ({
+    default: m.DateTimePickerModal,
+  })),
+);
 
 export type TransactionFormValues = {
   type: "income" | "expense";
