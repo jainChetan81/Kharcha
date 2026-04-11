@@ -102,7 +102,7 @@ export default function RootLayout() {
   useQuickActionRouting();
 
   const [dbReady, setDbReady] = useState(false);
-  const { locked, authenticate } = useAppLock();
+  const { locked, authenticate } = useAppLock(dbReady);
 
   useEffect(() => {
     initDB()

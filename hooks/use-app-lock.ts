@@ -7,6 +7,11 @@ import { getConfig, updateConfig } from "@/lib/db/config";
 import { showErrorToast } from "@/lib/toast";
 
 async function promptBiometric(): Promise<boolean> {
+  const enrolled = await LocalAuthentication.isEnrolledAsync();
+  if (!enrolled) {
+    showErrorToast("No biometrics set up on this device");
+    return false;
+  }
   const result = await LocalAuthentication.authenticateAsync({
     promptMessage: "Unlock Kharcha",
     fallbackLabel: "Use Passcode",
@@ -14,29 +19,45 @@ async function promptBiometric(): Promise<boolean> {
   return result.success;
 }
 
-export function useAppLock() {
+export function useAppLock(dbReady: boolean) {
   const [locked, setLocked] = useState(false);
   const appState = useRef(AppState.currentState);
   const hasCheckedColdStart = useRef(false);
+  // Guard against the AppState listener re-triggering authentication while a
+  // biometric prompt is already on screen — the native prompt can push the
+  // app through inactive → active on some devices, which would loop.
+  const authInFlight = useRef(false);
 
   const authenticate = useCallback(async () => {
-    const success = await promptBiometric();
-    if (success) {
-      setLocked(false);
+    if (authInFlight.current) return;
+    authInFlight.current = true;
+    try {
+      const success = await promptBiometric();
+      if (success) {
+        setLocked(false);
+      }
+    } finally {
+      authInFlight.current = false;
     }
   }, []);
 
+  // Cold-start check — gated on dbReady so we don't read config before
+  // initDB has created the table.
   useEffect(() => {
-    if (hasCheckedColdStart.current) return;
+    if (!dbReady || hasCheckedColdStart.current) return;
     hasCheckedColdStart.current = true;
 
-    getConfig(CONFIG_KEYS.APP_LOCK_ENABLED).then((value) => {
-      if (value === "1") {
-        setLocked(true);
-        authenticate();
-      }
-    });
-  }, [authenticate]);
+    getConfig(CONFIG_KEYS.APP_LOCK_ENABLED)
+      .then((value) => {
+        if (value === "1") {
+          setLocked(true);
+          authenticate();
+        }
+      })
+      .catch(() => {
+        // Config read failed — don't block the app, leave unlocked.
+      });
+  }, [dbReady, authenticate]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener(
@@ -46,12 +67,19 @@ export function useAppLock() {
           appState.current.match(/inactive|background/) &&
           nextState === "active"
         ) {
-          getConfig(CONFIG_KEYS.APP_LOCK_ENABLED).then((value) => {
-            if (value === "1") {
-              setLocked(true);
-              authenticate();
-            }
-          });
+          // Skip the re-auth trigger while a biometric prompt is still up.
+          if (authInFlight.current) {
+            appState.current = nextState;
+            return;
+          }
+          getConfig(CONFIG_KEYS.APP_LOCK_ENABLED)
+            .then((value) => {
+              if (value === "1") {
+                setLocked(true);
+                authenticate();
+              }
+            })
+            .catch(() => {});
         }
         appState.current = nextState;
       },
@@ -61,16 +89,6 @@ export function useAppLock() {
   }, [authenticate]);
 
   return { locked, authenticate };
-}
-
-async function verifyBiometrics(): Promise<boolean> {
-  const enrolled = await LocalAuthentication.isEnrolledAsync();
-  if (!enrolled) {
-    showErrorToast("No biometrics set up on this device");
-    return false;
-  }
-
-  return promptBiometric();
 }
 
 export function useAppLockSetting() {
@@ -92,8 +110,18 @@ export function useAppLockSetting() {
   const enabled = value === "1";
 
   async function toggle(): Promise<boolean> {
-    const verified = await verifyBiometrics();
-    if (!verified) {
+    // Check enrollment first so we can emit a single, specific toast when
+    // biometrics aren't set up, instead of the generic "auth failed" one.
+    const enrolled = await LocalAuthentication.isEnrolledAsync();
+    if (!enrolled) {
+      showErrorToast("No biometrics set up on this device");
+      return false;
+    }
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: "Confirm with biometrics",
+      fallbackLabel: "Use Passcode",
+    });
+    if (!result.success) {
       showErrorToast("Biometric auth failed");
       return false;
     }

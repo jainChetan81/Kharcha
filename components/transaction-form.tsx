@@ -319,8 +319,10 @@ export function TransactionForm({
         <form.Field
           name="destinationSourceId"
           validators={{
-            onSubmit: ({ value }) => {
+            onSubmit: ({ value, fieldApi }) => {
               if (!value) return "Destination is required";
+              if (value === fieldApi.form.getFieldValue("sourceId"))
+                return "Destination must be different from source";
               return undefined;
             },
           }}

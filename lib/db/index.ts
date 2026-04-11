@@ -907,20 +907,33 @@ export async function updateTransaction(
     note: string | null;
   },
 ) {
-  return db
-    .update(transactions)
-    .set({
-      type: params.type,
-      amount: params.amount,
-      merchant: params.merchant,
-      category_id: params.categoryId,
-      source_id: params.sourceId,
-      destination_source_id: params.destinationSourceId ?? null,
-      source_type: params.sourceType ?? "manual",
-      date: params.date,
-      note: params.note,
-    })
-    .where(eq(transactions.id, id));
+  // Only touch source_type when the caller explicitly provides it — otherwise
+  // editing a Gmail-synced or subscription-generated transaction would wipe
+  // its provenance marker and re-import on the next Gmail sync.
+  const updates: {
+    type: "income" | "expense" | "transfer";
+    amount: number;
+    merchant: string | null;
+    category_id: number | null;
+    source_id: number | null;
+    destination_source_id: number | null;
+    date: string;
+    note: string | null;
+    source_type?: SourceType;
+  } = {
+    type: params.type,
+    amount: params.amount,
+    merchant: params.merchant,
+    category_id: params.categoryId,
+    source_id: params.sourceId,
+    destination_source_id: params.destinationSourceId ?? null,
+    date: params.date,
+    note: params.note,
+  };
+  if (params.sourceType !== undefined) {
+    updates.source_type = params.sourceType;
+  }
+  return db.update(transactions).set(updates).where(eq(transactions.id, id));
 }
 
 export async function deleteTransaction(id: number) {

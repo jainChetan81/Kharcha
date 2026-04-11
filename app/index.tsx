@@ -355,19 +355,13 @@ export default function HomeScreen() {
 
         <ComponentErrorBoundary name="home.insights">
           {insightsLoading ? (
-            <View
-              className="mx-5 mb-4 rounded-xl p-3"
-              style={{ backgroundColor: "#1a1a1a" }}
-            >
-              <View className="h-4 w-3/4 rounded bg-white/5" />
-              <View className="mt-2 h-4 w-2/3 rounded bg-white/5" />
+            <View className="mx-5 mb-4 rounded-xl bg-card p-3">
+              <View className="h-4 w-3/4 rounded bg-muted" />
+              <View className="mt-2 h-4 w-2/3 rounded bg-muted" />
             </View>
           ) : insights?.topCategoryChange ||
-            insights?.projectedSpend !== null ? (
-            <View
-              className="mx-5 mb-4 rounded-xl p-3"
-              style={{ backgroundColor: "#1a1a1a" }}
-            >
+            insights?.projectedSpend != null ? (
+            <View className="mx-5 mb-4 rounded-xl bg-card p-3">
               {insights?.topCategoryChange && (
                 <Pressable
                   onPress={() =>
@@ -376,52 +370,41 @@ export default function HomeScreen() {
                     )
                   }
                 >
-                  <Text className="text-xs">
-                    <Text style={{ color: COLORS.MUTED }}>
-                      {insights.topCategoryChange.direction === "up"
-                        ? "↑"
-                        : "↓"}{" "}
-                    </Text>
+                  <Text className="text-xs text-muted-foreground">
+                    {insights.topCategoryChange.direction === "up" ? "↑" : "↓"}{" "}
                     <Text
-                      style={{
-                        color:
-                          insights.topCategoryChange.direction === "up"
-                            ? "#ef4444"
-                            : "#22c55e",
-                      }}
+                      className={cn(
+                        "text-xs font-semibold",
+                        insights.topCategoryChange.direction === "up"
+                          ? "text-negative"
+                          : "text-positive",
+                      )}
                     >
                       {insights.topCategoryChange.percent}%{" "}
                       {insights.topCategoryChange.direction === "up"
                         ? "more"
                         : "less"}
-                    </Text>
-                    <Text style={{ color: COLORS.MUTED }}>
-                      {" "}
-                      on {insights.topCategoryChange.category} vs last month
-                    </Text>
+                    </Text>{" "}
+                    on {insights.topCategoryChange.category} vs last month
                   </Text>
                 </Pressable>
               )}
-              {insights?.projectedSpend !== null &&
-                insights?.projectedSpend !== undefined && (
-                  <Text
-                    className={cn(
-                      "text-xs",
-                      insights.topCategoryChange ? "mt-2" : "",
-                    )}
-                    style={{
-                      color:
-                        totalBudget > 0
-                          ? insights.projectedSpend > totalBudget
-                            ? "#ef4444"
-                            : "#22c55e"
-                          : COLORS.MUTED,
-                    }}
-                  >
-                    on track to spend {fmt(Math.round(insights.projectedSpend))}{" "}
-                    this month
-                  </Text>
-                )}
+              {insights?.projectedSpend != null && (
+                <Text
+                  className={cn(
+                    "text-xs",
+                    insights.topCategoryChange && "mt-2",
+                    totalBudget > 0
+                      ? insights.projectedSpend > totalBudget
+                        ? "text-negative"
+                        : "text-positive"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  on track to spend {fmt(Math.round(insights.projectedSpend))}{" "}
+                  this month
+                </Text>
+              )}
             </View>
           ) : null}
         </ComponentErrorBoundary>
