@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { Sparkles } from "lucide-react-native";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { KeyboardAvoidingView, Pressable, Switch, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import {
@@ -26,13 +26,19 @@ import {
   QUERY_KEYS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { getAllSources } from "@/lib/db";
+import { findDuplicateTransaction, getAllSources } from "@/lib/db";
 import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
 import { processSubscriptions } from "@/lib/db/subscriptions";
 import type { Source } from "@/lib/db/types";
 import type { GeminiParsedMessage } from "@/lib/gemini/parser";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
+
+const DuplicateTransactionSheet = lazy(() =>
+  import("@/components/duplicate-transaction-sheet").then((m) => ({
+    default: m.DuplicateTransactionSheet,
+  })),
+);
 
 const ParseMessageSheet = lazy(() =>
   import("@/components/parse-message-sheet").then((m) => ({
@@ -57,6 +63,9 @@ export default function AddTransaction() {
   const { data: sourcesList = [] } = useAllSources();
   const upiSourceId =
     sourcesList.find((s) => s.name.toLowerCase() === "upi")?.id ?? null;
+
+  const [dupSheetVisible, setDupSheetVisible] = useState(false);
+  const pendingTxRef = useRef<TransactionFormValues | null>(null);
 
   const [parseSheetVisible, setParseSheetVisible] = useState(false);
   const [parsedTxDefaults, setParsedTxDefaults] =
@@ -150,39 +159,58 @@ export default function AddTransaction() {
     }
   }
 
-  async function handleTransactionSubmit(value: TransactionFormValues) {
-    try {
-      await insertMutation.mutateAsync({
-        type: value.type,
-        amount: Number(value.amount),
-        merchant: value.merchant || null,
-        categoryId: value.categoryId,
-        sourceId:
-          value.type === TRANSACTION_TYPE.INCOME ? null : value.sourceId,
-        date: value.date,
-        note: value.note || null,
-      });
-      showSuccessToast(
-        "Transaction added",
-        `${value.type === TRANSACTION_TYPE.INCOME ? "+" : "-"}${fmt(Number(value.amount))}`,
-      );
+  async function commitTransaction(value: TransactionFormValues) {
+    await insertMutation.mutateAsync({
+      type: value.type,
+      amount: Number(value.amount),
+      merchant: value.merchant || null,
+      categoryId: value.categoryId,
+      sourceId: value.type === TRANSACTION_TYPE.INCOME ? null : value.sourceId,
+      date: value.date,
+      note: value.note || null,
+    });
+    showSuccessToast(
+      "Transaction added",
+      `${value.type === TRANSACTION_TYPE.INCOME ? "+" : "-"}${fmt(Number(value.amount))}`,
+    );
 
-      if (value.type === TRANSACTION_TYPE.EXPENSE && value.categoryId) {
-        const budget = await getBudgetForCategory(value.categoryId);
-        if (budget) {
-          const yearMonth = value.date.slice(0, 7);
-          const spent = await getCategorySpent(value.categoryId, yearMonth);
-          if (spent >= budget) {
-            showErrorToast(`⚠️ ${value.merchant || "Category"} budget exceeded`);
-          } else if (spent >= budget * 0.9) {
-            showErrorToast(
-              `⚠️ Approaching ${value.merchant || "category"} budget`,
-            );
-          }
+    if (value.type === TRANSACTION_TYPE.EXPENSE && value.categoryId) {
+      const budget = await getBudgetForCategory(value.categoryId);
+      if (budget) {
+        const yearMonth = value.date.slice(0, 7);
+        const spent = await getCategorySpent(value.categoryId, yearMonth);
+        if (spent >= budget) {
+          showErrorToast(`⚠️ ${value.merchant || "Category"} budget exceeded`);
+        } else if (spent >= budget * 0.9) {
+          showErrorToast(
+            `⚠️ Approaching ${value.merchant || "category"} budget`,
+          );
         }
       }
+    }
 
-      router.back();
+    router.back();
+  }
+
+  async function handleTransactionSubmit(value: TransactionFormValues) {
+    try {
+      const merchant = value.merchant?.trim();
+      // Skip duplicate check when no merchant is provided — merchant is the
+      // strongest dedupe signal, and date+amount alone produce too many
+      // false positives (e.g. multiple ₹100 cash expenses on the same day).
+      if (merchant) {
+        const isDuplicate = await findDuplicateTransaction(
+          value.date,
+          Number(value.amount),
+          merchant,
+        );
+        if (isDuplicate) {
+          pendingTxRef.current = value;
+          setDupSheetVisible(true);
+          return;
+        }
+      }
+      await commitTransaction(value);
     } catch (err) {
       showErrorToast("Failed to save", err);
     }
@@ -264,6 +292,31 @@ export default function AddTransaction() {
           onSubmit={handleTransactionSubmit}
         />
       )}
+
+      <Suspense fallback={null}>
+        <DuplicateTransactionSheet
+          visible={dupSheetVisible}
+          amount={fmt(Number(pendingTxRef.current?.amount ?? 0))}
+          merchant={pendingTxRef.current?.merchant ?? ""}
+          date={pendingTxRef.current?.date.slice(0, 10) ?? ""}
+          onCancel={() => {
+            pendingTxRef.current = null;
+            setDupSheetVisible(false);
+          }}
+          onConfirm={async () => {
+            const value = pendingTxRef.current;
+            pendingTxRef.current = null;
+            setDupSheetVisible(false);
+            if (value) {
+              try {
+                await commitTransaction(value);
+              } catch (err) {
+                showErrorToast("Failed to save", err);
+              }
+            }
+          }}
+        />
+      </Suspense>
 
       <Suspense fallback={null}>
         <ParseMessageSheet

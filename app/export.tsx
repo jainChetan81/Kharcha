@@ -1,5 +1,4 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { endOfMonth, format, startOfMonth } from "date-fns";
 import {
   Download,
   FileText,
@@ -13,10 +12,8 @@ import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Text } from "@/components/ui/text";
-import { COLORS, DATE_ISO_FORMAT } from "@/lib/constants";
-import { getAllTransactionsFiltered } from "@/lib/db";
+import { COLORS } from "@/lib/constants";
 import { exportDatabase, importDatabase } from "@/lib/db/backup";
-import { exportToCSV } from "@/lib/export/csv";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 const ExportSheet = lazy(() =>
@@ -25,51 +22,12 @@ const ExportSheet = lazy(() =>
   })),
 );
 
-type Busy = "csv-all" | "csv-month" | "db-export" | "db-import" | null;
+type Busy = "db-export" | "db-import" | null;
 
 export default function ExportScreen() {
   const queryClient = useQueryClient();
-  const [showCustomExport, setShowCustomExport] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const [busy, setBusy] = useState<Busy>(null);
-
-  async function handleExportAll() {
-    setBusy("csv-all");
-    try {
-      const all = await getAllTransactionsFiltered();
-      if (all.length === 0) {
-        showErrorToast("No transactions to export");
-        return;
-      }
-      const filename = `kharcha-${format(new Date(), DATE_ISO_FORMAT)}`;
-      await exportToCSV(all, filename);
-      showSuccessToast("Exported", `${all.length} transactions`);
-    } catch (err) {
-      showErrorToast("Export failed", err);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function handleExportMonth() {
-    setBusy("csv-month");
-    try {
-      const now = new Date();
-      const dateFrom = format(startOfMonth(now), DATE_ISO_FORMAT);
-      const dateTo = format(endOfMonth(now), DATE_ISO_FORMAT);
-      const rows = await getAllTransactionsFiltered({ dateFrom, dateTo });
-      if (rows.length === 0) {
-        showErrorToast("No transactions to export this month");
-        return;
-      }
-      const filename = `kharcha-${format(now, "yyyy-MM").toLowerCase()}`;
-      await exportToCSV(rows, filename);
-      showSuccessToast("Exported", `${rows.length} transactions`);
-    } catch (err) {
-      showErrorToast("Export failed", err);
-    } finally {
-      setBusy(null);
-    }
-  }
 
   async function handleDbExport() {
     setBusy("db-export");
@@ -121,22 +79,8 @@ export default function ExportScreen() {
       <Row
         icon={FileText}
         label="Export as CSV"
-        loading={busy === "csv-all"}
         disabled={busy !== null}
-        onPress={handleExportAll}
-      />
-      <Row
-        icon={FileText}
-        label="Export as CSV (this month)"
-        loading={busy === "csv-month"}
-        disabled={busy !== null}
-        onPress={handleExportMonth}
-      />
-      <Row
-        icon={FileText}
-        label="Export with filters…"
-        disabled={busy !== null}
-        onPress={() => setShowCustomExport(true)}
+        onPress={() => setShowExport(true)}
       />
 
       <SectionHeader title="Backup" />
@@ -157,8 +101,8 @@ export default function ExportScreen() {
 
       <Suspense fallback={null}>
         <ExportSheet
-          visible={showCustomExport}
-          onClose={() => setShowCustomExport(false)}
+          visible={showExport}
+          onClose={() => setShowExport(false)}
         />
       </Suspense>
     </View>

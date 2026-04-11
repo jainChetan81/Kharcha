@@ -14,6 +14,7 @@ export const SCREENS = {
   BANKS: "/settings/banks",
   NETWORK_LOGS: "/network-logs",
   EXPORT: "/export",
+  SUBSCRIPTION_AUDIT: "/subscriptions/audit",
 } as const;
 
 export const BUNDLE_ID = "com.chetanjain.kharcha" as const;

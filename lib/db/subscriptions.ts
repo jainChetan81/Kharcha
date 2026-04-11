@@ -1,6 +1,10 @@
-import { format, getDaysInMonth } from "date-fns";
+import { format, getDaysInMonth, subDays } from "date-fns";
 import { and, eq, sql } from "drizzle-orm";
-import { MONTH_FORMAT, SUBSCRIPTION_NOTE } from "@/lib/constants";
+import {
+  DATE_ISO_FORMAT,
+  MONTH_FORMAT,
+  SUBSCRIPTION_NOTE,
+} from "@/lib/constants";
 import expo, { db } from "./connection";
 import { categories, sources, subscriptions, transactions } from "./schema";
 import type { SubscriptionRow } from "./types";
@@ -150,4 +154,46 @@ export async function processSubscriptions(): Promise<string[]> {
   });
 
   return created;
+}
+
+export type SubscriptionAuditRow = SubscriptionRow & {
+  last_charged: string | null;
+};
+
+export async function getUnusedSubscriptions(): Promise<
+  SubscriptionAuditRow[]
+> {
+  const cutoff = format(subDays(new Date(), 60), DATE_ISO_FORMAT);
+
+  const rows = await db
+    .select({
+      id: subscriptions.id,
+      name: subscriptions.name,
+      amount: subscriptions.amount,
+      billing_day: subscriptions.billing_day,
+      category_id: subscriptions.category_id,
+      source_id: subscriptions.source_id,
+      is_active: subscriptions.is_active,
+      created_at: subscriptions.created_at,
+      category_name: categories.name,
+      source_name: sources.name,
+      last_charged: sql<string | null>`MAX(${transactions.date})`,
+    })
+    .from(subscriptions)
+    .leftJoin(categories, eq(subscriptions.category_id, categories.id))
+    .leftJoin(sources, eq(subscriptions.source_id, sources.id))
+    .leftJoin(transactions, eq(transactions.subscription_id, subscriptions.id))
+    .where(eq(subscriptions.is_active, 1))
+    .groupBy(subscriptions.id)
+    .having(
+      sql`MAX(${transactions.date}) IS NULL OR MAX(${transactions.date}) < ${cutoff}`,
+    );
+
+  return rows as SubscriptionAuditRow[];
+}
+
+export async function getActiveSubscriptions(): Promise<SubscriptionRow[]> {
+  return (await subscriptionSelect().where(
+    eq(subscriptions.is_active, 1),
+  )) as SubscriptionRow[];
 }

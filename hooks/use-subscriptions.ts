@@ -3,16 +3,19 @@ import { QUERY_KEYS } from "@/lib/constants";
 import {
   addSubscription,
   deleteSubscription,
+  getActiveSubscriptions,
   getActiveSubscriptionsTotal,
   getSubscriptionById,
   getSubscriptions,
+  getUnusedSubscriptions,
+  type SubscriptionAuditRow,
   type SubscriptionRow,
   toggleSubscription,
   updateSubscription,
 } from "@/lib/db/subscriptions";
 import { useInvalidateTransactions } from "./use-transactions";
 
-export type { SubscriptionRow };
+export type { SubscriptionAuditRow, SubscriptionRow };
 
 function useInvalidateSubscriptions() {
   const queryClient = useQueryClient();
@@ -89,5 +92,19 @@ export function useToggleSubscription() {
     mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) =>
       toggleSubscription(id, isActive),
     onSuccess: () => invalidate(),
+  });
+}
+
+export function useUnusedSubscriptions() {
+  return useQuery({
+    queryKey: [QUERY_KEYS.SUBSCRIPTIONS, "unused"],
+    queryFn: getUnusedSubscriptions,
+  });
+}
+
+export function useActiveSubscriptions() {
+  return useQuery({
+    queryKey: [QUERY_KEYS.SUBSCRIPTIONS, "active"],
+    queryFn: getActiveSubscriptions,
   });
 }

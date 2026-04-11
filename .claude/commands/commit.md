@@ -16,4 +16,4 @@ description: stage all changes and create a conventional commit message
 3. write a concise conventional commit message (feat/fix/chore/refactor/style)
 4. Do not commit, only give that message
 
-keep the message under 72 characters.
+keep the message under 200 characters.
