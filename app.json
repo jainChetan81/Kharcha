@@ -39,8 +39,15 @@
         {
           "action": "VIEW",
           "autoVerify": true,
-          "data": [{ "scheme": "kharcha" }],
-          "category": ["DEFAULT", "BROWSABLE"]
+          "data": [
+            {
+              "scheme": "kharcha"
+            }
+          ],
+          "category": [
+            "DEFAULT",
+            "BROWSABLE"
+          ]
         }
       ],
       "package": "com.chetanjain.kharcha"

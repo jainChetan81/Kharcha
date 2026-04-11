@@ -3,12 +3,20 @@ import { router } from "expo-router";
 import {
   ChevronRight,
   Database,
+  Download,
   Mail,
   RefreshCw,
   Trash2,
+  Upload,
 } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, RefreshControl, ScrollView, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  View,
+} from "react-native";
 import { CurrencyPicker } from "@/components/currency-picker";
 import { ScreenError } from "@/components/error-boundary";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
@@ -23,6 +31,12 @@ import {
 import { useClearTransactionsWithConfirm } from "@/hooks/use-transactions";
 import { COLORS, SCREENS } from "@/lib/constants";
 import { seedSampleData } from "@/lib/db";
+import {
+  exportDatabase,
+  importDatabaseMerge,
+  importDatabaseReplace,
+  pickDatabaseFile,
+} from "@/lib/db/backup";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 export default function ProfileScreen() {
@@ -32,8 +46,56 @@ export default function ProfileScreen() {
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const handleClearTransactions = useClearTransactionsWithConfirm();
 
+  const [isImporting, setIsImporting] = useState(false);
   const { refetch: refetchFlags, isRefetching } = useFeatureFlags();
   const gmailSyncEnabled = useGmailSyncEnabled(userName);
+
+  async function handleExport() {
+    try {
+      await exportDatabase();
+    } catch (err) {
+      showErrorToast("Export failed", err);
+    }
+  }
+
+  async function handleImport() {
+    const fileUri = await pickDatabaseFile();
+    if (!fileUri) return;
+
+    Alert.alert("Import Data", "How would you like to import?", [
+      {
+        text: "Replace All Data",
+        style: "destructive",
+        onPress: async () => {
+          setIsImporting(true);
+          try {
+            await importDatabaseReplace(fileUri);
+            showSuccessToast("Data restored — restart the app to apply");
+          } catch (err) {
+            showErrorToast("Import failed", err);
+          } finally {
+            setIsImporting(false);
+          }
+        },
+      },
+      {
+        text: "Merge with Existing",
+        onPress: async () => {
+          setIsImporting(true);
+          try {
+            const count = await importDatabaseMerge(fileUri);
+            await queryClient.invalidateQueries();
+            showSuccessToast(`${count} transactions merged`);
+          } catch (err) {
+            showErrorToast("Import failed", err);
+          } finally {
+            setIsImporting(false);
+          }
+        },
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }
 
   const initials = userName
     .split(" ")
@@ -129,6 +191,29 @@ export default function ProfileScreen() {
             Subscriptions
           </Text>
           <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
+        </Pressable>
+
+        <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Data
+        </Text>
+        <Pressable
+          onPress={handleExport}
+          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Icon as={Upload} className="mr-3 size-4 text-muted-foreground" />
+          <Text className="flex-1 text-sm font-medium text-foreground">
+            Export Data
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={handleImport}
+          disabled={isImporting}
+          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Icon as={Download} className="mr-3 size-4 text-muted-foreground" />
+          <Text className="flex-1 text-sm font-medium text-foreground">
+            {isImporting ? "Importing..." : "Import Data"}
+          </Text>
         </Pressable>
 
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
