@@ -47,14 +47,19 @@ export default function ProfileScreen() {
   const handleClearTransactions = useClearTransactionsWithConfirm();
 
   const [isImporting, setIsImporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const { refetch: refetchFlags, isRefetching } = useFeatureFlags();
   const gmailSyncEnabled = useGmailSyncEnabled(userName);
 
   async function handleExport() {
+    if (isExporting) return;
+    setIsExporting(true);
     try {
       await exportDatabase();
     } catch (err) {
       showErrorToast("Export failed", err);
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -69,12 +74,12 @@ export default function ProfileScreen() {
         onPress: async () => {
           setIsImporting(true);
           try {
+            // Note: importDatabaseReplace calls Updates.reloadAsync() on
+            // success, so any code after this point will not run.
             await importDatabaseReplace(fileUri);
-            showSuccessToast("Data restored — restart the app to apply");
           } catch (err) {
-            showErrorToast("Import failed", err);
-          } finally {
             setIsImporting(false);
+            showErrorToast("Import failed", err);
           }
         },
       },
@@ -198,11 +203,12 @@ export default function ProfileScreen() {
         </Text>
         <Pressable
           onPress={handleExport}
+          disabled={isExporting}
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
         >
           <Icon as={Upload} className="mr-3 size-4 text-muted-foreground" />
           <Text className="flex-1 text-sm font-medium text-foreground">
-            Export Data
+            {isExporting ? "Exporting..." : "Export Data"}
           </Text>
         </Pressable>
         <Pressable
