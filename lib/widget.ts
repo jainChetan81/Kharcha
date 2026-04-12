@@ -27,15 +27,13 @@ export async function syncWidgetData(): Promise<void> {
   if (Platform.OS !== "ios") return;
 
   try {
-    const {
-      SharedGroupPreferences,
-      reloadAllTimelines,
-    } = require("react-native-widget-extension") as {
-      SharedGroupPreferences: {
-        setItem: (key: string, value: string, group: string) => Promise<void>;
+    const { SharedGroupPreferences, reloadAllTimelines } =
+      require("react-native-widget-extension") as {
+        SharedGroupPreferences: {
+          setItem: (key: string, value: string, group: string) => Promise<void>;
+        };
+        reloadAllTimelines: () => void;
       };
-      reloadAllTimelines: () => void;
-    };
 
     const now = new Date();
     const yearMonth = format(now, MONTH_FORMAT);
