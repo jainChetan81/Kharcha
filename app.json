@@ -22,6 +22,11 @@
         "resizeMode": "contain",
         "backgroundColor": "#0a0a0a"
       },
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.chetanjain.kharcha"
+        ]
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -54,7 +59,11 @@
       "@react-native-community/datetimepicker",
       "expo-quick-actions",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      ["react-native-widget-extension", {
+        "widgetName": "KharchaWidget",
+        "appGroup": "group.com.chetanjain.kharcha"
+      }]
     ],
     "extra": {
       "router": {},

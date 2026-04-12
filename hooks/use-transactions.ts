@@ -23,6 +23,7 @@ import {
 } from "@/lib/db";
 import { deleteConfig } from "@/lib/db/config";
 import { showErrorToast, showSuccessToast, showUndoToast } from "@/lib/toast";
+import { syncWidgetData } from "@/lib/widget";
 
 export function useInvalidateTransactions() {
   const queryClient = useQueryClient();
@@ -43,7 +44,9 @@ export function useInvalidateTransactions() {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MONTHLY_INSIGHTS],
       }),
-    ]);
+    ]).then(() => {
+      syncWidgetData();
+    });
 }
 
 export function useRecentTransactions(limit = 10) {

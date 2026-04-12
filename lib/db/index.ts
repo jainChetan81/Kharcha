@@ -1190,3 +1190,19 @@ export {
   updateSourceOrder,
 } from "./sources";
 export { getDataStats } from "./stats";
+
+export async function getTodaySpend(): Promise<number> {
+  const today = format(new Date(), DATE_ISO_FORMAT);
+  const result = await db
+    .select({
+      total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+        sql`${transactions.date} LIKE ${today + "%"}`,
+      ),
+    );
+  return result[0]?.total ?? 0;
+}
