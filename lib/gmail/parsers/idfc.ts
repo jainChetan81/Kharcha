@@ -11,6 +11,7 @@ import {
 // "Your IDFC FIRST Bank Credit Card ending 1234 was used for Rs.2500 at MERCHANT on DD-MM-YYYY"
 export const idfcCardDebit: Parser = (body) => {
   if (!body.match(/IDFC/i)) return null;
+  if (!body.match(/(?:credit\s*card|card\s+ending|debit(?:ed)?)/i)) return null;
 
   const amountStr =
     body.match(/(?:for|of)\s+(?:INR|Rs\.?)\s*([\d,]+\.?\d*)/i)?.[1] ??
@@ -31,7 +32,6 @@ export const idfcCardDebit: Parser = (body) => {
 // "Rs.50000 credited to your IDFC FIRST Bank account ending 1234"
 export const idfcCredit: Parser = (body) => {
   if (!body.match(/IDFC/i)) return null;
-  if (!body.match(/credited/i)) return null;
 
   const amountStr = body.match(
     /(?:INR|Rs\.?)\s*([\d,]+\.?\d*)\s*(?:has been\s+|is\s+)?credited/i,

@@ -87,7 +87,7 @@ export function parseAmount(str: string): number {
 export const DATE_REGEX =
   /on\s+(\d{2}\s*\w{3}\s*\d{2,4}|\d{2}[-/]\w{3}[-/]\d{2,4}|\d{2}[-/]\d{2}[-/]\d{2,4}|\d{2}\s+\w{3}\s+\d{4})/i;
 
-/** Regex that extracts a merchant name after at/towards/to. */
+/** Regex that extracts a merchant name after at/towards. */
 export const MERCHANT_REGEX =
   /(?:at|towards)\s+([A-Za-z][\w\s./-]{2,40}?)(?:\s+on\s|\s+dated|\s*$)/i;
 

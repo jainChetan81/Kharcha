@@ -11,6 +11,7 @@ import {
 // "Your HSBC Credit Card ending 1234 has been used for INR 2,500.00 at MERCHANT on DD/MM/YYYY"
 export const hsbcCardDebit: Parser = (body) => {
   if (!body.match(/HSBC/i)) return null;
+  if (!body.match(/(?:credit\s*card|card\s+ending|debit(?:ed)?)/i)) return null;
 
   const amountStr =
     body.match(/(?:for|of)\s+(?:INR|Rs\.?)\s*([\d,]+\.?\d*)/i)?.[1] ??

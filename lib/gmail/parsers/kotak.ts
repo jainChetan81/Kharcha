@@ -63,7 +63,11 @@ export const kotakCreditCard: Parser = (body) => {
   if (!body.match(/Kotak/i)) return null;
   if (!body.match(/(?:credit\s*card|card\s+ending|card\s+XX)/i)) return null;
 
-  const amountMatch = body.match(/(?:Rs\.?|INR)\s*([\d,]+\.?\d*)/i);
+  const amountMatch =
+    body.match(/(?:for|of)\s+(?:Rs\.?|INR)\s*([\d,]+\.?\d*)/i) ??
+    body.match(
+      /(?:Rs\.?|INR)\s*([\d,]+\.?\d*)\s+(?:spent|debited|used|charged)/i,
+    );
   if (!amountMatch) return null;
 
   const merchantMatch = body.match(MERCHANT_REGEX);

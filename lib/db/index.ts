@@ -234,9 +234,7 @@ async function seedDefaults() {
     ]);
   }
 
-  const existingBanks = await db.select().from(banks).limit(1);
-  if (existingBanks.length === 0) {
-    const seeds: {
+  const seeds: {
       name: string;
       parser_key: string | null;
       is_active: boolean;
@@ -338,7 +336,41 @@ async function seedDefaults() {
       },
     ];
 
+    const existingBanksList = await db.select().from(banks);
+    const existingByName = new Set(existingBanksList.map((b) => b.name));
+
     for (const seed of seeds) {
+      if (existingByName.has(seed.name)) {
+        // Update parser_key for existing banks (e.g. ICICI/SBI/Kotak that had null)
+        if (seed.parser_key) {
+          await db
+            .update(banks)
+            .set({ parser_key: seed.parser_key })
+            .where(eq(banks.name, seed.name));
+        }
+        // Add any missing emails for existing banks
+        const existing = existingBanksList.find((b) => b.name === seed.name);
+        if (existing) {
+          const existingEmails = await db
+            .select()
+            .from(bankEmails)
+            .where(eq(bankEmails.bank_id, existing.id));
+          const existingEmailSet = new Set(existingEmails.map((e) => e.email));
+          const newEmails = seed.emails.filter(
+            (email) => !existingEmailSet.has(email),
+          );
+          if (newEmails.length > 0) {
+            await db.insert(bankEmails).values(
+              newEmails.map((email) => ({
+                bank_id: existing.id,
+                email,
+                is_default: 0,
+              })),
+            );
+          }
+        }
+        continue;
+      }
       const result = await db.insert(banks).values({
         name: seed.name,
         parser_key: seed.parser_key,
@@ -354,7 +386,6 @@ async function seedDefaults() {
         })),
       );
     }
-  }
 }
 
 export async function seedSampleData(): Promise<boolean> {
