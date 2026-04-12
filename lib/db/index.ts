@@ -294,6 +294,48 @@ async function seedDefaults() {
           "creditcardalerts@kotak.com",
         ],
       },
+      {
+        name: "Standard Chartered",
+        parser_key: "sc",
+        is_active: false,
+        emails: ["alerts@sc.com", "noreply@sc.com"],
+      },
+      {
+        name: "IDFC First Bank",
+        parser_key: "idfc",
+        is_active: false,
+        emails: ["alerts@idfcfirstbank.com", "noreply@idfcfirstbank.com"],
+      },
+      {
+        name: "HSBC",
+        parser_key: "hsbc",
+        is_active: false,
+        emails: ["alerts@hsbc.co.in", "noreply@hsbc.co.in"],
+      },
+      {
+        name: "Citi Bank",
+        parser_key: "citi",
+        is_active: false,
+        emails: ["alerts@citibank.com", "citicards@citibank.com"],
+      },
+      {
+        name: "Slice",
+        parser_key: "slice",
+        is_active: false,
+        emails: ["no-reply@sliceit.com", "alerts@sliceit.com"],
+      },
+      {
+        name: "OneCard",
+        parser_key: "onecard",
+        is_active: false,
+        emails: ["alerts@getonecard.app", "noreply@getonecard.app"],
+      },
+      {
+        name: "Uni Card",
+        parser_key: "uni",
+        is_active: false,
+        emails: ["alerts@uni.cards", "noreply@uni.cards"],
+      },
     ];
 
     for (const seed of seeds) {
