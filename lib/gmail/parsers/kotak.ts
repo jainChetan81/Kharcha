@@ -1,28 +1,14 @@
-import { format, parse } from "date-fns";
-import { DATE_TIME_FORMAT, TRANSACTION_TYPE } from "@/lib/constants";
-import { type Parser, parseAmount } from "./utils";
-
-function parseKotakDate(raw: string): string {
-  const cleaned = raw.trim();
-  const formats = [
-    "dd-MM-yy",
-    "dd-MM-yyyy",
-    "dd/MM/yyyy",
-    "dd-MMM-yy",
-    "dd-MMM-yyyy",
-    "dd MMM yyyy",
-  ];
-  for (const fmt of formats) {
-    try {
-      const d = parse(cleaned, fmt, new Date());
-      if (!Number.isNaN(d.getTime())) return format(d, DATE_TIME_FORMAT);
-    } catch {}
-  }
-  return format(new Date(), DATE_TIME_FORMAT);
-}
+import { TRANSACTION_TYPE } from "@/lib/constants";
+import {
+  DATE_REGEX,
+  fallbackNow,
+  MERCHANT_REGEX,
+  type Parser,
+  parseAmount,
+  parseIndianDate,
+} from "./utils";
 
 // "Rs.1500 debited from your Kotak Bank A/c X1234 on 01-04-25"
-// "Dear Customer, INR 2,000.00 has been debited from your Kotak Mahindra Bank A/c ending 1234"
 export const kotakDebit: Parser = (body) => {
   if (!body.match(/Kotak/i)) return null;
   const amountStr =
@@ -34,9 +20,7 @@ export const kotakDebit: Parser = (body) => {
     )?.[1];
   if (!amountStr) return null;
 
-  const dateMatch = body.match(
-    /on\s+(\d{2}[-/]\d{2}[-/]\d{2,4}|\d{2}[-/]\w{3}[-/]\d{2,4}|\d{2}\s+\w{3}\s+\d{4})/i,
-  );
+  const dateMatch = body.match(DATE_REGEX);
   const merchantMatch = body.match(
     /(?:at|to|towards|Info[:\s]*)\s*([A-Za-z][\w\s./-]{2,40}?)(?:\s+on\s|\s+UPI|\s+Ref|\s*$)/i,
   );
@@ -44,9 +28,7 @@ export const kotakDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "Kotak Debit",
-    date: dateMatch
-      ? parseKotakDate(dateMatch[1])
-      : format(new Date(), DATE_TIME_FORMAT),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
@@ -63,9 +45,7 @@ export const kotakCredit: Parser = (body) => {
     )?.[1];
   if (!amountStr) return null;
 
-  const dateMatch = body.match(
-    /on\s+(\d{2}[-/]\d{2}[-/]\d{2,4}|\d{2}[-/]\w{3}[-/]\d{2,4}|\d{2}\s+\w{3}\s+\d{4})/i,
-  );
+  const dateMatch = body.match(DATE_REGEX);
   const merchantMatch = body.match(
     /(?:from\s+|by\s+)([A-Za-z][\w\s./-]{2,40}?)(?:\s+on\s|\s+Ref|\s*$)/i,
   );
@@ -73,9 +53,7 @@ export const kotakCredit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "Kotak Credit",
-    date: dateMatch
-      ? parseKotakDate(dateMatch[1])
-      : format(new Date(), DATE_TIME_FORMAT),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
     type: TRANSACTION_TYPE.INCOME,
   };
 };
@@ -88,19 +66,13 @@ export const kotakCreditCard: Parser = (body) => {
   const amountMatch = body.match(/(?:Rs\.?|INR)\s*([\d,]+\.?\d*)/i);
   if (!amountMatch) return null;
 
-  const merchantMatch = body.match(
-    /(?:at|towards)\s+([A-Za-z][\w\s./-]{2,40}?)(?:\s+on\s|\s+dated)/i,
-  );
-  const dateMatch = body.match(
-    /on\s+(\d{2}[-/]\d{2}[-/]\d{2,4}|\d{2}[-/]\w{3}[-/]\d{2,4})/i,
-  );
+  const merchantMatch = body.match(MERCHANT_REGEX);
+  const dateMatch = body.match(DATE_REGEX);
 
   return {
     amount: parseAmount(amountMatch[1]),
     merchant: merchantMatch ? merchantMatch[1].trim() : "Kotak Card Payment",
-    date: dateMatch
-      ? parseKotakDate(dateMatch[1])
-      : format(new Date(), DATE_TIME_FORMAT),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };

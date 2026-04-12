@@ -1,6 +1,11 @@
-import { format } from "date-fns";
-import { DATE_TIME_FORMAT, TRANSACTION_TYPE } from "@/lib/constants";
-import { type Parser, parseAmount, parseHdfcDate } from "./utils";
+import { TRANSACTION_TYPE } from "@/lib/constants";
+import {
+  fallbackNow,
+  MERCHANT_REGEX,
+  type Parser,
+  parseAmount,
+  parseHdfcDate,
+} from "./utils";
 
 // "Rs.X debited from your HDFC Bank ... ending 1234 towards merchant on DD Mon, YYYY"
 export const hdfcDebit: Parser = (body) => {
@@ -48,24 +53,15 @@ export const hdfcCreditCard: Parser = (body) => {
   );
   if (!amountMatch) return null;
 
-  const merchantMatch = body.match(
-    /(?:at|towards)\s+([A-Za-z][\w\s./-]{2,40}?)(?:\s+on\s|\s+dated)/i,
-  );
+  const merchantMatch = body.match(MERCHANT_REGEX);
   const dateMatch = body.match(
     /on\s+(\d{2}\s+\w+,?\s+\d{4})(?:\s+at\s+(\d{2}:\d{2}:\d{2}))?/i,
   );
 
-  let date: string;
-  if (dateMatch) {
-    date = parseHdfcDate(dateMatch[1], dateMatch[2]);
-  } else {
-    date = format(new Date(), DATE_TIME_FORMAT);
-  }
-
   return {
     amount: parseAmount(amountMatch[1]),
     merchant: merchantMatch ? merchantMatch[1].trim() : "HDFC Card Payment",
-    date,
+    date: dateMatch ? parseHdfcDate(dateMatch[1], dateMatch[2]) : fallbackNow(),
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
