@@ -360,61 +360,97 @@ export default function HomeScreen() {
               <View className="h-4 w-3/4 rounded bg-muted" />
               <View className="mt-2 h-4 w-2/3 rounded bg-muted" />
             </View>
-          ) : insights?.topCategoryChange ||
-            insights?.projectedSpend != null ? (
-            <View className="mx-5 mb-4 mt-2 flex-row items-start gap-3 rounded-xl bg-card p-4">
-              <Icon
-                as={TrendingUp}
-                className="mt-0.5 text-muted-foreground"
-                size={16}
-              />
-              <View className="flex-1">
-                {insights?.topCategoryChange && (
-                  <Pressable
-                    onPress={() =>
-                      router.push(
-                        `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${insights.topCategoryChange?.categoryId ?? "other"}&month=${selectedMonth}`,
-                      )
-                    }
-                  >
-                    <Text className="text-xs text-muted-foreground">
-                      {insights.topCategoryChange.direction === "up"
-                        ? "↑"
-                        : "↓"}{" "}
-                      <Text
-                        className={cn(
-                          "text-xs font-semibold",
-                          insights.topCategoryChange.direction === "up"
-                            ? "text-negative"
-                            : "text-positive",
-                        )}
-                      >
-                        {insights.topCategoryChange.percent}%{" "}
-                        {insights.topCategoryChange.direction === "up"
-                          ? "more"
-                          : "less"}
-                      </Text>{" "}
-                      on {insights.topCategoryChange.category} vs last month
-                    </Text>
-                  </Pressable>
-                )}
-                {insights?.projectedSpend != null && (
-                  <Text
+          ) : insights?.topCategoryChange || insights?.projectedLow != null ? (
+            <View className="mx-5 mb-4 mt-2 gap-3">
+              {insights?.topCategoryChange && (
+                <Pressable
+                  onPress={() =>
+                    router.push(
+                      `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${insights.topCategoryChange?.categoryId ?? "other"}&month=${selectedMonth}`,
+                    )
+                  }
+                  className="flex-row items-center gap-3 rounded-xl bg-card px-4 py-3"
+                >
+                  <Icon
+                    as={TrendingUp}
                     className={cn(
-                      "text-xs",
-                      insights.topCategoryChange && "mt-2",
-                      totalBudget > 0
-                        ? insights.projectedSpend > totalBudget
-                          ? "text-negative"
-                          : "text-positive"
-                        : "text-muted-foreground",
+                      insights.topCategoryChange.direction === "up"
+                        ? "text-negative"
+                        : "text-positive",
                     )}
-                  >
-                    projected {fmt(Math.round(insights.projectedSpend))} this
-                    month
+                    size={16}
+                  />
+                  <Text className="flex-1 text-xs text-muted-foreground">
+                    <Text
+                      className={cn(
+                        "text-xs font-semibold",
+                        insights.topCategoryChange.direction === "up"
+                          ? "text-negative"
+                          : "text-positive",
+                      )}
+                    >
+                      {insights.topCategoryChange.percent}%{" "}
+                      {insights.topCategoryChange.direction === "up"
+                        ? "more"
+                        : "less"}
+                    </Text>{" "}
+                    on {insights.topCategoryChange.category} vs last month
                   </Text>
+                  <Icon
+                    as={ChevronRight}
+                    className="text-muted-foreground"
+                    size={14}
+                  />
+                </Pressable>
+              )}
+              {insights?.projectedLow != null &&
+                insights?.projectedHigh != null && (
+                  <View className="rounded-xl bg-card p-4">
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-xs font-medium text-muted-foreground">
+                        Projected spending
+                      </Text>
+                      <Text className="text-xs text-muted-foreground">
+                        {insights.daysInMonth - insights.daysElapsed} days left
+                      </Text>
+                    </View>
+                    <Text
+                      className={cn(
+                        "mt-2 text-base font-bold",
+                        totalBudget > 0 && insights.projectedHigh > totalBudget
+                          ? "text-negative"
+                          : "text-foreground",
+                      )}
+                    >
+                      {fmt(Math.round(insights.projectedLow))} –{" "}
+                      {fmt(Math.round(insights.projectedHigh))}
+                    </Text>
+                    <View className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                      <View
+                        className={cn(
+                          "h-full rounded-full",
+                          totalBudget > 0 &&
+                            insights.projectedHigh > totalBudget
+                            ? "bg-negative"
+                            : "bg-primary",
+                        )}
+                        style={{
+                          width: `${Math.round((insights.daysElapsed / insights.daysInMonth) * 100)}%`,
+                        }}
+                      />
+                    </View>
+                    <View className="mt-1.5 flex-row items-center justify-between">
+                      <Text className="text-[10px] text-muted-foreground">
+                        {fmt(expenses)} spent
+                      </Text>
+                      {totalBudget > 0 && (
+                        <Text className="text-[10px] text-muted-foreground">
+                          {fmt(totalBudget)} budget
+                        </Text>
+                      )}
+                    </View>
+                  </View>
                 )}
-              </View>
             </View>
           ) : null}
         </ComponentErrorBoundary>

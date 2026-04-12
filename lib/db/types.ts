@@ -55,7 +55,8 @@ export type MonthlyInsights = {
     percent: number;
     direction: "up" | "down";
   } | null;
-  projectedSpend: number | null;
+  projectedLow: number | null;
+  projectedHigh: number | null;
   daysElapsed: number;
   daysInMonth: number;
 };

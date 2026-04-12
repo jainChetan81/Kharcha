@@ -1151,10 +1151,20 @@ export async function getMonthlyInsights(
   }
 
   const currentSpend = currentSpendResult[0]?.total ?? 0;
-  const projectedSpend =
-    daysElapsed >= 7 ? (currentSpend * daysInMonth) / daysElapsed : null;
+  const remainingDays = daysInMonth - daysElapsed;
+  const dailyRate = daysElapsed > 0 ? currentSpend / daysElapsed : 0;
+  const projectedLow =
+    daysElapsed >= 7 ? currentSpend + dailyRate * remainingDays * 0.8 : null;
+  const projectedHigh =
+    daysElapsed >= 7 ? currentSpend + dailyRate * remainingDays * 1.2 : null;
 
-  return { topCategoryChange, projectedSpend, daysElapsed, daysInMonth };
+  return {
+    topCategoryChange,
+    projectedLow,
+    projectedHigh,
+    daysElapsed,
+    daysInMonth,
+  };
 }
 
 export {
