@@ -1282,7 +1282,7 @@ export async function getTodaySpend(): Promise<number> {
     .where(
       and(
         eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
-        sql`${transactions.date} LIKE ${`${today}%`}`,
+        sql`strftime('%Y-%m-%d', ${transactions.date}) = ${today}`,
       ),
     );
   return result[0]?.total ?? 0;

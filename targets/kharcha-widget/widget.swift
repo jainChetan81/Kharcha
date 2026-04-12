@@ -95,7 +95,7 @@ struct SpendProvider: TimelineProvider {
 
 // MARK: - Empty State
 
-struct EmptyView: View {
+struct PlaceholderView: View {
     var body: some View {
         VStack(spacing: 4) {
             Text("kharcha")
@@ -350,7 +350,7 @@ struct KharchaWidgetEntryView: View {
                     SmallWidgetView(data: data)
                 }
             } else {
-                EmptyView()
+                PlaceholderView()
             }
         }
         .widgetURL(URL(string: "kharcha:///add?type=expense"))

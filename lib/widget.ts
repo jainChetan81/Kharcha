@@ -27,7 +27,15 @@ export async function syncWidgetData(): Promise<void> {
   if (Platform.OS !== "ios") return;
 
   try {
-    const { SharedGroupPreferences } = require("react-native-widget-extension");
+    const {
+      SharedGroupPreferences,
+      reloadAllTimelines,
+    } = require("react-native-widget-extension") as {
+      SharedGroupPreferences: {
+        setItem: (key: string, value: string, group: string) => Promise<void>;
+      };
+      reloadAllTimelines: () => void;
+    };
 
     const now = new Date();
     const yearMonth = format(now, MONTH_FORMAT);
@@ -47,7 +55,7 @@ export async function syncWidgetData(): Promise<void> {
     const symbol = CURRENCIES[code]?.symbol ?? "₹";
 
     const payload: WidgetData = {
-      totalExpenses: summary.total_expenses,
+      totalExpenses: summary.total_expenses ?? 0,
       currencySymbol: symbol,
       monthLabel: format(now, "MMMM yyyy"),
       categories: breakdown.map((c) => ({
@@ -69,7 +77,6 @@ export async function syncWidgetData(): Promise<void> {
       "group.com.chetanjain.kharcha",
     );
 
-    const { reloadAllTimelines } = require("react-native-widget-extension");
     reloadAllTimelines();
   } catch {
     // Widget sync is non-critical — never crash the app for this

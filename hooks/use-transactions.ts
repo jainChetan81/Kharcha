@@ -44,8 +44,9 @@ export function useInvalidateTransactions() {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MONTHLY_INSIGHTS],
       }),
-    ]).then(() => {
+    ]).then((result) => {
       syncWidgetData();
+      return result;
     });
 }
 
