@@ -235,157 +235,157 @@ async function seedDefaults() {
   }
 
   const seeds: {
-      name: string;
-      parser_key: string | null;
-      is_active: boolean;
-      emails: string[];
-    }[] = [
-      {
-        name: "Axis Bank",
-        parser_key: "axis",
-        is_active: true,
-        emails: [
-          "alerts@axis.bank.in",
-          "alerts@axisbank.com",
-          "alerts@axis.bank.com",
-        ],
-      },
-      {
-        name: "HDFC Bank",
-        parser_key: "hdfc",
-        is_active: true,
-        emails: [
-          "alerts@hdfcbank.net",
-          "alerts@hdfcbank.com",
-          "alerts@hdfcbank.bank.in",
-        ],
-      },
-      {
-        name: "IndusInd Bank",
-        parser_key: "indusind",
-        is_active: false,
-        emails: ["indusind_bank@indusind.com"],
-      },
-      {
-        name: "ICICI Bank",
-        parser_key: "icici",
-        is_active: false,
-        emails: [
-          "alerts@icicibank.com",
-          "credit_cards@icicibank.com",
-          "customer.alerts@icicibank.com",
-        ],
-      },
-      {
-        name: "SBI",
-        parser_key: "sbi",
-        is_active: false,
-        emails: ["alerts@sbi.co.in", "donotreply@sbi.co.in"],
-      },
-      {
-        name: "Kotak",
-        parser_key: "kotak",
-        is_active: false,
-        emails: [
-          "alerts@kotak.com",
-          "alerts@kotakbank.com",
-          "creditcardalerts@kotak.com",
-        ],
-      },
-      {
-        name: "Standard Chartered",
-        parser_key: "sc",
-        is_active: false,
-        emails: ["alerts@sc.com", "noreply@sc.com"],
-      },
-      {
-        name: "IDFC First Bank",
-        parser_key: "idfc",
-        is_active: false,
-        emails: ["alerts@idfcfirstbank.com", "noreply@idfcfirstbank.com"],
-      },
-      {
-        name: "HSBC",
-        parser_key: "hsbc",
-        is_active: false,
-        emails: ["alerts@hsbc.co.in", "noreply@hsbc.co.in"],
-      },
-      {
-        name: "Citi Bank",
-        parser_key: "citi",
-        is_active: false,
-        emails: ["alerts@citibank.com", "citicards@citibank.com"],
-      },
-      {
-        name: "Slice",
-        parser_key: "slice",
-        is_active: false,
-        emails: ["no-reply@sliceit.com", "alerts@sliceit.com"],
-      },
-      {
-        name: "OneCard",
-        parser_key: "onecard",
-        is_active: false,
-        emails: ["alerts@getonecard.app", "noreply@getonecard.app"],
-      },
-      {
-        name: "Uni Card",
-        parser_key: "uni",
-        is_active: false,
-        emails: ["alerts@uni.cards", "noreply@uni.cards"],
-      },
-    ];
+    name: string;
+    parser_key: string | null;
+    is_active: boolean;
+    emails: string[];
+  }[] = [
+    {
+      name: "Axis Bank",
+      parser_key: "axis",
+      is_active: true,
+      emails: [
+        "alerts@axis.bank.in",
+        "alerts@axisbank.com",
+        "alerts@axis.bank.com",
+      ],
+    },
+    {
+      name: "HDFC Bank",
+      parser_key: "hdfc",
+      is_active: true,
+      emails: [
+        "alerts@hdfcbank.net",
+        "alerts@hdfcbank.com",
+        "alerts@hdfcbank.bank.in",
+      ],
+    },
+    {
+      name: "IndusInd Bank",
+      parser_key: "indusind",
+      is_active: false,
+      emails: ["indusind_bank@indusind.com"],
+    },
+    {
+      name: "ICICI Bank",
+      parser_key: "icici",
+      is_active: false,
+      emails: [
+        "alerts@icicibank.com",
+        "credit_cards@icicibank.com",
+        "customer.alerts@icicibank.com",
+      ],
+    },
+    {
+      name: "SBI",
+      parser_key: "sbi",
+      is_active: false,
+      emails: ["alerts@sbi.co.in", "donotreply@sbi.co.in"],
+    },
+    {
+      name: "Kotak",
+      parser_key: "kotak",
+      is_active: false,
+      emails: [
+        "alerts@kotak.com",
+        "alerts@kotakbank.com",
+        "creditcardalerts@kotak.com",
+      ],
+    },
+    {
+      name: "Standard Chartered",
+      parser_key: "sc",
+      is_active: false,
+      emails: ["alerts@sc.com", "noreply@sc.com"],
+    },
+    {
+      name: "IDFC First Bank",
+      parser_key: "idfc",
+      is_active: false,
+      emails: ["alerts@idfcfirstbank.com", "noreply@idfcfirstbank.com"],
+    },
+    {
+      name: "HSBC",
+      parser_key: "hsbc",
+      is_active: false,
+      emails: ["alerts@hsbc.co.in", "noreply@hsbc.co.in"],
+    },
+    {
+      name: "Citi Bank",
+      parser_key: "citi",
+      is_active: false,
+      emails: ["alerts@citibank.com", "citicards@citibank.com"],
+    },
+    {
+      name: "Slice",
+      parser_key: "slice",
+      is_active: false,
+      emails: ["no-reply@sliceit.com", "alerts@sliceit.com"],
+    },
+    {
+      name: "OneCard",
+      parser_key: "onecard",
+      is_active: false,
+      emails: ["alerts@getonecard.app", "noreply@getonecard.app"],
+    },
+    {
+      name: "Uni Card",
+      parser_key: "uni",
+      is_active: false,
+      emails: ["alerts@uni.cards", "noreply@uni.cards"],
+    },
+  ];
 
-    const existingBanksList = await db.select().from(banks);
-    const existingByName = new Set(existingBanksList.map((b) => b.name));
+  const existingBanksList = await db.select().from(banks);
+  const existingByName = new Set(existingBanksList.map((b) => b.name));
 
-    for (const seed of seeds) {
-      if (existingByName.has(seed.name)) {
-        // Update parser_key for existing banks (e.g. ICICI/SBI/Kotak that had null)
-        if (seed.parser_key) {
-          await db
-            .update(banks)
-            .set({ parser_key: seed.parser_key })
-            .where(eq(banks.name, seed.name));
-        }
-        // Add any missing emails for existing banks
-        const existing = existingBanksList.find((b) => b.name === seed.name);
-        if (existing) {
-          const existingEmails = await db
-            .select()
-            .from(bankEmails)
-            .where(eq(bankEmails.bank_id, existing.id));
-          const existingEmailSet = new Set(existingEmails.map((e) => e.email));
-          const newEmails = seed.emails.filter(
-            (email) => !existingEmailSet.has(email),
-          );
-          if (newEmails.length > 0) {
-            await db.insert(bankEmails).values(
-              newEmails.map((email) => ({
-                bank_id: existing.id,
-                email,
-                is_default: 0,
-              })),
-            );
-          }
-        }
-        continue;
+  for (const seed of seeds) {
+    if (existingByName.has(seed.name)) {
+      // Update parser_key for existing banks (e.g. ICICI/SBI/Kotak that had null)
+      if (seed.parser_key) {
+        await db
+          .update(banks)
+          .set({ parser_key: seed.parser_key })
+          .where(eq(banks.name, seed.name));
       }
-      const result = await db.insert(banks).values({
-        name: seed.name,
-        parser_key: seed.parser_key,
-        is_default: 1,
-        is_active: seed.is_active ? 1 : 0,
-      });
-      const bankId = Number(result.lastInsertRowId);
-      await db.insert(bankEmails).values(
-        seed.emails.map((email, i) => ({
-          bank_id: bankId,
-          email,
-          is_default: i === 0 ? 1 : 0,
-        })),
-      );
+      // Add any missing emails for existing banks
+      const existing = existingBanksList.find((b) => b.name === seed.name);
+      if (existing) {
+        const existingEmails = await db
+          .select()
+          .from(bankEmails)
+          .where(eq(bankEmails.bank_id, existing.id));
+        const existingEmailSet = new Set(existingEmails.map((e) => e.email));
+        const newEmails = seed.emails.filter(
+          (email) => !existingEmailSet.has(email),
+        );
+        if (newEmails.length > 0) {
+          await db.insert(bankEmails).values(
+            newEmails.map((email) => ({
+              bank_id: existing.id,
+              email,
+              is_default: 0,
+            })),
+          );
+        }
+      }
+      continue;
     }
+    const result = await db.insert(banks).values({
+      name: seed.name,
+      parser_key: seed.parser_key,
+      is_default: 1,
+      is_active: seed.is_active ? 1 : 0,
+    });
+    const bankId = Number(result.lastInsertRowId);
+    await db.insert(bankEmails).values(
+      seed.emails.map((email, i) => ({
+        bank_id: bankId,
+        email,
+        is_default: i === 0 ? 1 : 0,
+      })),
+    );
+  }
 }
 
 export async function seedSampleData(): Promise<boolean> {
