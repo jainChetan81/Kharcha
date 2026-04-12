@@ -270,21 +270,29 @@ async function seedDefaults() {
       },
       {
         name: "ICICI Bank",
-        parser_key: null,
+        parser_key: "icici",
         is_active: false,
-        emails: ["alerts@icicibank.com"],
+        emails: [
+          "alerts@icicibank.com",
+          "credit_cards@icicibank.com",
+          "customer.alerts@icicibank.com",
+        ],
       },
       {
         name: "SBI",
-        parser_key: null,
+        parser_key: "sbi",
         is_active: false,
-        emails: ["alerts@sbi.co.in"],
+        emails: ["alerts@sbi.co.in", "donotreply@sbi.co.in"],
       },
       {
         name: "Kotak",
-        parser_key: null,
+        parser_key: "kotak",
         is_active: false,
-        emails: ["alerts@kotak.com"],
+        emails: [
+          "alerts@kotak.com",
+          "alerts@kotakbank.com",
+          "creditcardalerts@kotak.com",
+        ],
       },
     ];
 
