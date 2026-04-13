@@ -158,18 +158,17 @@ struct CategoryBar: View {
     let amount: Double
     let percentage: Double
     let symbol: String
-    let compact: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Text(name)
-                    .font(.system(size: compact ? 10 : 11))
+                    .font(.system(size: 10))
                     .foregroundColor(mutedColor)
                     .lineLimit(1)
                 Spacer()
                 Text(formatAmount(amount, symbol: symbol))
-                    .font(.system(size: compact ? 10 : 11, weight: .medium, design: .rounded))
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundColor(fgColor)
             }
             GeometryReader { geo in
@@ -232,8 +231,7 @@ struct MediumWidgetView: View {
                         name: cat.name,
                         amount: cat.amount,
                         percentage: cat.percentage,
-                        symbol: data.currencySymbol,
-                        compact: true
+                        symbol: data.currencySymbol
                     )
                 }
                 Spacer()
@@ -247,86 +245,6 @@ struct MediumWidgetView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(14)
-    }
-}
-
-// MARK: - Large Widget
-
-struct LargeWidgetView: View {
-    let data: WidgetData
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
-            HStack {
-                Text(data.monthLabel)
-                    .font(.system(size: 12))
-                    .foregroundColor(mutedColor)
-                Spacer()
-                Text("kharcha")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(primaryColor)
-            }
-
-            Spacer().frame(height: 12)
-
-            // Hero row
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(formatAmount(data.totalExpenses, symbol: data.currencySymbol))
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(fgColor)
-                    Text("spent")
-                        .font(.system(size: 12))
-                        .foregroundColor(mutedColor)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("today")
-                        .font(.system(size: 11))
-                        .foregroundColor(mutedColor)
-                    Text(formatAmount(data.todaySpend, symbol: data.currencySymbol))
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundColor(fgColor)
-                }
-            }
-
-            Spacer().frame(height: 12)
-
-            Divider().background(Color(hex: "#333333"))
-
-            Spacer().frame(height: 12)
-
-            // Categories
-            VStack(spacing: 8) {
-                ForEach(Array(data.categories.prefix(5).enumerated()), id: \.offset) { _, cat in
-                    CategoryBar(
-                        name: cat.name,
-                        amount: cat.amount,
-                        percentage: cat.percentage,
-                        symbol: data.currencySymbol,
-                        compact: false
-                    )
-                }
-            }
-
-            Spacer()
-
-            // Footer
-            HStack {
-                if let low = data.projectedLow, let high = data.projectedHigh {
-                    Text("projected: \(formatAmount(low, symbol: data.currencySymbol))-\(formatAmount(high, symbol: data.currencySymbol))")
-                        .font(.system(size: 11))
-                        .foregroundColor(mutedColor)
-                        .lineLimit(1)
-                }
-                Spacer()
-                Text("day \(data.daysElapsed) of \(data.daysInMonth)")
-                    .font(.system(size: 11))
-                    .foregroundColor(mutedColor)
-            }
-        }
-        .padding(16)
     }
 }
 
@@ -344,8 +262,6 @@ struct KharchaWidgetEntryView: View {
                     SmallWidgetView(data: data)
                 case .systemMedium:
                     MediumWidgetView(data: data)
-                case .systemLarge:
-                    LargeWidgetView(data: data)
                 default:
                     SmallWidgetView(data: data)
                 }
@@ -353,7 +269,7 @@ struct KharchaWidgetEntryView: View {
                 PlaceholderView()
             }
         }
-        .widgetURL(URL(string: "kharcha:///add?type=expense"))
+        .widgetURL(URL(string: "kharcha:///"))
     }
 }
 
@@ -370,6 +286,6 @@ struct KharchaWidget: Widget {
         }
         .configurationDisplayName("Kharcha Spending")
         .description("See your spending at a glance.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

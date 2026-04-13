@@ -27,13 +27,6 @@ export async function syncWidgetData(): Promise<void> {
   if (Platform.OS !== "ios") return;
 
   try {
-    // const { SharedGroupPreferences, reloadAllTimelines } =
-    // require("react-native-widget-extension") as {
-    //   SharedGroupPreferences: {
-    //     setItem: (key: string, value: string, group: string) => Promise<void>;
-    //   };
-    //   reloadAllTimelines: () => void;
-    // };
     const { requireNativeModule } = require("expo-modules-core") as {
       requireNativeModule: (name: string) => {
         setWidgetData: (json: string) => void;
@@ -74,14 +67,6 @@ export async function syncWidgetData(): Promise<void> {
       todaySpend,
       lastUpdated: now.toISOString(),
     };
-
-    //   await SharedGroupPreferences.setItem(
-    //   "widgetData",
-    //   JSON.stringify(payload),
-    //   "group.com.chetanjain.kharcha",
-    // );
-
-    // reloadAllTimelines();
 
     widgetModule.setWidgetData(JSON.stringify(payload));
   } catch {
