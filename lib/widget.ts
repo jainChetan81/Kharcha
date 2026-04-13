@@ -1,12 +1,14 @@
-import { format } from "date-fns";
+import { format, startOfMonth } from "date-fns";
 import { Platform } from "react-native";
 import { CONFIG_KEYS, MONTH_FORMAT } from "@/lib/constants";
 import {
   getCategoryBreakdown,
   getMonthlyInsights,
   getMonthlySummary,
+  getPreviousMonthSpendAtDay,
   getTodaySpend,
 } from "@/lib/db";
+import { getBudgets } from "@/lib/db/budgets";
 import { getConfig } from "@/lib/db/config";
 import { CURRENCIES, type CurrencyCode } from "@/lib/format";
 
@@ -20,6 +22,8 @@ type WidgetData = {
   daysElapsed: number;
   daysInMonth: number;
   todaySpend: number;
+  totalBudget: number | null;
+  previousMonthSpendAtThisPoint: number | null;
   lastUpdated: string;
 };
 
@@ -39,14 +43,29 @@ export async function syncWidgetData(): Promise<void> {
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
 
-    const [summary, breakdown, insights, todaySpend, currencyCode] =
-      await Promise.all([
-        getMonthlySummary(yearMonth),
-        getCategoryBreakdown(yearMonth),
-        getMonthlyInsights(year, month),
-        getTodaySpend(),
-        getConfig(CONFIG_KEYS.CURRENCY),
-      ]);
+    const daysElapsed = Math.max(
+      1,
+      Math.floor((now.getTime() - startOfMonth(now).getTime()) / 86_400_000) +
+        1,
+    );
+
+    const [
+      summary,
+      breakdown,
+      insights,
+      todaySpend,
+      currencyCode,
+      budgets,
+      prevSpend,
+    ] = await Promise.all([
+      getMonthlySummary(yearMonth),
+      getCategoryBreakdown(yearMonth),
+      getMonthlyInsights(year, month),
+      getTodaySpend(),
+      getConfig(CONFIG_KEYS.CURRENCY),
+      getBudgets(),
+      getPreviousMonthSpendAtDay(daysElapsed),
+    ]);
 
     const code = (currencyCode ?? "INR") as CurrencyCode;
     const symbol = CURRENCIES[code]?.symbol ?? "₹";
@@ -65,6 +84,11 @@ export async function syncWidgetData(): Promise<void> {
       daysElapsed: insights.daysElapsed,
       daysInMonth: insights.daysInMonth,
       todaySpend,
+      totalBudget:
+        budgets.length > 0
+          ? budgets.reduce((sum, b) => sum + b.amount, 0)
+          : null,
+      previousMonthSpendAtThisPoint: prevSpend,
       lastUpdated: now.toISOString(),
     };
 

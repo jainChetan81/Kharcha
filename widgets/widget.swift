@@ -22,6 +22,18 @@ private let fgColor = Color(hex: "#f0f0f0")
 private let mutedColor = Color(hex: "#888888")
 private let primaryColor = Color(hex: "#7c3aed")
 private let barBgColor = Color(hex: "#2a2a2a")
+private let dangerColor = Color(hex: "#ef4444")
+private let positiveColor = Color(hex: "#22c55e")
+
+private let categoryPalette: [Color] = [
+    Color(hex: "#7c3aed"), // purple
+    Color(hex: "#f59e0b"), // amber
+    Color(hex: "#22c55e"), // green
+    Color(hex: "#3b82f6"), // blue
+    Color(hex: "#ef4444"), // red
+    Color(hex: "#ec4899"), // pink
+    Color(hex: "#06b6d4"), // cyan
+]
 
 // MARK: - Data Model
 
@@ -41,6 +53,8 @@ struct WidgetData: Codable {
     let daysElapsed: Int
     let daysInMonth: Int
     let todaySpend: Double
+    let totalBudget: Double?
+    let previousMonthSpendAtThisPoint: Double?
     let lastUpdated: String
 }
 
@@ -158,6 +172,7 @@ struct CategoryBar: View {
     let amount: Double
     let percentage: Double
     let symbol: String
+    var barColor: Color = primaryColor
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -177,7 +192,7 @@ struct CategoryBar: View {
                         .fill(barBgColor)
                         .frame(height: 4)
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(primaryColor)
+                        .fill(barColor)
                         .frame(width: geo.size.width * min(percentage / 100, 1.0), height: 4)
                 }
             }
@@ -201,15 +216,37 @@ struct MediumWidgetView: View {
 
                 Spacer()
 
-                Text(formatAmount(data.totalExpenses, symbol: data.currencySymbol))
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(fgColor)
-                    .minimumScaleFactor(0.7)
-                    .lineLimit(1)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(formatAmount(data.totalExpenses, symbol: data.currencySymbol))
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundColor(fgColor)
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
 
-                Text("this month")
-                    .font(.system(size: 11))
-                    .foregroundColor(mutedColor)
+                    if let prev = data.previousMonthSpendAtThisPoint, prev > 0 {
+                        let isUp = data.totalExpenses > prev
+                        Image(systemName: isUp ? "arrow.up.right" : "arrow.down.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(isUp ? dangerColor : positiveColor)
+                    }
+                }
+
+                if let budget = data.totalBudget, budget > 0 {
+                    let isOver = data.totalExpenses > budget
+                    let progress = min(data.totalExpenses / budget, 1.0)
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(barBgColor)
+                                .frame(height: 4)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(isOver ? dangerColor : primaryColor)
+                                .frame(width: geo.size.width * progress, height: 4)
+                        }
+                    }
+                    .frame(height: 4)
+                    .padding(.top, 4)
+                }
 
                 Spacer()
 
@@ -226,19 +263,20 @@ struct MediumWidgetView: View {
 
             // Right: top 3 categories
             VStack(spacing: 6) {
-                ForEach(Array(data.categories.prefix(3).enumerated()), id: \.offset) { _, cat in
+                ForEach(Array(data.categories.prefix(3).enumerated()), id: \.offset) { index, cat in
                     CategoryBar(
                         name: cat.name,
                         amount: cat.amount,
                         percentage: cat.percentage,
-                        symbol: data.currencySymbol
+                        symbol: data.currencySymbol,
+                        barColor: categoryPalette[index % categoryPalette.count]
                     )
                 }
                 Spacer()
                 if let low = data.projectedLow, let high = data.projectedHigh {
-                    Text("proj: \(formatAmount(low, symbol: data.currencySymbol))-\(formatAmount(high, symbol: data.currencySymbol))")
-                        .font(.system(size: 10))
-                        .foregroundColor(mutedColor)
+                    Text("proj: \(formatAmount(low, symbol: data.currencySymbol))–\(formatAmount(high, symbol: data.currencySymbol))")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(fgColor.opacity(0.7))
                         .lineLimit(1)
                 }
             }

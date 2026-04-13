@@ -1287,3 +1287,34 @@ export async function getTodaySpend(): Promise<number> {
     );
   return result[0]?.total ?? 0;
 }
+
+export async function getPreviousMonthSpendAtDay(
+  daysElapsed: number,
+): Promise<number | null> {
+  const now = new Date();
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevYearMonth = format(prev, MONTH_FORMAT);
+  const prevDaysInMonth = new Date(
+    prev.getFullYear(),
+    prev.getMonth() + 1,
+    0,
+  ).getDate();
+  const cutoffDay = Math.min(daysElapsed, prevDaysInMonth);
+  const cutoff = `${prevYearMonth}-${String(cutoffDay).padStart(2, "0")}`;
+  const start = `${prevYearMonth}-01`;
+
+  const result = await db
+    .select({
+      total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+        sql`${transactions.date} >= ${start}`,
+        sql`strftime('%Y-%m-%d', ${transactions.date}) <= ${cutoff}`,
+      ),
+    );
+  const total = result[0]?.total ?? 0;
+  return total > 0 ? total : null;
+}
