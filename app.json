@@ -15,6 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.chetanjain.kharcha",
+      "deploymentTarget": "17.0",
       "buildNumber": "1",
       "icon": "./assets/icon.png",
       "splash": {
