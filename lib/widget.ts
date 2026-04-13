@@ -1,4 +1,4 @@
-import { format, startOfMonth } from "date-fns";
+import { format } from "date-fns";
 import { Platform } from "react-native";
 import { CONFIG_KEYS, MONTH_FORMAT } from "@/lib/constants";
 import {
@@ -43,29 +43,17 @@ export async function syncWidgetData(): Promise<void> {
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
 
-    const daysElapsed = Math.max(
-      1,
-      Math.floor((now.getTime() - startOfMonth(now).getTime()) / 86_400_000) +
-        1,
-    );
+    const [summary, breakdown, insights, todaySpend, currencyCode, budgets] =
+      await Promise.all([
+        getMonthlySummary(yearMonth),
+        getCategoryBreakdown(yearMonth),
+        getMonthlyInsights(year, month),
+        getTodaySpend(),
+        getConfig(CONFIG_KEYS.CURRENCY),
+        getBudgets(),
+      ]);
 
-    const [
-      summary,
-      breakdown,
-      insights,
-      todaySpend,
-      currencyCode,
-      budgets,
-      prevSpend,
-    ] = await Promise.all([
-      getMonthlySummary(yearMonth),
-      getCategoryBreakdown(yearMonth),
-      getMonthlyInsights(year, month),
-      getTodaySpend(),
-      getConfig(CONFIG_KEYS.CURRENCY),
-      getBudgets(),
-      getPreviousMonthSpendAtDay(daysElapsed),
-    ]);
+    const prevSpend = await getPreviousMonthSpendAtDay(insights.daysElapsed);
 
     const code = (currencyCode ?? "INR") as CurrencyCode;
     const symbol = CURRENCIES[code]?.symbol ?? "₹";
@@ -85,7 +73,7 @@ export async function syncWidgetData(): Promise<void> {
       daysInMonth: insights.daysInMonth,
       todaySpend,
       totalBudget:
-        budgets.length > 0
+        budgets.length > 0 && budgets.length >= breakdown.length
           ? budgets.reduce((sum, b) => sum + b.amount, 0)
           : null,
       previousMonthSpendAtThisPoint: prevSpend,
