@@ -7,7 +7,7 @@ import { useQuickActionRouting } from "expo-quick-actions/router";
 import { SplashScreen, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Suspense, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { ActivityIndicator, AppState, Pressable, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { startNetworkLogging } from "react-native-network-logger";
 import Toast, { type ToastConfig } from "react-native-toast-message";
@@ -20,6 +20,7 @@ import { initDB } from "@/lib/db";
 import { processSubscriptions } from "@/lib/db/subscriptions";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { isIOS } from "@/lib/utils";
+import { syncWidgetData } from "@/lib/widget";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -115,12 +116,21 @@ export default function RootLayout() {
           );
         }
         setDbReady(true);
+        syncWidgetData();
       })
       .catch((err) => {
         showErrorToast("Database Error", err);
       })
       .finally(() => SplashScreen.hideAsync());
   }, []);
+
+  // Refresh widget data when app returns to foreground (catches midnight resets)
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active" && dbReady) syncWidgetData();
+    });
+    return () => sub.remove();
+  }, [dbReady]);
 
   useEffect(() => {
     if (isIOS) {
