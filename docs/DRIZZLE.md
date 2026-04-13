@@ -4,10 +4,11 @@ This doc covers database schema management with Drizzle ORM and migrations for S
 
 ## Overview
 
-- **Schema Definition**: `lib/db/schema.ts` — all table definitions using Drizzle table factories
+- **Schema Definition**: `lib/db/schema.ts` — 8 tables (categories, sources, transactions, subscriptions, budgets, banks, bank_emails, config) using Drizzle table factories
 - **Migration Storage**: `drizzle/` — generated SQL migration files + metadata
 - **Connection**: `lib/db/connection.ts` — SQLite connection + migration runner
 - **Initialization**: `lib/db/index.ts` — `initDB()` runs migrations + seeds defaults
+- **Types**: `lib/db/types.ts` — shared types (TransactionRow, etc.)
 - **Migration Tooling**: `drizzle-kit` (v0.31.10) — schema introspection + migration generation
 - **Commands**:
   - `pnpm drizzle:generate` — generate migration from schema changes
@@ -106,9 +107,12 @@ Inside `initDB()`, the inline `CREATE TABLE IF NOT EXISTS` statements run first 
 
 | File | Purpose |
 |------|---------|
-| `lib/db/schema.ts` | Drizzle table definitions |
+| `lib/db/schema.ts` | Drizzle table definitions (8 tables) |
+| `lib/db/types.ts` | Shared types (TransactionRow, etc.) |
 | `lib/db/connection.ts` | SQLite connection + migration runner |
-| `lib/db/index.ts` | Database initialization |
+| `lib/db/index.ts` | Database initialization + seeds |
+| `lib/db/banks.ts` | Bank + bank_emails CRUD |
+| `lib/db/backup.ts` | Export/import full database as JSON |
 | `drizzle.config.ts` | Drizzle CLI config |
 | `drizzle/0000_*.sql` | Generated migration SQL (one per change) |
 | `drizzle/migrations.js` | Migration registry (auto-updated) |

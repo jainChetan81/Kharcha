@@ -1,0 +1,71 @@
+name: Android Play Store Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: Play Store track
+        required: true
+        default: internal
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: lint
+        run: pnpm lint
+
+      - name: typecheck
+        run: pnpm typecheck
+
+      - name: setup eas
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: write google play service account key
+        run: echo '${{ secrets.PLAY_STORE_SERVICE_ACCOUNT_KEY }}' > play-store-key.json
+
+      - name: build android aab
+        run: eas build --platform android --profile production --non-interactive
+
+      - name: submit to google play
+        run: eas submit --platform android --profile production --non-interactive
+        env:
+          EAS_SUBMIT_TRACK: ${{ inputs.track }}
+
+      - name: get version
+        id: version
+        run: echo "version=$(jq -r '.expo.version' app.json)" >> "$GITHUB_OUTPUT"
+
+      - name: create github release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}-android
+          name: Android v${{ steps.version.outputs.version }}
+          body: |
+            Android release submitted to Google Play (${{ inputs.track }} track).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
