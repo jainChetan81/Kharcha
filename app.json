@@ -61,8 +61,8 @@
       "expo-secure-store",
       "expo-web-browser",
       ["react-native-widget-extension", {
-        "widgetName": "KharchaWidget",
-        "appGroup": "group.com.chetanjain.kharcha"
+        "groupIdentifier": "group.com.chetanjain.kharcha",
+        "deploymentTarget": "17.0"
       }]
     ],
     "extra": {
