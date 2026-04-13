@@ -231,23 +231,6 @@ struct MediumWidgetView: View {
                     }
                 }
 
-                if let budget = data.totalBudget, budget > 0 {
-                    let isOver = data.totalExpenses > budget
-                    let progress = min(data.totalExpenses / budget, 1.0)
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(barBgColor)
-                                .frame(height: 4)
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(isOver ? dangerColor : primaryColor)
-                                .frame(width: geo.size.width * progress, height: 4)
-                        }
-                    }
-                    .frame(height: 4)
-                    .padding(.top, 4)
-                }
-
                 Spacer()
 
                 HStack(spacing: 4) {
