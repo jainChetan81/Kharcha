@@ -1,4 +1,8 @@
-import type { GeminiErrorType } from "@/lib/constants";
+import {
+  type GeminiErrorType,
+  PARSED_BY,
+  type ParsedByType,
+} from "@/lib/constants";
 import { parseTransactionWithGemini } from "@/lib/gemini/parser";
 import { AXIS_PARSERS } from "./axis";
 import { CITI_PARSERS } from "./citi";
@@ -20,7 +24,7 @@ import {
 
 export type { ParsedTransaction };
 
-export type ParseSource = "regex" | "gemini" | "failed";
+export type ParseSource = ParsedByType | "failed";
 
 export interface ParseOutcome {
   parsed: ParsedTransaction | null;
@@ -48,22 +52,23 @@ const PARSER_MAP: Record<string, Parser[]> = {
 export async function parseEmailWithFallback(
   body: string,
   parserKey: string | null,
+  categoryNames: string[],
 ): Promise<ParseOutcome> {
   const decoded = decodeHtmlEntities(body);
 
   if (parserKey && PARSER_MAP[parserKey]) {
     const result = tryParsers(PARSER_MAP[parserKey], decoded);
-    if (result) return { parsed: result, parsedBy: "regex" };
+    if (result) return { parsed: result, parsedBy: PARSED_BY.REGEX };
   }
 
-  const gemini = await parseTransactionWithGemini(decoded);
+  const gemini = await parseTransactionWithGemini(decoded, categoryNames);
   if (gemini.parsed) {
     return {
       parsed: {
         ...gemini.parsed,
         merchant: gemini.parsed.merchant ?? "Unknown",
       },
-      parsedBy: "gemini",
+      parsedBy: PARSED_BY.GEMINI,
       geminiResponse: gemini.raw ?? undefined,
     };
   }

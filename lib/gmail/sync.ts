@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   CONFIG_KEYS,
   EMAIL_LOG_REASON,
@@ -9,11 +9,13 @@ import {
   type GeminiErrorType,
   GMAIL_API,
   GMAIL_SYNC_NOTE,
+  PARSED_BY,
 } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { getActiveBanksWithEmails } from "@/lib/db/banks";
+import { getAllCategories } from "@/lib/db/categories";
 import { getConfig, updateConfig } from "@/lib/db/config";
-import { categories, transactions } from "@/lib/db/schema";
+import { subscriptions, transactions } from "@/lib/db/schema";
 import { getValidAccessToken } from "./auth";
 import { type ParseSource, parseEmailWithFallback } from "./parsers";
 
@@ -35,6 +37,7 @@ export interface EmailLog {
     date: string;
   };
   geminiResponse?: string;
+  confidence?: "high" | "medium" | "low";
   reason?: EmailLogReasonType;
   errorMessage?: string;
 }
@@ -108,11 +111,19 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   const formatted = `${sinceDate.getFullYear()}/${sinceDate.getMonth() + 1}/${sinceDate.getDate()}`;
 
-  const defaultCategory = await db
-    .select({ id: categories.id })
-    .from(categories)
-    .where(and(eq(categories.name, "other"), eq(categories.type, "expense")))
-    .limit(1);
+  const allCategories = await getAllCategories();
+  const categoryNames = allCategories.map((c) => c.name);
+
+  function matchCategoryId(
+    name: string | undefined,
+    type: "expense" | "income",
+  ): number | null {
+    const needle = (name ?? "other").toLowerCase();
+    const match = allCategories.find(
+      (c) => c.name.toLowerCase() === needle && c.type === type,
+    );
+    return match?.id ?? null;
+  }
 
   const result = emptyResult();
 
@@ -187,7 +198,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
           id: message.id,
           from,
           subject,
-          parsedBy: "regex",
+          parsedBy: PARSED_BY.REGEX,
           status: EMAIL_LOG_STATUS.DUPLICATE,
         });
         continue;
@@ -196,7 +207,11 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
       const bankInfo = emailToBank.get(from);
       const parserKey = bankInfo?.parserKey ?? null;
 
-      const outcome = await parseEmailWithFallback(body, parserKey);
+      const outcome = await parseEmailWithFallback(
+        body,
+        parserKey,
+        categoryNames,
+      );
 
       if (!outcome.parsed) {
         result.failed++;
@@ -222,18 +237,60 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         ? trimmedBody.slice(0, MAX_NOTE_CHARS)
         : GMAIL_SYNC_NOTE;
 
+      const matchedCategoryId = matchCategoryId(
+        outcome.parsed.category,
+        outcome.parsed.type,
+      );
+
       await db.insert(transactions).values({
         amount: outcome.parsed.amount,
         merchant: outcome.parsed.merchant,
-        category_id: defaultCategory[0]?.id ?? null,
+        category_id: matchedCategoryId,
         source_id: null,
         gmail_message_id: message.id,
+        parsed_by:
+          outcome.parsedBy === PARSED_BY.GEMINI
+            ? PARSED_BY.GEMINI
+            : PARSED_BY.REGEX,
         date: outcome.parsed.date,
         // store the original email snippet so the user can see exactly what was parsed
         note,
         type: outcome.parsed.type,
         source_type: "synced",
       });
+
+      // Auto-create a subscription row when Gemini flags the email as
+      // recurring — skip if one already exists for the same merchant + cycle
+      // (dedup by case-insensitive name + billing_day) to avoid duplicating
+      // a Netflix row every month.
+      if (
+        outcome.parsed.is_subscription &&
+        outcome.parsed.billing_day &&
+        outcome.parsed.merchant &&
+        outcome.parsed.type === "expense"
+      ) {
+        const merchantLower = outcome.parsed.merchant.toLowerCase();
+        const existingSub = await db
+          .select({ id: subscriptions.id })
+          .from(subscriptions)
+          .where(
+            and(
+              sql`lower(${subscriptions.name}) = ${merchantLower}`,
+              eq(subscriptions.billing_day, outcome.parsed.billing_day),
+            ),
+          )
+          .limit(1);
+
+        if (existingSub.length === 0) {
+          await db.insert(subscriptions).values({
+            name: outcome.parsed.merchant,
+            amount: outcome.parsed.amount,
+            billing_day: outcome.parsed.billing_day,
+            category_id: matchedCategoryId,
+            source_id: null,
+          });
+        }
+      }
 
       result.added++;
       result.emailLogs.push({
@@ -248,7 +305,10 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
           date: outcome.parsed.date,
         },
         geminiResponse:
-          outcome.parsedBy === "gemini" ? outcome.geminiResponse : undefined,
+          outcome.parsedBy === PARSED_BY.GEMINI
+            ? outcome.geminiResponse
+            : undefined,
+        confidence: outcome.parsed.confidence,
       });
     } catch (err) {
       result.failed++;

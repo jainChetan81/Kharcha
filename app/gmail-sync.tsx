@@ -491,12 +491,18 @@ function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
     [EMAIL_LOG_STATUS.FAILED]: COLORS.DANGER,
     [EMAIL_LOG_STATUS.NOT_TRANSACTION]: COLORS.MUTED,
   };
+  const parsedLabel = log.parsedBy === "gemini" ? "ai" : log.parsedBy;
   const parsedColor =
     log.parsedBy === "regex"
       ? COLORS.BADGE_BLUE
       : log.parsedBy === "gemini"
         ? COLORS.PRIMARY
         : COLORS.DANGER;
+  const confidenceColor: Record<"high" | "medium" | "low", string> = {
+    high: COLORS.POSITIVE,
+    medium: COLORS.WARNING,
+    low: COLORS.DANGER,
+  };
   const statusLabel =
     log.status === EMAIL_LOG_STATUS.NOT_TRANSACTION ? "not txn" : log.status;
 
@@ -509,13 +515,19 @@ function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
         >
           {bankName}
         </Text>
-        <Badge text={log.parsedBy} color={parsedColor} />
+        <Badge text={parsedLabel} color={parsedColor} />
+        {log.confidence && (
+          <Badge
+            text={log.confidence}
+            color={confidenceColor[log.confidence]}
+          />
+        )}
         <Badge text={statusLabel} color={statusColor[log.status]} />
       </View>
       {log.subject ? (
         <Text
           className="mt-1 text-[11px] text-muted-foreground"
-          numberOfLines={1}
+          numberOfLines={2}
         >
           {log.subject}
         </Text>
@@ -529,9 +541,9 @@ function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
       {log.parsedBy === "gemini" && log.geminiResponse && (
         <Text
           className="mt-1 text-[10px] text-muted-foreground/80"
-          numberOfLines={2}
+          numberOfLines={4}
         >
-          gemini: {log.geminiResponse}
+          ai: {log.geminiResponse}
         </Text>
       )}
       {log.reason && (

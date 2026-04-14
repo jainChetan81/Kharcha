@@ -176,6 +176,12 @@ export async function initDB() {
     // Column already exists — safe to ignore
   }
 
+  try {
+    await db.run(sql`ALTER TABLE transactions ADD COLUMN parsed_by TEXT`);
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
   await db.run(
     sql`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
   );
@@ -818,6 +824,7 @@ function transactionSelect() {
       destination_source_id: transactions.destination_source_id,
       subscription_id: transactions.subscription_id,
       source_type: transactions.source_type,
+      parsed_by: transactions.parsed_by,
       date: transactions.date,
       note: transactions.note,
       created_at: transactions.created_at,

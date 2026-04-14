@@ -47,5 +47,6 @@ play-store-key.json
 # generated native folders
 /ios
 /android
+**/*.aab
 kharcha-backend/
 /kharcha-backend

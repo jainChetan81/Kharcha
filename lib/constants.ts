@@ -159,10 +159,19 @@ export const GEMINI_ERROR = {
   RATE_LIMITED: "rate_limited",
   TIMEOUT: "timeout",
   TRUNCATED: "truncated",
+  NO_API_KEY: "no_api_key",
+  NOT_TRANSACTION: "not_transaction",
   UNKNOWN: "unknown",
 } as const;
 
 export type GeminiErrorType = (typeof GEMINI_ERROR)[keyof typeof GEMINI_ERROR];
+
+export const PARSED_BY = {
+  REGEX: "regex",
+  GEMINI: "gemini",
+} as const;
+
+export type ParsedByType = (typeof PARSED_BY)[keyof typeof PARSED_BY];
 
 export const QUERY_KEYS = {
   TRANSACTION: "transaction",

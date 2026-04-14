@@ -23,6 +23,7 @@ export type TransactionRow = Transaction & {
   source_name: string | null;
   destination_source_name: string | null;
   source_type: "manual" | "synced" | "recurring" | "transfer";
+  parsed_by: "regex" | "gemini" | null;
 };
 
 export type MonthlySummary = {

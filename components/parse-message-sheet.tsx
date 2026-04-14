@@ -17,10 +17,12 @@ export function ParseMessageSheet({
   visible,
   onClose,
   onParsed,
+  categoryNames,
 }: {
   visible: boolean;
   onClose: () => void;
   onParsed: (parsed: GeminiParsedMessage, originalText: string) => void;
+  categoryNames: string[];
 }) {
   const [messageText, setMessageText] = useState("");
   const [parsing, setParsing] = useState(false);
@@ -38,7 +40,7 @@ export function ParseMessageSheet({
     setParsing(true);
     setParseError(null);
     try {
-      const result = await parseMessageWithGemini(messageText);
+      const result = await parseMessageWithGemini(messageText, categoryNames);
       if (result.error === GEMINI_ERROR.SERVICE_UNAVAILABLE) {
         showErrorToast("AI is busy right now, try again in a moment");
         return;

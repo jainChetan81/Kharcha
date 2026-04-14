@@ -6,6 +6,10 @@ export interface ParsedTransaction {
   merchant: string;
   date: string;
   type: "expense" | "income";
+  category?: string;
+  confidence?: "high" | "medium" | "low";
+  is_subscription?: boolean;
+  billing_day?: number | null;
 }
 
 export type Parser = (body: string) => ParsedTransaction | null;

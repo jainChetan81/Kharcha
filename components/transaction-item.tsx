@@ -14,6 +14,7 @@ import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
 import {
   OTHER_CATEGORY_LABEL,
+  PARSED_BY,
   SOURCE_TYPE,
   TIME_FORMAT,
   TRANSACTION_TYPE,
@@ -24,6 +25,28 @@ import { cn } from "@/lib/utils";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.35;
+
+const TAG_VARIANTS = {
+  muted: { bg: "bg-muted-foreground", text: "text-white" },
+  gmail: { bg: "bg-blue-700", text: "text-white" },
+  primary: { bg: "bg-primary", text: "text-primary-foreground" },
+  ai: { bg: "bg-indigo-600", text: "text-white" },
+} as const;
+
+function Tag({
+  label,
+  variant,
+}: {
+  label: string;
+  variant: keyof typeof TAG_VARIANTS;
+}) {
+  const { bg, text } = TAG_VARIANTS[variant];
+  return (
+    <View className={cn("rounded-md px-1.5 py-0.5", bg)}>
+      <Text className={cn("text-[10px] font-medium", text)}>{label}</Text>
+    </View>
+  );
+}
 
 export function TransactionItem({
   item,
@@ -111,24 +134,15 @@ export function TransactionItem({
           <Text className="text-sm font-semibold text-foreground">
             {item.merchant || item.category_name || OTHER_CATEGORY_LABEL}
           </Text>
-          {isTransfer && (
-            <View className="rounded-md bg-muted-foreground px-1.5 py-0.5">
-              <Text className="text-[10px] font-medium text-white">
-                TRANSFER
-              </Text>
-            </View>
-          )}
+          {isTransfer && <Tag label="TRANSFER" variant="muted" />}
           {item.source_type === SOURCE_TYPE.SYNCED && (
-            <View className="rounded-md bg-blue-700 px-1.5 py-0.5">
-              <Text className="text-[10px] font-medium text-white">GMAIL</Text>
-            </View>
+            <Tag label="GMAIL" variant="gmail" />
+          )}
+          {item.parsed_by === PARSED_BY.GEMINI && (
+            <Tag label="AI" variant="ai" />
           )}
           {item.source_type === SOURCE_TYPE.RECURRING && (
-            <View className="rounded-md bg-primary px-1.5 py-0.5">
-              <Text className="text-[10px] font-medium text-primary-foreground">
-                SUB
-              </Text>
-            </View>
+            <Tag label="SUB" variant="primary" />
           )}
         </View>
         <Text className="mt-0.5 text-xs text-muted-foreground">{subtitle}</Text>

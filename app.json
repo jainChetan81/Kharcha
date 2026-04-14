@@ -52,10 +52,17 @@
       ],
       "package": "com.chetanjain.kharcha"
     },
+    "updates": {
+      "url": "https://u.expo.dev/a5f4eef2-324f-4113-833a-08722062b934"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-updates",
       "expo-router",
       "expo-sqlite",
       "@react-native-community/datetimepicker",

@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { Sparkles } from "lucide-react-native";
-import { lazy, Suspense, useRef, useState } from "react";
+import { lazy, Suspense, useMemo, useRef, useState } from "react";
 import { KeyboardAvoidingView, Pressable, Switch, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/components/transaction-form";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { useAllCategories } from "@/hooks/use-categories";
 import { useCurrency } from "@/hooks/use-currency";
 import { useAllSources } from "@/hooks/use-sources";
 import { useAddSubscription } from "@/hooks/use-subscriptions";
@@ -60,6 +61,11 @@ export default function AddTransaction() {
     modeParam === "subscription",
   );
 
+  const { data: allCategoriesList = [] } = useAllCategories();
+  const categoryNames = useMemo(
+    () => allCategoriesList.map((c) => c.name),
+    [allCategoriesList],
+  );
   const { data: sourcesList = [] } = useAllSources();
   const upiSourceId =
     sourcesList.find((s) => s.name.toLowerCase() === "upi")?.id ?? null;
@@ -122,11 +128,17 @@ export default function AddTransaction() {
       (await getAllSources());
     const sourceId = matchSourceId(parsed.source, sources);
 
+    const matchedCategory = allCategoriesList.find(
+      (c) =>
+        c.name.toLowerCase() === parsed.category.toLowerCase() &&
+        c.type === parsed.type,
+    );
+
     const txDefaults: TransactionFormValues = {
       type: parsed.type,
       amount: String(parsed.amount),
       merchant: parsed.merchant ?? "",
-      categoryId: null,
+      categoryId: matchedCategory?.id ?? null,
       sourceId,
       destinationSourceId: null,
       date: `${parsed.date} 12:00`,
@@ -335,6 +347,7 @@ export default function AddTransaction() {
           visible={parseSheetVisible}
           onClose={() => setParseSheetVisible(false)}
           onParsed={handleParsed}
+          categoryNames={categoryNames}
         />
       </Suspense>
     </KeyboardAvoidingView>

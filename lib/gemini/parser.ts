@@ -29,74 +29,71 @@ const GEMINI_TIMEOUT_MS = 15_000;
 const FINISH_REASON_MAX_TOKENS = "MAX_TOKENS";
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
-const PROMPT = `Extract the financial transaction from this bank notification or email.
-- is_transaction: true for real money movement (debit/credit/payment/refund). false for OTPs, balance enquiries, promos.
-- amount: principal as a number, no symbols/commas. 0 if not a transaction.
-- merchant: counterparty name. null if absent.
-- source: payment rail — one of "UPI", "credit card", "debit card", "other". Use "UPI" for VPA/UPI handles, card only when explicitly stated, else "other".
-- date: strict YYYY-MM-DD.
-- type: "expense" or "income".`;
-
-const MESSAGE_PROMPT = `Extract a financial transaction from an Indian bank SMS, push notification, or email. Treat "INR", "Rs.", "Rs", "NR" as rupees.
+const PROMPT = `Extract a financial transaction from an Indian bank SMS, push notification, or email. Treat "INR", "Rs.", "Rs", "NR" as rupees.
 
 - is_transaction: true for real money movement (debit/credit/payment/refund/transfer). false for OTPs, balance enquiries, promos, login alerts.
 - amount: principal as a number, no symbols/commas. 0 if not a transaction.
 - type: "expense" for debited/spent/sent/paid/withdrawn. "income" for credited/received/refunded.
 - source: payment rail — one of "UPI", "credit card", "debit card", "other". Use "UPI" when the message contains "UPI/", "VPA", or a UPI handle. Use "credit card" / "debit card" only when the message explicitly says credit/debit card. Otherwise "other".
-- date: strict YYYY-MM-DD. Indian SMS use DD-MM-YY, e.g. "07-04-26" → "2026-04-07". Use the provided Today date if only time is shown.
+- date: strict YYYY-MM-DD. Indian SMS use DD-MM-YY, e.g. "07-04-26" → "2026-04-07". Use the provided Today date if only time is shown or no date is present.
 - merchant: counterparty (store, biller, person, UPI handle). ALWAYS extract if any name is present. Examples:
     - "UPI/P2A/12345/JOHN DOE@okaxis" → "JOHN DOE"
     - "at SWIGGY*ORDER" → "Swiggy"
   Strip transaction codes (P2M/P2A/CR/DR/numeric ids) and UPI suffixes (@okaxis, @paytm). Title-case obvious all-caps words but keep acronyms (HDFC, IRCTC). null only if truly no counterparty exists (e.g. "balance enquiry").
-- is_subscription: true ONLY if message mentions recurring/subscription/auto-debit/autopay/SI/standing instruction/mandate. One-off UPI payments are NOT subscriptions.
+- is_subscription: true ONLY if message mentions recurring/subscription/auto-debit/autopay/auto-pay/SI/standing instruction/mandate/e-mandate/NACH/ECS/bill pay. One-off UPI payments are NOT subscriptions.
 - billing_day: 1-31 only when is_subscription, else null.
+- category: pick the BEST match from the provided Categories list based on the merchant name and transaction context. Use "Other" only when no category fits.
 - confidence: "high" if amount/type/date/(merchant or source) all unambiguous. "medium" if 1-2 inferred. "low" if vague.`;
 
-const MESSAGE_RESPONSE_SCHEMA = {
-  type: "OBJECT",
-  properties: {
-    is_transaction: { type: "BOOLEAN" },
-    amount: { type: "NUMBER" },
-    type: { type: "STRING", enum: ["expense", "income"] },
-    source: { type: "STRING", nullable: true },
-    date: { type: "STRING" },
-    merchant: { type: "STRING", nullable: true },
-    is_subscription: { type: "BOOLEAN" },
-    billing_day: { type: "INTEGER", nullable: true },
-    confidence: { type: "STRING", enum: ["high", "medium", "low"] },
-  },
-  required: [
-    "is_transaction",
-    "amount",
-    "type",
-    "date",
-    "is_subscription",
-    "confidence",
-  ],
-};
+function safeCategoryEnum(names: string[]): string[] {
+  return names.length > 0 ? names : ["Other"];
+}
 
-const TRANSACTION_RESPONSE_SCHEMA = {
-  type: "OBJECT",
-  properties: {
-    is_transaction: { type: "BOOLEAN" },
-    amount: { type: "NUMBER" },
-    merchant: { type: "STRING", nullable: true },
-    source: { type: "STRING", nullable: true },
-    date: { type: "STRING" },
-    type: { type: "STRING", enum: ["expense", "income"] },
-  },
-  required: ["is_transaction", "amount", "date", "type"],
-};
+function buildResponseSchema(categoryNames: string[]) {
+  return {
+    type: "OBJECT",
+    properties: {
+      is_transaction: { type: "BOOLEAN" },
+      amount: { type: "NUMBER" },
+      type: { type: "STRING", enum: ["expense", "income"] },
+      source: {
+        type: "STRING",
+        enum: ["UPI", "credit card", "debit card", "other"],
+        nullable: true,
+      },
+      date: { type: "STRING" },
+      merchant: { type: "STRING", nullable: true },
+      category: { type: "STRING", enum: safeCategoryEnum(categoryNames) },
+      is_subscription: { type: "BOOLEAN" },
+      billing_day: { type: "INTEGER", nullable: true },
+      confidence: { type: "STRING", enum: ["high", "medium", "low"] },
+    },
+    required: [
+      "is_transaction",
+      "amount",
+      "type",
+      "date",
+      "category",
+      "is_subscription",
+      "confidence",
+    ],
+  };
+}
 
-// note: deliberately omits is_subscription/billing_day — only the paste-message
-// flow infers subscriptions; the gmail sync path does not.
 export interface GeminiParsedTransaction {
   amount: number;
   merchant: string | null;
   source: string | null;
   date: string;
   type: "expense" | "income";
+  category: string;
+  is_subscription: boolean;
+  billing_day: number | null;
+  confidence: "high" | "medium" | "low";
 }
+
+// Alias kept for the paste-message flow callers
+export type GeminiParsedMessage = GeminiParsedTransaction;
 
 export interface GeminiParseResult {
   parsed: GeminiParsedTransaction | null;
@@ -105,23 +102,7 @@ export interface GeminiParseResult {
   errorMessage?: string;
 }
 
-export interface GeminiParsedMessage {
-  amount: number;
-  type: "expense" | "income";
-  source: string | null;
-  date: string;
-  merchant: string | null;
-  is_subscription: boolean;
-  billing_day: number | null;
-  confidence: "high" | "medium" | "low";
-}
-
-export interface GeminiParseMessageResult {
-  parsed: GeminiParsedMessage | null;
-  raw: string | null;
-  error?: GeminiErrorType;
-  errorMessage?: string;
-}
+export type GeminiParseMessageResult = GeminiParseResult;
 
 interface GeminiApiResponse {
   candidates?: Array<{
@@ -144,23 +125,43 @@ function validateGeminiTransaction(parsed: {
   return null;
 }
 
-async function callGemini<T>(
-  userContent: string,
-  schema: object,
-): Promise<{
+interface CallResult<T> {
   parsed: T | null;
   raw: string | null;
   error?: GeminiErrorType;
   errorMessage?: string;
-}> {
+}
+
+const TRANSIENT_ERRORS: GeminiErrorType[] = [
+  GEMINI_ERROR.SERVICE_UNAVAILABLE,
+  GEMINI_ERROR.RATE_LIMITED,
+  GEMINI_ERROR.TIMEOUT,
+];
+
+async function callGemini<T>(
+  userContent: string,
+  schema: object,
+): Promise<CallResult<T>> {
   if (!env.GEMINI_API_KEY) {
     return {
       parsed: null,
       raw: null,
+      error: GEMINI_ERROR.NO_API_KEY,
       errorMessage: "GEMINI_API_KEY is not set",
     };
   }
 
+  const first = await callGeminiOnce<T>(userContent, schema);
+  if (first.error && TRANSIENT_ERRORS.includes(first.error)) {
+    return callGeminiOnce<T>(userContent, schema);
+  }
+  return first;
+}
+
+async function callGeminiOnce<T>(
+  userContent: string,
+  schema: object,
+): Promise<CallResult<T>> {
   // AbortController + setTimeout works on every JS runtime; AbortSignal.timeout
   // is not available in some Hermes builds and would throw synchronously.
   const controller = new AbortController();
@@ -278,13 +279,16 @@ async function callGemini<T>(
 
 export async function parseMessageWithGemini(
   text: string,
+  categoryNames: string[],
 ): Promise<GeminiParseMessageResult> {
+  const uniqueNames = [...new Set(categoryNames)];
   const today = format(new Date(), DATE_ISO_FORMAT);
-  const userContent = `${MESSAGE_PROMPT}\n\nText:\n${sanitizeForPrompt(text).slice(0, MAX_INPUT_CHARS)}\n\nToday: ${today}`;
+  const categoriesLine = `Categories: ${uniqueNames.join(", ")}`;
+  const userContent = `${PROMPT}\n\n${categoriesLine}\n\nText:\n${sanitizeForPrompt(text).slice(0, MAX_INPUT_CHARS)}\n\nToday: ${today}`;
 
   const result = await callGemini<
     GeminiParsedMessage & { is_transaction: boolean }
-  >(userContent, MESSAGE_RESPONSE_SCHEMA);
+  >(userContent, buildResponseSchema(uniqueNames));
 
   if (!result.parsed) {
     return {
@@ -297,7 +301,12 @@ export async function parseMessageWithGemini(
 
   const validationError = validateGeminiTransaction(result.parsed);
   if (validationError) {
-    return { parsed: null, raw: result.raw, errorMessage: validationError };
+    return {
+      parsed: null,
+      raw: result.raw,
+      error: GEMINI_ERROR.NOT_TRANSACTION,
+      errorMessage: validationError,
+    };
   }
 
   // discard is_transaction — already validated above
@@ -308,12 +317,16 @@ export async function parseMessageWithGemini(
 
 export async function parseTransactionWithGemini(
   text: string,
+  categoryNames: string[],
 ): Promise<GeminiParseResult> {
-  const userContent = `${PROMPT}\n\nText:\n${sanitizeForPrompt(text).slice(0, MAX_INPUT_CHARS)}`;
+  const uniqueNames = [...new Set(categoryNames)];
+  const today = format(new Date(), DATE_ISO_FORMAT);
+  const categoriesLine = `Categories: ${uniqueNames.join(", ")}`;
+  const userContent = `${PROMPT}\n\n${categoriesLine}\n\nText:\n${sanitizeForPrompt(text).slice(0, MAX_INPUT_CHARS)}\n\nToday: ${today}`;
 
   const result = await callGemini<
     GeminiParsedTransaction & { is_transaction: boolean }
-  >(userContent, TRANSACTION_RESPONSE_SCHEMA);
+  >(userContent, buildResponseSchema(uniqueNames));
 
   if (!result.parsed) {
     return {
@@ -326,7 +339,12 @@ export async function parseTransactionWithGemini(
 
   const validationError = validateGeminiTransaction(result.parsed);
   if (validationError) {
-    return { parsed: null, raw: result.raw, errorMessage: validationError };
+    return {
+      parsed: null,
+      raw: result.raw,
+      error: GEMINI_ERROR.NOT_TRANSACTION,
+      errorMessage: validationError,
+    };
   }
 
   // discard is_transaction — already validated above
