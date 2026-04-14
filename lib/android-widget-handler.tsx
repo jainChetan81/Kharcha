@@ -9,6 +9,12 @@ import {
 const WIDGET_SMALL = "KharchaSmallWidget";
 const WIDGET_MEDIUM = "KharchaMediumWidget";
 
+// Coalesce rapid cache-read + re-render bursts triggered by the OS during
+// widget resize gestures and rotation (each gesture can fire several
+// WIDGET_RESIZED events in quick succession).
+const HANDLER_DEBOUNCE_MS = 400;
+const lastRenderedAt = new Map<string, number>();
+
 function getCachePath(): string | null {
   try {
     const FileSystem = require("expo-file-system") as {
@@ -84,6 +90,18 @@ export async function widgetTaskHandler(
     case "WIDGET_ADDED":
     case "WIDGET_UPDATE":
     case "WIDGET_RESIZED": {
+      const key = props.widgetInfo.widgetName;
+      const now = Date.now();
+      const last = lastRenderedAt.get(key) ?? 0;
+      // WIDGET_ADDED should always render (first paint), but rapid
+      // UPDATE/RESIZED events within the debounce window are skipped.
+      if (
+        props.widgetAction !== "WIDGET_ADDED" &&
+        now - last < HANDLER_DEBOUNCE_MS
+      ) {
+        return;
+      }
+      lastRenderedAt.set(key, now);
       const data = await readCachedWidgetData();
       props.renderWidget(renderWidget(props.widgetInfo.widgetName, data));
       break;

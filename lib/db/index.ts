@@ -1019,7 +1019,24 @@ export async function updateTransaction(
     note: params.note,
   };
   if (params.sourceType !== undefined) {
-    updates.source_type = params.sourceType;
+    // The only edit-time transition allowed is the user toggling the
+    // transfer flag (manual ↔ transfer). Anything else is rejected:
+    //   - synced/recurring → manual would let the row re-import on the
+    //     next Gmail sync or orphan it from its subscription.
+    //   - manual → synced/recurring would fabricate provenance the row
+    //     doesn't have. The edit form never sends these values, but we
+    //     enforce it here as defence-in-depth.
+    const existing = await db
+      .select({ source_type: transactions.source_type })
+      .from(transactions)
+      .where(eq(transactions.id, id))
+      .limit(1);
+    const current = existing[0]?.source_type ?? "manual";
+    const next = params.sourceType;
+    const editable = (v: SourceType) => v === "manual" || v === "transfer";
+    if (editable(current) && editable(next)) {
+      updates.source_type = next;
+    }
   }
   return db.update(transactions).set(updates).where(eq(transactions.id, id));
 }
@@ -1146,13 +1163,21 @@ export async function findDuplicateTransaction(
   amount: number,
   merchant: string,
 ): Promise<boolean> {
-  const dayPrefix = date.slice(0, 10);
+  // Bank emails can arrive hours (occasionally a day) after the transaction.
+  // Check ±1 day around the target date with exact amount + merchant match —
+  // wider than same-day-only (which missed late emails) but still tight enough
+  // that recurring daily coffee purchases don't all flag each other.
+  const target = new Date(date);
+  const day = 24 * 60 * 60 * 1000;
+  const from = new Date(target.getTime() - day).toISOString().slice(0, 10);
+  const to = new Date(target.getTime() + day).toISOString().slice(0, 10);
   const rows = await db
     .select({ id: transactions.id })
     .from(transactions)
     .where(
       and(
-        like(transactions.date, `${dayPrefix}%`),
+        sql`substr(${transactions.date}, 1, 10) >= ${from}`,
+        sql`substr(${transactions.date}, 1, 10) <= ${to}`,
         eq(transactions.amount, amount),
         sql`LOWER(${transactions.merchant}) = ${merchant.toLowerCase()}`,
       ),
@@ -1241,10 +1266,17 @@ export async function getMonthlyInsights(
   const currentSpend = currentSpendResult[0]?.total ?? 0;
   const remainingDays = daysInMonth - daysElapsed;
   const dailyRate = daysElapsed > 0 ? currentSpend / daysElapsed : 0;
+  // Clamp projections to >= 0: if refunds/income make currentSpend or
+  // dailyRate negative, the UI would otherwise render a negative forecast
+  // which confuses users and breaks progress-bar math in the widget.
   const projectedLow =
-    daysElapsed >= 7 ? currentSpend + dailyRate * remainingDays * 0.8 : null;
+    daysElapsed >= 7
+      ? Math.max(0, currentSpend + dailyRate * remainingDays * 0.8)
+      : null;
   const projectedHigh =
-    daysElapsed >= 7 ? currentSpend + dailyRate * remainingDays * 1.2 : null;
+    daysElapsed >= 7
+      ? Math.max(0, currentSpend + dailyRate * remainingDays * 1.2)
+      : null;
 
   return {
     topCategoryChange,

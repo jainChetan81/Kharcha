@@ -64,10 +64,31 @@ export const hdfcUpiCreditCard: Parser = (body) => {
 export const hdfcCreditCard: Parser = (body) => {
   if (!body.match(/HDFC/i)) return null;
   if (!body.match(/(?:credit\s*card|card\s+ending)/i)) return null;
-  // Skip e-mandate / upcoming-debit notices — these announce a future auto-payment,
-  // not a completed transaction, and would double-count when the real debit arrives.
-  if (body.match(/\b(?:e-?mandate|upcoming|will\s+be\s+debited)\b/i))
+  // Skip e-mandate / upcoming-debit notices — these announce a future
+  // auto-payment, not a completed transaction, and would double-count when
+  // the real debit arrives.
+  //
+  // Unambiguous future-tense phrasing ("will be debited", "scheduled on",
+  // "shall be debited", "upcoming debit") always flags the email as a notice —
+  // real transaction confirmations never use that phrasing, and the old broad
+  // check also dropped legit past-tense confirmations when a single body
+  // summarised both a past charge and an upcoming one.
+  if (
+    body.match(
+      /(?:e-?mandate|upcoming\s+(?:debit|payment|transaction)|will\s+be\s+(?:debited|charged|auto-?debited)|scheduled\s+(?:for|on)|shall\s+be\s+debited)/i,
+    )
+  ) {
     return null;
+  }
+  // "e-mandate" as a noun can appear inside real past-tense confirmations
+  // (e.g. "e-mandate payment has been debited"). Only skip if there's no
+  // past-tense debit phrasing alongside it.
+  if (body.match(/\be-?mandate\b/i)) {
+    const isPastTense = body.match(
+      /(?:has\s+been|have\s+been|was|were)\s+(?:debited|charged)/i,
+    );
+    if (!isPastTense) return null;
+  }
 
   const amountMatch = body.match(
     /(?:for|of)\s+(?:Rs\.?|INR)\s*([\d,]+\.?\d*)/i,

@@ -13,7 +13,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { Text } from "@/components/ui/text";
 import { useBanksWithEmails } from "@/hooks/use-banks";
 import { useSyncState } from "@/hooks/use-sync-state";
-import { copyToClipboard } from "@/lib/clipboard";
+import { copyMaskedToClipboard, copyToClipboard } from "@/lib/clipboard";
 import {
   COLORS,
   CONFIG_KEYS,
@@ -567,7 +567,7 @@ function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
                 Email snippet
               </Text>
               <Pressable
-                onPress={() => copyToClipboard(log.body ?? "", "Snippet")}
+                onPress={() => copyMaskedToClipboard(log.body ?? "", "Snippet")}
                 className="flex-row items-center gap-1 rounded-md bg-background px-2 py-1"
               >
                 <Icon as={Copy} className="size-3 text-primary" />

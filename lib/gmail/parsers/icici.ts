@@ -20,7 +20,7 @@ export const iciciDebit: Parser = (body) => {
 
   const dateMatch = body.match(DATE_REGEX);
   const merchantMatch = body.match(
-    /(?:Info[:\s]*|towards\s+|at\s+|to\s+)([A-Za-z][\w\s./-]{2,40}?)(?:\s+on\s|\s+dated|\s*$)/i,
+    /(?:Info[:\s]*|towards\s+|at\s+|to\s+)([A-Za-z][\w\s./&'-]{2,60}?)(?:\s+on\s|\s+dated|\s*$)/i,
   );
 
   return {
@@ -45,7 +45,7 @@ export const iciciCredit: Parser = (body) => {
 
   const dateMatch = body.match(DATE_REGEX);
   const merchantMatch = body.match(
-    /(?:from\s+|by\s+|Info[:\s]*)([A-Za-z][\w\s./-]{2,40}?)(?:\s+on\s|\s+dated|\s*$)/i,
+    /(?:from\s+|by\s+|Info[:\s]*)([A-Za-z][\w\s./&'-]{2,60}?)(?:\s+on\s|\s+dated|\s*$)/i,
   );
 
   return {

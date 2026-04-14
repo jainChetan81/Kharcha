@@ -133,7 +133,7 @@ export function TransactionItem({
         <View className="flex-row items-center gap-1">
           <Text
             numberOfLines={1}
-            className="flex-1 text-sm font-semibold text-foreground"
+            className="shrink text-sm font-semibold text-foreground"
           >
             {item.merchant || item.category_name || OTHER_CATEGORY_LABEL}
           </Text>
