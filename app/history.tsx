@@ -65,10 +65,7 @@ import {
   TRANSACTION_TYPE,
   type TransactionFilterType,
 } from "@/lib/constants";
-import { getAllTransactionsFiltered } from "@/lib/db";
-import { exportToCSV } from "@/lib/export/csv";
 import { buildListData, type ListItem } from "@/lib/format";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
 const DatePickerModal = lazy(() =>
@@ -147,7 +144,6 @@ export default function HistoryScreen() {
   const handleSwipeDelete = useSwipeDelete();
   const [searchText, setSearchText] = useState("");
   const debouncedSearch = useDebounce(searchText);
-  const [exporting, setExporting] = useState(false);
 
   // Draft filters (inside modal)
   const [showFilters, setShowFilters] = useState(false);
@@ -302,34 +298,6 @@ export default function HistoryScreen() {
     .filter((t) => t.type === TRANSACTION_TYPE.TRANSFER)
     .reduce((sum, t) => sum + t.amount, 0);
 
-  async function handleExport() {
-    setExporting(true);
-    try {
-      const all = await getAllTransactionsFiltered(filters);
-      if (all.length === 0) {
-        showErrorToast("No transactions to export");
-        return;
-      }
-      const parts = ["kharcha"];
-      if (typeFilter !== TRANSACTION_TYPE.ALL) parts.push(typeFilter);
-      if (dateFrom) {
-        const label = format(
-          parse(dateFrom, DATE_ISO_FORMAT, new Date()),
-          "MMMM-yyyy",
-        ).toLowerCase();
-        parts.push(label);
-      } else {
-        parts.push(format(new Date(), DATE_ISO_FORMAT));
-      }
-      await exportToCSV(all, parts.join("-"));
-      showSuccessToast("Exported", `${all.length} transactions`);
-    } catch (err) {
-      showErrorToast("Export failed", err);
-    } finally {
-      setExporting(false);
-    }
-  }
-
   function handlePresetSelect(preset: PeriodPresetType) {
     if (preset === draftPreset) {
       setDraftPreset(null);
@@ -442,15 +410,10 @@ export default function HistoryScreen() {
         </Pressable>
         <View className="flex-row items-center gap-2">
           <Pressable
-            onPress={handleExport}
-            disabled={exporting}
+            onPress={() => router.push("/export")}
             className="items-center justify-center rounded-xl border border-border bg-card px-3 py-2"
           >
-            {exporting ? (
-              <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-            ) : (
-              <Icon as={FileDown} className="size-4 text-muted-foreground" />
-            )}
+            <Icon as={FileDown} className="size-4 text-muted-foreground" />
           </Pressable>
           <Pressable
             onPress={openFilters}
