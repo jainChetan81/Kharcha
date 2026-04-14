@@ -346,8 +346,14 @@ export function MediumSpendWidget(props: { data: AndroidWidgetData | null }) {
         <FlexWidget
           style={{
             width: "match_parent",
-            backgroundColor: "#111111",
+            backgroundColor: overBudget
+              ? "rgba(239, 68, 68, 0.12)"
+              : "rgba(34, 197, 94, 0.12)",
             borderRadius: 10,
+            borderWidth: 0.5,
+            borderColor: overBudget
+              ? "rgba(239, 68, 68, 0.2)"
+              : "rgba(34, 197, 94, 0.2)",
             padding: 10,
             marginTop: 10,
             flexDirection: "column",

@@ -175,28 +175,28 @@ struct CategoryBar: View {
     var barColor: Color = primaryColor
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 3) {
             HStack {
                 Text(name)
-                    .font(.system(size: 10))
+                    .font(.system(size: 12))
                     .foregroundColor(mutedColor)
                     .lineLimit(1)
                 Spacer()
                 Text(formatAmount(amount, symbol: symbol))
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundColor(fgColor)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2)
+                    RoundedRectangle(cornerRadius: 3)
                         .fill(barBgColor)
-                        .frame(height: 4)
-                    RoundedRectangle(cornerRadius: 2)
+                        .frame(height: 5)
+                    RoundedRectangle(cornerRadius: 3)
                         .fill(barColor)
-                        .frame(width: geo.size.width * min(percentage / 100, 1.0), height: 4)
+                        .frame(width: geo.size.width * min(percentage / 100, 1.0), height: 5)
                 }
             }
-            .frame(height: 4)
+            .frame(height: 5)
         }
     }
 }
@@ -206,64 +206,145 @@ struct CategoryBar: View {
 struct MediumWidgetView: View {
     let data: WidgetData
 
+    private var hasProjection: Bool {
+        data.projectedLow != nil && data.projectedHigh != nil
+    }
+
+    private var hasBudget: Bool {
+        if let budget = data.totalBudget { return budget > 0 }
+        return false
+    }
+
+    private var overBudget: Bool {
+        if let budget = data.totalBudget { return data.totalExpenses > budget }
+        return false
+    }
+
+    private var spendPct: Double {
+        guard let budget = data.totalBudget, budget > 0 else { return 0 }
+        return min(data.totalExpenses / budget, 1.0)
+    }
+
     var body: some View {
-        HStack(spacing: 16) {
-            // Left: totals
-            VStack(alignment: .leading, spacing: 0) {
-                Text(data.monthLabel)
-                    .font(.system(size: 11))
-                    .foregroundColor(mutedColor)
+        VStack(spacing: 0) {
+            // Top: two columns
+            HStack(spacing: 16) {
+                // Left: totals
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(data.monthLabel)
+                        .font(.system(size: 13))
+                        .foregroundColor(mutedColor)
 
-                Spacer()
+                    Spacer()
 
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(formatAmount(data.totalExpenses, symbol: data.currencySymbol))
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(fgColor)
-                        .minimumScaleFactor(0.7)
-                        .lineLimit(1)
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(formatAmount(data.totalExpenses, symbol: data.currencySymbol))
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundColor(fgColor)
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
 
-                    if let prev = data.previousMonthSpendAtThisPoint, prev > 0 {
-                        let isUp = data.totalExpenses > prev
-                        Image(systemName: isUp ? "arrow.up.right" : "arrow.down.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(isUp ? dangerColor : positiveColor)
+                        if let prev = data.previousMonthSpendAtThisPoint, prev > 0 {
+                            let isUp = data.totalExpenses > prev
+                            Image(systemName: isUp ? "arrow.up.right" : "arrow.down.right")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(isUp ? dangerColor : positiveColor)
+                        }
+                    }
+
+                    Spacer()
+
+                    HStack(spacing: 4) {
+                        Text("today:")
+                            .font(.system(size: 12))
+                            .foregroundColor(mutedColor)
+                        Text(formatAmount(data.todaySpend, symbol: data.currencySymbol))
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundColor(fgColor)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer()
-
-                HStack(spacing: 4) {
-                    Text("today:")
-                        .font(.system(size: 10))
-                        .foregroundColor(mutedColor)
-                    Text(formatAmount(data.todaySpend, symbol: data.currencySymbol))
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(fgColor)
+                // Right: top 3 categories
+                VStack(spacing: 8) {
+                    ForEach(Array(data.categories.prefix(3).enumerated()), id: \.offset) { index, cat in
+                        CategoryBar(
+                            name: cat.name,
+                            amount: cat.amount,
+                            percentage: cat.percentage,
+                            symbol: data.currencySymbol,
+                            barColor: categoryPalette[index % categoryPalette.count]
+                        )
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Right: top 3 categories
-            VStack(spacing: 6) {
-                ForEach(Array(data.categories.prefix(3).enumerated()), id: \.offset) { index, cat in
-                    CategoryBar(
-                        name: cat.name,
-                        amount: cat.amount,
-                        percentage: cat.percentage,
-                        symbol: data.currencySymbol,
-                        barColor: categoryPalette[index % categoryPalette.count]
-                    )
+            // Bottom: projected spending card
+            if hasProjection {
+                let accentColor = overBudget ? dangerColor : positiveColor
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Text("Projected spending")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(fgColor)
+                        Spacer()
+                        Text("\(data.daysInMonth - data.daysElapsed) days left")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(fgColor.opacity(0.7))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule().fill(accentColor.opacity(0.2))
+                            )
+                    }
+
+                    Text("\(formatAmount(data.projectedLow!, symbol: data.currencySymbol)) – \(formatAmount(data.projectedHigh!, symbol: data.currencySymbol))")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(accentColor)
+
+                    if hasBudget {
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 2.5)
+                                    .fill(barBgColor)
+                                    .frame(height: 5)
+                                RoundedRectangle(cornerRadius: 2.5)
+                                    .fill(accentColor)
+                                    .frame(width: geo.size.width * spendPct, height: 5)
+                            }
+                        }
+                        .frame(height: 5)
+
+                        HStack {
+                            Text("\(formatAmount(data.totalExpenses, symbol: data.currencySymbol)) spent")
+                                .font(.system(size: 9))
+                                .foregroundColor(mutedColor)
+                            Spacer()
+                            Text("\(formatAmount(data.totalBudget!, symbol: data.currencySymbol)) budget")
+                                .font(.system(size: 9))
+                                .foregroundColor(mutedColor)
+                        }
+                    }
                 }
-                Spacer()
-                if let low = data.projectedLow, let high = data.projectedHigh {
-                    Text("proj: \(formatAmount(low, symbol: data.currencySymbol))–\(formatAmount(high, symbol: data.currencySymbol))")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundColor(fgColor.opacity(0.7))
-                        .lineLimit(1)
-                }
+                .padding(9)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(
+                            LinearGradient(
+                                colors: [accentColor.opacity(0.18), Color(hex: "#0e0e0e")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(accentColor.opacity(0.15), lineWidth: 0.5)
+                )
+                .padding(.top, 8)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(14)
     }

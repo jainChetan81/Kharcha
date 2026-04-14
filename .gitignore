@@ -39,7 +39,6 @@ yarn-error.*
 # eas credentials
 credentials.json
 credentials/
-google-services.json
 play-store-key.json
 
 # typescript
