@@ -69,6 +69,66 @@ function senderEmail(from: string): string {
   return (m ? m[1] : from).trim().toLowerCase();
 }
 
+interface GmailPart {
+  mimeType?: string;
+  body?: { data?: string };
+  parts?: GmailPart[];
+}
+
+function base64UrlDecode(data: string): string {
+  try {
+    const base64 = data.replace(/-/g, "+").replace(/_/g, "/");
+    const binary = globalThis.atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new TextDecoder("utf-8").decode(bytes);
+  } catch {
+    return "";
+  }
+}
+
+function findPartData(part: GmailPart, mimeType: string): string | null {
+  if (part.mimeType === mimeType && part.body?.data) return part.body.data;
+  if (part.parts) {
+    for (const p of part.parts) {
+      const found = findPartData(p, mimeType);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Gmail's `snippet` previews the first visible text, which for bank emails is
+// often a promotional banner (e.g. Visa FIFA ad in HDFC mails) — not the
+// transaction body. Pull text/plain when present, fall back to stripped HTML.
+function extractBody(payload: GmailPart | undefined): string {
+  if (!payload) return "";
+  const plain = findPartData(payload, "text/plain");
+  if (plain) return base64UrlDecode(plain);
+  const html = findPartData(payload, "text/html");
+  if (html) return stripHtml(base64UrlDecode(html));
+  if (payload.body?.data) {
+    const decoded = base64UrlDecode(payload.body.data);
+    return payload.mimeType === "text/html" ? stripHtml(decoded) : decoded;
+  }
+  return "";
+}
+
 function geminiErrorToReason(
   error: GeminiErrorType | undefined,
   hasResponse: boolean,
@@ -174,7 +234,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     let subject = "";
     try {
       const msgResponse = await fetch(
-        `${GMAIL_API.MESSAGES}/${message.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`,
+        `${GMAIL_API.MESSAGES}/${message.id}?format=full`,
         {
           headers: { Authorization: `Bearer ${accessToken}` },
         },
@@ -185,7 +245,9 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         | undefined;
       from = senderEmail(extractHeader(headers, "From"));
       subject = extractHeader(headers, "Subject");
-      const body: string = msgData.snippet ?? "";
+      const snippet: string = msgData.snippet ?? "";
+      const fullBody = extractBody(msgData.payload);
+      const body: string = fullBody || snippet;
 
       const existing = await db
         .select({ id: transactions.id })
@@ -234,9 +296,9 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         continue;
       }
 
-      const trimmedBody = body.trim();
-      const note = trimmedBody
-        ? trimmedBody.slice(0, MAX_NOTE_CHARS)
+      const trimmedSnippet = snippet.trim();
+      const note = trimmedSnippet
+        ? trimmedSnippet.slice(0, MAX_NOTE_CHARS)
         : GMAIL_SYNC_NOTE;
 
       const matchedCategoryId = matchCategoryId(
