@@ -20,13 +20,9 @@ function getCachePath(): string | null {
     const FileSystem = require("expo-file-system") as {
       documentDirectory: string | null;
     };
-    if (!FileSystem.documentDirectory) {
-      console.warn("[widget] expo-file-system documentDirectory is null");
-      return null;
-    }
+    if (!FileSystem.documentDirectory) return null;
     return `${FileSystem.documentDirectory}widget-data.json`;
-  } catch (err) {
-    console.warn("[widget] expo-file-system unavailable", err);
+  } catch {
     return null;
   }
 }
@@ -40,8 +36,7 @@ async function readCachedWidgetData(): Promise<AndroidWidgetData | null> {
     };
     const json = await FileSystem.readAsStringAsync(path);
     return JSON.parse(json) as AndroidWidgetData;
-  } catch (err) {
-    console.warn("[widget] failed to read cached data", err);
+  } catch {
     return null;
   }
 }
@@ -54,8 +49,8 @@ async function writeCachedWidgetData(data: AndroidWidgetData): Promise<void> {
       writeAsStringAsync: (path: string, data: string) => Promise<void>;
     };
     await FileSystem.writeAsStringAsync(path, JSON.stringify(data));
-  } catch (err) {
-    console.warn("[widget] failed to write cached data", err);
+  } catch {
+    // non-critical
   }
 }
 

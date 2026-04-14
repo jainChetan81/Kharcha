@@ -1019,24 +1019,23 @@ export async function updateTransaction(
     note: params.note,
   };
   if (params.sourceType !== undefined) {
-    // Defence-in-depth: never let a caller downgrade a Gmail-synced or
-    // subscription-recurring transaction back to "manual" via an edit —
-    // doing so would let it re-import on the next Gmail sync or break
-    // the subscription linkage. The only transitions allowed here are
-    // between "manual" and "transfer" (user toggling the transfer flag).
+    // The only edit-time transition allowed is the user toggling the
+    // transfer flag (manual ↔ transfer). Anything else is rejected:
+    //   - synced/recurring → manual would let the row re-import on the
+    //     next Gmail sync or orphan it from its subscription.
+    //   - manual → synced/recurring would fabricate provenance the row
+    //     doesn't have. The edit form never sends these values, but we
+    //     enforce it here as defence-in-depth.
     const existing = await db
       .select({ source_type: transactions.source_type })
       .from(transactions)
       .where(eq(transactions.id, id))
       .limit(1);
-    const current = existing[0]?.source_type;
-    const allowed =
-      current === "manual" ||
-      current === "transfer" ||
-      current === undefined ||
-      current === null;
-    if (allowed) {
-      updates.source_type = params.sourceType;
+    const current = existing[0]?.source_type ?? "manual";
+    const next = params.sourceType;
+    const editable = (v: SourceType) => v === "manual" || v === "transfer";
+    if (editable(current) && editable(next)) {
+      updates.source_type = next;
     }
   }
   return db.update(transactions).set(updates).where(eq(transactions.id, id));

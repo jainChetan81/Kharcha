@@ -94,6 +94,7 @@ async function syncAndroid(payload: WidgetData): Promise<void> {
 // DB queries + native bridge calls per call. Coalesce calls inside this window.
 const DEBOUNCE_MS = 1500;
 let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingResolvers: Array<() => void> = [];
 let inFlight: Promise<void> | null = null;
 
 async function runSync(): Promise<void> {
@@ -109,19 +110,24 @@ async function runSync(): Promise<void> {
   }
 }
 
+function fireDebouncedSync() {
+  const resolvers = pendingResolvers;
+  pendingResolvers = [];
+  pendingTimer = null;
+  inFlight = runSync().finally(() => {
+    inFlight = null;
+    for (const resolve of resolvers) resolve();
+  });
+}
+
 export function syncWidgetData(): Promise<void> {
   if (Platform.OS !== "ios" && Platform.OS !== "android") {
     return Promise.resolve();
   }
-  if (pendingTimer) clearTimeout(pendingTimer);
   return new Promise<void>((resolve) => {
-    pendingTimer = setTimeout(() => {
-      pendingTimer = null;
-      inFlight = runSync().finally(() => {
-        inFlight = null;
-      });
-      inFlight.then(resolve);
-    }, DEBOUNCE_MS);
+    pendingResolvers.push(resolve);
+    if (pendingTimer) clearTimeout(pendingTimer);
+    pendingTimer = setTimeout(fireDebouncedSync, DEBOUNCE_MS);
   });
 }
 
@@ -130,8 +136,8 @@ export function syncWidgetData(): Promise<void> {
 export async function flushWidgetSync(): Promise<void> {
   if (pendingTimer) {
     clearTimeout(pendingTimer);
-    pendingTimer = null;
+    fireDebouncedSync();
   }
   if (inFlight) await inFlight;
-  await runSync();
+  else await runSync();
 }
