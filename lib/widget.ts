@@ -88,10 +88,17 @@ async function syncAndroid(payload: WidgetData): Promise<void> {
   await updateAndroidWidgets(payload);
 }
 
-export async function syncWidgetData(): Promise<void> {
+// Debounce widget rebuilds. syncWidgetData fires on app launch, every AppState
+// foreground transition, and after every transaction mutation. Rapid fire
+// (e.g. bulk gmail sync or the user toggling apps) would otherwise trigger 6
+// DB queries + native bridge calls per call. Coalesce calls inside this window.
+const DEBOUNCE_MS = 1500;
+let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+let inFlight: Promise<void> | null = null;
+
+async function runSync(): Promise<void> {
   try {
     const payload = await buildWidgetPayload();
-
     if (Platform.OS === "ios") {
       await syncIOS(payload);
     } else if (Platform.OS === "android") {
@@ -100,4 +107,31 @@ export async function syncWidgetData(): Promise<void> {
   } catch {
     // Widget sync is non-critical — never crash the app for this
   }
+}
+
+export function syncWidgetData(): Promise<void> {
+  if (Platform.OS !== "ios" && Platform.OS !== "android") {
+    return Promise.resolve();
+  }
+  if (pendingTimer) clearTimeout(pendingTimer);
+  return new Promise<void>((resolve) => {
+    pendingTimer = setTimeout(() => {
+      pendingTimer = null;
+      inFlight = runSync().finally(() => {
+        inFlight = null;
+      });
+      inFlight.then(resolve);
+    }, DEBOUNCE_MS);
+  });
+}
+
+// Escape hatch for callers that need to flush immediately (e.g. unit tests or
+// a manual "refresh widgets" action). Normal callers should use syncWidgetData.
+export async function flushWidgetSync(): Promise<void> {
+  if (pendingTimer) {
+    clearTimeout(pendingTimer);
+    pendingTimer = null;
+  }
+  if (inFlight) await inFlight;
+  await runSync();
 }

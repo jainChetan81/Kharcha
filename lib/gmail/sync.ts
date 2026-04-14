@@ -15,6 +15,7 @@ import { db } from "@/lib/db";
 import { getActiveBanksWithEmails } from "@/lib/db/banks";
 import { getAllCategories } from "@/lib/db/categories";
 import { getConfig, updateConfig } from "@/lib/db/config";
+import expo from "@/lib/db/connection";
 import { subscriptions, transactions } from "@/lib/db/schema";
 import { getValidAccessToken } from "./auth";
 import { type ParseSource, parseEmailWithFallback } from "./parsers";
@@ -75,15 +76,17 @@ interface GmailPart {
   parts?: GmailPart[];
 }
 
-function base64UrlDecode(data: string): string {
+type DecodeResult = { text: string; failed: boolean };
+
+function base64UrlDecode(data: string): DecodeResult {
   try {
     const base64 = data.replace(/-/g, "+").replace(/_/g, "/");
     const binary = globalThis.atob(base64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return new TextDecoder("utf-8").decode(bytes);
+    return { text: new TextDecoder("utf-8").decode(bytes), failed: false };
   } catch {
-    return "";
+    return { text: "", failed: true };
   }
 }
 
@@ -116,17 +119,33 @@ function stripHtml(html: string): string {
 // Gmail's `snippet` previews the first visible text, which for bank emails is
 // often a promotional banner (e.g. Visa FIFA ad in HDFC mails) — not the
 // transaction body. Pull text/plain when present, fall back to stripped HTML.
-function extractBody(payload: GmailPart | undefined): string {
-  if (!payload) return "";
+// Returns { body, decodeFailed } so the caller can distinguish a malformed
+// MIME payload (log as DECODE_ERROR) from a legitimately unparseable body.
+function extractBody(payload: GmailPart | undefined): {
+  body: string;
+  decodeFailed: boolean;
+} {
+  if (!payload) return { body: "", decodeFailed: false };
   const plain = findPartData(payload, "text/plain");
-  if (plain) return base64UrlDecode(plain);
-  const html = findPartData(payload, "text/html");
-  if (html) return stripHtml(base64UrlDecode(html));
-  if (payload.body?.data) {
-    const decoded = base64UrlDecode(payload.body.data);
-    return payload.mimeType === "text/html" ? stripHtml(decoded) : decoded;
+  if (plain) {
+    const r = base64UrlDecode(plain);
+    return { body: r.text, decodeFailed: r.failed };
   }
-  return "";
+  const html = findPartData(payload, "text/html");
+  if (html) {
+    const r = base64UrlDecode(html);
+    return { body: r.failed ? "" : stripHtml(r.text), decodeFailed: r.failed };
+  }
+  if (payload.body?.data) {
+    const r = base64UrlDecode(payload.body.data);
+    const body = r.failed
+      ? ""
+      : payload.mimeType === "text/html"
+        ? stripHtml(r.text)
+        : r.text;
+    return { body, decodeFailed: r.failed };
+  }
+  return { body: "", decodeFailed: false };
 }
 
 function geminiErrorToReason(
@@ -246,8 +265,8 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
       from = senderEmail(extractHeader(headers, "From"));
       subject = extractHeader(headers, "Subject");
       const snippet: string = msgData.snippet ?? "";
-      const fullBody = extractBody(msgData.payload);
-      const body: string = fullBody || snippet;
+      const extracted = extractBody(msgData.payload);
+      const body: string = extracted.body || snippet;
 
       const existing = await db
         .select({ id: transactions.id })
@@ -278,6 +297,20 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
 
       if (!outcome.parsed) {
         result.failed++;
+        // Prefer the more specific decode/empty-body reason when the MIME
+        // payload couldn't be decoded, otherwise fall back to Gemini/parser
+        // reason mapping.
+        let reason = geminiErrorToReason(
+          outcome.geminiError,
+          Boolean(outcome.geminiResponse),
+        );
+        if (!outcome.geminiResponse) {
+          if (extracted.decodeFailed) {
+            reason = EMAIL_LOG_REASON.DECODE_ERROR;
+          } else if (!extracted.body && !snippet) {
+            reason = EMAIL_LOG_REASON.EMPTY_BODY;
+          }
+        }
         result.emailLogs.push({
           id: message.id,
           from,
@@ -287,10 +320,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             ? EMAIL_LOG_STATUS.NOT_TRANSACTION
             : EMAIL_LOG_STATUS.FAILED,
           geminiResponse: outcome.geminiResponse,
-          reason: geminiErrorToReason(
-            outcome.geminiError,
-            Boolean(outcome.geminiResponse),
-          ),
+          reason,
           body,
         });
         continue;
@@ -334,26 +364,34 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         outcome.parsed.type === "expense"
       ) {
         const merchantLower = outcome.parsed.merchant.toLowerCase();
-        const existingSub = await db
-          .select({ id: subscriptions.id })
-          .from(subscriptions)
-          .where(
-            and(
-              sql`lower(${subscriptions.name}) = ${merchantLower}`,
-              eq(subscriptions.billing_day, outcome.parsed.billing_day),
-            ),
-          )
-          .limit(1);
+        const billingDay = outcome.parsed.billing_day;
+        const subAmount = outcome.parsed.amount;
+        const subMerchant = outcome.parsed.merchant;
+        // Wrap SELECT + INSERT in a transaction so parallel gmail syncs
+        // (manual trigger + background sync) can't both see "no existing
+        // row" and race to insert duplicate subscription entries.
+        await expo.withTransactionAsync(async () => {
+          const existingSub = await db
+            .select({ id: subscriptions.id })
+            .from(subscriptions)
+            .where(
+              and(
+                sql`lower(${subscriptions.name}) = ${merchantLower}`,
+                eq(subscriptions.billing_day, billingDay),
+              ),
+            )
+            .limit(1);
 
-        if (existingSub.length === 0) {
-          await db.insert(subscriptions).values({
-            name: outcome.parsed.merchant,
-            amount: outcome.parsed.amount,
-            billing_day: outcome.parsed.billing_day,
-            category_id: matchedCategoryId,
-            source_id: null,
-          });
-        }
+          if (existingSub.length === 0) {
+            await db.insert(subscriptions).values({
+              name: subMerchant,
+              amount: subAmount,
+              billing_day: billingDay,
+              category_id: matchedCategoryId,
+              source_id: null,
+            });
+          }
+        });
       }
 
       result.added++;

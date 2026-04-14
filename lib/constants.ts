@@ -149,6 +149,8 @@ export const EMAIL_LOG_REASON = {
   GEMINI_TIMEOUT: "gemini_timeout",
   GEMINI_TRUNCATED: "gemini_truncated",
   NO_PARSER_MATCHED: "no parser matched",
+  DECODE_ERROR: "email body decode failed",
+  EMPTY_BODY: "empty email body",
 } as const;
 
 export type EmailLogReasonType =

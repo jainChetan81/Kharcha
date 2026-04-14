@@ -64,10 +64,24 @@ export const hdfcUpiCreditCard: Parser = (body) => {
 export const hdfcCreditCard: Parser = (body) => {
   if (!body.match(/HDFC/i)) return null;
   if (!body.match(/(?:credit\s*card|card\s+ending)/i)) return null;
-  // Skip e-mandate / upcoming-debit notices — these announce a future auto-payment,
-  // not a completed transaction, and would double-count when the real debit arrives.
-  if (body.match(/\b(?:e-?mandate|upcoming|will\s+be\s+debited)\b/i))
-    return null;
+  // Skip e-mandate / upcoming-debit notices — these announce a future
+  // auto-payment, not a completed transaction, and would double-count when
+  // the real debit arrives. Match only sentence-level future-tense phrasing
+  // (the old broad `\be-?mandate\b` dropped real transactions whose merchant
+  // name or body happened to contain the word).
+  if (
+    body.match(
+      /(?:e-?mandate|upcoming\s+(?:debit|payment|transaction)|will\s+be\s+(?:debited|charged|auto-?debited)|scheduled\s+(?:for|on)|shall\s+be\s+debited)/i,
+    )
+  ) {
+    // Only skip if it looks like a notice, not a past-tense confirmation.
+    // Real transactions use "has been debited" / "was debited"; notices use
+    // "will be" / "upcoming" / "scheduled".
+    const isPastTense = body.match(
+      /(?:has\s+been|have\s+been|was|were)\s+(?:debited|charged)/i,
+    );
+    if (!isPastTense) return null;
+  }
 
   const amountMatch = body.match(
     /(?:for|of)\s+(?:Rs\.?|INR)\s*([\d,]+\.?\d*)/i,
