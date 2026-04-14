@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { getAndroidId, getIosIdForVendorAsync } from "expo-application";
-import * as Clipboard from "expo-clipboard";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
@@ -10,6 +9,7 @@ import { InfoRow } from "@/components/ui/info-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Text } from "@/components/ui/text";
+import { copyToClipboard } from "@/lib/clipboard";
 import { COLORS, CONFIG_KEYS, DATE_FORMAT, QUERY_KEYS } from "@/lib/constants";
 import { insertTransaction, syncedTransactionExists } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
@@ -229,11 +229,6 @@ export default function DeviceSyncScreen() {
   const busy =
     isLoading || registerMutation.isPending || syncMutation.isPending;
 
-  async function handleCopyToClipboard(value: string, label: string) {
-    await Clipboard.setStringAsync(value);
-    showSuccessToast(`${label} copied`);
-  }
-
   return (
     <View className="flex-1 bg-background">
       <ScreenHeader title="Device Sync" />
@@ -251,7 +246,7 @@ export default function DeviceSyncScreen() {
           <Pressable
             onPress={() => {
               if (settings?.deviceId)
-                handleCopyToClipboard(settings.deviceId, "User ID");
+                copyToClipboard(settings.deviceId, "User ID");
             }}
             className="mx-5 mb-2 items-center rounded-xl border border-border bg-card px-4 py-4"
           >
@@ -276,7 +271,7 @@ export default function DeviceSyncScreen() {
           {isRegistered && settings?.forwardingEmail && (
             <Pressable
               onPress={() =>
-                handleCopyToClipboard(
+                copyToClipboard(
                   settings.forwardingEmail ?? "",
                   "Forwarding email",
                 )

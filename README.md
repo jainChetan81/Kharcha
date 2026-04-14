@@ -40,6 +40,7 @@ this mirrors github actions ci locally. see [docs/CI.md](docs/CI.md) for detaile
 - **[Drizzle & Migrations](docs/DRIZZLE.md)** — schema management, dual migration strategy, version tracking
 - **[Gmail Sync](docs/GMAIL_SYNC.md)** — oauth setup, platform-specific auth, email parsing, backend sync
 - **[Android Debugging](docs/ANDROID_DEBUG.md)** — usb debugging, scrcpy, sha-1 setup, apk builds
+- **[Release](docs/RELEASE.md)** — release process, local builds, OTA updates
 
 ---
 

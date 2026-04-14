@@ -40,6 +40,7 @@ export interface EmailLog {
   confidence?: "high" | "medium" | "low";
   reason?: EmailLogReasonType;
   errorMessage?: string;
+  body?: string;
 }
 
 export interface SyncResult {
@@ -228,6 +229,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             outcome.geminiError,
             Boolean(outcome.geminiResponse),
           ),
+          body,
         });
         continue;
       }

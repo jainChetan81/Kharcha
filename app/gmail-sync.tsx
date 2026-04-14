@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { router } from "expo-router";
-import { ChevronRight, Landmark } from "lucide-react-native";
+import { ChevronRight, Copy, Landmark } from "lucide-react-native";
 import { lazy, Suspense, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
@@ -13,6 +13,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { Text } from "@/components/ui/text";
 import { useBanksWithEmails } from "@/hooks/use-banks";
 import { useSyncState } from "@/hooks/use-sync-state";
+import { copyToClipboard } from "@/lib/clipboard";
 import {
   COLORS,
   CONFIG_KEYS,
@@ -533,7 +534,10 @@ function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
         </Text>
       ) : null}
       {log.transaction && (
-        <Text className="mt-1 text-[11px] text-muted-foreground">
+        <Text
+          className="mt-1 text-[11px] text-muted-foreground"
+          numberOfLines={1}
+        >
           {log.transaction.merchant ?? "—"} · ₹{log.transaction.amount} ·{" "}
           {log.transaction.date}
         </Text>
@@ -554,6 +558,29 @@ function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
           {log.errorMessage}
         </Text>
       )}
+      {log.status !== EMAIL_LOG_STATUS.ADDED &&
+        log.status !== EMAIL_LOG_STATUS.DUPLICATE &&
+        log.body && (
+          <View className="mt-2 rounded-lg border border-border bg-card p-2">
+            <View className="mb-1 flex-row items-center justify-between">
+              <Text className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Email snippet
+              </Text>
+              <Pressable
+                onPress={() => copyToClipboard(log.body ?? "", "Snippet")}
+                className="flex-row items-center gap-1 rounded-md bg-background px-2 py-1"
+              >
+                <Icon as={Copy} className="size-3 text-primary" />
+                <Text className="text-[10px] font-medium text-primary">
+                  Copy
+                </Text>
+              </Pressable>
+            </View>
+            <Text className="text-[10px] text-foreground" selectable>
+              {log.body}
+            </Text>
+          </View>
+        )}
     </View>
   );
 }

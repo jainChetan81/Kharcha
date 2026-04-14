@@ -131,7 +131,10 @@ export function TransactionItem({
       </View>
       <View className="ml-3 flex-1">
         <View className="flex-row items-center gap-1">
-          <Text className="text-sm font-semibold text-foreground">
+          <Text
+            numberOfLines={1}
+            className="shrink text-sm font-semibold text-foreground"
+          >
             {item.merchant || item.category_name || OTHER_CATEGORY_LABEL}
           </Text>
           {isTransfer && <Tag label="TRANSFER" variant="muted" />}
@@ -145,7 +148,12 @@ export function TransactionItem({
             <Tag label="SUB" variant="primary" />
           )}
         </View>
-        <Text className="mt-0.5 text-xs text-muted-foreground">{subtitle}</Text>
+        <Text
+          numberOfLines={1}
+          className="mt-0.5 text-xs text-muted-foreground"
+        >
+          {subtitle}
+        </Text>
       </View>
       <View className="items-end">
         <Text
