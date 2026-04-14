@@ -65,6 +65,30 @@
       ["react-native-widget-extension", {
         "groupIdentifier": "group.com.chetanjain.kharcha",
         "deploymentTarget": "17.0"
+      }],
+      ["react-native-android-widget", {
+        "widgets": [
+          {
+            "name": "KharchaSmallWidget",
+            "label": "Kharcha Spending",
+            "description": "See your monthly spending at a glance.",
+            "minWidth": "110dp",
+            "minHeight": "110dp",
+            "targetCellWidth": 2,
+            "targetCellHeight": 2,
+            "resizeMode": "none"
+          },
+          {
+            "name": "KharchaMediumWidget",
+            "label": "Kharcha Spending",
+            "description": "Monthly spending with top categories.",
+            "minWidth": "250dp",
+            "minHeight": "110dp",
+            "targetCellWidth": 4,
+            "targetCellHeight": 2,
+            "resizeMode": "horizontal"
+          }
+        ]
       }]
     ],
     "extra": {

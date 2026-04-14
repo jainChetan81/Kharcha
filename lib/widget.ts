@@ -27,60 +27,76 @@ type WidgetData = {
   lastUpdated: string;
 };
 
+export async function buildWidgetPayload(): Promise<WidgetData> {
+  const now = new Date();
+  const yearMonth = format(now, MONTH_FORMAT);
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+
+  const [summary, breakdown, insights, todaySpend, currencyCode, budgets] =
+    await Promise.all([
+      getMonthlySummary(yearMonth),
+      getCategoryBreakdown(yearMonth),
+      getMonthlyInsights(year, month),
+      getTodaySpend(),
+      getConfig(CONFIG_KEYS.CURRENCY),
+      getBudgets(),
+    ]);
+
+  const prevSpend = await getPreviousMonthSpendAtDay(insights.daysElapsed);
+
+  const code = (currencyCode ?? "INR") as CurrencyCode;
+  const symbol = CURRENCIES[code]?.symbol ?? "₹";
+
+  return {
+    totalExpenses: summary.total_expenses ?? 0,
+    currencySymbol: symbol,
+    monthLabel: format(now, "MMMM yyyy"),
+    categories: breakdown.map((c) => ({
+      name: c.category_name,
+      amount: c.total,
+      percentage: c.percentage,
+    })),
+    projectedLow: insights.projectedLow,
+    projectedHigh: insights.projectedHigh,
+    daysElapsed: insights.daysElapsed,
+    daysInMonth: insights.daysInMonth,
+    todaySpend,
+    totalBudget:
+      budgets.length > 0 && budgets.length >= breakdown.length
+        ? budgets.reduce((sum, b) => sum + b.amount, 0)
+        : null,
+    previousMonthSpendAtThisPoint: prevSpend,
+    lastUpdated: new Date().toISOString(),
+  };
+}
+
+async function syncIOS(payload: WidgetData): Promise<void> {
+  const { requireNativeModule } = require("expo-modules-core") as {
+    requireNativeModule: (name: string) => {
+      setWidgetData: (json: string) => void;
+    };
+  };
+  const widgetModule = requireNativeModule("ReactNativeWidgetExtension");
+  widgetModule.setWidgetData(JSON.stringify(payload));
+}
+
+async function syncAndroid(payload: WidgetData): Promise<void> {
+  const { updateAndroidWidgets } = require("@/lib/android-widget-handler") as {
+    updateAndroidWidgets: (data: typeof payload) => Promise<void>;
+  };
+  await updateAndroidWidgets(payload);
+}
+
 export async function syncWidgetData(): Promise<void> {
-  if (Platform.OS !== "ios") return;
-
   try {
-    const { requireNativeModule } = require("expo-modules-core") as {
-      requireNativeModule: (name: string) => {
-        setWidgetData: (json: string) => void;
-      };
-    };
-    const widgetModule = requireNativeModule("ReactNativeWidgetExtension");
+    const payload = await buildWidgetPayload();
 
-    const now = new Date();
-    const yearMonth = format(now, MONTH_FORMAT);
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-
-    const [summary, breakdown, insights, todaySpend, currencyCode, budgets] =
-      await Promise.all([
-        getMonthlySummary(yearMonth),
-        getCategoryBreakdown(yearMonth),
-        getMonthlyInsights(year, month),
-        getTodaySpend(),
-        getConfig(CONFIG_KEYS.CURRENCY),
-        getBudgets(),
-      ]);
-
-    const prevSpend = await getPreviousMonthSpendAtDay(insights.daysElapsed);
-
-    const code = (currencyCode ?? "INR") as CurrencyCode;
-    const symbol = CURRENCIES[code]?.symbol ?? "₹";
-
-    const payload: WidgetData = {
-      totalExpenses: summary.total_expenses ?? 0,
-      currencySymbol: symbol,
-      monthLabel: format(now, "MMMM yyyy"),
-      categories: breakdown.map((c) => ({
-        name: c.category_name,
-        amount: c.total,
-        percentage: c.percentage,
-      })),
-      projectedLow: insights.projectedLow,
-      projectedHigh: insights.projectedHigh,
-      daysElapsed: insights.daysElapsed,
-      daysInMonth: insights.daysInMonth,
-      todaySpend,
-      totalBudget:
-        budgets.length > 0 && budgets.length >= breakdown.length
-          ? budgets.reduce((sum, b) => sum + b.amount, 0)
-          : null,
-      previousMonthSpendAtThisPoint: prevSpend,
-      lastUpdated: now.toISOString(),
-    };
-
-    widgetModule.setWidgetData(JSON.stringify(payload));
+    if (Platform.OS === "ios") {
+      await syncIOS(payload);
+    } else if (Platform.OS === "android") {
+      await syncAndroid(payload);
+    }
   } catch {
     // Widget sync is non-critical — never crash the app for this
   }
