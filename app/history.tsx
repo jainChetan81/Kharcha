@@ -13,7 +13,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import {
   ChevronLeft,
   FileDown,
-  Mail,
   Receipt,
   Search,
   SlidersHorizontal,
@@ -29,7 +28,6 @@ import {
 } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -49,7 +47,7 @@ import { Text } from "@/components/ui/text";
 import { useCategoriesByType } from "@/hooks/use-categories";
 import { useCurrency } from "@/hooks/use-currency";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useRefresh } from "@/hooks/use-refresh";
+import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useAllSources } from "@/hooks/use-sources";
 import {
   useSwipeDelete,
@@ -59,7 +57,6 @@ import {
   COLORS,
   DATE_FORMAT,
   DATE_ISO_FORMAT,
-  EMAIL_LOG_STATUS,
   editScreen,
   PERIOD_PRESET,
   type PeriodPresetType,
@@ -71,8 +68,6 @@ import {
 import { getAllTransactionsFiltered } from "@/lib/db";
 import { exportToCSV } from "@/lib/export/csv";
 import { buildListData, type ListItem } from "@/lib/format";
-import { useGoogleAuth } from "@/lib/gmail/auth";
-import { syncGmailTransactions } from "@/lib/gmail/sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -123,7 +118,7 @@ function getPresetRange(preset: PeriodPresetType): {
 
 export default function HistoryScreen() {
   const { format: fmt } = useCurrency();
-  const { refreshing, onRefresh } = useRefresh();
+  const { refreshing, onRefresh } = useSyncRefresh();
   const params = useLocalSearchParams<{
     filter?: string;
     category_id?: string;
@@ -150,17 +145,9 @@ export default function HistoryScreen() {
   const [amountMin, setAmountMin] = useState<number | null>(null);
   const [amountMax, setAmountMax] = useState<number | null>(null);
   const handleSwipeDelete = useSwipeDelete();
-  const { isConnected } = useGoogleAuth();
-  const [gmailConnected, setGmailConnected] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [searchText, setSearchText] = useState("");
   const debouncedSearch = useDebounce(searchText);
   const [exporting, setExporting] = useState(false);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: isConnected is stable from hook
-  useEffect(() => {
-    isConnected().then(setGmailConnected);
-  }, []);
 
   // Draft filters (inside modal)
   const [showFilters, setShowFilters] = useState(false);
@@ -315,42 +302,6 @@ export default function HistoryScreen() {
     .filter((t) => t.type === TRANSACTION_TYPE.TRANSFER)
     .reduce((sum, t) => sum + t.amount, 0);
 
-  async function handleGmailSync() {
-    setSyncing(true);
-    try {
-      const result = await syncGmailTransactions();
-      const lines: string[] = [];
-      let total = 0;
-      for (const log of result.emailLogs) {
-        if (log.status === EMAIL_LOG_STATUS.ADDED && log.transaction) {
-          total += log.transaction.amount;
-        }
-      }
-      if (result.added > 0) {
-        lines.push(`${result.added} added (${fmt(total)})`);
-      }
-      if (result.skipped > 0) {
-        lines.push(`${result.skipped} duplicates skipped`);
-      }
-      if (result.failed > 0) {
-        lines.push(`${result.failed} failed to parse`);
-      }
-      Alert.alert(
-        `${result.added} transaction${result.added !== 1 ? "s" : ""} synced`,
-        lines.join("\n") || "No new transactions found",
-        [{ text: "OK" }],
-      );
-      if (result.added > 0) {
-        setSourceTypeFilter(SOURCE_TYPE.SYNCED);
-      }
-      await onRefresh();
-    } catch (err) {
-      showErrorToast("Sync failed", err);
-    } finally {
-      setSyncing(false);
-    }
-  }
-
   async function handleExport() {
     setExporting(true);
     try {
@@ -490,22 +441,6 @@ export default function HistoryScreen() {
           <Text className="text-lg font-bold text-foreground">History</Text>
         </Pressable>
         <View className="flex-row items-center gap-2">
-          {gmailConnected && (
-            <Pressable
-              onPress={handleGmailSync}
-              disabled={syncing}
-              className="flex-row items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2"
-            >
-              {syncing ? (
-                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-              ) : (
-                <Icon as={Mail} className="size-4 text-muted-foreground" />
-              )}
-              <Text className="text-xs font-medium text-muted-foreground">
-                {syncing ? "Syncing" : "Sync"}
-              </Text>
-            </Pressable>
-          )}
           <Pressable
             onPress={handleExport}
             disabled={exporting}

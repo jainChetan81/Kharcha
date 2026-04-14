@@ -14,7 +14,6 @@ import { lazy, Suspense, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  RefreshControl,
   ScrollView,
   Switch,
   View,
@@ -27,10 +26,7 @@ import { Text } from "@/components/ui/text";
 import { useAppLockSetting } from "@/hooks/use-app-lock";
 import { useAppUpdate } from "@/hooks/use-app-update";
 import { CURRENCIES, useConfig } from "@/hooks/use-config";
-import {
-  useFeatureFlags,
-  useGmailSyncEnabled,
-} from "@/hooks/use-feature-flags";
+import { useGmailSyncEnabled } from "@/hooks/use-feature-flags";
 import { useClearTransactionsWithConfirm } from "@/hooks/use-transactions";
 import { COLORS, SCREENS } from "@/lib/constants";
 import { seedSampleData } from "@/lib/db";
@@ -52,7 +48,6 @@ export default function ProfileScreen() {
     useAppLockSetting();
   const { checking: checkingUpdate, checkForUpdate } = useAppUpdate();
 
-  const { refetch: refetchFlags, isRefetching } = useFeatureFlags();
   const gmailSyncEnabled = useGmailSyncEnabled(userName);
 
   const initials = userName
@@ -75,13 +70,6 @@ export default function ProfileScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={() => refetchFlags()}
-            tintColor={COLORS.PRIMARY}
-          />
-        }
       >
         <View className="items-center py-6">
           <View className="h-20 w-20 items-center justify-center rounded-full bg-primary">

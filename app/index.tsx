@@ -5,13 +5,20 @@ import {
   ChevronRight,
   Clock,
   House,
+  Mail,
   Plus,
   Settings,
   TrendingUp,
   User,
 } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, RefreshControl, ScrollView, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  View,
+} from "react-native";
 import { PieChart } from "react-native-gifted-charts";
 import {
   ComponentErrorBoundary,
@@ -23,7 +30,8 @@ import { Text } from "@/components/ui/text";
 import { useBudgets } from "@/hooks/use-budgets";
 import { useConfig } from "@/hooks/use-config";
 import { useCurrency } from "@/hooks/use-currency";
-import { useRefresh } from "@/hooks/use-refresh";
+import { useGmailSyncEnabled } from "@/hooks/use-feature-flags";
+import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
 import {
   useCategoryBreakdown,
@@ -117,7 +125,9 @@ function SpendingRing({
 export default function HomeScreen() {
   const { format: fmt } = useCurrency();
   const { userName } = useConfig();
-  const { refreshing, onRefresh } = useRefresh();
+  const { refreshing, onRefresh, gmailConnected } = useSyncRefresh();
+  const gmailSyncEnabled = useGmailSyncEnabled(userName);
+  const showSyncButton = gmailSyncEnabled && gmailConnected;
 
   const now = new Date();
   const [selectedDate, setSelectedDate] = useState(now);
@@ -172,19 +182,34 @@ export default function HomeScreen() {
             <Text className="text-lg font-bold text-foreground">
               Hello, {userName}
             </Text>
-            <Pressable
-              onPress={() => router.push(SCREENS.PROFILE)}
-              className="h-10 w-10 items-center justify-center rounded-full bg-primary"
-            >
-              <Text className="text-sm font-bold text-primary-foreground">
-                {userName
-                  .split(" ")
-                  .map((w: string) => w[0])
-                  .join("")
-                  .toUpperCase()
-                  .slice(0, 2)}
-              </Text>
-            </Pressable>
+            <View className="flex-row items-center gap-2">
+              {showSyncButton && (
+                <Pressable
+                  onPress={onRefresh}
+                  disabled={refreshing}
+                  className="h-10 w-10 items-center justify-center rounded-full border border-border bg-card"
+                >
+                  {refreshing ? (
+                    <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+                  ) : (
+                    <Icon as={Mail} className="size-4 text-muted-foreground" />
+                  )}
+                </Pressable>
+              )}
+              <Pressable
+                onPress={() => router.push(SCREENS.PROFILE)}
+                className="h-10 w-10 items-center justify-center rounded-full bg-primary"
+              >
+                <Text className="text-sm font-bold text-primary-foreground">
+                  {userName
+                    .split(" ")
+                    .map((w: string) => w[0])
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2)}
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
           <View className="mt-4 flex-row items-center justify-between">
