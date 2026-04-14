@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import {
   ChevronRight,
   Database,
+  Download,
   FileText,
   Lock,
   Mail,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react-native";
 import { lazy, Suspense, useState } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -23,6 +25,7 @@ import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useAppLockSetting } from "@/hooks/use-app-lock";
+import { useAppUpdate } from "@/hooks/use-app-update";
 import { CURRENCIES, useConfig } from "@/hooks/use-config";
 import {
   useFeatureFlags,
@@ -47,6 +50,7 @@ export default function ProfileScreen() {
   const handleClearTransactions = useClearTransactionsWithConfirm();
   const { enabled: appLockEnabled, toggle: toggleAppLock } =
     useAppLockSetting();
+  const { checking: checkingUpdate, checkForUpdate } = useAppUpdate();
 
   const { refetch: refetchFlags, isRefetching } = useFeatureFlags();
   const gmailSyncEnabled = useGmailSyncEnabled(userName);
@@ -194,6 +198,21 @@ export default function ProfileScreen() {
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           App
         </Text>
+        <Pressable
+          onPress={checkForUpdate}
+          disabled={checkingUpdate}
+          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Icon as={Download} className="mr-3 size-4 text-muted-foreground" />
+          <Text className="flex-1 text-sm font-medium text-foreground">
+            Check for Updates
+          </Text>
+          {checkingUpdate ? (
+            <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+          ) : (
+            <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
+          )}
+        </Pressable>
         <Pressable
           onPress={() => router.push(SCREENS.ABOUT)}
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
