@@ -42,11 +42,32 @@ export const hdfcCredit: Parser = (body) => {
   };
 };
 
+// "Rs.X has been debited from your HDFC Bank [RuPay] Credit Card XX1234 to MERCHANT on DD-MM-YY"
+// UPI debits from HDFC credit cards (RuPay/UPI-linked) — amount leads the sentence,
+// merchant follows "to", and the date uses dd-MM-yy without separators.
+export const hdfcUpiCreditCard: Parser = (body) => {
+  const match = body.match(
+    /Rs\.?\s*([\d,]+\.?\d*)\s+has\s+been\s+debited\s+from\s+your\s+HDFC\s+Bank[\w\s]*Credit\s+Card\s+(?:XX|ending\s+)?\d+\s+to\s+(.+)\s+on\s+(\d{2}[-/]\d{2}[-/]\d{2,4})\b/i,
+  );
+  if (!match) return null;
+
+  return {
+    amount: parseAmount(match[1]),
+    merchant: match[2].trim(),
+    date: parseHdfcDate(match[3]),
+    type: TRANSACTION_TYPE.EXPENSE,
+  };
+};
+
 // "Your HDFC Bank Credit Card ending 1234 has been used for Rs.2500 at MERCHANT on DD-Mon-YYYY"
 // "Thank you for using your HDFC Bank Credit Card ending 1234 for Rs 999.00 at MERCHANT on DD/MM/YYYY"
 export const hdfcCreditCard: Parser = (body) => {
   if (!body.match(/HDFC/i)) return null;
   if (!body.match(/(?:credit\s*card|card\s+ending)/i)) return null;
+  // Skip e-mandate / upcoming-debit notices — these announce a future auto-payment,
+  // not a completed transaction, and would double-count when the real debit arrives.
+  if (body.match(/\b(?:e-?mandate|upcoming|will\s+be\s+debited)\b/i))
+    return null;
 
   const amountMatch = body.match(
     /(?:for|of)\s+(?:Rs\.?|INR)\s*([\d,]+\.?\d*)/i,
@@ -66,4 +87,9 @@ export const hdfcCreditCard: Parser = (body) => {
   };
 };
 
-export const HDFC_PARSERS: Parser[] = [hdfcCreditCard, hdfcDebit, hdfcCredit];
+export const HDFC_PARSERS: Parser[] = [
+  hdfcUpiCreditCard,
+  hdfcCreditCard,
+  hdfcDebit,
+  hdfcCredit,
+];
