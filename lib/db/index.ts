@@ -36,6 +36,7 @@ import {
   categories,
   config,
   sources,
+  tags,
   transactions,
   transactionTags,
 } from "./schema";
@@ -169,6 +170,27 @@ export async function initDB() {
 
   await db.run(
     sql`CREATE INDEX IF NOT EXISTS idx_bank_emails_bank_id ON bank_emails(bank_id)`,
+  );
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS tags (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS transaction_tags (
+      transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+      tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+      PRIMARY KEY (transaction_id, tag_id)
+    )
+  `);
+
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_transaction_tags_tag_id ON transaction_tags(tag_id)`,
   );
 
   // Back-fill columns that existing DBs (including restored backups from
@@ -841,6 +863,58 @@ export async function seedSampleData(): Promise<boolean> {
       note: "Charger",
     },
   ]);
+
+  await db.insert(tags).values([
+    { name: "Dining Out", sort_order: 0 },
+    { name: "Groceries", sort_order: 1 },
+    { name: "Travel", sort_order: 2 },
+    { name: "Subscriptions", sort_order: 3 },
+    { name: "Work", sort_order: 4 },
+  ]);
+
+  const tagRows = await db.select().from(tags);
+  const tagId = (name: string) =>
+    tagRows.find((t) => t.name === name)?.id ?? null;
+
+  const DINING = tagId("Dining Out");
+  const GROCERIES = tagId("Groceries");
+  const TRAVEL = tagId("Travel");
+  const SUBSCRIPTIONS = tagId("Subscriptions");
+  const WORK = tagId("Work");
+
+  const diningMerchants = new Set([
+    "Swiggy",
+    "Zomato",
+    "Dominos",
+    "Chai Point",
+    "Starbucks",
+    "McDonald",
+    "Tea Trails",
+    "Dunzo",
+  ]);
+  const groceryMerchants = new Set(["DMart", "BigBasket"]);
+  const travelMerchants = new Set(["Uber", "Ola", "Rapido", "Metro", "Auto"]);
+  const subscriptionMerchants = new Set(["Netflix", "Spotify"]);
+  const workMerchants = new Set(["Freelance gig", "Side project"]);
+
+  const txnRows = await db.select().from(transactions);
+  const links: { transaction_id: number; tag_id: number }[] = [];
+  for (const t of txnRows) {
+    const m = t.merchant ?? "";
+    if (DINING && diningMerchants.has(m))
+      links.push({ transaction_id: t.id, tag_id: DINING });
+    if (GROCERIES && groceryMerchants.has(m))
+      links.push({ transaction_id: t.id, tag_id: GROCERIES });
+    if (TRAVEL && travelMerchants.has(m))
+      links.push({ transaction_id: t.id, tag_id: TRAVEL });
+    if (SUBSCRIPTIONS && subscriptionMerchants.has(m))
+      links.push({ transaction_id: t.id, tag_id: SUBSCRIPTIONS });
+    if (WORK && workMerchants.has(m))
+      links.push({ transaction_id: t.id, tag_id: WORK });
+  }
+  if (links.length > 0) {
+    await db.insert(transactionTags).values(links);
+  }
 
   return true;
 }
