@@ -50,6 +50,7 @@ export type {
   CategoryBreakdownRow,
   MonthlyInsights,
   MonthlySummary,
+  ReimbursementSummary,
   Source,
   Transaction,
   TransactionRow,
@@ -99,6 +100,8 @@ export async function initDB() {
       subscription_id INTEGER REFERENCES subscriptions(id),
       source_type TEXT NOT NULL DEFAULT 'manual',
       gmail_message_id TEXT,
+      reimbursement_status TEXT NOT NULL DEFAULT 'none',
+      reimbursed_at TEXT,
       date TEXT NOT NULL,
       note TEXT,
       created_at TEXT DEFAULT (datetime('now'))
@@ -183,6 +186,20 @@ export async function initDB() {
     // Column already exists — safe to ignore
   }
 
+  try {
+    await db.run(
+      sql`ALTER TABLE transactions ADD COLUMN reimbursement_status TEXT NOT NULL DEFAULT 'none'`,
+    );
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
+  try {
+    await db.run(sql`ALTER TABLE transactions ADD COLUMN reimbursed_at TEXT`);
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
   await db.run(
     sql`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
   );
@@ -200,6 +217,9 @@ export async function initDB() {
   );
   await db.run(
     sql`CREATE INDEX IF NOT EXISTS idx_transactions_gmail_message_id ON transactions(gmail_message_id)`,
+  );
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_transactions_reimbursement_status ON transactions(reimbursement_status)`,
   );
 
   await db
@@ -826,6 +846,8 @@ function transactionSelect() {
       subscription_id: transactions.subscription_id,
       source_type: transactions.source_type,
       parsed_by: transactions.parsed_by,
+      reimbursement_status: transactions.reimbursement_status,
+      reimbursed_at: transactions.reimbursed_at,
       date: transactions.date,
       note: transactions.note,
       created_at: transactions.created_at,
@@ -884,6 +906,7 @@ export async function getTransactionsPaginated(
     amountMin?: number | null;
     amountMax?: number | null;
     search?: string;
+    reimbursement?: "all" | "pending" | "reimbursed";
   },
 ) {
   const conditions = [];
@@ -935,6 +958,11 @@ export async function getTransactionsPaginated(
       ),
     );
   }
+  if (filters?.reimbursement && filters.reimbursement !== "all") {
+    conditions.push(
+      eq(transactions.reimbursement_status, filters.reimbursement),
+    );
+  }
 
   const query = transactionSelect()
     .where(conditions.length > 0 ? and(...conditions) : undefined)
@@ -966,6 +994,7 @@ export async function insertTransaction(params: {
   subscriptionId?: number | null;
   sourceType?: SourceType;
   parsedBy?: ParsedByType;
+  reimbursementStatus?: "none" | "pending" | "reimbursed";
   date: string;
   note: string | null;
 }) {
@@ -979,6 +1008,7 @@ export async function insertTransaction(params: {
     subscription_id: params.subscriptionId ?? null,
     source_type: params.sourceType ?? "manual",
     parsed_by: params.parsedBy ?? null,
+    reimbursement_status: params.reimbursementStatus ?? "none",
     date: params.date,
     note: params.note,
   });
@@ -994,6 +1024,7 @@ export async function updateTransaction(
     sourceId: number | null;
     destinationSourceId?: number | null;
     sourceType?: SourceType;
+    reimbursementStatus?: "none" | "pending" | "reimbursed";
     date: string;
     note: string | null;
   },
@@ -1011,6 +1042,8 @@ export async function updateTransaction(
     date: string;
     note: string | null;
     source_type?: SourceType;
+    reimbursement_status?: "none" | "pending" | "reimbursed";
+    reimbursed_at?: string | null;
   } = {
     type: params.type,
     amount: params.amount,
@@ -1021,6 +1054,13 @@ export async function updateTransaction(
     date: params.date,
     note: params.note,
   };
+  if (params.reimbursementStatus !== undefined) {
+    updates.reimbursement_status = params.reimbursementStatus;
+    updates.reimbursed_at =
+      params.reimbursementStatus === "reimbursed"
+        ? new Date().toISOString()
+        : null;
+  }
   if (params.sourceType !== undefined) {
     // The only edit-time transition allowed is the user toggling the
     // transfer flag (manual ↔ transfer). Anything else is rejected:
@@ -1055,6 +1095,8 @@ export async function restoreTransaction(row: {
   category_id: number | null;
   source_id: number | null;
   destination_source_id: number | null;
+  reimbursement_status?: "none" | "pending" | "reimbursed";
+  reimbursed_at?: string | null;
   date: string;
   note: string | null;
   created_at: string | null;
@@ -1066,6 +1108,8 @@ export async function restoreTransaction(row: {
     category_id: row.category_id,
     source_id: row.source_id,
     destination_source_id: row.destination_source_id,
+    reimbursement_status: row.reimbursement_status ?? "none",
+    reimbursed_at: row.reimbursed_at ?? null,
     date: row.date,
     created_at: row.created_at,
     note: row.note,
@@ -1074,6 +1118,41 @@ export async function restoreTransaction(row: {
 
 export async function clearAllTransactions() {
   return db.delete(transactions);
+}
+
+export async function setReimbursementStatus(
+  id: number,
+  status: "none" | "pending" | "reimbursed",
+) {
+  return db
+    .update(transactions)
+    .set({
+      reimbursement_status: status,
+      reimbursed_at: status === "reimbursed" ? new Date().toISOString() : null,
+    })
+    .where(eq(transactions.id, id));
+}
+
+export async function getReimbursementSummary() {
+  const rows = await db
+    .select({
+      status: transactions.reimbursement_status,
+      count: sql<number>`COUNT(*)`,
+      total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+    })
+    .from(transactions)
+    .where(sql`${transactions.reimbursement_status} != 'none'`)
+    .groupBy(transactions.reimbursement_status);
+
+  const pending = rows.find((r) => r.status === "pending");
+  const reimbursed = rows.find((r) => r.status === "reimbursed");
+
+  return {
+    pending_count: pending?.count ?? 0,
+    pending_total: pending?.total ?? 0,
+    reimbursed_count: reimbursed?.count ?? 0,
+    reimbursed_total: reimbursed?.total ?? 0,
+  };
 }
 
 export async function getCategoryBreakdown(yearMonth: string) {

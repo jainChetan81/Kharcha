@@ -15,6 +15,7 @@ import { useCurrency } from "@/hooks/use-currency";
 import {
   OTHER_CATEGORY_LABEL,
   PARSED_BY,
+  REIMBURSEMENT_STATUS,
   SOURCE_TYPE,
   TIME_FORMAT,
   TRANSACTION_TYPE,
@@ -31,6 +32,8 @@ const TAG_VARIANTS = {
   gmail: { bg: "bg-blue-700", text: "text-white" },
   primary: { bg: "bg-primary", text: "text-primary-foreground" },
   ai: { bg: "bg-indigo-600", text: "text-white" },
+  warning: { bg: "bg-amber-600", text: "text-white" },
+  positive: { bg: "bg-positive", text: "text-white" },
 } as const;
 
 function Tag({
@@ -146,6 +149,12 @@ export function TransactionItem({
           )}
           {item.source_type === SOURCE_TYPE.RECURRING && (
             <Tag label="SUB" variant="primary" />
+          )}
+          {item.reimbursement_status === REIMBURSEMENT_STATUS.PENDING && (
+            <Tag label="REIMBURSE" variant="warning" />
+          )}
+          {item.reimbursement_status === REIMBURSEMENT_STATUS.REIMBURSED && (
+            <Tag label="REIMBURSED" variant="positive" />
           )}
         </View>
         <Text

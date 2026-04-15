@@ -28,6 +28,7 @@ import {
   PARSED_BY,
   type ParsedByType,
   QUERY_KEYS,
+  REIMBURSEMENT_STATUS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { findDuplicateTransaction, getAllSources } from "@/lib/db";
@@ -120,6 +121,7 @@ export default function AddTransaction() {
     destinationSourceId: null,
     date: format(new Date(), DATE_TIME_FORMAT),
     note: "",
+    reimbursementStatus: REIMBURSEMENT_STATUS.NONE,
   };
 
   const oneTimeDefaults: TransactionFormValues = {
@@ -174,6 +176,7 @@ export default function AddTransaction() {
       destinationSourceId: null,
       date: `${parsed.date} 12:00`,
       note: originalText.trim(),
+      reimbursementStatus: REIMBURSEMENT_STATUS.NONE,
     };
     setParsedTxDefaults(txDefaults);
 
@@ -209,6 +212,7 @@ export default function AddTransaction() {
 
   async function commitTransaction(value: TransactionFormValues) {
     const isTransfer = value.type === TRANSACTION_TYPE.TRANSFER;
+    const isExpense = value.type === TRANSACTION_TYPE.EXPENSE;
     await insertMutation.mutateAsync({
       type: value.type,
       amount: Number(value.amount),
@@ -221,6 +225,7 @@ export default function AddTransaction() {
       // AI-parsed entries — without this it only ever fires for Gmail-synced
       // rows, even though the data flow is identical.
       parsedBy: aiParsedBy ?? undefined,
+      reimbursementStatus: isExpense ? value.reimbursementStatus : "none",
       date: value.date,
       note: value.note || null,
     });
