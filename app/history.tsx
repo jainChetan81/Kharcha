@@ -60,6 +60,8 @@ import {
   editScreen,
   PERIOD_PRESET,
   type PeriodPresetType,
+  REIMBURSEMENT_FILTER,
+  type ReimbursementFilterType,
   SOURCE_TYPE,
   type SourceFilterType,
   TRANSACTION_TYPE,
@@ -76,6 +78,13 @@ const DatePickerModal = lazy(() =>
 
 const TYPE_FILTERS = Object.values(TRANSACTION_TYPE);
 const SOURCE_TYPE_FILTERS = Object.values(SOURCE_TYPE);
+const REIMBURSEMENT_FILTERS = Object.values(REIMBURSEMENT_FILTER);
+
+const REIMBURSEMENT_LABELS: Record<ReimbursementFilterType, string> = {
+  [REIMBURSEMENT_FILTER.ALL]: "All",
+  [REIMBURSEMENT_FILTER.PENDING]: "Pending",
+  [REIMBURSEMENT_FILTER.REIMBURSED]: "Reimbursed",
+};
 
 const PRESET_LABELS: Record<PeriodPresetType, string> = {
   [PERIOD_PRESET.TODAY]: "Today",
@@ -123,6 +132,7 @@ export default function HistoryScreen() {
     preset?: string;
     amount_min?: string;
     amount_max?: string;
+    reimbursement?: string;
   }>();
 
   // Applied filters
@@ -141,6 +151,8 @@ export default function HistoryScreen() {
   const [dateTo, setDateTo] = useState<string | null>(null);
   const [amountMin, setAmountMin] = useState<number | null>(null);
   const [amountMax, setAmountMax] = useState<number | null>(null);
+  const [reimbursementFilter, setReimbursementFilter] =
+    useState<ReimbursementFilterType>(REIMBURSEMENT_FILTER.ALL);
   const handleSwipeDelete = useSwipeDelete();
   const [searchText, setSearchText] = useState("");
   const debouncedSearch = useDebounce(searchText);
@@ -160,6 +172,8 @@ export default function HistoryScreen() {
   const [draftDateTo, setDraftDateTo] = useState<string | null>(null);
   const [draftAmountMin, setDraftAmountMin] = useState("");
   const [draftAmountMax, setDraftAmountMax] = useState("");
+  const [draftReimbursement, setDraftReimbursement] =
+    useState<ReimbursementFilterType>(REIMBURSEMENT_FILTER.ALL);
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
 
@@ -204,6 +218,12 @@ export default function HistoryScreen() {
       const parsed = Number(params.amount_max);
       if (!Number.isNaN(parsed)) setAmountMax(parsed);
     }
+    if (
+      params.reimbursement === REIMBURSEMENT_FILTER.PENDING ||
+      params.reimbursement === REIMBURSEMENT_FILTER.REIMBURSED
+    ) {
+      setReimbursementFilter(params.reimbursement);
+    }
   }, [
     params.filter,
     params.category_id,
@@ -211,6 +231,7 @@ export default function HistoryScreen() {
     params.preset,
     params.amount_min,
     params.amount_max,
+    params.reimbursement,
   ]);
 
   function handleDraftTypeChange(next: TransactionFilterType) {
@@ -256,6 +277,7 @@ export default function HistoryScreen() {
     if (dateFrom || dateTo) count++;
     if (amountMin != null && amountMin > 0) count++;
     if (amountMax != null && amountMax > 0) count++;
+    if (reimbursementFilter !== REIMBURSEMENT_FILTER.ALL) count++;
     return count;
   }, [
     typeFilter,
@@ -266,6 +288,7 @@ export default function HistoryScreen() {
     dateTo,
     amountMin,
     amountMax,
+    reimbursementFilter,
   ]);
 
   const hasActiveFilters = activeFilterCount > 0;
@@ -280,6 +303,7 @@ export default function HistoryScreen() {
     amountMin,
     amountMax,
     search: debouncedSearch || undefined,
+    reimbursement: reimbursementFilter,
   };
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -330,6 +354,7 @@ export default function HistoryScreen() {
     }
     setDraftAmountMin(amountMin != null ? String(amountMin) : "");
     setDraftAmountMax(amountMax != null ? String(amountMax) : "");
+    setDraftReimbursement(reimbursementFilter);
     setShowFilters(true);
   }
 
@@ -356,6 +381,7 @@ export default function HistoryScreen() {
       setDateTo(effectivePreset ? draftDateTo : null);
       setAmountMin(parseAmountInput(draftAmountMin));
       setAmountMax(parseAmountInput(draftAmountMax));
+      setReimbursementFilter(draftReimbursement);
     });
     setShowFilters(false);
   }
@@ -370,6 +396,7 @@ export default function HistoryScreen() {
     setDraftDateTo(null);
     setDraftAmountMin("");
     setDraftAmountMax("");
+    setDraftReimbursement(REIMBURSEMENT_FILTER.ALL);
   }
 
   function resetAllFilters() {
@@ -382,6 +409,7 @@ export default function HistoryScreen() {
     setDateTo(null);
     setAmountMin(null);
     setAmountMax(null);
+    setReimbursementFilter(REIMBURSEMENT_FILTER.ALL);
   }
 
   const draftHasFilters =
@@ -391,7 +419,8 @@ export default function HistoryScreen() {
     draftSourceType !== SOURCE_TYPE.ALL ||
     draftPreset !== null ||
     draftAmountMin !== "" ||
-    draftAmountMax !== "";
+    draftAmountMax !== "" ||
+    draftReimbursement !== REIMBURSEMENT_FILTER.ALL;
 
   return (
     <View className="flex-1 bg-background">
@@ -722,6 +751,33 @@ export default function HistoryScreen() {
             </Pressable>
           </View>
         )}
+
+        <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Reimbursement
+        </Text>
+        <View className="mb-5 flex-row gap-2">
+          {REIMBURSEMENT_FILTERS.map((f) => (
+            <Pressable
+              key={f}
+              onPress={() => setDraftReimbursement(f)}
+              className={cn(
+                "flex-1 items-center rounded-xl py-2.5",
+                draftReimbursement === f ? "bg-primary" : "bg-muted",
+              )}
+            >
+              <Text
+                className={cn(
+                  "text-sm font-medium",
+                  draftReimbursement === f
+                    ? "text-primary-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
+                {REIMBURSEMENT_LABELS[f]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
 
         <Text className="mb-2 mt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Amount

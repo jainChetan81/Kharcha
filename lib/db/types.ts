@@ -24,6 +24,15 @@ export type TransactionRow = Transaction & {
   destination_source_name: string | null;
   source_type: "manual" | "synced" | "recurring" | "transfer";
   parsed_by: "regex" | "gemini" | null;
+  reimbursement_status: "none" | "pending" | "reimbursed";
+  reimbursed_at: string | null;
+};
+
+export type ReimbursementSummary = {
+  pending_count: number;
+  pending_total: number;
+  reimbursed_count: number;
+  reimbursed_total: number;
 };
 
 export type MonthlySummary = {

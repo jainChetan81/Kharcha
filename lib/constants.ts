@@ -15,6 +15,7 @@ export const SCREENS = {
   NETWORK_LOGS: "/network-logs",
   EXPORT: "/export",
   SUBSCRIPTION_AUDIT: "/subscriptions/audit",
+  REIMBURSEMENTS: "/reimbursements",
 } as const;
 
 export const BUNDLE_ID = "com.chetanjain.kharcha" as const;
@@ -50,6 +51,24 @@ export const TRANSACTION_TYPE = {
 
 export type TransactionFilterType =
   (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
+
+export const REIMBURSEMENT_STATUS = {
+  NONE: "none",
+  PENDING: "pending",
+  REIMBURSED: "reimbursed",
+} as const;
+
+export type ReimbursementStatusType =
+  (typeof REIMBURSEMENT_STATUS)[keyof typeof REIMBURSEMENT_STATUS];
+
+export const REIMBURSEMENT_FILTER = {
+  ALL: "all",
+  PENDING: "pending",
+  REIMBURSED: "reimbursed",
+} as const;
+
+export type ReimbursementFilterType =
+  (typeof REIMBURSEMENT_FILTER)[keyof typeof REIMBURSEMENT_FILTER];
 
 export const SOURCE_TYPE = {
   ALL: "all",
@@ -194,4 +213,5 @@ export const QUERY_KEYS = {
   SUBSCRIPTIONS: "subscriptions",
   FEATURE_FLAGS: "feature-flags",
   BANKS: "banks",
+  REIMBURSEMENT_SUMMARY: "reimbursement-summary",
 } as const;

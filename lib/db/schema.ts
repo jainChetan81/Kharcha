@@ -52,6 +52,12 @@ export const transactions = sqliteTable("transactions", {
     .default("manual"),
   gmail_message_id: text("gmail_message_id"),
   parsed_by: text("parsed_by", { enum: ["regex", "gemini"] }),
+  reimbursement_status: text("reimbursement_status", {
+    enum: ["none", "pending", "reimbursed"],
+  })
+    .notNull()
+    .default("none"),
+  reimbursed_at: text("reimbursed_at"),
   date: text("date").notNull(),
   note: text("note"),
   created_at: text("created_at").default("(datetime('now'))"),

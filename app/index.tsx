@@ -39,6 +39,7 @@ import {
   useMonthlySummary,
   useMonthTransactions,
   useRecentTransactions,
+  useReimbursementSummary,
 } from "@/hooks/use-transactions";
 import {
   COLORS,
@@ -146,6 +147,7 @@ export default function HomeScreen() {
   const { data: categoryBreakdown = [] } = useCategoryBreakdown(selectedMonth);
   const { data: budgetsList = [] } = useBudgets();
   const { data: subsTotal = 0 } = useSubscriptionsTotal();
+  const { data: reimbursementSummary } = useReimbursementSummary();
   const { data: insights, isLoading: insightsLoading } = useMonthlyInsights(
     selectedDate.getFullYear(),
     selectedDate.getMonth() + 1,
@@ -311,6 +313,24 @@ export default function HomeScreen() {
               </Text>
             </Pressable>
           )}
+
+          {reimbursementSummary &&
+            reimbursementSummary.pending_count > 0 && (
+              <Pressable
+                onPress={() => router.push(SCREENS.REIMBURSEMENTS)}
+                className="mt-3 flex-row items-center justify-between rounded-xl border border-amber-600/40 bg-amber-600/10 px-4 py-2.5"
+              >
+                <Text className="text-xs font-medium text-amber-500">
+                  {fmt(reimbursementSummary.pending_total)} in{" "}
+                  {reimbursementSummary.pending_count} pending reimbursement
+                  {reimbursementSummary.pending_count === 1 ? "" : "s"}
+                </Text>
+                <Icon
+                  as={ChevronRight}
+                  className="size-4 text-amber-500"
+                />
+              </Pressable>
+            )}
         </View>
 
         {categoryBreakdown.length > 0 && (
