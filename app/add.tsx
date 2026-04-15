@@ -52,9 +52,14 @@ const ParseMessageSheet = lazy(() =>
 );
 
 export default function AddTransaction() {
-  const { type: typeParam, mode: modeParam } = useLocalSearchParams<{
+  const {
+    type: typeParam,
+    mode: modeParam,
+    sharedText: sharedTextParam,
+  } = useLocalSearchParams<{
     type?: string;
     mode?: string;
+    sharedText?: string;
   }>();
   const queryClient = useQueryClient();
   const { format: fmt } = useCurrency();
@@ -99,6 +104,16 @@ export default function AddTransaction() {
       alive = false;
     };
   }, []);
+
+  // Opened via Android share intent — jump straight into AI Parse with the
+  // shared text preloaded. Runs once per screen mount; the source of truth
+  // for the text is the query param, not local state, so navigating back
+  // and forward won't re-open it unexpectedly.
+  useEffect(() => {
+    if (sharedTextParam && sharedTextParam.trim()) {
+      setParseSheetVisible(true);
+    }
+  }, [sharedTextParam]);
 
   function dismissHint() {
     setHintDismissed(true);
@@ -406,6 +421,7 @@ export default function AddTransaction() {
           onClose={() => setParseSheetVisible(false)}
           onParsed={handleParsed}
           categoryNames={categoryNames}
+          initialText={sharedTextParam}
         />
       </Suspense>
     </KeyboardAvoidingView>

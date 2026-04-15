@@ -15,6 +15,7 @@ import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { LockedScreen } from "@/components/locked-screen";
 import { Text } from "@/components/ui/text";
 import { useAppLock } from "@/hooks/use-app-lock";
+import { useShareIntentHandler } from "@/hooks/use-share-intent-handler";
 import { maybeAutoBackup } from "@/lib/cloud-backup";
 import { COLORS, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
 import { initDB } from "@/lib/db";
@@ -105,6 +106,7 @@ export default function RootLayout() {
 
   const [dbReady, setDbReady] = useState(false);
   const { locked, authenticate } = useAppLock(dbReady);
+  useShareIntentHandler(dbReady && !locked);
 
   useEffect(() => {
     initDB()

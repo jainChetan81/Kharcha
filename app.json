@@ -88,6 +88,10 @@
         "groupIdentifier": "group.com.chetanjain.kharcha",
         "deploymentTarget": "17.0"
       }],
+      ["expo-share-intent", {
+        "androidIntentFilters": ["text/*"],
+        "disableIOS": true
+      }],
       ["react-native-android-widget", {
         "widgets": [
           {

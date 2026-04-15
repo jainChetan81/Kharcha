@@ -18,13 +18,16 @@ export function ParseMessageSheet({
   onClose,
   onParsed,
   categoryNames,
+  initialText,
 }: {
   visible: boolean;
   onClose: () => void;
   onParsed: (parsed: GeminiParsedMessage, originalText: string) => void;
   categoryNames: string[];
+  /** Preloaded text (e.g. from an Android share intent). */
+  initialText?: string;
 }) {
-  const [messageText, setMessageText] = useState("");
+  const [messageText, setMessageText] = useState(initialText ?? "");
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
 
@@ -32,8 +35,10 @@ export function ParseMessageSheet({
     if (!visible) {
       setMessageText("");
       setParseError(null);
+    } else if (initialText) {
+      setMessageText(initialText);
     }
-  }, [visible]);
+  }, [visible, initialText]);
 
   async function handleParse() {
     if (!messageText.trim() || parsing) return;
