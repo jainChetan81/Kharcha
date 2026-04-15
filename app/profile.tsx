@@ -24,7 +24,7 @@ import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useAppLockSetting } from "@/hooks/use-app-lock";
-import { useAppUpdate } from "@/hooks/use-app-update";
+import { isAppUpdateSupported, useAppUpdate } from "@/hooks/use-app-update";
 import { CURRENCIES, useConfig } from "@/hooks/use-config";
 import { useGmailSyncEnabled } from "@/hooks/use-feature-flags";
 import { useClearTransactionsWithConfirm } from "@/hooks/use-transactions";
@@ -186,21 +186,26 @@ export default function ProfileScreen() {
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           App
         </Text>
-        <Pressable
-          onPress={checkForUpdate}
-          disabled={checkingUpdate}
-          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Icon as={Download} className="mr-3 size-4 text-muted-foreground" />
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            Check for Updates
-          </Text>
-          {checkingUpdate ? (
-            <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-          ) : (
-            <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-          )}
-        </Pressable>
+        {isAppUpdateSupported() && (
+          <Pressable
+            onPress={checkForUpdate}
+            disabled={checkingUpdate}
+            className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+          >
+            <Icon as={Download} className="mr-3 size-4 text-muted-foreground" />
+            <Text className="flex-1 text-sm font-medium text-foreground">
+              Check for Updates
+            </Text>
+            {checkingUpdate ? (
+              <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+            ) : (
+              <Icon
+                as={ChevronRight}
+                className="size-4 text-muted-foreground"
+              />
+            )}
+          </Pressable>
+        )}
         <Pressable
           onPress={() => router.push(SCREENS.ABOUT)}
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"

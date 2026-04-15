@@ -20,6 +20,7 @@ import { initDB } from "@/lib/db";
 import { processSubscriptions } from "@/lib/db/subscriptions";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { isIOS } from "@/lib/utils";
+import { maybeAutoBackup } from "@/lib/cloud-backup";
 import { syncWidgetData } from "@/lib/widget";
 
 SplashScreen.preventAutoHideAsync();
@@ -125,9 +126,13 @@ export default function RootLayout() {
   }, []);
 
   // Refresh widget data when app returns to foreground (catches midnight resets)
+  // and opportunistically run an auto-backup if it's been >24h since the last.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active" && dbReady) syncWidgetData();
+      if (state === "active" && dbReady) {
+        syncWidgetData();
+        void maybeAutoBackup();
+      }
     });
     return () => sub.remove();
   }, [dbReady]);

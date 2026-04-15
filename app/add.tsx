@@ -2,8 +2,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import { Sparkles } from "lucide-react-native";
-import { lazy, Suspense, useMemo, useRef, useState } from "react";
+import { Sparkles, X } from "lucide-react-native";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { KeyboardAvoidingView, Pressable, Switch, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import {
@@ -23,12 +23,16 @@ import { useAddSubscription } from "@/hooks/use-subscriptions";
 import { useInsertTransaction } from "@/hooks/use-transactions";
 import {
   COLORS,
+  CONFIG_KEYS,
   DATE_TIME_FORMAT,
+  PARSED_BY,
+  type ParsedByType,
   QUERY_KEYS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { findDuplicateTransaction, getAllSources } from "@/lib/db";
 import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
+import { getConfig, updateConfig } from "@/lib/db/config";
 import { processSubscriptions } from "@/lib/db/subscriptions";
 import type { Source } from "@/lib/db/types";
 import type { GeminiParsedMessage } from "@/lib/gemini/parser";
@@ -79,6 +83,33 @@ export default function AddTransaction() {
   const [parsedSubDefaults, setParsedSubDefaults] =
     useState<SubscriptionFormDefaults | null>(null);
   const [formKey, setFormKey] = useState(0);
+  // Track whether the current draft was prefilled by Gemini so we can stamp
+  // parsed_by on the row at insert time. Reset on every new form mount —
+  // editing the AI-filled draft still counts as AI-parsed (provenance is
+  // about origin, not the final values).
+  const [aiParsedBy, setAiParsedBy] = useState<ParsedByType | null>(null);
+  const [hintDismissed, setHintDismissed] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    getConfig(CONFIG_KEYS.AI_HINT_DISMISSED).then((v) => {
+      if (alive) setHintDismissed(v === "1");
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  function dismissHint() {
+    setHintDismissed(true);
+    void updateConfig(CONFIG_KEYS.AI_HINT_DISMISSED, "1");
+  }
+
+  function openParseSheet() {
+    Haptics.selectionAsync();
+    setParseSheetVisible(true);
+    if (!hintDismissed) dismissHint();
+  }
 
   const defaultValues: TransactionFormValues = {
     type: TRANSACTION_TYPE.EXPENSE,
@@ -159,6 +190,7 @@ export default function AddTransaction() {
       setIsSubscription(false);
     }
 
+    setAiParsedBy(PARSED_BY.GEMINI);
     setFormKey((k) => k + 1);
     setParseSheetVisible(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -185,6 +217,10 @@ export default function AddTransaction() {
       sourceId: value.type === TRANSACTION_TYPE.INCOME ? null : value.sourceId,
       destinationSourceId: isTransfer ? value.destinationSourceId : null,
       sourceType: isTransfer ? "transfer" : undefined,
+      // Stamp parsed_by so the AI badge in TransactionItem renders for manual
+      // AI-parsed entries — without this it only ever fires for Gmail-synced
+      // rows, even though the data flow is identical.
+      parsedBy: aiParsedBy ?? undefined,
       date: value.date,
       note: value.note || null,
     });
@@ -276,16 +312,37 @@ export default function AddTransaction() {
           {isSubscription ? "Add Subscription" : "Add Transaction"}
         </Text>
         <Pressable
-          onPress={() => {
-            Haptics.selectionAsync();
-            setParseSheetVisible(true);
-          }}
-          className="w-14 items-end py-1"
+          onPress={openParseSheet}
+          className="flex-row items-center gap-1 rounded-full bg-primary/15 px-3 py-1.5"
           hitSlop={8}
         >
-          <Icon as={Sparkles} className="size-6 text-primary" />
+          <Icon as={Sparkles} className="size-4 text-primary" />
+          <Text className="text-xs font-semibold text-primary">AI Parse</Text>
         </Pressable>
       </View>
+
+      {!hintDismissed && (
+        <Pressable
+          onPress={openParseSheet}
+          className="mx-5 mb-3 flex-row items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3"
+        >
+          <Icon as={Sparkles} className="size-4 text-primary" />
+          <Text className="flex-1 text-xs font-medium text-foreground">
+            Got a bank SMS or email? Tap{" "}
+            <Text className="font-bold text-primary">AI Parse</Text> to auto-fill
+            this form.
+          </Text>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              dismissHint();
+            }}
+            hitSlop={10}
+          >
+            <Icon as={X} className="size-4 text-muted-foreground" />
+          </Pressable>
+        </Pressable>
+      )}
 
       <View className="mx-5 mb-3 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-2.5">
         <Text className="text-sm font-medium text-foreground">

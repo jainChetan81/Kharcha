@@ -26,8 +26,16 @@
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.chetanjain.kharcha"
+        ],
+        "com.apple.developer.icloud-container-identifiers": [
+          "iCloud.com.chetanjain.kharcha"
+        ],
+        "com.apple.developer.icloud-services": ["CloudDocuments"],
+        "com.apple.developer.ubiquity-container-identifiers": [
+          "iCloud.com.chetanjain.kharcha"
         ]
       },
+      "usesIcloudStorage": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }

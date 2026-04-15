@@ -43,7 +43,15 @@ WebBrowser.maybeCompleteAuthSession();
 
 const IOS_CLIENT_ID = env.GOOGLE_IOS_CLIENT_ID;
 const WEB_CLIENT_ID = env.GOOGLE_WEB_CLIENT_ID;
-const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
+// drive.appdata = a hidden, app-private folder in the user's Google Drive.
+// Used for cloud backups; invisible in the Drive UI, no extra permission
+// prompts beyond what the user sees today, and it's per-app so other apps
+// can't read it. Adding the scope here means the user re-consents once on
+// next sign-in (or on first backup if we trigger an incremental auth).
+const SCOPES = [
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/drive.appdata",
+];
 
 const discovery = {
   authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
