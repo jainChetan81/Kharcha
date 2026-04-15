@@ -119,6 +119,10 @@ export const CONFIG_KEYS = {
   BACKEND_FORWARDING_EMAIL: "backend_forwarding_email",
   BACKEND_LAST_SYNCED_AT: "backend_last_synced_at",
   APP_LOCK_ENABLED: "app_lock_enabled",
+  AI_HINT_DISMISSED: "ai_hint_dismissed",
+  CLOUD_BACKUP_ENABLED: "cloud_backup_enabled",
+  CLOUD_BACKUP_LAST_AT: "cloud_backup_last_at",
+  CLOUD_BACKUP_LAST_FILE_ID: "cloud_backup_last_file_id",
 } as const;
 
 export const SUBSCRIPTION_NOTE = "Auto-created from subscription";

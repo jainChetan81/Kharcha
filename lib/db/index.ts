@@ -24,6 +24,7 @@ import {
   DATE_ISO_FORMAT,
   MONTH_FORMAT,
   OTHER_CATEGORY_LABEL,
+  type ParsedByType,
   type SourceType,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
@@ -964,6 +965,7 @@ export async function insertTransaction(params: {
   destinationSourceId?: number | null;
   subscriptionId?: number | null;
   sourceType?: SourceType;
+  parsedBy?: ParsedByType;
   date: string;
   note: string | null;
 }) {
@@ -976,6 +978,7 @@ export async function insertTransaction(params: {
     destination_source_id: params.destinationSourceId ?? null,
     subscription_id: params.subscriptionId ?? null,
     source_type: params.sourceType ?? "manual",
+    parsed_by: params.parsedBy ?? null,
     date: params.date,
     note: params.note,
   });

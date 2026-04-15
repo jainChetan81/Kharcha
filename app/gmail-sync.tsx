@@ -13,7 +13,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { Text } from "@/components/ui/text";
 import { useBanksWithEmails } from "@/hooks/use-banks";
 import { useSyncState } from "@/hooks/use-sync-state";
-import { copyMaskedToClipboard, copyToClipboard } from "@/lib/clipboard";
+import { copyMaskedToClipboard } from "@/lib/clipboard";
 import {
   COLORS,
   CONFIG_KEYS,

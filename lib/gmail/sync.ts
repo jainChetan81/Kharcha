@@ -185,10 +185,19 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     }
   }
 
+  // Cap the sync lookback at 1 month back from today. Without this:
+  //   - first sync (no cursor) pulls from start-of-month, which can be only
+  //     a few days of data and feels empty, OR
+  //   - a stale cursor (user reinstalled / opened the app after weeks) pulls
+  //     months of email, blowing Gemini quota and slowing the first sync.
+  // 1 month is enough to seed the app meaningfully without overwhelming
+  // either the API or the user.
   const syncFromCursor = await getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT);
-  const sinceDate = syncFromCursor
-    ? new Date(syncFromCursor)
-    : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const oneMonthAgo = new Date();
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+  const cursorDate = syncFromCursor ? new Date(syncFromCursor) : oneMonthAgo;
+  const sinceDate =
+    cursorDate.getTime() < oneMonthAgo.getTime() ? oneMonthAgo : cursorDate;
   const formatted = `${sinceDate.getFullYear()}/${sinceDate.getMonth() + 1}/${sinceDate.getDate()}`;
 
   const allCategories = await getAllCategories();
