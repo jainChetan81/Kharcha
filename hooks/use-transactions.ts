@@ -49,6 +49,12 @@ export function useInvalidateTransactions() {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.REIMBURSEMENT_SUMMARY],
       }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TAG_BREAKDOWN],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TAG_BREAKDOWN_ALL_TIME],
+      }),
     ]).then((result) => {
       syncWidgetData();
       return result;
@@ -109,6 +115,7 @@ export function useTransactionsPaginated(filters: {
   amountMax?: number | null;
   search?: string;
   reimbursement?: "all" | "pending" | "reimbursed";
+  tagIds?: number[] | null;
 }) {
   return useInfiniteQuery({
     queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED, filters],

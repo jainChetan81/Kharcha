@@ -10,12 +10,14 @@ import {
   Switch,
   View,
 } from "react-native";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
-import { ChipPicker } from "@/components/ui/chip-picker";
+import { ChipPicker, MultiChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { useAddTag, useAllTags } from "@/hooks/use-tags";
 import {
   COLORS,
   DATE_DISPLAY_FORMAT,
@@ -50,6 +52,7 @@ export type TransactionFormValues = {
   date: string;
   note: string;
   reimbursementStatus: ReimbursementStatusType;
+  tagIds: number[];
 };
 
 export function TransactionForm({
@@ -74,6 +77,9 @@ export function TransactionForm({
   const [autoFilledMerchant, setAutoFilledMerchant] = useState<string | null>(
     null,
   );
+  const [newTagSheetVisible, setNewTagSheetVisible] = useState(false);
+  const { data: allTags = [] } = useAllTags();
+  const addTagMutation = useAddTag();
 
   const isTransfer = activeType === TRANSACTION_TYPE.TRANSFER;
   const categoryType = isTransfer ? "expense" : activeType;
@@ -505,6 +511,44 @@ export function TransactionForm({
           }}
         </form.Field>
       )}
+
+      <form.Field name="tagIds">
+        {(field) => (
+          <View className="mb-5">
+            <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
+              Tags
+            </Text>
+            <MultiChipPicker
+              items={allTags}
+              selectedIds={field.state.value ?? []}
+              onChange={(ids) => field.handleChange(ids)}
+              onAddNew={() => setNewTagSheetVisible(true)}
+              emptyLabel="No tags yet — create one to group transactions across categories"
+            />
+          </View>
+        )}
+      </form.Field>
+
+      <BottomSheet
+        visible={newTagSheetVisible}
+        onClose={() => setNewTagSheetVisible(false)}
+        title="New Tag"
+        placeholder="e.g. goa-trip, birthday, wfh"
+        submitLabel="Add Tag"
+        onSave={async (name) => {
+          try {
+            const { id } = await addTagMutation.mutateAsync(name);
+            const current = form.getFieldValue("tagIds") ?? [];
+            if (!current.includes(id)) {
+              form.setFieldValue("tagIds", [...current, id]);
+            }
+            setNewTagSheetVisible(false);
+            showSuccessToast("Tag added");
+          } catch (err) {
+            showErrorToast("Failed to add tag", err);
+          }
+        }}
+      />
 
       <form.Subscribe
         selector={(state) => ({

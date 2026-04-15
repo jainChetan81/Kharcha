@@ -13,6 +13,7 @@ import {
   desc,
   eq,
   gte,
+  inArray,
   isNull,
   like,
   lte,
@@ -36,7 +37,9 @@ import {
   config,
   sources,
   transactions,
+  transactionTags,
 } from "./schema";
+import { getTagsForTransactions } from "./tags";
 import type {
   CategoryBreakdownRow,
   MonthlyInsights,
@@ -52,6 +55,9 @@ export type {
   MonthlySummary,
   ReimbursementSummary,
   Source,
+  Tag,
+  TagBreakdownRow,
+  TagLite,
   Transaction,
   TransactionRow,
 } from "./types";
@@ -144,6 +150,30 @@ export async function initDB() {
 
   await db.run(
     sql`CREATE INDEX IF NOT EXISTS idx_bank_emails_bank_id ON bank_emails(bank_id)`,
+  );
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS tags (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS transaction_tags (
+      transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+      tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+      PRIMARY KEY (transaction_id, tag_id)
+    )
+  `);
+
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_transaction_tags_tag_id ON transaction_tags(tag_id)`,
+  );
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_transaction_tags_transaction_id ON transaction_tags(transaction_id)`,
   );
 
   // Add gmail_message_id column if missing (existing DBs won't have it
@@ -864,17 +894,31 @@ function transactionSelect() {
     );
 }
 
+async function attachTagsToRows(
+  rows: Omit<TransactionRow, "tags">[],
+): Promise<TransactionRow[]> {
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.id);
+  const tagMap = await getTagsForTransactions(ids);
+  return rows.map((row) => ({
+    ...row,
+    tags: tagMap.get(row.id) ?? [],
+  })) as TransactionRow[];
+}
+
 export async function getRecentTransactions(limit = 20) {
-  return (await transactionSelect()
+  const rows = (await transactionSelect()
     .orderBy(desc(transactions.date), desc(transactions.created_at))
-    .limit(limit)) as TransactionRow[];
+    .limit(limit)) as Omit<TransactionRow, "tags">[];
+  return attachTagsToRows(rows);
 }
 
 export async function getMonthTransactions(yearMonth: string, limit = 10) {
-  return (await transactionSelect()
+  const rows = (await transactionSelect()
     .where(sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`)
     .orderBy(desc(transactions.date), desc(transactions.created_at))
-    .limit(limit)) as TransactionRow[];
+    .limit(limit)) as Omit<TransactionRow, "tags">[];
+  return attachTagsToRows(rows);
 }
 
 export async function getMonthlySummary(yearMonth: string) {
@@ -907,6 +951,7 @@ export async function getTransactionsPaginated(
     amountMax?: number | null;
     search?: string;
     reimbursement?: "all" | "pending" | "reimbursed";
+    tagIds?: number[] | null;
   },
 ) {
   const conditions = [];
@@ -963,6 +1008,22 @@ export async function getTransactionsPaginated(
       eq(transactions.reimbursement_status, filters.reimbursement),
     );
   }
+  if (filters?.tagIds && filters.tagIds.length > 0) {
+    const ids = filters.tagIds;
+    conditions.push(
+      inArray(
+        transactions.id,
+        db
+          .select({ id: transactionTags.transaction_id })
+          .from(transactionTags)
+          .where(inArray(transactionTags.tag_id, ids))
+          .groupBy(transactionTags.transaction_id)
+          .having(
+            sql`COUNT(DISTINCT ${transactionTags.tag_id}) = ${ids.length}`,
+          ),
+      ),
+    );
+  }
 
   const query = transactionSelect()
     .where(conditions.length > 0 ? and(...conditions) : undefined)
@@ -970,7 +1031,8 @@ export async function getTransactionsPaginated(
     .limit(limit)
     .offset(offset);
 
-  return (await query) as TransactionRow[];
+  const rows = (await query) as Omit<TransactionRow, "tags">[];
+  return attachTagsToRows(rows);
 }
 
 export async function getAllTransactionsFiltered(
@@ -980,8 +1042,12 @@ export async function getAllTransactionsFiltered(
 }
 
 export async function getTransactionById(id: number) {
-  const result = await transactionSelect().where(eq(transactions.id, id));
-  return (result[0] ?? null) as TransactionRow | null;
+  const result = (await transactionSelect().where(
+    eq(transactions.id, id),
+  )) as Omit<TransactionRow, "tags">[];
+  if (!result[0]) return null;
+  const [row] = await attachTagsToRows([result[0]]);
+  return row as TransactionRow;
 }
 
 export async function insertTransaction(params: {
@@ -997,8 +1063,9 @@ export async function insertTransaction(params: {
   reimbursementStatus?: "none" | "pending" | "reimbursed";
   date: string;
   note: string | null;
+  tagIds?: number[];
 }) {
-  return db.insert(transactions).values({
+  const result = await db.insert(transactions).values({
     type: params.type,
     amount: params.amount,
     merchant: params.merchant,
@@ -1012,6 +1079,17 @@ export async function insertTransaction(params: {
     date: params.date,
     note: params.note,
   });
+  const insertedId = Number(result.lastInsertRowId);
+  if (params.tagIds && params.tagIds.length > 0 && insertedId > 0) {
+    const unique = Array.from(new Set(params.tagIds));
+    await db.insert(transactionTags).values(
+      unique.map((tag_id) => ({
+        transaction_id: insertedId,
+        tag_id,
+      })),
+    );
+  }
+  return result;
 }
 
 export async function updateTransaction(
@@ -1027,6 +1105,7 @@ export async function updateTransaction(
     reimbursementStatus?: "none" | "pending" | "reimbursed";
     date: string;
     note: string | null;
+    tagIds?: number[];
   },
 ) {
   // Only touch source_type when the caller explicitly provides it — otherwise
@@ -1081,7 +1160,27 @@ export async function updateTransaction(
       updates.source_type = next;
     }
   }
-  return db.update(transactions).set(updates).where(eq(transactions.id, id));
+  const result = await db
+    .update(transactions)
+    .set(updates)
+    .where(eq(transactions.id, id));
+
+  if (params.tagIds !== undefined) {
+    await db
+      .delete(transactionTags)
+      .where(eq(transactionTags.transaction_id, id));
+    if (params.tagIds.length > 0) {
+      const unique = Array.from(new Set(params.tagIds));
+      await db.insert(transactionTags).values(
+        unique.map((tag_id) => ({
+          transaction_id: id,
+          tag_id,
+        })),
+      );
+    }
+  }
+
+  return result;
 }
 
 export async function deleteTransaction(id: number) {
@@ -1392,6 +1491,19 @@ export {
   updateSourceOrder,
 } from "./sources";
 export { getDataStats } from "./stats";
+export {
+  addTag,
+  deleteTag,
+  getAllTags,
+  getAllTimeTagBreakdown,
+  getTagBreakdown,
+  getTagsForTransaction,
+  getTagsForTransactions,
+  getTransactionIdsForTags,
+  renameTag,
+  setTransactionTags,
+  updateTagOrder,
+} from "./tags";
 
 export async function getTodaySpend(): Promise<number> {
   const today = format(new Date(), DATE_ISO_FORMAT);
