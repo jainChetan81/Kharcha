@@ -122,6 +122,7 @@ export default function AddTransaction() {
     date: format(new Date(), DATE_TIME_FORMAT),
     note: "",
     reimbursementStatus: REIMBURSEMENT_STATUS.NONE,
+    tagIds: [],
   };
 
   const oneTimeDefaults: TransactionFormValues = {
@@ -177,6 +178,7 @@ export default function AddTransaction() {
       date: `${parsed.date} 12:00`,
       note: originalText.trim(),
       reimbursementStatus: REIMBURSEMENT_STATUS.NONE,
+      tagIds: [],
     };
     setParsedTxDefaults(txDefaults);
 
@@ -228,6 +230,7 @@ export default function AddTransaction() {
       reimbursementStatus: isExpense ? value.reimbursementStatus : "none",
       date: value.date,
       note: value.note || null,
+      tagIds: value.tagIds,
     });
 
     if (isTransfer) {

@@ -163,6 +163,25 @@ export function TransactionItem({
         >
           {subtitle}
         </Text>
+        {item.tags && item.tags.length > 0 && (
+          <View className="mt-1 flex-row flex-wrap gap-1">
+            {item.tags.slice(0, 3).map((tag) => (
+              <View
+                key={tag.id}
+                className="rounded-md bg-primary/15 px-1.5 py-0.5"
+              >
+                <Text className="text-[10px] font-medium text-primary">
+                  #{tag.name}
+                </Text>
+              </View>
+            ))}
+            {item.tags.length > 3 && (
+              <Text className="text-[10px] text-muted-foreground">
+                +{item.tags.length - 3}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
       <View className="shrink-0 items-end">
         <Text

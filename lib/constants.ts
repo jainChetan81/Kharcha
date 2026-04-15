@@ -12,6 +12,7 @@ export const SCREENS = {
   GMAIL_SYNC: "/gmail-sync",
   DEVICE_SYNC: "/settings/sync",
   BANKS: "/settings/banks",
+  TAGS: "/settings/tags",
   NETWORK_LOGS: "/network-logs",
   EXPORT: "/export",
   SUBSCRIPTION_AUDIT: "/subscriptions/audit",
@@ -214,4 +215,7 @@ export const QUERY_KEYS = {
   FEATURE_FLAGS: "feature-flags",
   BANKS: "banks",
   REIMBURSEMENT_SUMMARY: "reimbursement-summary",
+  TAGS: "tags",
+  TAG_BREAKDOWN: "tag-breakdown",
+  TAG_BREAKDOWN_ALL_TIME: "tag-breakdown-all-time",
 } as const;

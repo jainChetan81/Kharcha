@@ -40,7 +40,7 @@ import {
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
-import { ChipPicker } from "@/components/ui/chip-picker";
+import { ChipPicker, MultiChipPicker } from "@/components/ui/chip-picker";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
@@ -49,6 +49,7 @@ import { useCurrency } from "@/hooks/use-currency";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useAllSources } from "@/hooks/use-sources";
+import { useAllTags } from "@/hooks/use-tags";
 import {
   useSwipeDelete,
   useTransactionsPaginated,
@@ -133,6 +134,7 @@ export default function HistoryScreen() {
     amount_min?: string;
     amount_max?: string;
     reimbursement?: string;
+    tag_id?: string;
   }>();
 
   // Applied filters
@@ -153,6 +155,7 @@ export default function HistoryScreen() {
   const [amountMax, setAmountMax] = useState<number | null>(null);
   const [reimbursementFilter, setReimbursementFilter] =
     useState<ReimbursementFilterType>(REIMBURSEMENT_FILTER.ALL);
+  const [tagIds, setTagIds] = useState<number[]>([]);
   const handleSwipeDelete = useSwipeDelete();
   const [searchText, setSearchText] = useState("");
   const debouncedSearch = useDebounce(searchText);
@@ -174,8 +177,11 @@ export default function HistoryScreen() {
   const [draftAmountMax, setDraftAmountMax] = useState("");
   const [draftReimbursement, setDraftReimbursement] =
     useState<ReimbursementFilterType>(REIMBURSEMENT_FILTER.ALL);
+  const [draftTagIds, setDraftTagIds] = useState<number[]>([]);
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
+
+  const { data: allTags = [] } = useAllTags();
 
   useEffect(() => {
     if (
@@ -224,6 +230,10 @@ export default function HistoryScreen() {
     ) {
       setReimbursementFilter(params.reimbursement);
     }
+    if (params.tag_id) {
+      const parsed = Number(params.tag_id);
+      if (!Number.isNaN(parsed)) setTagIds([parsed]);
+    }
   }, [
     params.filter,
     params.category_id,
@@ -232,6 +242,7 @@ export default function HistoryScreen() {
     params.amount_min,
     params.amount_max,
     params.reimbursement,
+    params.tag_id,
   ]);
 
   function handleDraftTypeChange(next: TransactionFilterType) {
@@ -278,6 +289,7 @@ export default function HistoryScreen() {
     if (amountMin != null && amountMin > 0) count++;
     if (amountMax != null && amountMax > 0) count++;
     if (reimbursementFilter !== REIMBURSEMENT_FILTER.ALL) count++;
+    if (tagIds.length > 0) count++;
     return count;
   }, [
     typeFilter,
@@ -289,6 +301,7 @@ export default function HistoryScreen() {
     amountMin,
     amountMax,
     reimbursementFilter,
+    tagIds,
   ]);
 
   const hasActiveFilters = activeFilterCount > 0;
@@ -304,6 +317,7 @@ export default function HistoryScreen() {
     amountMax,
     search: debouncedSearch || undefined,
     reimbursement: reimbursementFilter,
+    tagIds: tagIds.length > 0 ? tagIds : null,
   };
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -355,6 +369,7 @@ export default function HistoryScreen() {
     setDraftAmountMin(amountMin != null ? String(amountMin) : "");
     setDraftAmountMax(amountMax != null ? String(amountMax) : "");
     setDraftReimbursement(reimbursementFilter);
+    setDraftTagIds(tagIds);
     setShowFilters(true);
   }
 
@@ -382,6 +397,7 @@ export default function HistoryScreen() {
       setAmountMin(parseAmountInput(draftAmountMin));
       setAmountMax(parseAmountInput(draftAmountMax));
       setReimbursementFilter(draftReimbursement);
+      setTagIds(draftTagIds);
     });
     setShowFilters(false);
   }
@@ -397,6 +413,7 @@ export default function HistoryScreen() {
     setDraftAmountMin("");
     setDraftAmountMax("");
     setDraftReimbursement(REIMBURSEMENT_FILTER.ALL);
+    setDraftTagIds([]);
   }
 
   function resetAllFilters() {
@@ -410,6 +427,7 @@ export default function HistoryScreen() {
     setAmountMin(null);
     setAmountMax(null);
     setReimbursementFilter(REIMBURSEMENT_FILTER.ALL);
+    setTagIds([]);
   }
 
   const draftHasFilters =
@@ -420,7 +438,8 @@ export default function HistoryScreen() {
     draftPreset !== null ||
     draftAmountMin !== "" ||
     draftAmountMax !== "" ||
-    draftReimbursement !== REIMBURSEMENT_FILTER.ALL;
+    draftReimbursement !== REIMBURSEMENT_FILTER.ALL ||
+    draftTagIds.length > 0;
 
   return (
     <View className="flex-1 bg-background">
@@ -658,6 +677,21 @@ export default function HistoryScreen() {
               </View>
             </>
           )}
+
+        {allTags.length > 0 && (
+          <>
+            <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Tags
+            </Text>
+            <View className="mb-5">
+              <MultiChipPicker
+                items={allTags}
+                selectedIds={draftTagIds}
+                onChange={setDraftTagIds}
+              />
+            </View>
+          </>
+        )}
 
         <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Source Type

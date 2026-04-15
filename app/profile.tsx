@@ -138,6 +138,15 @@ export default function ProfileScreen() {
           </Text>
           <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
         </Pressable>
+        <Pressable
+          onPress={() => router.push(SCREENS.TAGS)}
+          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <Text className="flex-1 text-sm font-medium text-foreground">
+            Tags
+          </Text>
+          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
+        </Pressable>
 
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Sync

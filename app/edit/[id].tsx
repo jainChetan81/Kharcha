@@ -51,6 +51,7 @@ export default function EditTransactionScreen() {
     date: transaction.date,
     note: transaction.note ?? "",
     reimbursementStatus: transaction.reimbursement_status ?? "none",
+    tagIds: (transaction.tags ?? []).map((t) => t.id),
   };
 
   async function handleSubmit(value: TransactionFormValues) {
@@ -79,6 +80,7 @@ export default function EditTransactionScreen() {
         reimbursementStatus: isExpense ? value.reimbursementStatus : "none",
         date: value.date,
         note: value.note || null,
+        tagIds: value.tagIds,
       });
       showSuccessToast("Transaction updated");
       router.back();

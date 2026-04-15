@@ -1,4 +1,10 @@
-import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  integer,
+  primaryKey,
+  real,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
 
 // --- Tables ---
 
@@ -92,5 +98,27 @@ export const config = sqliteTable("config", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
 });
+
+export const tags = sqliteTable("tags", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull().unique(),
+  sort_order: integer("sort_order").default(0),
+  created_at: text("created_at").default("(datetime('now'))"),
+});
+
+export const transactionTags = sqliteTable(
+  "transaction_tags",
+  {
+    transaction_id: integer("transaction_id")
+      .notNull()
+      .references(() => transactions.id, { onDelete: "cascade" }),
+    tag_id: integer("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.transaction_id, table.tag_id] }),
+  }),
+);
 
 // Inferred types are exported from ./types.ts

@@ -33,6 +33,7 @@ import { useCurrency } from "@/hooks/use-currency";
 import { useGmailSyncEnabled } from "@/hooks/use-feature-flags";
 import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
+import { useTagBreakdown } from "@/hooks/use-tags";
 import {
   useCategoryBreakdown,
   useMonthlyInsights,
@@ -145,6 +146,7 @@ export default function HomeScreen() {
   const { data: summary } = useMonthlySummary(selectedMonth);
   const { data: prevSummary } = useMonthlySummary(prevMonth);
   const { data: categoryBreakdown = [] } = useCategoryBreakdown(selectedMonth);
+  const { data: tagBreakdown = [] } = useTagBreakdown(selectedMonth);
   const { data: budgetsList = [] } = useBudgets();
   const { data: subsTotal = 0 } = useSubscriptionsTotal();
   const { data: reimbursementSummary } = useReimbursementSummary();
@@ -328,6 +330,57 @@ export default function HomeScreen() {
             </Pressable>
           )}
         </View>
+
+        {tagBreakdown.length > 0 && (
+          <ComponentErrorBoundary name="home.tag-breakdown">
+            <View className="px-5 pb-4 pt-2">
+              <Text className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
+                Top Tags
+              </Text>
+              {tagBreakdown.slice(0, 5).map((tag) => (
+                <Pressable
+                  key={tag.tag_id}
+                  onPress={() =>
+                    router.push(
+                      `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&tag_id=${tag.tag_id}`,
+                    )
+                  }
+                  className="mb-3"
+                >
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-base text-foreground">
+                      #{tag.tag_name}
+                    </Text>
+                    <View className="flex-row items-center gap-1">
+                      <Text className="text-xs text-muted-foreground">
+                        {tag.count} tx
+                      </Text>
+                      <Text className="ml-2 text-sm text-muted-foreground">
+                        {fmt(tag.total)}
+                      </Text>
+                      <Icon
+                        as={ChevronRight}
+                        className="size-4 text-muted-foreground"
+                      />
+                    </View>
+                  </View>
+                  <View
+                    className="mt-1.5 h-1 rounded-full"
+                    style={{ backgroundColor: COLORS.BAR_BG }}
+                  >
+                    <View
+                      className="h-1 rounded-full"
+                      style={{
+                        width: `${tag.percentage}%`,
+                        backgroundColor: COLORS.PRIMARY,
+                      }}
+                    />
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </ComponentErrorBoundary>
+        )}
 
         {categoryBreakdown.length > 0 && (
           <ComponentErrorBoundary name="home.category-breakdown">
