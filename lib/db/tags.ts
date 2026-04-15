@@ -32,9 +32,7 @@ export async function renameTag(id: number, name: string) {
 }
 
 export async function deleteTag(id: number) {
-  await db
-    .delete(transactionTags)
-    .where(eq(transactionTags.tag_id, id));
+  await db.delete(transactionTags).where(eq(transactionTags.tag_id, id));
   return db.delete(tags).where(eq(tags.id, id));
 }
 
@@ -129,7 +127,10 @@ export async function getTagBreakdown(
     })
     .from(tags)
     .innerJoin(transactionTags, eq(transactionTags.tag_id, tags.id))
-    .innerJoin(transactions, eq(transactionTags.transaction_id, transactions.id))
+    .innerJoin(
+      transactions,
+      eq(transactionTags.transaction_id, transactions.id),
+    )
     .where(
       and(
         eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
@@ -159,7 +160,10 @@ export async function getAllTimeTagBreakdown(): Promise<TagBreakdownRow[]> {
     })
     .from(tags)
     .innerJoin(transactionTags, eq(transactionTags.tag_id, tags.id))
-    .innerJoin(transactions, eq(transactionTags.transaction_id, transactions.id))
+    .innerJoin(
+      transactions,
+      eq(transactionTags.transaction_id, transactions.id),
+    )
     .where(eq(transactions.type, TRANSACTION_TYPE.EXPENSE))
     .groupBy(tags.id)
     .orderBy(sql`SUM(${transactions.amount}) DESC`);

@@ -1018,7 +1018,9 @@ export async function getTransactionsPaginated(
           .from(transactionTags)
           .where(inArray(transactionTags.tag_id, ids))
           .groupBy(transactionTags.transaction_id)
-          .having(sql`COUNT(DISTINCT ${transactionTags.tag_id}) = ${ids.length}`),
+          .having(
+            sql`COUNT(DISTINCT ${transactionTags.tag_id}) = ${ids.length}`,
+          ),
       ),
     );
   }
