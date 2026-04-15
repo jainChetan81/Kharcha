@@ -28,6 +28,7 @@ import {
   useLatestBackup,
   useRestoreFromCloud,
 } from "@/hooks/use-cloud-backup";
+import { DriveScopeMissingError, ICloudSyncingError } from "@/lib/cloud-backup";
 import { COLORS } from "@/lib/constants";
 import { exportDatabase, importDatabase } from "@/lib/db/backup";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
@@ -128,8 +129,11 @@ export default function ExportScreen() {
 }
 
 function CloudBackupSection() {
-  const { enabled, setEnabled, provider } = useCloudBackupSettings();
-  const { data: latest } = useLatestBackup();
+  const { enabled, hasEverBackedUp, setEnabled, provider } =
+    useCloudBackupSettings();
+  const { data: latest } = useLatestBackup({
+    enabled: enabled || hasEverBackedUp,
+  });
   const backupMutation = useBackupNow();
   const restoreMutation = useRestoreFromCloud();
 
@@ -140,17 +144,26 @@ function CloudBackupSection() {
     ? `Last backed up ${formatDistanceToNow(new Date(latest.modifiedTime), { addSuffix: true })}`
     : "No backup yet";
 
+  function reportBackupError(err: unknown, fallbackTitle: string) {
+    if (err instanceof DriveScopeMissingError) {
+      showErrorToast(
+        "Reconnect Google",
+        "Drive permission missing — sign in again in Gmail Sync.",
+      );
+      return;
+    }
+    showErrorToast(fallbackTitle, err);
+  }
+
   async function handleToggle(next: boolean) {
     try {
       await setEnabled(next);
       if (next && !latest) {
-        // Immediately do the first backup so the user sees the value of
-        // turning it on. Best-effort — surface failure but don't revert.
         try {
           await backupMutation.mutateAsync();
           showSuccessToast(`Backed up to ${providerLabel}`);
         } catch (err) {
-          showErrorToast("First backup failed", err);
+          reportBackupError(err, "First backup failed");
         }
       }
     } catch (err) {
@@ -163,13 +176,16 @@ function CloudBackupSection() {
       await backupMutation.mutateAsync();
       showSuccessToast(`Backed up to ${providerLabel}`);
     } catch (err) {
-      showErrorToast("Backup failed", err);
+      reportBackupError(err, "Backup failed");
     }
   }
 
   function handleRestore() {
-    if (!latest) {
-      showErrorToast("No backup found");
+    if (!latest && !hasEverBackedUp) {
+      showErrorToast(
+        "No backup found",
+        `Nothing to restore from ${providerLabel} yet.`,
+      );
       return;
     }
     Alert.alert(
@@ -183,12 +199,16 @@ function CloudBackupSection() {
           onPress: async () => {
             try {
               await restoreMutation.mutateAsync();
-              showSuccessToast(
-                "Restored",
-                "Restart the app to apply changes",
-              );
+              showSuccessToast("Restored", "Restart the app to apply changes");
             } catch (err) {
-              showErrorToast("Restore failed", err);
+              if (err instanceof ICloudSyncingError) {
+                showErrorToast(
+                  "iCloud still syncing",
+                  "Your backup is downloading — try again in a minute.",
+                );
+                return;
+              }
+              reportBackupError(err, "Restore failed");
             }
           },
         },
@@ -231,7 +251,7 @@ function CloudBackupSection() {
         icon={CloudDownload}
         label={`Restore from ${providerLabel}`}
         loading={restoreMutation.isPending}
-        disabled={busy || !latest}
+        disabled={busy}
         onPress={handleRestore}
       />
     </>

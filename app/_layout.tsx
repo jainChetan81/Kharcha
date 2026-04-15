@@ -15,12 +15,12 @@ import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { LockedScreen } from "@/components/locked-screen";
 import { Text } from "@/components/ui/text";
 import { useAppLock } from "@/hooks/use-app-lock";
+import { maybeAutoBackup } from "@/lib/cloud-backup";
 import { COLORS, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
 import { initDB } from "@/lib/db";
 import { processSubscriptions } from "@/lib/db/subscriptions";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { isIOS } from "@/lib/utils";
-import { maybeAutoBackup } from "@/lib/cloud-backup";
 import { syncWidgetData } from "@/lib/widget";
 
 SplashScreen.preventAutoHideAsync();

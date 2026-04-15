@@ -4,15 +4,11 @@
 // providers encrypt at rest by default (Apple/Google managed keys), and
 // adding a passphrase-derived key would break "just works" auto-restore on
 // a fresh install. We may add an optional passphrase later.
-//
-// WAL caveat: expo-sqlite uses WAL by default, so a naive file copy could
-// miss un-checkpointed writes. We accept this for now (matches the existing
-// `lib/db/backup.ts` behaviour); for a hardened backup we'd run
-// `PRAGMA wal_checkpoint(TRUNCATE)` before reading.
 import { File, Paths } from "expo-file-system";
 import { Platform } from "react-native";
 import { CONFIG_KEYS, DB_NAME } from "@/lib/constants";
 import { getConfig, updateConfig } from "@/lib/db/config";
+import expo from "@/lib/db/connection";
 import {
   type DriveBackupFile,
   downloadBackupFromDrive,
@@ -20,11 +16,14 @@ import {
   uploadBackupToDrive,
 } from "./gdrive";
 import {
-  type ICloudBackupFile,
   downloadBackupFromICloud,
   getLatestICloudBackup,
+  type ICloudBackupFile,
   uploadBackupToICloud,
 } from "./icloud";
+
+export { DriveScopeMissingError } from "./gdrive";
+export { ICloudSyncingError } from "./icloud";
 
 const SQLITE_SUBDIR = "SQLite";
 
@@ -46,10 +45,23 @@ function getDbFile(): File {
   return new File(Paths.document, SQLITE_SUBDIR, DB_NAME);
 }
 
-function readDbBytes(): ArrayBuffer {
+// Checkpoint WAL into the main file so the snapshot includes every
+// committed write. Without this a naive copy of the .db file can miss
+// pages still sitting in the -wal sidecar, which restores a partial DB.
+function checkpointWal(): void {
+  try {
+    expo.execSync("PRAGMA wal_checkpoint(TRUNCATE);");
+  } catch {
+    // Best-effort; a missed checkpoint degrades to the prior behaviour.
+  }
+}
+
+async function readDbBytes(): Promise<ArrayBuffer> {
+  checkpointWal();
   const src = getDbFile();
   if (!src.exists) throw new Error("Database file not found");
-  return src.bytes().slice().buffer;
+  const bytes = await src.bytes();
+  return bytes.slice().buffer;
 }
 
 function writeDbBytes(bytes: ArrayBuffer): void {
@@ -61,7 +73,7 @@ function writeDbBytes(bytes: ArrayBuffer): void {
 
 export async function backupNow(): Promise<BackupSummary> {
   const provider = getProvider();
-  const bytes = readDbBytes();
+  const bytes = await readDbBytes();
   let modifiedTime: string;
   let fileId: string | undefined;
 
@@ -92,9 +104,7 @@ export async function getLatestBackup(): Promise<BackupSummary | null> {
   }
   if (provider === "gdrive") {
     const f: DriveBackupFile | null = await getLatestDriveBackup();
-    return f
-      ? { modifiedTime: f.modifiedTime, size: f.size, provider }
-      : null;
+    return f ? { modifiedTime: f.modifiedTime, size: f.size, provider } : null;
   }
   return null;
 }
@@ -118,7 +128,13 @@ export async function restoreFromCloud(): Promise<void> {
 // Caller is responsible for gating on user opt-in (CLOUD_BACKUP_ENABLED).
 const AUTO_BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
+// iOS fires AppState "active" more than once per resume (e.g. after
+// passcode/Face ID dismiss). Without this gate two concurrent backups
+// can race on the same Drive file / iCloud path.
+let autoBackupInFlight = false;
+
 export async function maybeAutoBackup(): Promise<void> {
+  if (autoBackupInFlight) return;
   const enabled = await getConfig(CONFIG_KEYS.CLOUD_BACKUP_ENABLED);
   if (enabled !== "1") return;
   const lastAt = await getConfig(CONFIG_KEYS.CLOUD_BACKUP_LAST_AT);
@@ -126,9 +142,12 @@ export async function maybeAutoBackup(): Promise<void> {
     const ageMs = Date.now() - new Date(lastAt).getTime();
     if (ageMs < AUTO_BACKUP_INTERVAL_MS) return;
   }
+  autoBackupInFlight = true;
   try {
     await backupNow();
   } catch {
     // Swallow — auto-backup is best-effort, never crash the app.
+  } finally {
+    autoBackupInFlight = false;
   }
 }

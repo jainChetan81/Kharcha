@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
 import {
   type BackupSummary,
   backupNow,
@@ -6,17 +7,27 @@ import {
   getProvider,
   restoreFromCloud,
 } from "@/lib/cloud-backup";
-import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
+import { CONFIG_KEYS } from "@/lib/constants";
 import { getConfig, updateConfig } from "@/lib/db/config";
 
 const QUERY_KEY = "cloud-backup";
 
 export function useCloudBackupSettings() {
   const queryClient = useQueryClient();
-  const enabledQuery = useQuery({
-    queryKey: [QUERY_KEY, "enabled"],
-    queryFn: async () =>
-      (await getConfig(CONFIG_KEYS.CLOUD_BACKUP_ENABLED)) === "1",
+  // Single SQLite read returns both flags — avoids two useQuery reads on
+  // every mount.
+  const settingsQuery = useQuery({
+    queryKey: [QUERY_KEY, "settings"],
+    queryFn: async () => {
+      const [enabled, lastAt] = await Promise.all([
+        getConfig(CONFIG_KEYS.CLOUD_BACKUP_ENABLED),
+        getConfig(CONFIG_KEYS.CLOUD_BACKUP_LAST_AT),
+      ]);
+      return {
+        enabled: enabled === "1",
+        hasEverBackedUp: Boolean(lastAt),
+      };
+    },
   });
 
   const setEnabledMutation = useMutation({
@@ -24,22 +35,39 @@ export function useCloudBackupSettings() {
       await updateConfig(CONFIG_KEYS.CLOUD_BACKUP_ENABLED, next ? "1" : "0");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, "enabled"] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, "settings"] });
     },
   });
 
-  return {
-    enabled: enabledQuery.data ?? false,
-    isLoading: enabledQuery.isLoading,
-    setEnabled: setEnabledMutation.mutateAsync,
-    provider: getProvider(),
-  };
+  // mutateAsync identity isn't guaranteed stable across renders; wrap so
+  // the memoized return object stays referentially equal when inputs don't
+  // change.
+  const { mutateAsync } = setEnabledMutation;
+  const setEnabled = useCallback(
+    (next: boolean) => mutateAsync(next),
+    [mutateAsync],
+  );
+
+  return useMemo(
+    () => ({
+      enabled: settingsQuery.data?.enabled ?? false,
+      hasEverBackedUp: settingsQuery.data?.hasEverBackedUp ?? false,
+      isLoading: settingsQuery.isLoading,
+      setEnabled,
+      provider: getProvider(),
+    }),
+    [settingsQuery.data, settingsQuery.isLoading, setEnabled],
+  );
 }
 
-export function useLatestBackup() {
+// Only fetch remote metadata when the user has opted in or we have a prior
+// backup — otherwise opening the Export screen would trigger a Drive list
+// (or iCloud stat) for users who never intend to back up.
+export function useLatestBackup(options?: { enabled?: boolean }) {
   return useQuery<BackupSummary | null>({
     queryKey: [QUERY_KEY, "latest"],
     queryFn: () => getLatestBackup(),
+    enabled: options?.enabled ?? false,
   });
 }
 
@@ -58,21 +86,10 @@ export function useRestoreFromCloud() {
   return useMutation({
     mutationFn: restoreFromCloud,
     onSuccess: () => {
-      // Invalidate everything — restored DB has different data for every key.
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TRANSACTIONS] });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
-      });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MONTHLY_SUMMARY] });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.MONTHLY_INSIGHTS],
-      });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CATEGORIES] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.SOURCES] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.SUBSCRIPTIONS] });
+      // Restored DB has different rows for every key — safer to blow the
+      // whole cache than to maintain an allowlist that rots as new
+      // queries are added.
+      queryClient.invalidateQueries();
     },
   });
 }

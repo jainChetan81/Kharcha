@@ -1,8 +1,7 @@
-// iCloud Drive backup. iOS auto-syncs the app's Documents directory to
-// iCloud Drive when the iCloud entitlements are configured in app.json (see
-// `ios.entitlements.com.apple.developer.icloud-*` keys). No native module
-// required — we just write the SQLite snapshot into a sub-folder of
-// `Paths.document` and the OS handles the upload.
+// iCloud Drive backup. Relies on `NSUbiquitousContainerIsDocumentScopePublic = true`
+// in Info.plist (configured in app.json) which makes the app's Documents
+// directory the public ubiquity container — so files written to
+// `Paths.document/...` are uploaded to iCloud Drive by the OS.
 //
 // Caveats:
 //   - User must be signed into iCloud on the device.
@@ -11,7 +10,7 @@
 //   - We can't *force* a sync from the JS side; we trust the OS's coordinator.
 //   - Restore on a fresh install: the OS streams the file down on demand
 //     when we read it; reading may briefly fail with ENOENT until the
-//     download completes.
+//     download completes — surfaced as ICloudSyncingError.
 import { Directory, File, Paths } from "expo-file-system";
 
 const BACKUP_DIR = "iCloud-Backup";
@@ -54,13 +53,20 @@ export async function getLatestICloudBackup(): Promise<ICloudBackupFile | null> 
   };
 }
 
+export class ICloudSyncingError extends Error {
+  constructor() {
+    super("iCloud backup still syncing — try again in a minute.");
+    this.name = "ICloudSyncingError";
+  }
+}
+
 export async function downloadBackupFromICloud(): Promise<ArrayBuffer> {
   const file = getBackupFile();
   if (!file.exists) {
-    throw new Error("No iCloud backup found on this device");
+    // Ambiguous between "no backup ever made" and "iCloud hasn't streamed
+    // it down yet on this fresh install." Caller decides the copy.
+    throw new ICloudSyncingError();
   }
-  const bytes = file.bytes();
-  // bytes() returns Uint8Array; clone to a fresh ArrayBuffer to detach
-  // from the file's internal buffer.
+  const bytes = await file.bytes();
   return bytes.slice().buffer;
 }

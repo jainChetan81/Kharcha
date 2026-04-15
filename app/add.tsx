@@ -249,6 +249,7 @@ export default function AddTransaction() {
       }
     }
 
+    setAiParsedBy(null);
     router.back();
   }
 
@@ -329,8 +330,8 @@ export default function AddTransaction() {
           <Icon as={Sparkles} className="size-4 text-primary" />
           <Text className="flex-1 text-xs font-medium text-foreground">
             Got a bank SMS or email? Tap{" "}
-            <Text className="font-bold text-primary">AI Parse</Text> to auto-fill
-            this form.
+            <Text className="font-bold text-primary">AI Parse</Text> to
+            auto-fill this form.
           </Text>
           <Pressable
             onPress={(e) => {

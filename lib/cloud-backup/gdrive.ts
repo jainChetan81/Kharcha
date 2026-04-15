@@ -11,8 +11,28 @@ import { getValidAccessToken } from "@/lib/gmail/auth";
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD = "https://www.googleapis.com/upload/drive/v3";
 
+// Drive `q` uses single quotes around string literals. Keep this a plain
+// identifier (no apostrophes) or escape before interpolating.
 const BACKUP_FILENAME = "kharcha-backup.db";
 const BACKUP_MIME = "application/x-sqlite3";
+
+export class DriveScopeMissingError extends Error {
+  constructor() {
+    super(
+      "Google Drive permission missing. Reconnect Google in Gmail Sync to re-grant access.",
+    );
+    this.name = "DriveScopeMissingError";
+  }
+}
+
+function isScopeError(status: number, bodyText: string): boolean {
+  if (status !== 401 && status !== 403) return false;
+  return (
+    bodyText.includes("insufficientPermissions") ||
+    bodyText.includes("insufficient_scope") ||
+    bodyText.includes("ACCESS_TOKEN_SCOPE_INSUFFICIENT")
+  );
+}
 
 export type DriveBackupFile = {
   id: string;
@@ -43,7 +63,9 @@ async function findExistingBackup(token: string): Promise<string | null> {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    throw new Error(`Drive list failed: ${res.status} ${await res.text()}`);
+    const text = await res.text();
+    if (isScopeError(res.status, text)) throw new DriveScopeMissingError();
+    throw new Error(`Drive list failed: ${res.status} ${text}`);
   }
   const data = (await res.json()) as { files?: Array<{ id: string }> };
   return data.files?.[0]?.id ?? null;
@@ -92,7 +114,9 @@ async function uploadMultipart(
     body: merged,
   });
   if (!res.ok) {
-    throw new Error(`Drive upload failed: ${res.status} ${await res.text()}`);
+    const text = await res.text();
+    if (isScopeError(res.status, text)) throw new DriveScopeMissingError();
+    throw new Error(`Drive upload failed: ${res.status} ${text}`);
   }
   const json = (await res.json()) as { id: string };
   return json.id;
@@ -119,7 +143,11 @@ export async function getLatestDriveBackup(): Promise<DriveBackupFile | null> {
   const res = await fetch(url.toString(), {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const text = await res.text();
+    if (isScopeError(res.status, text)) throw new DriveScopeMissingError();
+    return null;
+  }
   const data = (await res.json()) as { files?: DriveBackupFile[] };
   const file = data.files?.[0];
   if (!file) return null;
@@ -137,6 +165,8 @@ export async function downloadBackupFromDrive(
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
+    const text = await res.text();
+    if (isScopeError(res.status, text)) throw new DriveScopeMissingError();
     throw new Error(`Drive download failed: ${res.status}`);
   }
   return res.arrayBuffer();

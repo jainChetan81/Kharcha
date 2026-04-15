@@ -37,7 +37,14 @@
       },
       "usesIcloudStorage": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSUbiquitousContainers": {
+          "iCloud.com.chetanjain.kharcha": {
+            "NSUbiquitousContainerIsDocumentScopePublic": true,
+            "NSUbiquitousContainerSupportedFolderLevels": "Any",
+            "NSUbiquitousContainerName": "Kharcha"
+          }
+        }
       }
     },
     "android": {
