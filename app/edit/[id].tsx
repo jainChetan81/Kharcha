@@ -50,6 +50,8 @@ export default function EditTransactionScreen() {
     destinationSourceId: transaction.destination_source_id,
     date: transaction.date,
     note: transaction.note ?? "",
+    reimbursementStatus: transaction.reimbursement_status ?? "none",
+    tagIds: (transaction.tags ?? []).map((t) => t.id),
   };
 
   async function handleSubmit(value: TransactionFormValues) {
@@ -65,6 +67,7 @@ export default function EditTransactionScreen() {
       } else if (!isTransfer && originallyTransfer) {
         sourceType = "manual";
       }
+      const isExpense = value.type === TRANSACTION_TYPE.EXPENSE;
       await updateMutation.mutateAsync({
         type: value.type,
         amount: Number(value.amount),
@@ -74,8 +77,10 @@ export default function EditTransactionScreen() {
           value.type === TRANSACTION_TYPE.INCOME ? null : value.sourceId,
         destinationSourceId: isTransfer ? value.destinationSourceId : null,
         sourceType,
+        reimbursementStatus: isExpense ? value.reimbursementStatus : "none",
         date: value.date,
         note: value.note || null,
+        tagIds: value.tagIds,
       });
       showSuccessToast("Transaction updated");
       router.back();

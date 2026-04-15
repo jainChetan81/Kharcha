@@ -6,6 +6,7 @@ import type {
   config,
   sources,
   subscriptions,
+  tags,
   transactions,
 } from "./schema";
 
@@ -17,6 +18,9 @@ export type ConfigRow = InferSelectModel<typeof config>;
 export type Bank = InferSelectModel<typeof banks>;
 export type BankEmail = InferSelectModel<typeof bankEmails>;
 export type BankWithEmails = Bank & { emails: BankEmail[] };
+export type Tag = InferSelectModel<typeof tags>;
+
+export type TagLite = { id: number; name: string };
 
 export type TransactionRow = Transaction & {
   category_name: string | null;
@@ -24,6 +28,24 @@ export type TransactionRow = Transaction & {
   destination_source_name: string | null;
   source_type: "manual" | "synced" | "recurring" | "transfer";
   parsed_by: "regex" | "gemini" | null;
+  reimbursement_status: "none" | "pending" | "reimbursed";
+  reimbursed_at: string | null;
+  tags: TagLite[];
+};
+
+export type ReimbursementSummary = {
+  pending_count: number;
+  pending_total: number;
+  reimbursed_count: number;
+  reimbursed_total: number;
+};
+
+export type TagBreakdownRow = {
+  tag_id: number;
+  tag_name: string;
+  total: number;
+  count: number;
+  percentage: number;
 };
 
 export type MonthlySummary = {

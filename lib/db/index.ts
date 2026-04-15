@@ -13,6 +13,7 @@ import {
   desc,
   eq,
   gte,
+  inArray,
   isNull,
   like,
   lte,
@@ -36,7 +37,9 @@ import {
   config,
   sources,
   transactions,
+  transactionTags,
 } from "./schema";
+import { getTagsForTransactions } from "./tags";
 import type {
   CategoryBreakdownRow,
   MonthlyInsights,
@@ -50,7 +53,11 @@ export type {
   CategoryBreakdownRow,
   MonthlyInsights,
   MonthlySummary,
+  ReimbursementSummary,
   Source,
+  Tag,
+  TagBreakdownRow,
+  TagLite,
   Transaction,
   TransactionRow,
 } from "./types";
@@ -65,9 +72,7 @@ export type {
 function hasColumn(table: string, column: string): boolean {
   // `table` comes from hard-coded string literals in this module only —
   // never from user input — so interpolation into the PRAGMA is safe.
-  const rows = expo.getAllSync<{ name: string }>(
-    `PRAGMA table_info(${table})`,
-  );
+  const rows = expo.getAllSync<{ name: string }>(`PRAGMA table_info(${table})`);
   return rows.some((r) => r.name === column);
 }
 
@@ -120,6 +125,8 @@ export async function initDB() {
       subscription_id INTEGER REFERENCES subscriptions(id),
       source_type TEXT NOT NULL DEFAULT 'manual',
       gmail_message_id TEXT,
+      reimbursement_status TEXT NOT NULL DEFAULT 'none',
+      reimbursed_at TEXT,
       date TEXT NOT NULL,
       note TEXT,
       created_at TEXT DEFAULT (datetime('now'))
@@ -197,6 +204,20 @@ export async function initDB() {
     await db.run(sql`ALTER TABLE transactions ADD COLUMN parsed_by TEXT`);
   }
 
+  try {
+    await db.run(
+      sql`ALTER TABLE transactions ADD COLUMN reimbursement_status TEXT NOT NULL DEFAULT 'none'`,
+    );
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
+  try {
+    await db.run(sql`ALTER TABLE transactions ADD COLUMN reimbursed_at TEXT`);
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
   await db.run(
     sql`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
   );
@@ -214,6 +235,9 @@ export async function initDB() {
   );
   await db.run(
     sql`CREATE INDEX IF NOT EXISTS idx_transactions_gmail_message_id ON transactions(gmail_message_id)`,
+  );
+  await db.run(
+    sql`CREATE INDEX IF NOT EXISTS idx_transactions_reimbursement_status ON transactions(reimbursement_status)`,
   );
 
   await db
@@ -840,6 +864,8 @@ function transactionSelect() {
       subscription_id: transactions.subscription_id,
       source_type: transactions.source_type,
       parsed_by: transactions.parsed_by,
+      reimbursement_status: transactions.reimbursement_status,
+      reimbursed_at: transactions.reimbursed_at,
       date: transactions.date,
       note: transactions.note,
       created_at: transactions.created_at,
@@ -856,17 +882,31 @@ function transactionSelect() {
     );
 }
 
+async function attachTagsToRows(
+  rows: Omit<TransactionRow, "tags">[],
+): Promise<TransactionRow[]> {
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.id);
+  const tagMap = await getTagsForTransactions(ids);
+  return rows.map((row) => ({
+    ...row,
+    tags: tagMap.get(row.id) ?? [],
+  })) as TransactionRow[];
+}
+
 export async function getRecentTransactions(limit = 20) {
-  return (await transactionSelect()
+  const rows = (await transactionSelect()
     .orderBy(desc(transactions.date), desc(transactions.created_at))
-    .limit(limit)) as TransactionRow[];
+    .limit(limit)) as Omit<TransactionRow, "tags">[];
+  return attachTagsToRows(rows);
 }
 
 export async function getMonthTransactions(yearMonth: string, limit = 10) {
-  return (await transactionSelect()
+  const rows = (await transactionSelect()
     .where(sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`)
     .orderBy(desc(transactions.date), desc(transactions.created_at))
-    .limit(limit)) as TransactionRow[];
+    .limit(limit)) as Omit<TransactionRow, "tags">[];
+  return attachTagsToRows(rows);
 }
 
 export async function getMonthlySummary(yearMonth: string) {
@@ -898,6 +938,8 @@ export async function getTransactionsPaginated(
     amountMin?: number | null;
     amountMax?: number | null;
     search?: string;
+    reimbursement?: "all" | "pending" | "reimbursed";
+    tagIds?: number[] | null;
   },
 ) {
   const conditions = [];
@@ -949,6 +991,27 @@ export async function getTransactionsPaginated(
       ),
     );
   }
+  if (filters?.reimbursement && filters.reimbursement !== "all") {
+    conditions.push(
+      eq(transactions.reimbursement_status, filters.reimbursement),
+    );
+  }
+  if (filters?.tagIds && filters.tagIds.length > 0) {
+    const ids = filters.tagIds;
+    conditions.push(
+      inArray(
+        transactions.id,
+        db
+          .select({ id: transactionTags.transaction_id })
+          .from(transactionTags)
+          .where(inArray(transactionTags.tag_id, ids))
+          .groupBy(transactionTags.transaction_id)
+          .having(
+            sql`COUNT(DISTINCT ${transactionTags.tag_id}) = ${ids.length}`,
+          ),
+      ),
+    );
+  }
 
   const query = transactionSelect()
     .where(conditions.length > 0 ? and(...conditions) : undefined)
@@ -956,7 +1019,8 @@ export async function getTransactionsPaginated(
     .limit(limit)
     .offset(offset);
 
-  return (await query) as TransactionRow[];
+  const rows = (await query) as Omit<TransactionRow, "tags">[];
+  return attachTagsToRows(rows);
 }
 
 export async function getAllTransactionsFiltered(
@@ -966,8 +1030,12 @@ export async function getAllTransactionsFiltered(
 }
 
 export async function getTransactionById(id: number) {
-  const result = await transactionSelect().where(eq(transactions.id, id));
-  return (result[0] ?? null) as TransactionRow | null;
+  const result = (await transactionSelect().where(
+    eq(transactions.id, id),
+  )) as Omit<TransactionRow, "tags">[];
+  if (!result[0]) return null;
+  const [row] = await attachTagsToRows([result[0]]);
+  return row as TransactionRow;
 }
 
 export async function insertTransaction(params: {
@@ -980,10 +1048,12 @@ export async function insertTransaction(params: {
   subscriptionId?: number | null;
   sourceType?: SourceType;
   parsedBy?: ParsedByType;
+  reimbursementStatus?: "none" | "pending" | "reimbursed";
   date: string;
   note: string | null;
+  tagIds?: number[];
 }) {
-  return db.insert(transactions).values({
+  const result = await db.insert(transactions).values({
     type: params.type,
     amount: params.amount,
     merchant: params.merchant,
@@ -993,9 +1063,21 @@ export async function insertTransaction(params: {
     subscription_id: params.subscriptionId ?? null,
     source_type: params.sourceType ?? "manual",
     parsed_by: params.parsedBy ?? null,
+    reimbursement_status: params.reimbursementStatus ?? "none",
     date: params.date,
     note: params.note,
   });
+  const insertedId = Number(result.lastInsertRowId);
+  if (params.tagIds && params.tagIds.length > 0 && insertedId > 0) {
+    const unique = Array.from(new Set(params.tagIds));
+    await db.insert(transactionTags).values(
+      unique.map((tag_id) => ({
+        transaction_id: insertedId,
+        tag_id,
+      })),
+    );
+  }
+  return result;
 }
 
 export async function updateTransaction(
@@ -1008,8 +1090,10 @@ export async function updateTransaction(
     sourceId: number | null;
     destinationSourceId?: number | null;
     sourceType?: SourceType;
+    reimbursementStatus?: "none" | "pending" | "reimbursed";
     date: string;
     note: string | null;
+    tagIds?: number[];
   },
 ) {
   // Only touch source_type when the caller explicitly provides it — otherwise
@@ -1025,6 +1109,8 @@ export async function updateTransaction(
     date: string;
     note: string | null;
     source_type?: SourceType;
+    reimbursement_status?: "none" | "pending" | "reimbursed";
+    reimbursed_at?: string | null;
   } = {
     type: params.type,
     amount: params.amount,
@@ -1035,6 +1121,13 @@ export async function updateTransaction(
     date: params.date,
     note: params.note,
   };
+  if (params.reimbursementStatus !== undefined) {
+    updates.reimbursement_status = params.reimbursementStatus;
+    updates.reimbursed_at =
+      params.reimbursementStatus === "reimbursed"
+        ? new Date().toISOString()
+        : null;
+  }
   if (params.sourceType !== undefined) {
     // The only edit-time transition allowed is the user toggling the
     // transfer flag (manual ↔ transfer). Anything else is rejected:
@@ -1055,7 +1148,27 @@ export async function updateTransaction(
       updates.source_type = next;
     }
   }
-  return db.update(transactions).set(updates).where(eq(transactions.id, id));
+  const result = await db
+    .update(transactions)
+    .set(updates)
+    .where(eq(transactions.id, id));
+
+  if (params.tagIds !== undefined) {
+    await db
+      .delete(transactionTags)
+      .where(eq(transactionTags.transaction_id, id));
+    if (params.tagIds.length > 0) {
+      const unique = Array.from(new Set(params.tagIds));
+      await db.insert(transactionTags).values(
+        unique.map((tag_id) => ({
+          transaction_id: id,
+          tag_id,
+        })),
+      );
+    }
+  }
+
+  return result;
 }
 
 export async function deleteTransaction(id: number) {
@@ -1069,6 +1182,8 @@ export async function restoreTransaction(row: {
   category_id: number | null;
   source_id: number | null;
   destination_source_id: number | null;
+  reimbursement_status?: "none" | "pending" | "reimbursed";
+  reimbursed_at?: string | null;
   date: string;
   note: string | null;
   created_at: string | null;
@@ -1080,6 +1195,8 @@ export async function restoreTransaction(row: {
     category_id: row.category_id,
     source_id: row.source_id,
     destination_source_id: row.destination_source_id,
+    reimbursement_status: row.reimbursement_status ?? "none",
+    reimbursed_at: row.reimbursed_at ?? null,
     date: row.date,
     created_at: row.created_at,
     note: row.note,
@@ -1088,6 +1205,41 @@ export async function restoreTransaction(row: {
 
 export async function clearAllTransactions() {
   return db.delete(transactions);
+}
+
+export async function setReimbursementStatus(
+  id: number,
+  status: "none" | "pending" | "reimbursed",
+) {
+  return db
+    .update(transactions)
+    .set({
+      reimbursement_status: status,
+      reimbursed_at: status === "reimbursed" ? new Date().toISOString() : null,
+    })
+    .where(eq(transactions.id, id));
+}
+
+export async function getReimbursementSummary() {
+  const rows = await db
+    .select({
+      status: transactions.reimbursement_status,
+      count: sql<number>`COUNT(*)`,
+      total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+    })
+    .from(transactions)
+    .where(sql`${transactions.reimbursement_status} != 'none'`)
+    .groupBy(transactions.reimbursement_status);
+
+  const pending = rows.find((r) => r.status === "pending");
+  const reimbursed = rows.find((r) => r.status === "reimbursed");
+
+  return {
+    pending_count: pending?.count ?? 0,
+    pending_total: pending?.total ?? 0,
+    reimbursed_count: reimbursed?.count ?? 0,
+    reimbursed_total: reimbursed?.total ?? 0,
+  };
 }
 
 export async function getCategoryBreakdown(yearMonth: string) {
@@ -1327,6 +1479,19 @@ export {
   updateSourceOrder,
 } from "./sources";
 export { getDataStats } from "./stats";
+export {
+  addTag,
+  deleteTag,
+  getAllTags,
+  getAllTimeTagBreakdown,
+  getTagBreakdown,
+  getTagsForTransaction,
+  getTagsForTransactions,
+  getTransactionIdsForTags,
+  renameTag,
+  setTransactionTags,
+  updateTagOrder,
+} from "./tags";
 
 export async function getTodaySpend(): Promise<number> {
   const today = format(new Date(), DATE_ISO_FORMAT);

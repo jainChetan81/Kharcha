@@ -15,6 +15,7 @@ import { useCurrency } from "@/hooks/use-currency";
 import {
   OTHER_CATEGORY_LABEL,
   PARSED_BY,
+  REIMBURSEMENT_STATUS,
   SOURCE_TYPE,
   TIME_FORMAT,
   TRANSACTION_TYPE,
@@ -31,6 +32,8 @@ const TAG_VARIANTS = {
   gmail: { bg: "bg-blue-700", text: "text-white" },
   primary: { bg: "bg-primary", text: "text-primary-foreground" },
   ai: { bg: "bg-indigo-600", text: "text-white" },
+  warning: { bg: "bg-amber-600", text: "text-white" },
+  positive: { bg: "bg-positive", text: "text-white" },
 } as const;
 
 function Tag({
@@ -147,6 +150,12 @@ export function TransactionItem({
           {item.source_type === SOURCE_TYPE.RECURRING && (
             <Tag label="SUB" variant="primary" />
           )}
+          {item.reimbursement_status === REIMBURSEMENT_STATUS.PENDING && (
+            <Tag label="REIMBURSE" variant="warning" />
+          )}
+          {item.reimbursement_status === REIMBURSEMENT_STATUS.REIMBURSED && (
+            <Tag label="REIMBURSED" variant="positive" />
+          )}
         </View>
         <Text
           numberOfLines={1}
@@ -154,6 +163,25 @@ export function TransactionItem({
         >
           {subtitle}
         </Text>
+        {item.tags && item.tags.length > 0 && (
+          <View className="mt-1 flex-row flex-wrap gap-1">
+            {item.tags.slice(0, 3).map((tag) => (
+              <View
+                key={tag.id}
+                className="rounded-md bg-primary/15 px-1.5 py-0.5"
+              >
+                <Text className="text-[10px] font-medium text-primary">
+                  #{tag.name}
+                </Text>
+              </View>
+            ))}
+            {item.tags.length > 3 && (
+              <Text className="text-[10px] text-muted-foreground">
+                +{item.tags.length - 3}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
       <View className="shrink-0 items-end">
         <Text

@@ -3,18 +3,28 @@ import { useQuery } from "@tanstack/react-query";
 import { format, parse } from "date-fns";
 import { Calendar } from "lucide-react-native";
 import { lazy, Suspense, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Switch,
+  View,
+} from "react-native";
+import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
-import { ChipPicker } from "@/components/ui/chip-picker";
+import { ChipPicker, MultiChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { useAddTag, useAllTags } from "@/hooks/use-tags";
 import {
   COLORS,
   DATE_DISPLAY_FORMAT,
   DATE_TIME_FORMAT,
   QUERY_KEYS,
+  REIMBURSEMENT_STATUS,
+  type ReimbursementStatusType,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import {
@@ -41,6 +51,8 @@ export type TransactionFormValues = {
   destinationSourceId: number | null;
   date: string;
   note: string;
+  reimbursementStatus: ReimbursementStatusType;
+  tagIds: number[];
 };
 
 export function TransactionForm({
@@ -65,6 +77,9 @@ export function TransactionForm({
   const [autoFilledMerchant, setAutoFilledMerchant] = useState<string | null>(
     null,
   );
+  const [newTagSheetVisible, setNewTagSheetVisible] = useState(false);
+  const { data: allTags = [] } = useAllTags();
+  const addTagMutation = useAddTag();
 
   const isTransfer = activeType === TRANSACTION_TYPE.TRANSFER;
   const categoryType = isTransfer ? "expense" : activeType;
@@ -153,6 +168,12 @@ export function TransactionForm({
                     }
                     if (btn.key === TRANSACTION_TYPE.EXPENSE) {
                       form.setFieldValue("destinationSourceId", null);
+                    }
+                    if (btn.key !== TRANSACTION_TYPE.EXPENSE) {
+                      form.setFieldValue(
+                        "reimbursementStatus",
+                        REIMBURSEMENT_STATUS.NONE,
+                      );
                     }
                   }}
                   className={cn(
@@ -411,6 +432,123 @@ export function TransactionForm({
           </View>
         )}
       </form.Field>
+
+      {activeType === TRANSACTION_TYPE.EXPENSE && (
+        <form.Field name="reimbursementStatus">
+          {(field) => {
+            const isReimbursable =
+              field.state.value !== REIMBURSEMENT_STATUS.NONE;
+            const isReimbursed =
+              field.state.value === REIMBURSEMENT_STATUS.REIMBURSED;
+            return (
+              <View className="mb-5 rounded-xl border border-border bg-card p-4">
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1 pr-3">
+                    <Text className="text-sm font-medium text-foreground">
+                      Reimbursable
+                    </Text>
+                    <Text className="mt-0.5 text-xs text-muted-foreground">
+                      Track this expense for reimbursement
+                    </Text>
+                  </View>
+                  <Switch
+                    value={isReimbursable}
+                    onValueChange={(val) =>
+                      field.handleChange(
+                        val
+                          ? REIMBURSEMENT_STATUS.PENDING
+                          : REIMBURSEMENT_STATUS.NONE,
+                      )
+                    }
+                    trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
+                    thumbColor={COLORS.FOREGROUND}
+                  />
+                </View>
+                {isReimbursable && (
+                  <View className="mt-3 flex-row gap-2">
+                    <Pressable
+                      onPress={() =>
+                        field.handleChange(REIMBURSEMENT_STATUS.PENDING)
+                      }
+                      className={cn(
+                        "flex-1 items-center rounded-xl py-2.5",
+                        !isReimbursed ? "bg-primary" : "bg-muted",
+                      )}
+                    >
+                      <Text
+                        className={cn(
+                          "text-sm font-medium",
+                          !isReimbursed
+                            ? "text-primary-foreground"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        Pending
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() =>
+                        field.handleChange(REIMBURSEMENT_STATUS.REIMBURSED)
+                      }
+                      className={cn(
+                        "flex-1 items-center rounded-xl py-2.5",
+                        isReimbursed ? "bg-positive" : "bg-muted",
+                      )}
+                    >
+                      <Text
+                        className={cn(
+                          "text-sm font-medium",
+                          isReimbursed ? "text-white" : "text-muted-foreground",
+                        )}
+                      >
+                        Reimbursed
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
+              </View>
+            );
+          }}
+        </form.Field>
+      )}
+
+      <form.Field name="tagIds">
+        {(field) => (
+          <View className="mb-5">
+            <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
+              Tags
+            </Text>
+            <MultiChipPicker
+              items={allTags}
+              selectedIds={field.state.value ?? []}
+              onChange={(ids) => field.handleChange(ids)}
+              onAddNew={() => setNewTagSheetVisible(true)}
+              emptyLabel="No tags yet — create one to group transactions across categories"
+            />
+          </View>
+        )}
+      </form.Field>
+
+      <BottomSheet
+        visible={newTagSheetVisible}
+        onClose={() => setNewTagSheetVisible(false)}
+        title="New Tag"
+        placeholder="e.g. goa-trip, birthday, wfh"
+        submitLabel="Add Tag"
+        onSave={async (name) => {
+          try {
+            const { id } = await addTagMutation.mutateAsync(name);
+            const current = form.getFieldValue("tagIds") ?? [];
+            if (!current.includes(id)) {
+              form.setFieldValue("tagIds", [...current, id]);
+            }
+            setNewTagSheetVisible(false);
+            showSuccessToast("Tag added");
+          } catch (err) {
+            showErrorToast("Failed to add tag", err);
+          }
+        }}
+      />
 
       <form.Subscribe
         selector={(state) => ({

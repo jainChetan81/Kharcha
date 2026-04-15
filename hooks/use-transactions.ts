@@ -14,10 +14,12 @@ import {
   getMonthlySummary,
   getMonthTransactions,
   getRecentTransactions,
+  getReimbursementSummary,
   getTransactionById,
   getTransactionsPaginated,
   insertTransaction,
   restoreTransaction,
+  setReimbursementStatus,
   type TransactionRow,
   updateTransaction,
 } from "@/lib/db";
@@ -43,6 +45,15 @@ export function useInvalidateTransactions() {
       }),
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MONTHLY_INSIGHTS],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REIMBURSEMENT_SUMMARY],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TAG_BREAKDOWN],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TAG_BREAKDOWN_ALL_TIME],
       }),
     ]).then((result) => {
       syncWidgetData();
@@ -103,6 +114,8 @@ export function useTransactionsPaginated(filters: {
   amountMin?: number | null;
   amountMax?: number | null;
   search?: string;
+  reimbursement?: "all" | "pending" | "reimbursed";
+  tagIds?: number[] | null;
 }) {
   return useInfiniteQuery({
     queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED, filters],
@@ -184,6 +197,27 @@ export function useClearTransactionsWithConfirm() {
       ],
     );
   };
+}
+
+export function useReimbursementSummary() {
+  return useQuery({
+    queryKey: [QUERY_KEYS.REIMBURSEMENT_SUMMARY],
+    queryFn: getReimbursementSummary,
+  });
+}
+
+export function useSetReimbursementStatus() {
+  const invalidate = useInvalidateTransactions();
+  return useMutation({
+    mutationFn: ({
+      id,
+      status,
+    }: {
+      id: number;
+      status: "none" | "pending" | "reimbursed";
+    }) => setReimbursementStatus(id, status),
+    onSuccess: () => invalidate(),
+  });
 }
 
 export function useSwipeDelete() {
