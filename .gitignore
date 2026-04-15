@@ -42,7 +42,6 @@ credentials/
 play-store-key.json
 
 # firebase / google services (inject via EAS secret at build time)
-google-services.json
 GoogleService-Info.plist
 
 # typescript
