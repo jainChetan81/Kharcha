@@ -8,6 +8,7 @@ import {
   restoreFromCloud,
 } from "@/lib/cloud-backup";
 import { CONFIG_KEYS } from "@/lib/constants";
+import { initDB } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
 
 const QUERY_KEY = "cloud-backup";
@@ -84,7 +85,13 @@ export function useBackupNow() {
 export function useRestoreFromCloud() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: restoreFromCloud,
+    mutationFn: async () => {
+      await restoreFromCloud();
+      // Bring the restored DB up to the current schema before any query
+      // runs against it — backups from older app versions would otherwise
+      // crash queries that expect new columns.
+      await initDB();
+    },
     onSuccess: () => {
       // Restored DB has different rows for every key — safer to blow the
       // whole cache than to maintain an allowlist that rots as new

@@ -28,7 +28,7 @@ import {
   type SourceType,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { db } from "./connection";
+import expo, { db, runMigrations } from "./connection";
 import {
   bankEmails,
   banks,
@@ -55,7 +55,28 @@ export type {
   TransactionRow,
 } from "./types";
 
+/**
+ * Check whether a column exists on a table using SQLite's PRAGMA.
+ *
+ * Used to guard `ALTER TABLE ADD COLUMN` statements so we don't have to
+ * swallow `catch {}` and risk hiding real errors (FK violations, locks,
+ * etc). Safe on both fresh installs and restored-from-backup databases.
+ */
+function hasColumn(table: string, column: string): boolean {
+  // `table` comes from hard-coded string literals in this module only —
+  // never from user input — so interpolation into the PRAGMA is safe.
+  const rows = expo.getAllSync<{ name: string }>(
+    `PRAGMA table_info(${table})`,
+  );
+  return rows.some((r) => r.name === column);
+}
+
 export async function initDB() {
+  // Run generated Drizzle migrations first. If none have been generated
+  // yet (fresh clone), we fall through to the `CREATE TABLE IF NOT EXISTS`
+  // safety net below so the app still boots.
+  await runMigrations();
+
   await db.run(sql`
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -143,44 +164,37 @@ export async function initDB() {
     sql`CREATE INDEX IF NOT EXISTS idx_bank_emails_bank_id ON bank_emails(bank_id)`,
   );
 
-  // Add gmail_message_id column if missing (existing DBs won't have it
-  // since CREATE TABLE IF NOT EXISTS doesn't alter existing tables)
-  try {
+  // Back-fill columns that existing DBs (including restored backups from
+  // older app versions) might be missing. Using PRAGMA `table_info` instead
+  // of `try { ALTER } catch {}` so we don't silently swallow real errors
+  // (FK violations, locks, etc). Once Drizzle migrations cover these, these
+  // checks become no-ops and can be removed.
+  if (!hasColumn("transactions", "gmail_message_id")) {
     await db.run(
       sql`ALTER TABLE transactions ADD COLUMN gmail_message_id TEXT`,
     );
-  } catch {
-    // Column already exists — safe to ignore
   }
 
-  try {
+  if (!hasColumn("transactions", "destination_source_id")) {
     await db.run(
       sql`ALTER TABLE transactions ADD COLUMN destination_source_id INTEGER REFERENCES sources(id)`,
     );
-  } catch {
-    // Column already exists — safe to ignore
   }
 
-  try {
+  if (!hasColumn("categories", "sort_order")) {
     await db.run(
       sql`ALTER TABLE categories ADD COLUMN sort_order INTEGER DEFAULT 0`,
     );
-  } catch {
-    // Column already exists — safe to ignore
   }
 
-  try {
+  if (!hasColumn("sources", "sort_order")) {
     await db.run(
       sql`ALTER TABLE sources ADD COLUMN sort_order INTEGER DEFAULT 0`,
     );
-  } catch {
-    // Column already exists — safe to ignore
   }
 
-  try {
+  if (!hasColumn("transactions", "parsed_by")) {
     await db.run(sql`ALTER TABLE transactions ADD COLUMN parsed_by TEXT`);
-  } catch {
-    // Column already exists — safe to ignore
   }
 
   await db.run(
