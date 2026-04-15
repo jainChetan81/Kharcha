@@ -59,12 +59,16 @@ There are **two migration strategies** that both run on every app launch. They s
 #### Strategy A: Drizzle Migrations (`lib/db/connection.ts`)
 
 ```typescript
-export async function runMigrations() {
+import migrations from "../../drizzle/migrations";
+
+export async function runMigrations(): Promise<void> {
   await migrate(db, migrations);
 }
 ```
 
-Runs generated SQL files from `drizzle/` in order. This is the primary migration mechanism for schema changes tracked by `drizzle-kit`.
+Runs generated SQL files from `drizzle/` in order. This is the primary migration mechanism for schema changes tracked by `drizzle-kit`. The `drizzle/migrations.js` file is hand-maintained: after each `pnpm drizzle:generate` run, add the new SQL import to its `migrations` map. Until the first migration is registered it exports an empty journal, so `migrate()` is a no-op and the inline `CREATE TABLE IF NOT EXISTS` path in `initDB()` keeps the app bootable. Errors from `migrate()` itself are **not** swallowed.
+
+Metro bundles `.sql` files as strings via `metro.config.js` (`config.resolver.sourceExts.push("sql")`).
 
 #### Strategy B: Inline `CREATE TABLE IF NOT EXISTS` (`lib/db/index.ts`)
 
@@ -86,6 +90,14 @@ These raw SQL statements act as a **safety net** for fresh installs where Drizzl
 When the Drizzle schema (`lib/db/schema.ts`) changes, the inline `CREATE TABLE` statements in `initDB()` must also be updated to match. If they drift, fresh installs (which hit the `CREATE TABLE IF NOT EXISTS` path first) will create tables missing the new columns, and subsequent Drizzle migrations may fail or produce inconsistent state.
 
 **Example of drift**: The `gmail_message_id` column was added to `transactions` in `lib/db/schema.ts` and in a Drizzle migration, but was initially missing from the inline `CREATE TABLE IF NOT EXISTS` in `initDB()`. This meant fresh installs created the transactions table without `gmail_message_id`, causing gmail sync to fail.
+
+#### Column back-fills use `PRAGMA table_info`, not `try/catch`
+
+For columns added after an initial `CREATE TABLE`, `initDB()` uses a `hasColumn(table, column)` helper backed by `PRAGMA table_info(...)` to decide whether to run `ALTER TABLE ADD COLUMN`. The previous pattern — wrapping `ALTER` in `try { ... } catch {}` — silently swallowed every error, not just "duplicate column": FK violations, lock contention, and syntax errors all looked the same. The explicit check means real errors surface.
+
+#### Restore-from-backup re-runs `initDB()`
+
+An old backup (older schema) imported into a new app must be brought up to the current schema before the UI queries it. Both `importDatabase()` (local `.db` file) and `restoreFromCloud()` (iCloud / Drive) trigger `initDB()` again after the file is in place — this applies any pending Drizzle migrations and back-fills missing columns before `queryClient.invalidateQueries()` refetches everything. Users no longer need to restart the app manually after a restore.
 
 #### Startup sequence
 

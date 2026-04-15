@@ -23,6 +23,8 @@
 		"doctor": "expo-doctor",
 		"expo-dependency-check": "pnpm dlx expo install --check",
 		"dead-code": "knip --no-exit-code",
+		"drizzle:generate": "drizzle-kit generate",
+		"drizzle:studio": "drizzle-kit studio",
 		"build:android": "eas build --platform android --profile production",
 		"build:android:preview": "eas build --platform android --profile preview",
 		"build:android:local": "eas build --platform android --profile production --local",

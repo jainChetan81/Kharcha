@@ -30,6 +30,7 @@ import {
 } from "@/hooks/use-cloud-backup";
 import { DriveScopeMissingError, ICloudSyncingError } from "@/lib/cloud-backup";
 import { COLORS } from "@/lib/constants";
+import { initDB } from "@/lib/db";
 import { exportDatabase, importDatabase } from "@/lib/db/backup";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
@@ -72,11 +73,12 @@ export default function ExportScreen() {
             try {
               const result = await importDatabase();
               if (!result.imported) return;
+              // Bring the imported DB up to the current schema before any
+              // query runs against it — otherwise a backup from an older
+              // app version would crash queries that expect new columns.
+              await initDB();
               await queryClient.invalidateQueries();
-              showSuccessToast(
-                "Database imported",
-                "Restart the app to apply changes",
-              );
+              showSuccessToast("Database imported");
             } catch (err) {
               showErrorToast("Import failed", err);
             } finally {
@@ -199,7 +201,7 @@ function CloudBackupSection() {
           onPress: async () => {
             try {
               await restoreMutation.mutateAsync();
-              showSuccessToast("Restored", "Restart the app to apply changes");
+              showSuccessToast("Restored");
             } catch (err) {
               if (err instanceof ICloudSyncingError) {
                 showErrorToast(
