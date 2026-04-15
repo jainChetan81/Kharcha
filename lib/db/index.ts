@@ -204,18 +204,14 @@ export async function initDB() {
     await db.run(sql`ALTER TABLE transactions ADD COLUMN parsed_by TEXT`);
   }
 
-  try {
+  if (!hasColumn("transactions", "reimbursement_status")) {
     await db.run(
       sql`ALTER TABLE transactions ADD COLUMN reimbursement_status TEXT NOT NULL DEFAULT 'none'`,
     );
-  } catch {
-    // Column already exists — safe to ignore
   }
 
-  try {
+  if (!hasColumn("transactions", "reimbursed_at")) {
     await db.run(sql`ALTER TABLE transactions ADD COLUMN reimbursed_at TEXT`);
-  } catch {
-    // Column already exists — safe to ignore
   }
 
   await db.run(
