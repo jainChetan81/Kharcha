@@ -492,9 +492,7 @@ export function TransactionForm({
                       <Text
                         className={cn(
                           "text-sm font-medium",
-                          isReimbursed
-                            ? "text-white"
-                            : "text-muted-foreground",
+                          isReimbursed ? "text-white" : "text-muted-foreground",
                         )}
                       >
                         Reimbursed

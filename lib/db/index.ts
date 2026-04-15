@@ -195,9 +195,7 @@ export async function initDB() {
   }
 
   try {
-    await db.run(
-      sql`ALTER TABLE transactions ADD COLUMN reimbursed_at TEXT`,
-    );
+    await db.run(sql`ALTER TABLE transactions ADD COLUMN reimbursed_at TEXT`);
   } catch {
     // Column already exists — safe to ignore
   }

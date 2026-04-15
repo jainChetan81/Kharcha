@@ -2,7 +2,12 @@ import { FlashList } from "@shopify/flash-list";
 import { router } from "expo-router";
 import { CheckCircle2, Receipt, RotateCcw } from "lucide-react-native";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  View,
+} from "react-native";
 import {
   ComponentErrorBoundary,
   ScreenError,
@@ -22,8 +27,8 @@ import {
   COLORS,
   editScreen,
   REIMBURSEMENT_FILTER,
-  type ReimbursementFilterType,
   REIMBURSEMENT_STATUS,
+  type ReimbursementFilterType,
 } from "@/lib/constants";
 import { buildListData, type ListItem } from "@/lib/format";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
@@ -35,9 +40,9 @@ export default function ReimbursementsScreen() {
   const { data: summary } = useReimbursementSummary();
   const setStatus = useSetReimbursementStatus();
 
-  const [tab, setTab] = useState<
-    Exclude<ReimbursementFilterType, "all">
-  >(REIMBURSEMENT_FILTER.PENDING);
+  const [tab, setTab] = useState<Exclude<ReimbursementFilterType, "all">>(
+    REIMBURSEMENT_FILTER.PENDING,
+  );
 
   const filters = useMemo(
     () => ({
