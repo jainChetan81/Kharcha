@@ -555,7 +555,7 @@ export default function HistoryScreen() {
               )}
             </View>
           }
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: 60 }}
         />
       </ComponentErrorBoundary>
 

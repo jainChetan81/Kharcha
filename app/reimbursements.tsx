@@ -242,7 +242,7 @@ export default function ReimbursementsScreen() {
               </View>
             )
           }
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: 60 }}
         />
       </ComponentErrorBoundary>
     </View>

@@ -6,12 +6,12 @@ import {
   Pressable,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { COLORS } from "@/lib/constants";
-import { cn, isIOS } from "@/lib/utils";
 
 type BottomSheetBaseProps = {
   visible: boolean;
@@ -43,6 +43,7 @@ type BottomSheetProps = ContentMode | FormMode;
 
 export function BottomSheet(props: BottomSheetProps) {
   const { visible, onClose } = props;
+  const { bottom } = useSafeAreaInsets();
   const isFormMode = !!props.onSave;
 
   const [value, setValue] = useState(props.defaultValue ?? "");
@@ -61,7 +62,10 @@ export function BottomSheet(props: BottomSheetProps) {
   }
 
   const content = (
-    <View className="rounded-t-2xl bg-card p-6">
+    <View
+      className="rounded-t-2xl bg-card p-6"
+      style={{ paddingBottom: Math.max(bottom, 24) }}
+    >
       <ComponentErrorBoundary onDismiss={handleClose}>
         {isFormMode ? (
           <>
@@ -85,7 +89,7 @@ export function BottomSheet(props: BottomSheetProps) {
               keyboardType={props.keyboardType}
               autoFocus
             />
-            <View className={cn("mt-4 flex-row gap-3", isIOS && "mb-4")}>
+            <View className="mt-4 flex-row gap-3">
               <Button
                 variant="outline"
                 className="h-12 flex-1 rounded-xl border-border"

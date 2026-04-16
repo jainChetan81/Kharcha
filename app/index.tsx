@@ -393,7 +393,7 @@ export default function HomeScreen() {
 
       <View
         className="border-t border-border bg-card pt-2.5"
-        style={{ paddingBottom: Math.max(bottom, 14) }}
+        style={{ paddingBottom: Math.max(bottom, 24) }}
       >
         <View className="flex-row items-center justify-around">
           <View className="items-center gap-1">

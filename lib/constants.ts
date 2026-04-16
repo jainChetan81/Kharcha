@@ -222,7 +222,7 @@ export const QUERY_KEYS = {
 } as const;
 
 // Layout
-export const SCROLL_BOTTOM_PADDING = { paddingBottom: 40 } as const;
+export const SCROLL_BOTTOM_PADDING = { paddingBottom: 60 } as const;
 
 // Thresholds
 export const BUDGET_WARN_THRESHOLD = 0.75;
