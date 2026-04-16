@@ -16,8 +16,14 @@ import { LockedScreen } from "@/components/locked-screen";
 import { Text } from "@/components/ui/text";
 import { useAppLock } from "@/hooks/use-app-lock";
 import { maybeAutoBackup } from "@/lib/cloud-backup";
-import { COLORS, SCREENS, TRANSACTION_TYPE } from "@/lib/constants";
+import {
+  COLORS,
+  CONFIG_KEYS,
+  SCREENS,
+  TRANSACTION_TYPE,
+} from "@/lib/constants";
 import { initDB } from "@/lib/db";
+import { getConfig } from "@/lib/db/config";
 import { processSubscriptions } from "@/lib/db/subscriptions";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { isIOS } from "@/lib/utils";
@@ -135,6 +141,17 @@ export default function RootLayout() {
       }
     });
     return () => sub.remove();
+  }, [dbReady]);
+
+  useEffect(() => {
+    if (!dbReady) return;
+    import("@react-native-firebase/crashlytics").then((mod) => {
+      const crash = mod.default;
+      crash().setCrashlyticsCollectionEnabled(!__DEV__);
+      getConfig(CONFIG_KEYS.USER_NAME).then((userName) => {
+        crash().setAttribute("user_name", userName ?? "unknown");
+      });
+    });
   }, [dbReady]);
 
   useEffect(() => {

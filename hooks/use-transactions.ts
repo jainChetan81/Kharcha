@@ -27,6 +27,7 @@ import {
 } from "@/lib/db";
 import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
 import { deleteConfig } from "@/lib/db/config";
+import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 import { showErrorToast, showSuccessToast, showUndoToast } from "@/lib/toast";
 import { syncWidgetData } from "@/lib/widget";
 
@@ -139,7 +140,13 @@ export function useInsertTransaction() {
   const invalidate = useInvalidateTransactions();
   return useMutation({
     mutationFn: insertTransaction,
-    onSuccess: () => invalidate(),
+    onSuccess: (_data, variables) => {
+      logEvent(FIREBASE_EVENTS.TRANSACTION_ADDED, {
+        source_type: variables.sourceType ?? "manual",
+        transaction_type: variables.type,
+      });
+      invalidate();
+    },
     onError: (err) => {
       console.error("Transaction mutation failed:", err);
     },
@@ -151,7 +158,10 @@ export function useUpdateTransaction(id: number) {
   return useMutation({
     mutationFn: (params: Parameters<typeof updateTransaction>[1]) =>
       updateTransaction(id, params),
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      logEvent(FIREBASE_EVENTS.TRANSACTION_EDITED);
+      invalidate();
+    },
     onError: (err) => {
       console.error("Transaction mutation failed:", err);
     },
@@ -162,7 +172,10 @@ export function useDeleteTransaction() {
   const invalidate = useInvalidateTransactions();
   return useMutation({
     mutationFn: (id: number) => deleteTransaction(id),
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      logEvent(FIREBASE_EVENTS.TRANSACTION_DELETED);
+      invalidate();
+    },
     onError: (err) => {
       console.error("Transaction mutation failed:", err);
     },

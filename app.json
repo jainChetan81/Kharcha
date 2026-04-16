@@ -15,6 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.chetanjain.kharcha",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "deploymentTarget": "17.0",
       "buildNumber": "1",
       "icon": "./assets/icon.png",
@@ -73,6 +74,10 @@
         "groupIdentifier": "group.com.chetanjain.kharcha",
         "deploymentTarget": "17.0"
       }],
+      "@react-native-firebase/app",
+      "@react-native-firebase/crashlytics",
+      "@react-native-firebase/perf",
+      "./plugins/firebase-ios-fix",
       ["react-native-android-widget", {
         "widgets": [
           {

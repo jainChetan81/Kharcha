@@ -11,6 +11,7 @@ import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
 import { initDB } from "@/lib/db";
 import { exportDatabase, importDatabase } from "@/lib/db/backup";
 import { getConfig, updateConfig } from "@/lib/db/config";
+import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 
 export function useCloudBackupSettings() {
   const queryClient = useQueryClient();
@@ -106,6 +107,9 @@ export function useRestoreFromCloud() {
 export function useExportDatabase() {
   return useMutation({
     mutationFn: exportDatabase,
+    onSuccess: () => {
+      logEvent(FIREBASE_EVENTS.EXPORT_TRIGGERED);
+    },
   });
 }
 
@@ -114,6 +118,7 @@ export function useImportDatabase() {
   return useMutation({
     mutationFn: importDatabase,
     onSuccess: () => {
+      logEvent(FIREBASE_EVENTS.IMPORT_TRIGGERED);
       queryClient.invalidateQueries();
     },
   });

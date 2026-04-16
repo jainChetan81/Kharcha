@@ -30,6 +30,7 @@ import {
   type SourceType,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
+import { logFirebaseError, withTrace } from "@/lib/firebase";
 import { transactionInputSchema } from "@/lib/validation";
 import expo, { db, runMigrations } from "./connection";
 import {
@@ -79,13 +80,15 @@ function hasColumn(table: string, column: string): boolean {
   return rows.some((r) => r.name === column);
 }
 
-export async function initDB() {
-  // Run generated Drizzle migrations first. If none have been generated
-  // yet (fresh clone), we fall through to the `CREATE TABLE IF NOT EXISTS`
-  // safety net below so the app still boots.
-  await runMigrations();
+export async function initDB(): Promise<void> {
+  return withTrace("db_init", async () => {
+    try {
+      // Run generated Drizzle migrations first. If none have been generated
+      // yet (fresh clone), we fall through to the `CREATE TABLE IF NOT EXISTS`
+      // safety net below so the app still boots.
+      await runMigrations();
 
-  await db.run(sql`
+      await db.run(sql`
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -95,7 +98,7 @@ export async function initDB() {
     )
   `);
 
-  await db.run(sql`
+      await db.run(sql`
     CREATE TABLE IF NOT EXISTS sources (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -104,7 +107,7 @@ export async function initDB() {
     )
   `);
 
-  await db.run(sql`
+      await db.run(sql`
     CREATE TABLE IF NOT EXISTS subscriptions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -117,7 +120,7 @@ export async function initDB() {
     )
   `);
 
-  await db.run(sql`
+      await db.run(sql`
     CREATE TABLE IF NOT EXISTS transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       type TEXT NOT NULL DEFAULT 'expense',
@@ -136,7 +139,7 @@ export async function initDB() {
     )
   `);
 
-  await db.run(sql`
+      await db.run(sql`
     CREATE TABLE IF NOT EXISTS budgets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       category_id INTEGER UNIQUE REFERENCES categories(id),
@@ -144,14 +147,14 @@ export async function initDB() {
     )
   `);
 
-  await db.run(sql`
+      await db.run(sql`
     CREATE TABLE IF NOT EXISTS config (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     )
   `);
 
-  await db.run(sql`
+      await db.run(sql`
     CREATE TABLE IF NOT EXISTS banks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -161,7 +164,7 @@ export async function initDB() {
     )
   `);
 
-  await db.run(sql`
+      await db.run(sql`
     CREATE TABLE IF NOT EXISTS bank_emails (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       bank_id INTEGER NOT NULL REFERENCES banks(id),
@@ -170,11 +173,11 @@ export async function initDB() {
     )
   `);
 
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_bank_emails_bank_id ON bank_emails(bank_id)`,
-  );
+      await db.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_bank_emails_bank_id ON bank_emails(bank_id)`,
+      );
 
-  await db.run(sql`
+      await db.run(sql`
     CREATE TABLE IF NOT EXISTS tags (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
@@ -183,7 +186,7 @@ export async function initDB() {
     )
   `);
 
-  await db.run(sql`
+      await db.run(sql`
     CREATE TABLE IF NOT EXISTS transaction_tags (
       transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
       tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
@@ -191,84 +194,91 @@ export async function initDB() {
     )
   `);
 
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_transaction_tags_tag_id ON transaction_tags(tag_id)`,
-  );
+      await db.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_transaction_tags_tag_id ON transaction_tags(tag_id)`,
+      );
 
-  // Back-fill columns that existing DBs (including restored backups from
-  // older app versions) might be missing. Using PRAGMA `table_info` instead
-  // of `try { ALTER } catch {}` so we don't silently swallow real errors
-  // (FK violations, locks, etc). Once Drizzle migrations cover these, these
-  // checks become no-ops and can be removed.
-  if (!hasColumn("transactions", "gmail_message_id")) {
-    await db.run(
-      sql`ALTER TABLE transactions ADD COLUMN gmail_message_id TEXT`,
-    );
-  }
+      // Back-fill columns that existing DBs (including restored backups from
+      // older app versions) might be missing. Using PRAGMA `table_info` instead
+      // of `try { ALTER } catch {}` so we don't silently swallow real errors
+      // (FK violations, locks, etc). Once Drizzle migrations cover these, these
+      // checks become no-ops and can be removed.
+      if (!hasColumn("transactions", "gmail_message_id")) {
+        await db.run(
+          sql`ALTER TABLE transactions ADD COLUMN gmail_message_id TEXT`,
+        );
+      }
 
-  if (!hasColumn("transactions", "destination_source_id")) {
-    await db.run(
-      sql`ALTER TABLE transactions ADD COLUMN destination_source_id INTEGER REFERENCES sources(id)`,
-    );
-  }
+      if (!hasColumn("transactions", "destination_source_id")) {
+        await db.run(
+          sql`ALTER TABLE transactions ADD COLUMN destination_source_id INTEGER REFERENCES sources(id)`,
+        );
+      }
 
-  if (!hasColumn("categories", "sort_order")) {
-    await db.run(
-      sql`ALTER TABLE categories ADD COLUMN sort_order INTEGER DEFAULT 0`,
-    );
-  }
+      if (!hasColumn("categories", "sort_order")) {
+        await db.run(
+          sql`ALTER TABLE categories ADD COLUMN sort_order INTEGER DEFAULT 0`,
+        );
+      }
 
-  if (!hasColumn("sources", "sort_order")) {
-    await db.run(
-      sql`ALTER TABLE sources ADD COLUMN sort_order INTEGER DEFAULT 0`,
-    );
-  }
+      if (!hasColumn("sources", "sort_order")) {
+        await db.run(
+          sql`ALTER TABLE sources ADD COLUMN sort_order INTEGER DEFAULT 0`,
+        );
+      }
 
-  if (!hasColumn("transactions", "parsed_by")) {
-    await db.run(sql`ALTER TABLE transactions ADD COLUMN parsed_by TEXT`);
-  }
+      if (!hasColumn("transactions", "parsed_by")) {
+        await db.run(sql`ALTER TABLE transactions ADD COLUMN parsed_by TEXT`);
+      }
 
-  if (!hasColumn("transactions", "reimbursement_status")) {
-    await db.run(
-      sql`ALTER TABLE transactions ADD COLUMN reimbursement_status TEXT NOT NULL DEFAULT 'none'`,
-    );
-  }
+      if (!hasColumn("transactions", "reimbursement_status")) {
+        await db.run(
+          sql`ALTER TABLE transactions ADD COLUMN reimbursement_status TEXT NOT NULL DEFAULT 'none'`,
+        );
+      }
 
-  if (!hasColumn("transactions", "reimbursed_at")) {
-    await db.run(sql`ALTER TABLE transactions ADD COLUMN reimbursed_at TEXT`);
-  }
+      if (!hasColumn("transactions", "reimbursed_at")) {
+        await db.run(
+          sql`ALTER TABLE transactions ADD COLUMN reimbursed_at TEXT`,
+        );
+      }
 
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
-  );
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)`,
-  );
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_transactions_category_id ON transactions(category_id)`,
-  );
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_transactions_subscription_id ON transactions(subscription_id)`,
-  );
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_transactions_source_type ON transactions(source_type)`,
-  );
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_transactions_gmail_message_id ON transactions(gmail_message_id)`,
-  );
-  await db.run(
-    sql`CREATE INDEX IF NOT EXISTS idx_transactions_reimbursement_status ON transactions(reimbursement_status)`,
-  );
+      await db.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
+      );
+      await db.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)`,
+      );
+      await db.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_transactions_category_id ON transactions(category_id)`,
+      );
+      await db.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_transactions_subscription_id ON transactions(subscription_id)`,
+      );
+      await db.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_transactions_source_type ON transactions(source_type)`,
+      );
+      await db.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_transactions_gmail_message_id ON transactions(gmail_message_id)`,
+      );
+      await db.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_transactions_reimbursement_status ON transactions(reimbursement_status)`,
+      );
 
-  await db
-    .insert(config)
-    .values([
-      { key: CONFIG_KEYS.CURRENCY, value: "INR" },
-      { key: CONFIG_KEYS.USER_NAME, value: "User" },
-    ])
-    .onConflictDoNothing();
+      await db
+        .insert(config)
+        .values([
+          { key: CONFIG_KEYS.CURRENCY, value: "INR" },
+          { key: CONFIG_KEYS.USER_NAME, value: "User" },
+        ])
+        .onConflictDoNothing();
 
-  await seedDefaults();
+      await seedDefaults();
+    } catch (error) {
+      logFirebaseError(error, { error_type: "DB_ERROR", operation: "init_db" });
+      throw error;
+    }
+  });
 }
 
 async function seedDefaults() {
@@ -967,34 +977,58 @@ async function attachTagsToRows(
 }
 
 export async function getRecentTransactions(limit = 20) {
-  const rows = (await transactionSelect()
-    .orderBy(desc(transactions.date), desc(transactions.created_at))
-    .limit(limit)) as Omit<TransactionRow, "tags">[];
-  return attachTagsToRows(rows);
+  try {
+    const rows = (await transactionSelect()
+      .orderBy(desc(transactions.date), desc(transactions.created_at))
+      .limit(limit)) as Omit<TransactionRow, "tags">[];
+    return attachTagsToRows(rows);
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "getRecentTransactions",
+    });
+    throw error;
+  }
 }
 
 export async function getMonthTransactions(yearMonth: string, limit = 10) {
-  const rows = (await transactionSelect()
-    .where(sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`)
-    .orderBy(desc(transactions.date), desc(transactions.created_at))
-    .limit(limit)) as Omit<TransactionRow, "tags">[];
-  return attachTagsToRows(rows);
+  try {
+    const rows = (await transactionSelect()
+      .where(sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`)
+      .orderBy(desc(transactions.date), desc(transactions.created_at))
+      .limit(limit)) as Omit<TransactionRow, "tags">[];
+    return attachTagsToRows(rows);
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "getMonthTransactions",
+    });
+    throw error;
+  }
 }
 
 export async function getMonthlySummary(yearMonth: string) {
-  const result = await db
-    .select({
-      total_income: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
-      total_expenses: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
-        sql`${transactions.type} != 'transfer'`,
-      ),
-    );
-  return result[0] as MonthlySummary;
+  try {
+    const result = await db
+      .select({
+        total_income: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
+        total_expenses: sql<number>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+          sql`${transactions.type} != 'transfer'`,
+        ),
+      );
+    return result[0] as MonthlySummary;
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "getMonthlySummary",
+    });
+    throw error;
+  }
 }
 
 export async function getTransactionsPaginated(
@@ -1014,85 +1048,93 @@ export async function getTransactionsPaginated(
     tagIds?: number[] | null;
   },
 ) {
-  const conditions = [];
+  try {
+    const conditions = [];
 
-  if (filters?.type && filters.type !== "all") {
-    conditions.push(eq(transactions.type, filters.type));
-  }
-  if (filters?.categoryId) {
-    const [cat] = await db
-      .select({ name: categories.name })
-      .from(categories)
-      .where(eq(categories.id, filters.categoryId))
-      .limit(1);
-    if (cat?.name.toLowerCase() === "other") {
-      const match = or(
-        eq(transactions.category_id, filters.categoryId),
-        isNull(transactions.category_id),
-      );
-      if (match) conditions.push(match);
-    } else {
-      conditions.push(eq(transactions.category_id, filters.categoryId));
+    if (filters?.type && filters.type !== "all") {
+      conditions.push(eq(transactions.type, filters.type));
     }
-  }
-  if (filters?.sourceId) {
-    conditions.push(eq(transactions.source_id, filters.sourceId));
-  }
-  if (filters?.sourceType && filters.sourceType !== "all") {
-    conditions.push(eq(transactions.source_type, filters.sourceType));
-  }
-  if (filters?.dateFrom) {
-    conditions.push(gte(transactions.date, filters.dateFrom));
-  }
-  if (filters?.dateTo) {
-    conditions.push(lte(transactions.date, `${filters.dateTo} 23:59`));
-  }
-  if (filters?.amountMin != null) {
-    conditions.push(gte(transactions.amount, filters.amountMin));
-  }
-  if (filters?.amountMax != null) {
-    conditions.push(lte(transactions.amount, filters.amountMax));
-  }
-  if (filters?.search) {
-    const term = `%${filters.search}%`;
-    conditions.push(
-      or(
-        like(transactions.merchant, term),
-        like(transactions.note, term),
-        like(sql`CAST(${transactions.amount} AS TEXT)`, term),
-      ),
-    );
-  }
-  if (filters?.reimbursement && filters.reimbursement !== "all") {
-    conditions.push(
-      eq(transactions.reimbursement_status, filters.reimbursement),
-    );
-  }
-  if (filters?.tagIds && filters.tagIds.length > 0) {
-    const ids = filters.tagIds;
-    conditions.push(
-      inArray(
-        transactions.id,
-        db
-          .select({ id: transactionTags.transaction_id })
-          .from(transactionTags)
-          .where(inArray(transactionTags.tag_id, ids))
-          .groupBy(transactionTags.transaction_id)
-          .having(
-            sql`COUNT(DISTINCT ${transactionTags.tag_id}) = ${ids.length}`,
-          ),
-      ),
-    );
-  }
+    if (filters?.categoryId) {
+      const [cat] = await db
+        .select({ name: categories.name })
+        .from(categories)
+        .where(eq(categories.id, filters.categoryId))
+        .limit(1);
+      if (cat?.name.toLowerCase() === "other") {
+        const match = or(
+          eq(transactions.category_id, filters.categoryId),
+          isNull(transactions.category_id),
+        );
+        if (match) conditions.push(match);
+      } else {
+        conditions.push(eq(transactions.category_id, filters.categoryId));
+      }
+    }
+    if (filters?.sourceId) {
+      conditions.push(eq(transactions.source_id, filters.sourceId));
+    }
+    if (filters?.sourceType && filters.sourceType !== "all") {
+      conditions.push(eq(transactions.source_type, filters.sourceType));
+    }
+    if (filters?.dateFrom) {
+      conditions.push(gte(transactions.date, filters.dateFrom));
+    }
+    if (filters?.dateTo) {
+      conditions.push(lte(transactions.date, `${filters.dateTo} 23:59`));
+    }
+    if (filters?.amountMin != null) {
+      conditions.push(gte(transactions.amount, filters.amountMin));
+    }
+    if (filters?.amountMax != null) {
+      conditions.push(lte(transactions.amount, filters.amountMax));
+    }
+    if (filters?.search) {
+      const term = `%${filters.search}%`;
+      conditions.push(
+        or(
+          like(transactions.merchant, term),
+          like(transactions.note, term),
+          like(sql`CAST(${transactions.amount} AS TEXT)`, term),
+        ),
+      );
+    }
+    if (filters?.reimbursement && filters.reimbursement !== "all") {
+      conditions.push(
+        eq(transactions.reimbursement_status, filters.reimbursement),
+      );
+    }
+    if (filters?.tagIds && filters.tagIds.length > 0) {
+      const ids = filters.tagIds;
+      conditions.push(
+        inArray(
+          transactions.id,
+          db
+            .select({ id: transactionTags.transaction_id })
+            .from(transactionTags)
+            .where(inArray(transactionTags.tag_id, ids))
+            .groupBy(transactionTags.transaction_id)
+            .having(
+              sql`COUNT(DISTINCT ${transactionTags.tag_id}) = ${ids.length}`,
+            ),
+        ),
+      );
+    }
 
-  const query = transactionSelect()
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(transactions.date), desc(transactions.created_at))
-    .limit(limit)
-    .offset(offset);
+    const query = transactionSelect()
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(transactions.date), desc(transactions.created_at))
+      .limit(limit)
+      .offset(offset);
 
-  const rows = (await query) as Omit<TransactionRow, "tags">[];
-  return attachTagsToRows(rows);
+    const rows = (await query) as Omit<TransactionRow, "tags">[];
+    return attachTagsToRows(rows);
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "getTransactionsPaginated",
+    });
+    throw error;
+  }
 }
 
 export async function getAllTransactionsFiltered(
@@ -1102,12 +1144,20 @@ export async function getAllTransactionsFiltered(
 }
 
 export async function getTransactionById(id: number) {
-  const result = (await transactionSelect().where(
-    eq(transactions.id, id),
-  )) as Omit<TransactionRow, "tags">[];
-  if (!result[0]) return null;
-  const [row] = await attachTagsToRows([result[0]]);
-  return row as TransactionRow;
+  try {
+    const result = (await transactionSelect().where(
+      eq(transactions.id, id),
+    )) as Omit<TransactionRow, "tags">[];
+    if (!result[0]) return null;
+    const [row] = await attachTagsToRows([result[0]]);
+    return row as TransactionRow;
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "getTransactionById",
+    });
+    throw error;
+  }
 }
 
 export async function insertTransaction(params: {
@@ -1125,42 +1175,50 @@ export async function insertTransaction(params: {
   note: string | null;
   tagIds?: number[];
 }) {
-  const validation = transactionInputSchema.safeParse(params);
-  if (!validation.success) {
-    throw new Error(
-      `Invalid transaction data: ${validation.error.issues.map((i) => i.message).join(", ")}`,
-    );
-  }
-  const validated = validation.data;
+  try {
+    const validation = transactionInputSchema.safeParse(params);
+    if (!validation.success) {
+      throw new Error(
+        `Invalid transaction data: ${validation.error.issues.map((i) => i.message).join(", ")}`,
+      );
+    }
+    const validated = validation.data;
 
-  const result = await db.insert(transactions).values({
-    type: validated.type,
-    amount: validated.amount,
-    merchant: validated.merchant ?? null,
-    category_id: validated.categoryId ?? null,
-    source_id: validated.sourceId ?? null,
-    destination_source_id: validated.destinationSourceId ?? null,
-    subscription_id: validated.subscriptionId ?? null,
-    source_type: validated.sourceType,
-    parsed_by: validated.parsedBy ?? null,
-    reimbursement_status: validated.reimbursementStatus,
-    date: validated.date,
-    note: validated.note ?? null,
-  });
-  const insertedId = Number(result.lastInsertRowId);
-  if (!Number.isFinite(insertedId) || insertedId <= 0) {
-    throw new Error("Failed to insert transaction: invalid insertedId");
+    const result = await db.insert(transactions).values({
+      type: validated.type,
+      amount: validated.amount,
+      merchant: validated.merchant ?? null,
+      category_id: validated.categoryId ?? null,
+      source_id: validated.sourceId ?? null,
+      destination_source_id: validated.destinationSourceId ?? null,
+      subscription_id: validated.subscriptionId ?? null,
+      source_type: validated.sourceType,
+      parsed_by: validated.parsedBy ?? null,
+      reimbursement_status: validated.reimbursementStatus,
+      date: validated.date,
+      note: validated.note ?? null,
+    });
+    const insertedId = Number(result.lastInsertRowId);
+    if (!Number.isFinite(insertedId) || insertedId <= 0) {
+      throw new Error("Failed to insert transaction: invalid insertedId");
+    }
+    if (validated.tagIds && validated.tagIds.length > 0) {
+      const unique = Array.from(new Set(validated.tagIds));
+      await db.insert(transactionTags).values(
+        unique.map((tag_id) => ({
+          transaction_id: insertedId,
+          tag_id,
+        })),
+      );
+    }
+    return result;
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "insertTransaction",
+    });
+    throw error;
   }
-  if (validated.tagIds && validated.tagIds.length > 0) {
-    const unique = Array.from(new Set(validated.tagIds));
-    await db.insert(transactionTags).values(
-      unique.map((tag_id) => ({
-        transaction_id: insertedId,
-        tag_id,
-      })),
-    );
-  }
-  return result;
 }
 
 export async function updateTransaction(
@@ -1179,89 +1237,98 @@ export async function updateTransaction(
     tagIds?: number[];
   },
 ) {
-  const validation = transactionInputSchema.safeParse(params);
-  if (!validation.success) {
-    throw new Error(
-      `Invalid transaction data: ${validation.error.issues.map((i) => i.message).join(", ")}`,
-    );
-  }
-  // Only touch source_type when the caller explicitly provides it — otherwise
-  // editing a Gmail-synced or subscription-generated transaction would wipe
-  // its provenance marker and re-import on the next Gmail sync.
-  const updates: {
-    type: "income" | "expense" | "transfer";
-    amount: number;
-    merchant: string | null;
-    category_id: number | null;
-    source_id: number | null;
-    destination_source_id: number | null;
-    date: string;
-    note: string | null;
-    source_type?: SourceType;
-    reimbursement_status?: "none" | "pending" | "reimbursed";
-    reimbursed_at?: string | null;
-  } = {
-    type: params.type,
-    amount: params.amount,
-    merchant: params.merchant,
-    category_id: params.categoryId,
-    source_id: params.sourceId,
-    destination_source_id: params.destinationSourceId ?? null,
-    date: params.date,
-    note: params.note,
-  };
-  if (params.reimbursementStatus !== undefined) {
-    updates.reimbursement_status = params.reimbursementStatus;
-    updates.reimbursed_at =
-      params.reimbursementStatus === "reimbursed"
-        ? new Date().toISOString()
-        : null;
-  }
-  if (params.sourceType !== undefined) {
-    // The only edit-time transition allowed is the user toggling the
-    // transfer flag (manual ↔ transfer). Anything else is rejected:
-    //   - synced/recurring → manual would let the row re-import on the
-    //     next Gmail sync or orphan it from its subscription.
-    //   - manual → synced/recurring would fabricate provenance the row
-    //     doesn't have. The edit form never sends these values, but we
-    //     enforce it here as defence-in-depth.
-    const existing = await db
-      .select({ source_type: transactions.source_type })
-      .from(transactions)
-      .where(eq(transactions.id, id))
-      .limit(1);
-    const current = existing[0]?.source_type ?? "manual";
-    const next = params.sourceType;
-    const editable = (v: SourceType) => v === "manual" || v === "transfer";
-    if (editable(current) && editable(next)) {
-      updates.source_type = next;
-    }
-  }
-  const result = await db
-    .update(transactions)
-    .set(updates)
-    .where(eq(transactions.id, id));
-
-  if (params.tagIds !== undefined) {
-    await db
-      .delete(transactionTags)
-      .where(eq(transactionTags.transaction_id, id));
-    if (params.tagIds.length > 0) {
-      const unique = Array.from(new Set(params.tagIds));
-      await db.insert(transactionTags).values(
-        unique.map((tag_id) => ({
-          transaction_id: id,
-          tag_id,
-        })),
+  try {
+    const validation = transactionInputSchema.safeParse(params);
+    if (!validation.success) {
+      throw new Error(
+        `Invalid transaction data: ${validation.error.issues.map((i) => i.message).join(", ")}`,
       );
     }
-  }
+    // Only touch source_type when the caller explicitly provides it — otherwise
+    // editing a Gmail-synced or subscription-generated transaction would wipe
+    // its provenance marker and re-import on the next Gmail sync.
+    const updates: {
+      type: "income" | "expense" | "transfer";
+      amount: number;
+      merchant: string | null;
+      category_id: number | null;
+      source_id: number | null;
+      destination_source_id: number | null;
+      date: string;
+      note: string | null;
+      source_type?: SourceType;
+      reimbursement_status?: "none" | "pending" | "reimbursed";
+      reimbursed_at?: string | null;
+    } = {
+      type: params.type,
+      amount: params.amount,
+      merchant: params.merchant,
+      category_id: params.categoryId,
+      source_id: params.sourceId,
+      destination_source_id: params.destinationSourceId ?? null,
+      date: params.date,
+      note: params.note,
+    };
+    if (params.reimbursementStatus !== undefined) {
+      updates.reimbursement_status = params.reimbursementStatus;
+      updates.reimbursed_at =
+        params.reimbursementStatus === "reimbursed"
+          ? new Date().toISOString()
+          : null;
+    }
+    if (params.sourceType !== undefined) {
+      const existing = await db
+        .select({ source_type: transactions.source_type })
+        .from(transactions)
+        .where(eq(transactions.id, id))
+        .limit(1);
+      const current = existing[0]?.source_type ?? "manual";
+      const next = params.sourceType;
+      const editable = (v: SourceType) => v === "manual" || v === "transfer";
+      if (editable(current) && editable(next)) {
+        updates.source_type = next;
+      }
+    }
+    const result = await db
+      .update(transactions)
+      .set(updates)
+      .where(eq(transactions.id, id));
 
-  return result;
+    if (params.tagIds !== undefined) {
+      await db
+        .delete(transactionTags)
+        .where(eq(transactionTags.transaction_id, id));
+      if (params.tagIds.length > 0) {
+        const unique = Array.from(new Set(params.tagIds));
+        await db.insert(transactionTags).values(
+          unique.map((tag_id) => ({
+            transaction_id: id,
+            tag_id,
+          })),
+        );
+      }
+    }
+
+    return result;
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "updateTransaction",
+    });
+    throw error;
+  }
 }
 
 export async function deleteTransaction(id: number) {
-  return db.delete(transactions).where(eq(transactions.id, id));
+  try {
+    return await db.delete(transactions).where(eq(transactions.id, id));
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "deleteTransaction",
+    });
+    throw error;
+  }
 }
 
 export async function restoreTransaction(row: {
@@ -1277,143 +1344,201 @@ export async function restoreTransaction(row: {
   note: string | null;
   created_at: string | null;
 }) {
-  return db.insert(transactions).values({
-    type: row.type,
-    amount: row.amount,
-    merchant: row.merchant,
-    category_id: row.category_id,
-    source_id: row.source_id,
-    destination_source_id: row.destination_source_id,
-    reimbursement_status: row.reimbursement_status ?? "none",
-    reimbursed_at: row.reimbursed_at ?? null,
-    date: row.date,
-    created_at: row.created_at,
-    note: row.note,
-  });
+  try {
+    return await db.insert(transactions).values({
+      type: row.type,
+      amount: row.amount,
+      merchant: row.merchant,
+      category_id: row.category_id,
+      source_id: row.source_id,
+      destination_source_id: row.destination_source_id,
+      reimbursement_status: row.reimbursement_status ?? "none",
+      reimbursed_at: row.reimbursed_at ?? null,
+      date: row.date,
+      created_at: row.created_at,
+      note: row.note,
+    });
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "restoreTransaction",
+    });
+    throw error;
+  }
 }
 
 export async function clearAllTransactions() {
-  return db.delete(transactions);
+  try {
+    return await db.delete(transactions);
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "clearAllTransactions",
+    });
+    throw error;
+  }
 }
 
 export async function setReimbursementStatus(
   id: number,
   status: "none" | "pending" | "reimbursed",
 ) {
-  return db
-    .update(transactions)
-    .set({
-      reimbursement_status: status,
-      reimbursed_at: status === "reimbursed" ? new Date().toISOString() : null,
-    })
-    .where(eq(transactions.id, id));
+  try {
+    return await db
+      .update(transactions)
+      .set({
+        reimbursement_status: status,
+        reimbursed_at:
+          status === "reimbursed" ? new Date().toISOString() : null,
+      })
+      .where(eq(transactions.id, id));
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "setReimbursementStatus",
+    });
+    throw error;
+  }
 }
 
 export async function getReimbursementSummary() {
-  const rows = await db
-    .select({
-      status: transactions.reimbursement_status,
-      count: sql<number>`COUNT(*)`,
-      total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
-    })
-    .from(transactions)
-    .where(sql`${transactions.reimbursement_status} != 'none'`)
-    .groupBy(transactions.reimbursement_status);
+  try {
+    const rows = await db
+      .select({
+        status: transactions.reimbursement_status,
+        count: sql<number>`COUNT(*)`,
+        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .where(sql`${transactions.reimbursement_status} != 'none'`)
+      .groupBy(transactions.reimbursement_status);
 
-  const pending = rows.find((r) => r.status === "pending");
-  const reimbursed = rows.find((r) => r.status === "reimbursed");
+    const pending = rows.find((r) => r.status === "pending");
+    const reimbursed = rows.find((r) => r.status === "reimbursed");
 
-  return {
-    pending_count: pending?.count ?? 0,
-    pending_total: pending?.total ?? 0,
-    reimbursed_count: reimbursed?.count ?? 0,
-    reimbursed_total: reimbursed?.total ?? 0,
-  };
+    return {
+      pending_count: pending?.count ?? 0,
+      pending_total: pending?.total ?? 0,
+      reimbursed_count: reimbursed?.count ?? 0,
+      reimbursed_total: reimbursed?.total ?? 0,
+    };
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "getReimbursementSummary",
+    });
+    throw error;
+  }
 }
 
 export async function getCategoryBreakdown(yearMonth: string) {
-  const rows = await db
-    .select({
-      category_id: transactions.category_id,
-      category_name: categories.name,
-      total: sql<number>`SUM(${transactions.amount})`,
-    })
-    .from(transactions)
-    .leftJoin(categories, eq(transactions.category_id, categories.id))
-    .where(
-      and(
-        eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
-        sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
-      ),
-    )
-    .groupBy(transactions.category_id)
-    .orderBy(sql`SUM(${transactions.amount}) DESC`);
+  try {
+    const rows = await db
+      .select({
+        category_id: transactions.category_id,
+        category_name: categories.name,
+        total: sql<number>`SUM(${transactions.amount})`,
+      })
+      .from(transactions)
+      .leftJoin(categories, eq(transactions.category_id, categories.id))
+      .where(
+        and(
+          eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+          sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+        ),
+      )
+      .groupBy(transactions.category_id)
+      .orderBy(sql`SUM(${transactions.amount}) DESC`);
 
-  const otherIndex = rows.findIndex(
-    (r) => r.category_id !== null && r.category_name?.toLowerCase() === "other",
-  );
-  const nullIndex = rows.findIndex((r) => r.category_id === null);
+    const otherIndex = rows.findIndex(
+      (r) =>
+        r.category_id !== null && r.category_name?.toLowerCase() === "other",
+    );
+    const nullIndex = rows.findIndex((r) => r.category_id === null);
 
-  if (otherIndex !== -1 && nullIndex !== -1) {
-    rows[otherIndex] = {
-      ...rows[otherIndex],
-      total: rows[otherIndex].total + rows[nullIndex].total,
-    };
-    rows.splice(nullIndex, 1);
+    if (otherIndex !== -1 && nullIndex !== -1) {
+      rows[otherIndex] = {
+        ...rows[otherIndex],
+        total: rows[otherIndex].total + rows[nullIndex].total,
+      };
+      rows.splice(nullIndex, 1);
+    }
+
+    rows.sort((a, b) => b.total - a.total);
+    const top = rows.slice(0, 5);
+    const grandTotal = top.reduce((sum, r) => sum + r.total, 0);
+
+    return top.map((r) => ({
+      category_id: r.category_id,
+      category_name: r.category_name ?? OTHER_CATEGORY_LABEL,
+      total: r.total,
+      percentage: grandTotal > 0 ? (r.total / grandTotal) * 100 : 0,
+    })) as CategoryBreakdownRow[];
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "getCategoryBreakdown",
+    });
+    throw error;
   }
-
-  rows.sort((a, b) => b.total - a.total);
-  const top = rows.slice(0, 5);
-  const grandTotal = top.reduce((sum, r) => sum + r.total, 0);
-
-  return top.map((r) => ({
-    category_id: r.category_id,
-    category_name: r.category_name ?? OTHER_CATEGORY_LABEL,
-    total: r.total,
-    percentage: grandTotal > 0 ? (r.total / grandTotal) * 100 : 0,
-  })) as CategoryBreakdownRow[];
 }
 
 export async function syncedTransactionExists(
   date: string,
   amount: number,
 ): Promise<boolean> {
-  const rows = await db
-    .select({ id: transactions.id })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.date, date),
-        eq(transactions.amount, amount),
-        eq(transactions.source_type, "synced"),
-      ),
-    )
-    .limit(1);
-  return rows.length > 0;
+  try {
+    const rows = await db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.date, date),
+          eq(transactions.amount, amount),
+          eq(transactions.source_type, "synced"),
+        ),
+      )
+      .limit(1);
+    return rows.length > 0;
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "syncedTransactionExists",
+    });
+    throw error;
+  }
 }
 
 export async function getMostUsedCategoryForMerchant(
   merchant: string,
   type: "expense" | "income",
 ): Promise<number | null> {
-  const rows = await db
-    .select({
-      category_id: transactions.category_id,
-      count: sql<number>`COUNT(*)`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        sql`LOWER(${transactions.merchant}) = LOWER(${merchant})`,
-        eq(transactions.type, type),
-        sql`${transactions.category_id} IS NOT NULL`,
-      ),
-    )
-    .groupBy(transactions.category_id)
-    .orderBy(sql`COUNT(*) DESC`)
-    .limit(1);
+  try {
+    const rows = await db
+      .select({
+        category_id: transactions.category_id,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          sql`LOWER(${transactions.merchant}) = LOWER(${merchant})`,
+          eq(transactions.type, type),
+          sql`${transactions.category_id} IS NOT NULL`,
+        ),
+      )
+      .groupBy(transactions.category_id)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(1);
 
-  return rows[0]?.category_id ?? null;
+    return rows[0]?.category_id ?? null;
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "getMostUsedCategoryForMerchant",
+    });
+    throw error;
+  }
 }
 
 export async function findDuplicateTransaction(
@@ -1421,128 +1546,140 @@ export async function findDuplicateTransaction(
   amount: number,
   merchant: string,
 ): Promise<boolean> {
-  // Bank emails can arrive hours (occasionally a day) after the transaction.
-  // Check ±1 day around the target date with exact amount + merchant match —
-  // wider than same-day-only (which missed late emails) but still tight enough
-  // that recurring daily coffee purchases don't all flag each other.
-  const target = new Date(date);
-  const day = 24 * 60 * 60 * 1000;
-  const from = new Date(target.getTime() - day).toISOString().slice(0, 10);
-  const to = new Date(target.getTime() + day).toISOString().slice(0, 10);
-  const rows = await db
-    .select({ id: transactions.id })
-    .from(transactions)
-    .where(
-      and(
-        sql`substr(${transactions.date}, 1, 10) >= ${from}`,
-        sql`substr(${transactions.date}, 1, 10) <= ${to}`,
-        eq(transactions.amount, amount),
-        sql`LOWER(${transactions.merchant}) = ${merchant.toLowerCase()}`,
-      ),
-    )
-    .limit(1);
-  return rows.length > 0;
+  try {
+    const target = new Date(date);
+    const day = 24 * 60 * 60 * 1000;
+    const from = new Date(target.getTime() - day).toISOString().slice(0, 10);
+    const to = new Date(target.getTime() + day).toISOString().slice(0, 10);
+    const rows = await db
+      .select({ id: transactions.id })
+      .from(transactions)
+      .where(
+        and(
+          sql`substr(${transactions.date}, 1, 10) >= ${from}`,
+          sql`substr(${transactions.date}, 1, 10) <= ${to}`,
+          eq(transactions.amount, amount),
+          sql`LOWER(${transactions.merchant}) = ${merchant.toLowerCase()}`,
+        ),
+      )
+      .limit(1);
+    return rows.length > 0;
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "findDuplicateTransaction",
+    });
+    throw error;
+  }
 }
 
 export async function getMonthlyInsights(
   year: number,
   month: number,
 ): Promise<MonthlyInsights> {
-  const yearMonth = `${year}-${String(month).padStart(2, "0")}`;
-  const prevDate = subMonths(new Date(year, month - 1, 1), 1);
-  const prevYearMonth = format(prevDate, MONTH_FORMAT);
+  try {
+    const yearMonth = `${year}-${String(month).padStart(2, "0")}`;
+    const prevDate = subMonths(new Date(year, month - 1, 1), 1);
+    const prevYearMonth = format(prevDate, MONTH_FORMAT);
 
-  const monthDate = new Date(year, month - 1, 1);
-  const daysInMonth = getDaysInMonth(monthDate);
-  const today = new Date();
-  const daysElapsed = Math.max(1, differenceInDays(today, monthDate) + 1);
+    const monthDate = new Date(year, month - 1, 1);
+    const daysInMonth = getDaysInMonth(monthDate);
+    const today = new Date();
+    const daysElapsed = Math.max(1, differenceInDays(today, monthDate) + 1);
 
-  const [thisMonthCategories, prevMonthCategories, currentSpendResult] =
-    await Promise.all([
-      db
-        .select({
-          category_id: transactions.category_id,
-          category_name: categories.name,
-          total: sql<number>`SUM(${transactions.amount})`,
-        })
-        .from(transactions)
-        .leftJoin(categories, eq(transactions.category_id, categories.id))
-        .where(
-          and(
-            eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
-            sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+    const [thisMonthCategories, prevMonthCategories, currentSpendResult] =
+      await Promise.all([
+        db
+          .select({
+            category_id: transactions.category_id,
+            category_name: categories.name,
+            total: sql<number>`SUM(${transactions.amount})`,
+          })
+          .from(transactions)
+          .leftJoin(categories, eq(transactions.category_id, categories.id))
+          .where(
+            and(
+              eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+              sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+            ),
+          )
+          .groupBy(transactions.category_id)
+          .orderBy(sql`SUM(${transactions.amount}) DESC`)
+          .limit(1),
+
+        db
+          .select({
+            category_id: transactions.category_id,
+            total: sql<number>`SUM(${transactions.amount})`,
+          })
+          .from(transactions)
+          .where(
+            and(
+              eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+              sql`strftime('%Y-%m', ${transactions.date}) = ${prevYearMonth}`,
+            ),
+          )
+          .groupBy(transactions.category_id),
+
+        db
+          .select({
+            total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+          })
+          .from(transactions)
+          .where(
+            and(
+              eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+              sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+            ),
           ),
-        )
-        .groupBy(transactions.category_id)
-        .orderBy(sql`SUM(${transactions.amount}) DESC`)
-        .limit(1),
+      ]);
 
-      db
-        .select({
-          category_id: transactions.category_id,
-          total: sql<number>`SUM(${transactions.amount})`,
-        })
-        .from(transactions)
-        .where(
-          and(
-            eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
-            sql`strftime('%Y-%m', ${transactions.date}) = ${prevYearMonth}`,
-          ),
-        )
-        .groupBy(transactions.category_id),
-
-      db
-        .select({
-          total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
-        })
-        .from(transactions)
-        .where(
-          and(
-            eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
-            sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
-          ),
-        ),
-    ]);
-
-  let topCategoryChange: MonthlyInsights["topCategoryChange"] = null;
-  if (thisMonthCategories.length > 0) {
-    const top = thisMonthCategories[0];
-    const prevMatch = prevMonthCategories.find(
-      (p) => p.category_id === top.category_id,
-    );
-    if (prevMatch && prevMatch.total > 0) {
-      const change = ((top.total - prevMatch.total) / prevMatch.total) * 100;
-      topCategoryChange = {
-        category: top.category_name ?? OTHER_CATEGORY_LABEL,
-        categoryId: top.category_id,
-        percent: Math.abs(Math.round(change)),
-        direction: change >= 0 ? "up" : "down",
-      };
+    let topCategoryChange: MonthlyInsights["topCategoryChange"] = null;
+    if (thisMonthCategories.length > 0) {
+      const top = thisMonthCategories[0];
+      const prevMatch = prevMonthCategories.find(
+        (p) => p.category_id === top.category_id,
+      );
+      if (prevMatch && prevMatch.total > 0) {
+        const change = ((top.total - prevMatch.total) / prevMatch.total) * 100;
+        topCategoryChange = {
+          category: top.category_name ?? OTHER_CATEGORY_LABEL,
+          categoryId: top.category_id,
+          percent: Math.abs(Math.round(change)),
+          direction: change >= 0 ? "up" : "down",
+        };
+      }
     }
+
+    const currentSpend = currentSpendResult[0]?.total ?? 0;
+    const remainingDays = daysInMonth - daysElapsed;
+    const dailyRate = daysElapsed > 0 ? currentSpend / daysElapsed : 0;
+    // Clamp projections to >= 0: if refunds/income make currentSpend or
+    // dailyRate negative, the UI would otherwise render a negative forecast
+    // which confuses users and breaks progress-bar math in the widget.
+    const projectedLow =
+      daysElapsed >= 7
+        ? Math.max(0, currentSpend + dailyRate * remainingDays * 0.8)
+        : null;
+    const projectedHigh =
+      daysElapsed >= 7
+        ? Math.max(0, currentSpend + dailyRate * remainingDays * 1.2)
+        : null;
+
+    return {
+      topCategoryChange,
+      projectedLow,
+      projectedHigh,
+      daysElapsed,
+      daysInMonth,
+    };
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "getMonthlyInsights",
+    });
+    throw error;
   }
-
-  const currentSpend = currentSpendResult[0]?.total ?? 0;
-  const remainingDays = daysInMonth - daysElapsed;
-  const dailyRate = daysElapsed > 0 ? currentSpend / daysElapsed : 0;
-  // Clamp projections to >= 0: if refunds/income make currentSpend or
-  // dailyRate negative, the UI would otherwise render a negative forecast
-  // which confuses users and breaks progress-bar math in the widget.
-  const projectedLow =
-    daysElapsed >= 7
-      ? Math.max(0, currentSpend + dailyRate * remainingDays * 0.8)
-      : null;
-  const projectedHigh =
-    daysElapsed >= 7
-      ? Math.max(0, currentSpend + dailyRate * remainingDays * 1.2)
-      : null;
-
-  return {
-    topCategoryChange,
-    projectedLow,
-    projectedHigh,
-    daysElapsed,
-    daysInMonth,
-  };
 }
 
 export {
@@ -1583,48 +1720,64 @@ export {
 } from "./tags";
 
 export async function getTodaySpend(): Promise<number> {
-  const today = format(new Date(), DATE_ISO_FORMAT);
-  const result = await db
-    .select({
-      total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
-        sql`strftime('%Y-%m-%d', ${transactions.date}) = ${today}`,
-      ),
-    );
-  return result[0]?.total ?? 0;
+  try {
+    const today = format(new Date(), DATE_ISO_FORMAT);
+    const result = await db
+      .select({
+        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+          sql`strftime('%Y-%m-%d', ${transactions.date}) = ${today}`,
+        ),
+      );
+    return result[0]?.total ?? 0;
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "getTodaySpend",
+    });
+    throw error;
+  }
 }
 
 export async function getPreviousMonthSpendAtDay(
   daysElapsed: number,
 ): Promise<number | null> {
-  const now = new Date();
-  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevYearMonth = format(prev, MONTH_FORMAT);
-  const prevDaysInMonth = new Date(
-    prev.getFullYear(),
-    prev.getMonth() + 1,
-    0,
-  ).getDate();
-  const cutoffDay = Math.min(daysElapsed, prevDaysInMonth);
-  const cutoff = `${prevYearMonth}-${String(cutoffDay).padStart(2, "0")}`;
-  const start = `${prevYearMonth}-01`;
+  try {
+    const now = new Date();
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevYearMonth = format(prev, MONTH_FORMAT);
+    const prevDaysInMonth = new Date(
+      prev.getFullYear(),
+      prev.getMonth() + 1,
+      0,
+    ).getDate();
+    const cutoffDay = Math.min(daysElapsed, prevDaysInMonth);
+    const cutoff = `${prevYearMonth}-${String(cutoffDay).padStart(2, "0")}`;
+    const start = `${prevYearMonth}-01`;
 
-  const result = await db
-    .select({
-      total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
-        sql`${transactions.date} >= ${start}`,
-        sql`strftime('%Y-%m-%d', ${transactions.date}) <= ${cutoff}`,
-      ),
-    );
-  const total = result[0]?.total ?? 0;
-  return total > 0 ? total : null;
+    const result = await db
+      .select({
+        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+          sql`${transactions.date} >= ${start}`,
+          sql`strftime('%Y-%m-%d', ${transactions.date}) <= ${cutoff}`,
+        ),
+      );
+    const total = result[0]?.total ?? 0;
+    return total > 0 ? total : null;
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "getPreviousMonthSpendAtDay",
+    });
+    throw error;
+  }
 }

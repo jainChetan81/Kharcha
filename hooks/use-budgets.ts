@@ -6,6 +6,7 @@ import {
   getBudgets,
   setBudget,
 } from "@/lib/db/budgets";
+import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 
 export type { BudgetRow };
 
@@ -26,8 +27,10 @@ export function useSetBudget() {
       categoryId: number;
       amount: number;
     }) => setBudget(categoryId, amount),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS] }),
+    onSuccess: () => {
+      logEvent(FIREBASE_EVENTS.BUDGET_SET);
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS] });
+    },
   });
 }
 

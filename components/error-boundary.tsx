@@ -5,6 +5,7 @@ import { Pressable, View } from "react-native";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { SCREENS } from "@/lib/constants";
+import { logFirebaseError } from "@/lib/firebase";
 
 export function ScreenError({
   error,
@@ -63,13 +64,11 @@ export class ComponentErrorBoundary extends Component<
     return { error };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    const scope = this.props.name ? `[${this.props.name}] ` : "";
-    console.error(
-      `${scope}ComponentErrorBoundary caught:`,
-      error,
-      info.componentStack,
-    );
+  componentDidCatch(error: Error, _info: ErrorInfo) {
+    logFirebaseError(error, {
+      error_type: "UI_ERROR",
+      boundary: this.props.name ?? "unknown",
+    });
   }
 
   reset = () => {

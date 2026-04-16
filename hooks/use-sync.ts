@@ -4,6 +4,8 @@ import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
 import { insertTransaction, syncedTransactionExists } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import { env } from "@/lib/env";
+import { FIREBASE_EVENTS, logEvent, withTrace } from "@/lib/firebase";
+import { apiFetch } from "@/lib/firebase/api-fetch";
 import { isIOS } from "@/lib/utils";
 
 type BackendTransaction = {
@@ -71,7 +73,7 @@ export function useRegisterDevice() {
       const deviceId = settings?.deviceId;
       if (!deviceId) throw new Error("No device ID");
 
-      const res = await fetch(`${env.API_URL}/register`, {
+      const res = await apiFetch(`${env.API_URL}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ device_id: deviceId }),
@@ -104,64 +106,69 @@ export function useDeviceSync() {
 
   return useMutation({
     mutationFn: async (syncFromDate: Date) => {
-      const deviceId = settings?.deviceId;
-      if (!deviceId) throw new Error("Not registered");
+      return withTrace("device_sync", async () => {
+        const deviceId = settings?.deviceId;
+        if (!deviceId) throw new Error("Not registered");
 
-      const params = new URLSearchParams();
-      const startOfMonth = new Date(
-        new Date().getFullYear(),
-        new Date().getMonth(),
-        1,
-      );
-      if (syncFromDate.getTime() !== startOfMonth.getTime()) {
-        params.set("last_synced_at", syncFromDate.toISOString());
-      }
+        const params = new URLSearchParams();
+        const startOfMonth = new Date(
+          new Date().getFullYear(),
+          new Date().getMonth(),
+          1,
+        );
+        if (syncFromDate.getTime() !== startOfMonth.getTime()) {
+          params.set("last_synced_at", syncFromDate.toISOString());
+        }
 
-      const url = `${env.API_URL}/sync${params.toString() ? `?${params}` : ""}`;
-      const res = await fetch(url, {
-        headers: { "x-device-id": deviceId },
-      });
-
-      if (!res.ok) {
-        throw new Error(await parseErrorResponse(res, "Sync failed"));
-      }
-
-      const data = (await res.json()) as SyncResponse;
-
-      // Batch check all transactions for duplicates
-      const existenceChecks = await Promise.all(
-        data.transactions.map((tx) =>
-          syncedTransactionExists(tx.date, tx.amount),
-        ),
-      );
-
-      // Insert only non-duplicates
-      const toInsert = data.transactions.filter((_, i) => !existenceChecks[i]);
-      const skipped = data.transactions.length - toInsert.length;
-
-      for (const tx of toInsert) {
-        await insertTransaction({
-          type: tx.type,
-          amount: tx.amount,
-          merchant: tx.merchant,
-          categoryId: null,
-          sourceId: null,
-          sourceType: "synced",
-          date: tx.date,
-          note: tx.note,
+        const url = `${env.API_URL}/sync${params.toString() ? `?${params}` : ""}`;
+        const res = await apiFetch(url, {
+          headers: { "x-device-id": deviceId },
         });
-      }
 
-      const inserted = toInsert.length;
+        if (!res.ok) {
+          throw new Error(await parseErrorResponse(res, "Sync failed"));
+        }
 
-      await updateConfig(
-        CONFIG_KEYS.BACKEND_LAST_SYNCED_AT,
-        data.last_synced_at,
-      );
+        const data = (await res.json()) as SyncResponse;
 
-      return { inserted, skipped, total: data.transactions.length };
+        const existenceChecks = await Promise.all(
+          data.transactions.map((tx) =>
+            syncedTransactionExists(tx.date, tx.amount),
+          ),
+        );
+
+        const toInsert = data.transactions.filter(
+          (_, i) => !existenceChecks[i],
+        );
+        const skipped = data.transactions.length - toInsert.length;
+
+        for (const tx of toInsert) {
+          await insertTransaction({
+            type: tx.type,
+            amount: tx.amount,
+            merchant: tx.merchant,
+            categoryId: null,
+            sourceId: null,
+            sourceType: "synced",
+            date: tx.date,
+            note: tx.note,
+          });
+        }
+
+        const inserted = toInsert.length;
+
+        await updateConfig(
+          CONFIG_KEYS.BACKEND_LAST_SYNCED_AT,
+          data.last_synced_at,
+        );
+
+        return { inserted, skipped, total: data.transactions.length };
+      });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      logEvent(FIREBASE_EVENTS.DEVICE_SYNC_COMPLETED, {
+        count: String(data.inserted),
+      });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.CONFIG, "device-sync"],
       });

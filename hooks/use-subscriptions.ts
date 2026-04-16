@@ -14,6 +14,7 @@ import {
   toggleSubscription,
   updateSubscription,
 } from "@/lib/db/subscriptions";
+import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 import { useInvalidateTransactions } from "./use-transactions";
 
 export type { SubscriptionAuditRow, SubscriptionRow };
@@ -59,7 +60,10 @@ export function useAddSubscription() {
   const invalidate = useInvalidateSubscriptions();
   return useMutation({
     mutationFn: addSubscription,
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      logEvent(FIREBASE_EVENTS.SUBSCRIPTION_ADDED);
+      invalidate();
+    },
     onError: (err) => {
       console.error("Subscription mutation failed:", err);
     },
@@ -103,7 +107,12 @@ export function useToggleSubscription() {
   return useMutation({
     mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) =>
       toggleSubscription(id, isActive),
-    onSuccess: () => invalidate(),
+    onSuccess: (_data, variables) => {
+      logEvent(FIREBASE_EVENTS.SUBSCRIPTION_TOGGLED, {
+        active: variables.isActive ? "1" : "0",
+      });
+      invalidate();
+    },
     onError: (err) => {
       console.error("Subscription mutation failed:", err);
     },
