@@ -2,6 +2,8 @@ import { Pressable, ScrollView, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
+const CHIP_SCROLL_STYLE = { gap: 8, paddingRight: 24 } as const;
+
 export function ChipPicker({
   items,
   selectedId,
@@ -18,7 +20,7 @@ export function ChipPicker({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8, paddingRight: 24 }}
+        contentContainerStyle={CHIP_SCROLL_STYLE}
       >
         {allLabel && (
           <Pressable
@@ -103,7 +105,7 @@ export function MultiChipPicker({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8, paddingRight: 24 }}
+        contentContainerStyle={CHIP_SCROLL_STYLE}
       >
         {items.map((item) => {
           const selected = selectedIds.includes(item.id);

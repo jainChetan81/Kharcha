@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
   Cloud,
@@ -25,13 +24,14 @@ import { Text } from "@/components/ui/text";
 import {
   useBackupNow,
   useCloudBackupSettings,
+  useExportDatabase,
+  useImportDatabase,
   useLatestBackup,
   useRestoreFromCloud,
 } from "@/hooks/use-cloud-backup";
 import { DriveScopeMissingError, ICloudSyncingError } from "@/lib/cloud-backup";
 import { COLORS } from "@/lib/constants";
 import { initDB } from "@/lib/db";
-import { exportDatabase, importDatabase } from "@/lib/db/backup";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 const ExportSheet = lazy(() =>
@@ -40,22 +40,17 @@ const ExportSheet = lazy(() =>
   })),
 );
 
-type Busy = "db-export" | "db-import" | null;
-
 export default function ExportScreen() {
-  const queryClient = useQueryClient();
   const [showExport, setShowExport] = useState(false);
-  const [busy, setBusy] = useState<Busy>(null);
+  const exportMutation = useExportDatabase();
+  const importMutation = useImportDatabase();
 
   async function handleDbExport() {
-    setBusy("db-export");
     try {
-      await exportDatabase();
+      await exportMutation.mutateAsync();
       showSuccessToast("Database exported");
     } catch (err) {
       showErrorToast("Export failed", err);
-    } finally {
-      setBusy(null);
     }
   }
 
@@ -69,20 +64,16 @@ export default function ExportScreen() {
           text: "Import",
           style: "destructive",
           onPress: async () => {
-            setBusy("db-import");
             try {
-              const result = await importDatabase();
+              const result = await importMutation.mutateAsync();
               if (!result.imported) return;
               // Bring the imported DB up to the current schema before any
               // query runs against it — otherwise a backup from an older
               // app version would crash queries that expect new columns.
               await initDB();
-              await queryClient.invalidateQueries();
               showSuccessToast("Database imported");
             } catch (err) {
               showErrorToast("Import failed", err);
-            } finally {
-              setBusy(null);
             }
           },
         },
@@ -98,7 +89,7 @@ export default function ExportScreen() {
       <Row
         icon={FileText}
         label="Export as CSV"
-        disabled={busy !== null}
+        disabled={exportMutation.isPending || importMutation.isPending}
         onPress={() => setShowExport(true)}
       />
 
@@ -106,15 +97,15 @@ export default function ExportScreen() {
       <Row
         icon={Download}
         label="Export Database"
-        loading={busy === "db-export"}
-        disabled={busy !== null}
+        loading={exportMutation.isPending}
+        disabled={exportMutation.isPending || importMutation.isPending}
         onPress={handleDbExport}
       />
       <Row
         icon={Upload}
         label="Import Database"
-        loading={busy === "db-import"}
-        disabled={busy !== null}
+        loading={importMutation.isPending}
+        disabled={exportMutation.isPending || importMutation.isPending}
         onPress={handleDbImport}
       />
 

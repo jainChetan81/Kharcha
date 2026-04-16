@@ -14,6 +14,7 @@ import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { ChipPicker, MultiChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
+import { FormLabel } from "@/components/ui/form-label";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
@@ -35,6 +36,7 @@ import {
 import { parseDate } from "@/lib/format";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { amountStringSchema, validateField } from "@/lib/validation";
 
 const DateTimePickerModal = lazy(() =>
   import("@/components/ui/date-picker-modal").then((m) => ({
@@ -202,19 +204,12 @@ export function TransactionForm({
       <form.Field
         name="amount"
         validators={{
-          onSubmit: ({ value }) => {
-            const num = Number(value);
-            if (!value || Number.isNaN(num) || num <= 0)
-              return "Amount must be greater than 0";
-            return undefined;
-          },
+          onSubmit: ({ value }) => validateField(amountStringSchema, value),
         }}
       >
         {(field) => (
           <View className="mb-5">
-            <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-              Amount
-            </Text>
+            <FormLabel>Amount</FormLabel>
             <Input
               placeholder="0"
               keyboardType="decimal-pad"
@@ -237,9 +232,7 @@ export function TransactionForm({
         <form.Field name="merchant">
           {(field) => (
             <View className="mb-5">
-              <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-                Merchant
-              </Text>
+              <FormLabel>Merchant</FormLabel>
               <Input
                 placeholder="e.g. Swiggy, Amazon"
                 value={field.state.value}
@@ -256,9 +249,7 @@ export function TransactionForm({
         <form.Field name="merchant">
           {(field) => (
             <View className="mb-5">
-              <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-                Description
-              </Text>
+              <FormLabel>Description</FormLabel>
               <Input
                 placeholder="Optional description"
                 value={field.state.value}
@@ -274,9 +265,7 @@ export function TransactionForm({
         <form.Field name="categoryId">
           {(field) => (
             <View className="mb-5">
-              <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-                Category
-              </Text>
+              <FormLabel>Category</FormLabel>
               <ChipPicker
                 items={categories}
                 selectedId={field.state.value}
@@ -294,9 +283,7 @@ export function TransactionForm({
         <form.Field name="merchant">
           {(field) => (
             <View className="mb-5">
-              <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-                From
-              </Text>
+              <FormLabel>From</FormLabel>
               <Input
                 placeholder="e.g. Employer, Client name"
                 value={field.state.value}
@@ -322,9 +309,7 @@ export function TransactionForm({
         {(field) =>
           activeType !== TRANSACTION_TYPE.INCOME ? (
             <View className="mb-5">
-              <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-                {isTransfer ? "From" : "Source"}
-              </Text>
+              <FormLabel>{isTransfer ? "From" : "Source"}</FormLabel>
               <ChipPicker
                 items={sources}
                 selectedId={field.state.value}
@@ -350,9 +335,7 @@ export function TransactionForm({
         >
           {(field) => (
             <View className="mb-5">
-              <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-                To
-              </Text>
+              <FormLabel>To</FormLabel>
               <ChipPicker
                 items={sources}
                 selectedId={field.state.value}
@@ -379,9 +362,7 @@ export function TransactionForm({
             : parseDate(field.state.value);
           return (
             <View className="mb-5">
-              <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-                Date & Time
-              </Text>
+              <FormLabel>Date & Time</FormLabel>
               <Pressable
                 onPress={() => {
                   setDatePickerValue(currentDate);
@@ -416,9 +397,7 @@ export function TransactionForm({
       <form.Field name="note">
         {(field) => (
           <View className="mb-5">
-            <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-              Note
-            </Text>
+            <FormLabel>Note</FormLabel>
             <Input
               placeholder="Optional note"
               multiline
@@ -515,9 +494,7 @@ export function TransactionForm({
       <form.Field name="tagIds">
         {(field) => (
           <View className="mb-5">
-            <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-              Tags
-            </Text>
+            <FormLabel>Tags</FormLabel>
             <MultiChipPicker
               items={allTags}
               selectedIds={field.state.value ?? []}

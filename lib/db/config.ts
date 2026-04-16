@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { configSchema } from "@/lib/validation";
 import { db } from "./connection";
 import { config } from "./schema";
 import type { ConfigRow } from "./types";
@@ -21,10 +22,19 @@ export async function getAllConfig(): Promise<Record<string, string>> {
 }
 
 export async function updateConfig(key: string, value: string): Promise<void> {
+  const validation = configSchema.safeParse({ key, value });
+  if (!validation.success) {
+    throw new Error(
+      `Invalid config: ${validation.error.issues.map((i) => i.message).join(", ")}`,
+    );
+  }
   await db
     .insert(config)
-    .values({ key, value })
-    .onConflictDoUpdate({ target: config.key, set: { value } });
+    .values(validation.data)
+    .onConflictDoUpdate({
+      target: config.key,
+      set: { value: validation.data.value },
+    });
 }
 
 export async function deleteConfig(key: string): Promise<void> {

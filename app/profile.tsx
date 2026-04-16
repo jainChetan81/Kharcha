@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import {
   ChevronRight,
@@ -18,8 +17,13 @@ import {
   Switch,
   View,
 } from "react-native";
-import { ScreenError } from "@/components/error-boundary";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
+import {
+  ComponentErrorBoundary,
+  ScreenError,
+} from "@/components/error-boundary";
+
+const EditNameSheet = lazy(() => import("@/components/edit-name-sheet"));
+
 import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
@@ -27,9 +31,12 @@ import { useAppLockSetting } from "@/hooks/use-app-lock";
 import { isAppUpdateSupported, useAppUpdate } from "@/hooks/use-app-update";
 import { CURRENCIES, useConfig } from "@/hooks/use-config";
 import { useGmailSyncEnabled } from "@/hooks/use-feature-flags";
-import { useClearTransactionsWithConfirm } from "@/hooks/use-transactions";
-import { COLORS, SCREENS } from "@/lib/constants";
-import { seedSampleData } from "@/lib/db";
+import {
+  useClearTransactionsWithConfirm,
+  useSeedSampleData,
+} from "@/hooks/use-transactions";
+import { COLORS, SCREENS, SCROLL_BOTTOM_PADDING } from "@/lib/constants";
+import { getInitials } from "@/lib/format";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 const CurrencyPicker = lazy(() =>
@@ -39,23 +46,18 @@ const CurrencyPicker = lazy(() =>
 );
 
 export default function ProfileScreen() {
-  const queryClient = useQueryClient();
   const { userName, updateUserName, currency, updateCurrency } = useConfig();
   const [showEditName, setShowEditName] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const handleClearTransactions = useClearTransactionsWithConfirm();
+  const seedMutation = useSeedSampleData();
   const { enabled: appLockEnabled, toggle: toggleAppLock } =
     useAppLockSetting();
   const { checking: checkingUpdate, checkForUpdate } = useAppUpdate();
 
-  const gmailSyncEnabled = useGmailSyncEnabled(userName);
+  const gmailSyncEnabled = useGmailSyncEnabled();
 
-  const initials = userName
-    .split(" ")
-    .map((w: string) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = getInitials(userName);
 
   async function handleSaveName(name: string) {
     await updateUserName(name);
@@ -69,7 +71,7 @@ export default function ProfileScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={SCROLL_BOTTOM_PADDING}
       >
         <View className="items-center py-6">
           <View className="h-20 w-20 items-center justify-center rounded-full bg-primary">
@@ -235,15 +237,18 @@ export default function ProfileScreen() {
         </Pressable>
         <Pressable
           onPress={async () => {
-            const seeded = await seedSampleData();
-            if (seeded) {
-              await queryClient.invalidateQueries();
-              showSuccessToast("Sample data loaded");
-            } else {
-              showErrorToast(
-                "Data already exists",
-                "Clear all transactions first",
-              );
+            try {
+              const seeded = await seedMutation.mutateAsync();
+              if (seeded) {
+                showSuccessToast("Sample data loaded");
+              } else {
+                showErrorToast(
+                  "Data already exists",
+                  "Clear all transactions first",
+                );
+              }
+            } catch (err) {
+              showErrorToast("Failed to load sample data", err);
             }
           }}
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
@@ -255,15 +260,16 @@ export default function ProfileScreen() {
         </Pressable>
       </ScrollView>
 
-      <BottomSheet
-        visible={showEditName}
-        onClose={() => setShowEditName(false)}
-        title="Edit Name"
-        placeholder="Your name"
-        submitLabel="Save"
-        defaultValue={userName}
-        onSave={handleSaveName}
-      />
+      <Suspense fallback={null}>
+        <ComponentErrorBoundary>
+          <EditNameSheet
+            visible={showEditName}
+            onClose={() => setShowEditName(false)}
+            userName={userName}
+            onSave={handleSaveName}
+          />
+        </ComponentErrorBoundary>
+      </Suspense>
 
       <Suspense fallback={null}>
         <CurrencyPicker

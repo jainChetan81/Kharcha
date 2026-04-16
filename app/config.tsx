@@ -5,10 +5,17 @@ import {
   Plus,
   Trash2,
 } from "lucide-react-native";
-import { useState } from "react";
-import { Alert, Pressable, ScrollView, View } from "react-native";
-import { ScreenError } from "@/components/error-boundary";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { lazy, Suspense, useState } from "react";
+import { Pressable, ScrollView, View } from "react-native";
+import {
+  ComponentErrorBoundary,
+  ScreenError,
+} from "@/components/error-boundary";
+
+const AddCategorySheet = lazy(() => import("@/components/add-category-sheet"));
+
+const AddSourceSheet = lazy(() => import("@/components/add-source-sheet"));
+
 import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -25,7 +32,8 @@ import {
   useDeleteSource,
   useReorderSources,
 } from "@/hooks/use-sources";
-import { TRANSACTION_TYPE } from "@/lib/constants";
+import { showDeleteConfirm } from "@/lib/alerts";
+import { SCROLL_BOTTOM_PADDING, TRANSACTION_TYPE } from "@/lib/constants";
 import type { Category, Source } from "@/lib/db";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -119,39 +127,33 @@ export default function ConfigScreen() {
   );
 
   function handleDeleteCategory(id: number) {
-    Alert.alert("Delete Category", "This will remove the category.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteCategoryMutation.mutateAsync(id);
-            showSuccessToast("Category deleted");
-          } catch (err) {
-            showErrorToast("Failed", err);
-          }
-        },
+    showDeleteConfirm(
+      "Delete Category",
+      "This will remove the category.",
+      async () => {
+        try {
+          await deleteCategoryMutation.mutateAsync(id);
+          showSuccessToast("Category deleted");
+        } catch (err) {
+          showErrorToast("Failed", err);
+        }
       },
-    ]);
+    );
   }
 
   function handleDeleteSource(id: number) {
-    Alert.alert("Delete Source", "This will remove the source.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteSourceMutation.mutateAsync(id);
-            showSuccessToast("Source deleted");
-          } catch (err) {
-            showErrorToast("Failed", err);
-          }
-        },
+    showDeleteConfirm(
+      "Delete Source",
+      "This will remove the source.",
+      async () => {
+        try {
+          await deleteSourceMutation.mutateAsync(id);
+          showSuccessToast("Source deleted");
+        } catch (err) {
+          showErrorToast("Failed", err);
+        }
       },
-    ]);
+    );
   }
 
   function moveCategory(list: Category[], index: number, direction: -1 | 1) {
@@ -202,7 +204,7 @@ export default function ConfigScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={SCROLL_BOTTOM_PADDING}
       >
         <SectionHeader title="Expense Categories" />
         {renderCategoryRows(expenseCategories)}
@@ -245,51 +247,55 @@ export default function ConfigScreen() {
         </Pressable>
       </ScrollView>
 
-      <BottomSheet
-        visible={showAddCategory}
-        onClose={() => setShowAddCategory(false)}
-        title={`Add ${newCategoryType === TRANSACTION_TYPE.INCOME ? "Income" : "Expense"} Category`}
-        placeholder="Category name"
-        submitLabel="Add Category"
-        onSave={async (name) => {
-          const trimmed = name.trim();
-          const exists = categories.some(
-            (c) =>
-              c.type === newCategoryType &&
-              c.name.toLowerCase() === trimmed.toLowerCase(),
-          );
-          if (exists) {
-            showErrorToast("Duplicate", `${trimmed} already exists`);
-            return;
-          }
-          await addCategoryMutation.mutateAsync({
-            name: trimmed,
-            type: newCategoryType,
-          });
-          setShowAddCategory(false);
-          showSuccessToast("Category added");
-        }}
-      />
+      <Suspense fallback={null}>
+        <ComponentErrorBoundary>
+          <AddCategorySheet
+            visible={showAddCategory}
+            onClose={() => setShowAddCategory(false)}
+            categoryType={newCategoryType}
+            categories={categories}
+            onSave={async (name) => {
+              try {
+                await addCategoryMutation.mutateAsync({
+                  name,
+                  type: newCategoryType,
+                });
+                setShowAddCategory(false);
+                showSuccessToast("Category added");
+              } catch (err) {
+                if (err instanceof Error) {
+                  showErrorToast("Duplicate", err.message);
+                } else {
+                  showErrorToast("Failed", "Could not add category");
+                }
+              }
+            }}
+          />
+        </ComponentErrorBoundary>
+      </Suspense>
 
-      <BottomSheet
-        visible={showAddSource}
-        onClose={() => setShowAddSource(false)}
-        title="Add Payment Source"
-        placeholder="Source name"
-        submitLabel="Add Source"
-        onSave={async (name) => {
-          const trimmed = name.trim();
-          if (
-            sources.some((s) => s.name.toLowerCase() === trimmed.toLowerCase())
-          ) {
-            showErrorToast("Duplicate", `${trimmed} already exists`);
-            return;
-          }
-          await addSourceMutation.mutateAsync(trimmed);
-          setShowAddSource(false);
-          showSuccessToast("Source added");
-        }}
-      />
+      <Suspense fallback={null}>
+        <ComponentErrorBoundary>
+          <AddSourceSheet
+            visible={showAddSource}
+            onClose={() => setShowAddSource(false)}
+            sources={sources}
+            onSave={async (name) => {
+              try {
+                await addSourceMutation.mutateAsync(name);
+                setShowAddSource(false);
+                showSuccessToast("Source added");
+              } catch (err) {
+                if (err instanceof Error) {
+                  showErrorToast("Duplicate", err.message);
+                } else {
+                  showErrorToast("Failed", "Could not add source");
+                }
+              }
+            }}
+          />
+        </ComponentErrorBoundary>
+      </Suspense>
     </View>
   );
 }

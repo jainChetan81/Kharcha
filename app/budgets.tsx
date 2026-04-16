@@ -1,15 +1,21 @@
 import { Trash2 } from "lucide-react-native";
-import { useState } from "react";
-import { Alert, Pressable, ScrollView, View } from "react-native";
-import { ScreenError } from "@/components/error-boundary";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { lazy, Suspense, useState } from "react";
+import { Pressable, ScrollView, View } from "react-native";
+import {
+  ComponentErrorBoundary,
+  ScreenError,
+} from "@/components/error-boundary";
+
+const SetBudgetSheet = lazy(() => import("@/components/set-budget-sheet"));
+
 import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useBudgets, useDeleteBudget, useSetBudget } from "@/hooks/use-budgets";
 import { useAllCategories } from "@/hooks/use-categories";
 import { useCurrency } from "@/hooks/use-currency";
-import { TRANSACTION_TYPE } from "@/lib/constants";
+import { showDeleteConfirm } from "@/lib/alerts";
+import { SCROLL_BOTTOM_PADDING, TRANSACTION_TYPE } from "@/lib/constants";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +47,7 @@ export default function BudgetsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={SCROLL_BOTTOM_PADDING}
       >
         <Text className="mb-2 mt-2 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Expense Categories
@@ -67,20 +73,13 @@ export default function BudgetsScreen() {
               </Text>
               {budget && (
                 <Pressable
-                  onPress={() => {
-                    Alert.alert(
+                  onPress={() =>
+                    showDeleteConfirm(
                       "Remove Budget",
                       `Remove budget for ${c.name}?`,
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Remove",
-                          style: "destructive",
-                          onPress: () => deleteBudgetMutation.mutate(c.id),
-                        },
-                      ],
-                    );
-                  }}
+                      () => deleteBudgetMutation.mutate(c.id),
+                    )
+                  }
                   className="ml-3"
                 >
                   <Icon as={Trash2} className="size-4 text-negative" />
@@ -91,36 +90,34 @@ export default function BudgetsScreen() {
         })}
       </ScrollView>
 
-      <BottomSheet
-        visible={!!selectedCategory}
-        onClose={() => setSelectedCategory(null)}
-        title={`Set Budget for ${selectedCategory?.name}`}
-        placeholder="Amount"
-        submitLabel="Save Budget"
-        defaultValue={
-          budgetMap.has(selectedCategory?.id ?? -1)
-            ? String(budgetMap.get(selectedCategory?.id ?? -1))
-            : ""
-        }
-        keyboardType="numeric"
-        validate={(v) => {
-          const num = Number(v);
-          return !Number.isNaN(num) && num > 0;
-        }}
-        onSave={async (amount) => {
-          if (!selectedCategory) return;
-          try {
-            await setBudgetMutation.mutateAsync({
-              categoryId: selectedCategory.id,
-              amount: Number(amount),
-            });
-            setSelectedCategory(null);
-            showSuccessToast("Budget saved");
-          } catch (err) {
-            showErrorToast("Failed", err);
-          }
-        }}
-      />
+      {selectedCategory && (
+        <Suspense fallback={null}>
+          <ComponentErrorBoundary>
+            <SetBudgetSheet
+              visible={!!selectedCategory}
+              onClose={() => setSelectedCategory(null)}
+              categoryName={selectedCategory.name}
+              currentAmount={
+                budgetMap.has(selectedCategory.id)
+                  ? String(budgetMap.get(selectedCategory.id))
+                  : ""
+              }
+              onSave={async (amount) => {
+                try {
+                  await setBudgetMutation.mutateAsync({
+                    categoryId: selectedCategory.id,
+                    amount: Number(amount),
+                  });
+                  setSelectedCategory(null);
+                  showSuccessToast("Budget saved");
+                } catch (err) {
+                  showErrorToast("Failed", err);
+                }
+              }}
+            />
+          </ComponentErrorBoundary>
+        </Suspense>
+      )}
     </View>
   );
 }

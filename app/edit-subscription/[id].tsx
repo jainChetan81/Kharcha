@@ -1,10 +1,8 @@
 import { useForm } from "@tanstack/react-form";
-import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
@@ -17,16 +15,23 @@ import { ChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { useCategoriesByType } from "@/hooks/use-categories";
+import { useAllSources } from "@/hooks/use-sources";
 import {
   useDeleteSubscription,
   useSubscriptionById,
   useToggleSubscription,
   useUpdateSubscription,
 } from "@/hooks/use-subscriptions";
-import { COLORS, QUERY_KEYS, TRANSACTION_TYPE } from "@/lib/constants";
-import { getAllSources, getCategoriesByType } from "@/lib/db";
+import { showDeleteConfirm } from "@/lib/alerts";
+import { COLORS, TRANSACTION_TYPE } from "@/lib/constants";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
+import {
+  amountStringSchema,
+  requiredStringSchema,
+  validateField,
+} from "@/lib/validation";
 
 export default function EditSubscriptionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -37,15 +42,11 @@ export default function EditSubscriptionScreen() {
   const deleteMutation = useDeleteSubscription();
   const toggleMutation = useToggleSubscription();
 
-  const { data: categories = [] } = useQuery({
-    queryKey: [QUERY_KEYS.CATEGORIES, TRANSACTION_TYPE.EXPENSE],
-    queryFn: () => getCategoriesByType(TRANSACTION_TYPE.EXPENSE),
-  });
+  const { data: categories = [] } = useCategoriesByType(
+    TRANSACTION_TYPE.EXPENSE,
+  );
 
-  const { data: sources = [] } = useQuery({
-    queryKey: [QUERY_KEYS.SOURCES],
-    queryFn: getAllSources,
-  });
+  const { data: sources = [] } = useAllSources();
 
   const form = useForm({
     defaultValues: {
@@ -125,10 +126,8 @@ export default function EditSubscriptionScreen() {
         <form.Field
           name="name"
           validators={{
-            onSubmit: ({ value }) => {
-              if (!value.trim()) return "Name is required";
-              return undefined;
-            },
+            onSubmit: ({ value }) =>
+              validateField(requiredStringSchema("Name"), value),
           }}
         >
           {(field) => (
@@ -149,12 +148,7 @@ export default function EditSubscriptionScreen() {
         <form.Field
           name="amount"
           validators={{
-            onSubmit: ({ value }) => {
-              const num = Number(value);
-              if (!value || Number.isNaN(num) || num <= 0)
-                return "Amount must be greater than 0";
-              return undefined;
-            },
+            onSubmit: ({ value }) => validateField(amountStringSchema, value),
           }}
         >
           {(field) => (
@@ -230,22 +224,19 @@ export default function EditSubscriptionScreen() {
                 variant="outline"
                 className="h-12 flex-1 rounded-2xl border-negative"
                 onPress={() => {
-                  Alert.alert("Delete Subscription", "This cannot be undone.", [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                      text: "Delete",
-                      style: "destructive",
-                      onPress: async () => {
-                        try {
-                          await deleteMutation.mutateAsync(subscriptionId);
-                          showSuccessToast("Subscription deleted");
-                          router.back();
-                        } catch (err) {
-                          showErrorToast("Failed to delete", err);
-                        }
-                      },
+                  showDeleteConfirm(
+                    "Delete Subscription",
+                    "This cannot be undone.",
+                    async () => {
+                      try {
+                        await deleteMutation.mutateAsync(subscriptionId);
+                        showSuccessToast("Subscription deleted");
+                        router.back();
+                      } catch (err) {
+                        showErrorToast("Failed to delete", err);
+                      }
                     },
-                  ]);
+                  );
                 }}
               >
                 <Text className="text-base font-semibold text-negative">

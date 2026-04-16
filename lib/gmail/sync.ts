@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { and, eq, sql } from "drizzle-orm";
 import {
   CONFIG_KEYS,
@@ -345,6 +346,13 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         outcome.parsed.type,
       );
 
+      // If the parsed date is null, use the email's internalDate as fallback
+      const fallbackDate = outcome.parsed.date
+        ? outcome.parsed.date
+        : msgData.internalDate
+          ? format(new Date(Number(msgData.internalDate)), "yyyy-MM-dd")
+          : format(new Date(), "yyyy-MM-dd");
+
       await db.insert(transactions).values({
         amount: outcome.parsed.amount,
         merchant: outcome.parsed.merchant,
@@ -355,7 +363,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
           outcome.parsedBy === PARSED_BY.GEMINI
             ? PARSED_BY.GEMINI
             : PARSED_BY.REGEX,
-        date: outcome.parsed.date,
+        date: fallbackDate,
         // store the original email snippet so the user can see exactly what was parsed
         note,
         type: outcome.parsed.type,
@@ -413,7 +421,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         transaction: {
           amount: outcome.parsed.amount,
           merchant: outcome.parsed.merchant,
-          date: outcome.parsed.date,
+          date: fallbackDate,
         },
         geminiResponse:
           outcome.parsedBy === PARSED_BY.GEMINI

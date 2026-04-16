@@ -5,6 +5,7 @@ import {
   MONTH_FORMAT,
   SUBSCRIPTION_NOTE,
 } from "@/lib/constants";
+import { subscriptionInputSchema } from "@/lib/validation";
 import expo, { db } from "./connection";
 import { categories, sources, subscriptions, transactions } from "./schema";
 import type { SubscriptionRow } from "./types";
@@ -48,12 +49,19 @@ export async function addSubscription(params: {
   categoryId: number | null;
   sourceId: number | null;
 }) {
+  const validation = subscriptionInputSchema.safeParse(params);
+  if (!validation.success) {
+    throw new Error(
+      `Invalid subscription: ${validation.error.issues.map((i) => i.message).join(", ")}`,
+    );
+  }
+  const v = validation.data;
   return db.insert(subscriptions).values({
-    name: params.name,
-    amount: params.amount,
-    billing_day: params.billingDay,
-    category_id: params.categoryId,
-    source_id: params.sourceId,
+    name: v.name,
+    amount: v.amount,
+    billing_day: v.billingDay,
+    category_id: v.categoryId,
+    source_id: v.sourceId,
   });
 }
 
@@ -67,14 +75,21 @@ export async function updateSubscription(
     sourceId: number | null;
   },
 ) {
+  const validation = subscriptionInputSchema.safeParse(params);
+  if (!validation.success) {
+    throw new Error(
+      `Invalid subscription: ${validation.error.issues.map((i) => i.message).join(", ")}`,
+    );
+  }
+  const v = validation.data;
   return db
     .update(subscriptions)
     .set({
-      name: params.name,
-      amount: params.amount,
-      billing_day: params.billingDay,
-      category_id: params.categoryId,
-      source_id: params.sourceId,
+      name: v.name,
+      amount: v.amount,
+      billing_day: v.billingDay,
+      category_id: v.categoryId,
+      source_id: v.sourceId,
     })
     .where(eq(subscriptions.id, id));
 }
@@ -134,6 +149,20 @@ export async function processSubscriptions(): Promise<string[]> {
       const effectiveDay = Math.min(sub.billing_day, daysInMonth);
       if (effectiveDay > today) continue;
       if (existingSubIds.has(sub.id)) continue;
+
+      // Guard against concurrent calls: verify no transaction was inserted
+      // between the batch query and this point
+      const [existing] = await db
+        .select({ id: transactions.id })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.subscription_id, sub.id),
+            sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+          ),
+        )
+        .limit(1);
+      if (existing) continue;
 
       const billingDate = `${yearMonth}-${String(effectiveDay).padStart(2, "0")}`;
 

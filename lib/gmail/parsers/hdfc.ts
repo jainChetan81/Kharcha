@@ -1,6 +1,5 @@
 import { TRANSACTION_TYPE } from "@/lib/constants";
 import {
-  fallbackNow,
   MERCHANT_REGEX,
   type Parser,
   parseAmount,
@@ -103,7 +102,7 @@ export const hdfcCreditCard: Parser = (body) => {
   return {
     amount: parseAmount(amountMatch[1]),
     merchant: merchantMatch ? merchantMatch[1].trim() : "HDFC Card Payment",
-    date: dateMatch ? parseHdfcDate(dateMatch[1], dateMatch[2]) : fallbackNow(),
+    date: dateMatch ? parseHdfcDate(dateMatch[1], dateMatch[2]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };

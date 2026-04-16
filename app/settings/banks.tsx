@@ -8,7 +8,6 @@ import {
 } from "lucide-react-native";
 import { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
@@ -30,6 +29,7 @@ import {
   useDeleteBankEmail,
   useSetBankActive,
 } from "@/hooks/use-banks";
+import { showDeleteConfirm } from "@/lib/alerts";
 import { COLORS } from "@/lib/constants";
 import type { BankWithEmails } from "@/lib/db/types";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
@@ -48,6 +48,7 @@ export default function BanksScreen() {
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [newBankName, setNewBankName] = useState("");
   const [newBankEmail, setNewBankEmail] = useState("");
+  const [addingEmail, setAddingEmail] = useState(false);
 
   const isValidEmail = (e: string) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
@@ -74,60 +75,54 @@ export default function BanksScreen() {
   }
 
   async function handleAddEmail(bankId: number) {
-    const email = (emailDrafts[bankId] ?? "").trim();
-    if (!isValidEmail(email)) {
-      showErrorToast("Invalid email", "Please enter a valid email address");
-      return;
-    }
-    if (
-      banks.some((b) =>
-        b.emails.some((x) => x.email.toLowerCase() === email.toLowerCase()),
-      )
-    ) {
-      showErrorToast("Duplicate email", `${email} is already used`);
-      return;
-    }
+    if (addingEmail) return;
+    setAddingEmail(true);
     try {
+      const email = (emailDrafts[bankId] ?? "").trim();
+      if (!isValidEmail(email)) {
+        showErrorToast("Invalid email", "Please enter a valid email address");
+        return;
+      }
+      if (
+        banks.some((b) =>
+          b.emails.some((x) => x.email.toLowerCase() === email.toLowerCase()),
+        )
+      ) {
+        showErrorToast("Duplicate email", `${email} is already used`);
+        return;
+      }
       await addEmail.mutateAsync({ bankId, email });
       setEmailDrafts((d) => ({ ...d, [bankId]: "" }));
       showSuccessToast("Email added");
     } catch (err) {
       showErrorToast("Failed to add email", err);
+    } finally {
+      setAddingEmail(false);
     }
   }
 
   function handleDeleteEmail(emailId: number, email: string) {
-    Alert.alert("Delete email?", email, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteEmail.mutateAsync(emailId);
-          } catch (err) {
-            showErrorToast("Failed to delete email", err);
-          }
-        },
-      },
-    ]);
+    showDeleteConfirm("Delete email?", email, async () => {
+      try {
+        await deleteEmail.mutateAsync(emailId);
+      } catch (err) {
+        showErrorToast("Failed to delete email", err);
+      }
+    });
   }
 
   function handleDeleteBank(id: number, name: string) {
-    Alert.alert("Delete bank?", `${name} and all its emails will be removed.`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteBank.mutateAsync(id);
-          } catch (err) {
-            showErrorToast("Failed to delete bank", err);
-          }
-        },
+    showDeleteConfirm(
+      "Delete bank?",
+      `${name} and all its emails will be removed.`,
+      async () => {
+        try {
+          await deleteBank.mutateAsync(id);
+        } catch (err) {
+          showErrorToast("Failed to delete bank", err);
+        }
       },
-    ]);
+    );
   }
 
   async function handleAddBank() {
@@ -225,7 +220,7 @@ export default function BanksScreen() {
                         true: COLORS.PRIMARY,
                       }}
                       thumbColor={COLORS.FOREGROUND}
-                      style={{ marginLeft: 8 }}
+                      style={{ marginLeft: 8 }} // Native component — className not supported
                     />
                   </View>
 
@@ -277,7 +272,10 @@ export default function BanksScreen() {
                         <Button
                           className="h-10 rounded-xl bg-primary px-3"
                           onPress={() => handleAddEmail(bank.id)}
-                          disabled={!isValidEmail(emailDrafts[bank.id] ?? "")}
+                          disabled={
+                            !isValidEmail(emailDrafts[bank.id] ?? "") ||
+                            addingEmail
+                          }
                         >
                           <Icon as={Plus} className="size-4 text-white" />
                         </Button>

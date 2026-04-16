@@ -8,6 +8,7 @@ import {
   getSubscriptionById,
   getSubscriptions,
   getUnusedSubscriptions,
+  processSubscriptions,
   type SubscriptionAuditRow,
   type SubscriptionRow,
   toggleSubscription,
@@ -16,6 +17,8 @@ import {
 import { useInvalidateTransactions } from "./use-transactions";
 
 export type { SubscriptionAuditRow, SubscriptionRow };
+// Re-export for imperative calls
+export { processSubscriptions };
 
 function useInvalidateSubscriptions() {
   const queryClient = useQueryClient();
@@ -57,6 +60,9 @@ export function useAddSubscription() {
   return useMutation({
     mutationFn: addSubscription,
     onSuccess: () => invalidate(),
+    onError: (err) => {
+      console.error("Subscription mutation failed:", err);
+    },
   });
 }
 
@@ -75,6 +81,9 @@ export function useUpdateSubscription() {
       sourceId: number | null;
     }) => updateSubscription(id, params),
     onSuccess: () => invalidate(),
+    onError: (err) => {
+      console.error("Subscription mutation failed:", err);
+    },
   });
 }
 
@@ -83,6 +92,9 @@ export function useDeleteSubscription() {
   return useMutation({
     mutationFn: (id: number) => deleteSubscription(id),
     onSuccess: () => invalidate(),
+    onError: (err) => {
+      console.error("Subscription mutation failed:", err);
+    },
   });
 }
 
@@ -92,6 +104,9 @@ export function useToggleSubscription() {
     mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) =>
       toggleSubscription(id, isActive),
     onSuccess: () => invalidate(),
+    onError: (err) => {
+      console.error("Subscription mutation failed:", err);
+    },
   });
 }
 

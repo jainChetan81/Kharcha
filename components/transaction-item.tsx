@@ -13,10 +13,12 @@ import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
 import {
+  ANIMATION_DURATION_MS,
   OTHER_CATEGORY_LABEL,
   PARSED_BY,
   REIMBURSEMENT_STATUS,
   SOURCE_TYPE,
+  TAG_DISPLAY_LIMIT,
   TIME_FORMAT,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
@@ -81,12 +83,12 @@ export function TransactionItem({
           Animated.parallel([
             Animated.timing(translateX, {
               toValue: -SCREEN_WIDTH,
-              duration: 200,
+              duration: ANIMATION_DURATION_MS,
               useNativeDriver: true,
             }),
             Animated.timing(itemHeight, {
               toValue: 0,
-              duration: 200,
+              duration: ANIMATION_DURATION_MS,
               useNativeDriver: false,
             }),
           ]).start(() => {
@@ -165,7 +167,7 @@ export function TransactionItem({
         </Text>
         {item.tags && item.tags.length > 0 && (
           <View className="mt-1 flex-row flex-wrap gap-1">
-            {item.tags.slice(0, 3).map((tag) => (
+            {item.tags.slice(0, TAG_DISPLAY_LIMIT).map((tag) => (
               <View
                 key={tag.id}
                 className="rounded-md bg-primary/15 px-1.5 py-0.5"

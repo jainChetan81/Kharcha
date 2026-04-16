@@ -3,7 +3,7 @@
     "name": "kharcha",
     "slug": "kharcha",
     "scheme": "kharcha",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -26,25 +26,10 @@
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.chetanjain.kharcha"
-        ],
-        "com.apple.developer.icloud-container-identifiers": [
-          "iCloud.com.chetanjain.kharcha"
-        ],
-        "com.apple.developer.icloud-services": ["CloudDocuments"],
-        "com.apple.developer.ubiquity-container-identifiers": [
-          "iCloud.com.chetanjain.kharcha"
         ]
       },
-      "usesIcloudStorage": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "NSUbiquitousContainers": {
-          "iCloud.com.chetanjain.kharcha": {
-            "NSUbiquitousContainerIsDocumentScopePublic": true,
-            "NSUbiquitousContainerSupportedFolderLevels": "Any",
-            "NSUbiquitousContainerName": "Kharcha"
-          }
-        }
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -55,7 +40,7 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [],
       "intentFilters": [
         {

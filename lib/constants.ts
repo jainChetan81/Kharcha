@@ -218,4 +218,40 @@ export const QUERY_KEYS = {
   TAGS: "tags",
   TAG_BREAKDOWN: "tag-breakdown",
   TAG_BREAKDOWN_ALL_TIME: "tag-breakdown-all-time",
+  CLOUD_BACKUP: "cloud-backup",
 } as const;
+
+// Layout
+export const SCROLL_BOTTOM_PADDING = { paddingBottom: 40 } as const;
+
+// Thresholds
+export const BUDGET_WARN_THRESHOLD = 0.75;
+export const BUDGET_CRITICAL_THRESHOLD = 0.9;
+
+// Display limits
+export const TAG_DISPLAY_LIMIT = 3;
+export const TOP_BREAKDOWN_LIMIT = 5;
+export const MAX_BILLING_DAY = 31;
+export const GMAIL_FETCH_LIMIT = 50;
+export const MAX_EXPORT_TRANSACTIONS = 10_000;
+
+// Animation
+export const ANIMATION_DURATION_MS = 200;
+
+// Query timing
+export const QUERY_STALE_TIME_MS = 1000 * 10;
+export const QUERY_GC_TIME_MS = 1000 * 60 * 30;
+
+// Merchant
+export const MERCHANT_NAME_MIN_LENGTH = 3;
+
+// Category slugs
+export const CATEGORY_SLUG = {
+  OTHER: "other",
+} as const;
+
+// Source defaults
+export const DEFAULT_SOURCE_NAME = "upi";
+
+// Gemini limits
+export const GEMINI_MAX_CHARS = 4000;

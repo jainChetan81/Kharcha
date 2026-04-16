@@ -2,7 +2,6 @@ import { router, useLocalSearchParams } from "expo-router";
 import { lazy, Suspense } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Pressable,
   View,
@@ -15,7 +14,13 @@ import {
   useTransactionById,
   useUpdateTransaction,
 } from "@/hooks/use-transactions";
-import { COLORS, TRANSACTION_TYPE } from "@/lib/constants";
+import { showDeleteConfirm } from "@/lib/alerts";
+import {
+  COLORS,
+  REIMBURSEMENT_STATUS,
+  SOURCE_TYPE,
+  TRANSACTION_TYPE,
+} from "@/lib/constants";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -50,7 +55,8 @@ export default function EditTransactionScreen() {
     destinationSourceId: transaction.destination_source_id,
     date: transaction.date,
     note: transaction.note ?? "",
-    reimbursementStatus: transaction.reimbursement_status ?? "none",
+    reimbursementStatus:
+      transaction.reimbursement_status ?? REIMBURSEMENT_STATUS.NONE,
     tagIds: (transaction.tags ?? []).map((t) => t.id),
   };
 
@@ -63,9 +69,9 @@ export default function EditTransactionScreen() {
       // is preserved across non-transfer edits.
       let sourceType: "manual" | "transfer" | undefined;
       if (isTransfer && !originallyTransfer) {
-        sourceType = "transfer";
+        sourceType = SOURCE_TYPE.TRANSFER;
       } else if (!isTransfer && originallyTransfer) {
-        sourceType = "manual";
+        sourceType = SOURCE_TYPE.MANUAL;
       }
       const isExpense = value.type === TRANSACTION_TYPE.EXPENSE;
       await updateMutation.mutateAsync({
@@ -77,7 +83,9 @@ export default function EditTransactionScreen() {
           value.type === TRANSACTION_TYPE.INCOME ? null : value.sourceId,
         destinationSourceId: isTransfer ? value.destinationSourceId : null,
         sourceType,
-        reimbursementStatus: isExpense ? value.reimbursementStatus : "none",
+        reimbursementStatus: isExpense
+          ? value.reimbursementStatus
+          : REIMBURSEMENT_STATUS.NONE,
         date: value.date,
         note: value.note || null,
         tagIds: value.tagIds,
@@ -127,22 +135,19 @@ export default function EditTransactionScreen() {
           submitLabel="Save Changes"
           onSubmit={handleSubmit}
           onDelete={() => {
-            Alert.alert("Delete Transaction", "This cannot be undone.", [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Delete",
-                style: "destructive",
-                onPress: async () => {
-                  try {
-                    await deleteMutation.mutateAsync(transactionId);
-                    showSuccessToast("Transaction deleted");
-                    router.back();
-                  } catch (err) {
-                    showErrorToast("Failed to delete", err);
-                  }
-                },
+            showDeleteConfirm(
+              "Delete Transaction",
+              "This cannot be undone.",
+              async () => {
+                try {
+                  await deleteMutation.mutateAsync(transactionId);
+                  showSuccessToast("Transaction deleted");
+                  router.back();
+                } catch (err) {
+                  showErrorToast("Failed to delete", err);
+                }
               },
-            ]);
+            );
           }}
           lockType={!!transaction.subscription_id}
         />

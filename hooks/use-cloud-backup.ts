@@ -7,18 +7,17 @@ import {
   getProvider,
   restoreFromCloud,
 } from "@/lib/cloud-backup";
-import { CONFIG_KEYS } from "@/lib/constants";
+import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
 import { initDB } from "@/lib/db";
+import { exportDatabase, importDatabase } from "@/lib/db/backup";
 import { getConfig, updateConfig } from "@/lib/db/config";
-
-const QUERY_KEY = "cloud-backup";
 
 export function useCloudBackupSettings() {
   const queryClient = useQueryClient();
   // Single SQLite read returns both flags — avoids two useQuery reads on
   // every mount.
   const settingsQuery = useQuery({
-    queryKey: [QUERY_KEY, "settings"],
+    queryKey: [QUERY_KEYS.CLOUD_BACKUP, "settings"],
     queryFn: async () => {
       const [enabled, lastAt] = await Promise.all([
         getConfig(CONFIG_KEYS.CLOUD_BACKUP_ENABLED),
@@ -36,7 +35,9 @@ export function useCloudBackupSettings() {
       await updateConfig(CONFIG_KEYS.CLOUD_BACKUP_ENABLED, next ? "1" : "0");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, "settings"] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.CLOUD_BACKUP, "settings"],
+      });
     },
   });
 
@@ -66,8 +67,9 @@ export function useCloudBackupSettings() {
 // (or iCloud stat) for users who never intend to back up.
 export function useLatestBackup(options?: { enabled?: boolean }) {
   return useQuery<BackupSummary | null>({
-    queryKey: [QUERY_KEY, "latest"],
+    queryKey: [QUERY_KEYS.CLOUD_BACKUP, "latest"],
     queryFn: () => getLatestBackup(),
+    staleTime: 1000 * 60 * 5,
     enabled: options?.enabled ?? false,
   });
 }
@@ -77,7 +79,7 @@ export function useBackupNow() {
   return useMutation({
     mutationFn: backupNow,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CLOUD_BACKUP] });
     },
   });
 }
@@ -96,6 +98,22 @@ export function useRestoreFromCloud() {
       // Restored DB has different rows for every key — safer to blow the
       // whole cache than to maintain an allowlist that rots as new
       // queries are added.
+      queryClient.invalidateQueries();
+    },
+  });
+}
+
+export function useExportDatabase() {
+  return useMutation({
+    mutationFn: exportDatabase,
+  });
+}
+
+export function useImportDatabase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: importDatabase,
+    onSuccess: () => {
       queryClient.invalidateQueries();
     },
   });

@@ -47,6 +47,15 @@ export type ListItem =
   | { type: "header"; label: string }
   | { type: "transaction"; data: TransactionRow };
 
+export function getInitials(name: string, maxLen = 2): string {
+  return name
+    .split(" ")
+    .map((w: string) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, maxLen);
+}
+
 export function buildListData(transactions: TransactionRow[]): ListItem[] {
   const items: ListItem[] = [];
   let lastLabel = "";

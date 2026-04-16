@@ -1,4 +1,5 @@
 import { FlexWidget, TextWidget } from "react-native-android-widget";
+import { TAG_DISPLAY_LIMIT } from "@/lib/constants";
 
 const BG = "#0a0a0a";
 const FG = "#f0f0f0";
@@ -237,7 +238,7 @@ export function MediumSpendWidget(props: { data: AndroidWidgetData | null }) {
     ? data.totalExpenses > (data.previousMonthSpendAtThisPoint ?? 0)
     : false;
 
-  const topCategories = data.categories.slice(0, 3);
+  const topCategories = data.categories.slice(0, TAG_DISPLAY_LIMIT);
 
   const hasProjection = data.projectedLow != null && data.projectedHigh != null;
   const hasBudget = data.totalBudget != null && data.totalBudget > 0;

@@ -4,12 +4,21 @@ import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { ChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
+import { FormLabel } from "@/components/ui/form-label";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { COLORS, QUERY_KEYS, TRANSACTION_TYPE } from "@/lib/constants";
 import { getAllSources, getCategoriesByType } from "@/lib/db";
 import { showErrorToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import {
+  amountStringSchema,
+  billingDayStringSchema,
+  requiredStringSchema,
+  validateField,
+} from "@/lib/validation";
+
+const BILLING_DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 export type SubscriptionFormDefaults = {
   name?: string;
@@ -70,17 +79,13 @@ export function SubscriptionForm({
       <form.Field
         name="name"
         validators={{
-          onSubmit: ({ value }) => {
-            if (!value.trim()) return "Name is required";
-            return undefined;
-          },
+          onSubmit: ({ value }) =>
+            validateField(requiredStringSchema("Name"), value),
         }}
       >
         {(field) => (
           <View className="mb-5">
-            <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-              Name
-            </Text>
+            <FormLabel>Name</FormLabel>
             <Input
               placeholder="e.g. Netflix, Spotify"
               value={field.state.value}
@@ -95,19 +100,12 @@ export function SubscriptionForm({
       <form.Field
         name="amount"
         validators={{
-          onSubmit: ({ value }) => {
-            const num = Number(value);
-            if (!value || Number.isNaN(num) || num <= 0)
-              return "Amount must be greater than 0";
-            return undefined;
-          },
+          onSubmit: ({ value }) => validateField(amountStringSchema, value),
         }}
       >
         {(field) => (
           <View className="mb-5">
-            <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-              Amount
-            </Text>
+            <FormLabel>Amount</FormLabel>
             <Input
               placeholder="0"
               keyboardType="decimal-pad"
@@ -127,25 +125,18 @@ export function SubscriptionForm({
       <form.Field
         name="billingDay"
         validators={{
-          onSubmit: ({ value }) => {
-            const num = Number(value);
-            if (!value || Number.isNaN(num) || num < 1 || num > 31)
-              return "Day must be between 1 and 31";
-            return undefined;
-          },
+          onSubmit: ({ value }) => validateField(billingDayStringSchema, value),
         }}
       >
         {(field) => (
           <View className="mb-5">
-            <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-              Billing Day
-            </Text>
+            <FormLabel>Billing Day</FormLabel>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ gap: 6, paddingRight: 24 }}
             >
-              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
+              {BILLING_DAYS.map((day) => {
                 const selected = field.state.value === String(day);
                 return (
                   <Pressable
@@ -183,9 +174,7 @@ export function SubscriptionForm({
       <form.Field name="categoryId">
         {(field) => (
           <View className="mb-5">
-            <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-              Category
-            </Text>
+            <FormLabel>Category</FormLabel>
             <ChipPicker
               items={categories}
               selectedId={field.state.value}
@@ -199,9 +188,7 @@ export function SubscriptionForm({
       <form.Field name="sourceId">
         {(field) => (
           <View className="mb-5">
-            <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-              Source
-            </Text>
+            <FormLabel>Source</FormLabel>
             <ChipPicker
               items={sources}
               selectedId={field.state.value}

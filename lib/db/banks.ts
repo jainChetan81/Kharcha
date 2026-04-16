@@ -4,15 +4,49 @@ import { bankEmails, banks } from "./schema";
 import type { Bank, BankEmail, BankWithEmails } from "./types";
 
 export async function getAllBanksWithEmails(): Promise<BankWithEmails[]> {
-  const allBanks = (await db.select().from(banks)) as Bank[];
-  const allEmails = (await db.select().from(bankEmails)) as BankEmail[];
-  const byBank = new Map<number, BankEmail[]>();
-  for (const e of allEmails) {
-    const arr = byBank.get(e.bank_id) ?? [];
-    arr.push(e);
-    byBank.set(e.bank_id, arr);
+  const rows = await db
+    .select({
+      bank_id: banks.id,
+      bank_name: banks.name,
+      parser_key: banks.parser_key,
+      is_default: banks.is_default,
+      is_active: banks.is_active,
+      email_id: bankEmails.id,
+      email: bankEmails.email,
+      email_is_default: bankEmails.is_default,
+    })
+    .from(banks)
+    .leftJoin(bankEmails, eq(banks.id, bankEmails.bank_id));
+
+  // Group by bank
+  const bankMap = new Map<number, { bank: Bank; emails: BankEmail[] }>();
+  for (const row of rows) {
+    if (!bankMap.has(row.bank_id)) {
+      bankMap.set(row.bank_id, {
+        bank: {
+          id: row.bank_id,
+          name: row.bank_name,
+          parser_key: row.parser_key,
+          is_default: row.is_default,
+          is_active: row.is_active,
+        },
+        emails: [],
+      });
+    }
+    if (row.email_id != null) {
+      bankMap.get(row.bank_id)?.emails.push({
+        id: row.email_id,
+        bank_id: row.bank_id,
+        email: row.email ?? "",
+        is_default: row.email_is_default,
+      });
+    }
   }
-  return allBanks.map((b) => ({ ...b, emails: byBank.get(b.id) ?? [] }));
+
+  return Array.from(bankMap.values()).map((item) => ({
+    ...item.bank,
+    emails: item.emails,
+  }));
 }
 
 export async function getActiveBanksWithEmails(): Promise<BankWithEmails[]> {

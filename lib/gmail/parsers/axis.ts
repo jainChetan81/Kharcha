@@ -50,16 +50,14 @@ export const axisCreditCard: Parser = (body) => {
 
   if (!amountMatch) return null;
 
-  let date: string;
+  let date: string | null;
   if (dateMatch) {
     const [day, month, year] = dateMatch[1].split("-");
     const shortYear = year.slice(2);
     date = parseAxisDate(`${day}-${month}-${shortYear}`);
   } else {
     const altDate = body.match(/Date[:\s]*(\d{2}-\d{2}-\d{2})/i);
-    date = altDate
-      ? parseAxisDate(altDate[1])
-      : new Date().toISOString().split("T")[0];
+    date = altDate ? parseAxisDate(altDate[1]) : null;
   }
 
   return {

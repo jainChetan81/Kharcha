@@ -18,23 +18,30 @@ import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useAllCategories } from "@/hooks/use-categories";
 import { useCurrency } from "@/hooks/use-currency";
-import { useAllSources } from "@/hooks/use-sources";
-import { useAddSubscription } from "@/hooks/use-subscriptions";
-import { useInsertTransaction } from "@/hooks/use-transactions";
+import { getAllSources, useAllSources } from "@/hooks/use-sources";
 import {
+  processSubscriptions,
+  useAddSubscription,
+} from "@/hooks/use-subscriptions";
+import {
+  findDuplicateTransaction,
+  getBudgetForCategory,
+  getCategorySpent,
+  useInsertTransaction,
+} from "@/hooks/use-transactions";
+import {
+  BUDGET_CRITICAL_THRESHOLD,
   COLORS,
   CONFIG_KEYS,
   DATE_TIME_FORMAT,
+  DEFAULT_SOURCE_NAME,
   PARSED_BY,
   type ParsedByType,
   QUERY_KEYS,
   REIMBURSEMENT_STATUS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { findDuplicateTransaction, getAllSources } from "@/lib/db";
-import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
 import { getConfig, updateConfig } from "@/lib/db/config";
-import { processSubscriptions } from "@/lib/db/subscriptions";
 import type { Source } from "@/lib/db/types";
 import type { GeminiParsedMessage } from "@/lib/gemini/parser";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
@@ -73,7 +80,9 @@ export default function AddTransaction() {
   );
   const { data: sourcesList = [] } = useAllSources();
   const upiSourceId =
-    sourcesList.find((s) => s.name.toLowerCase() === "upi")?.id ?? null;
+    sourcesList.find(
+      (s) => s.name.toLowerCase() === DEFAULT_SOURCE_NAME.toLowerCase(),
+    )?.id ?? null;
 
   const [dupSheetVisible, setDupSheetVisible] = useState(false);
   const pendingTxRef = useRef<TransactionFormValues | null>(null);
@@ -160,7 +169,7 @@ export default function AddTransaction() {
     const sources =
       queryClient.getQueryData<Source[]>([QUERY_KEYS.SOURCES]) ??
       (await getAllSources());
-    const sourceId = matchSourceId(parsed.source, sources);
+    const sourceId = matchSourceId(parsed.source ?? null, sources);
 
     const matchedCategory = allCategoriesList.find(
       (c) =>
@@ -227,7 +236,9 @@ export default function AddTransaction() {
       // AI-parsed entries — without this it only ever fires for Gmail-synced
       // rows, even though the data flow is identical.
       parsedBy: aiParsedBy ?? undefined,
-      reimbursementStatus: isExpense ? value.reimbursementStatus : "none",
+      reimbursementStatus: isExpense
+        ? value.reimbursementStatus
+        : REIMBURSEMENT_STATUS.NONE,
       date: value.date,
       note: value.note || null,
       tagIds: value.tagIds,
@@ -247,9 +258,10 @@ export default function AddTransaction() {
       if (budget) {
         const yearMonth = value.date.slice(0, 7);
         const spent = await getCategorySpent(value.categoryId, yearMonth);
-        if (spent >= budget) {
+        const totalSpent = spent + Number(value.amount);
+        if (totalSpent >= budget) {
           showErrorToast(`⚠️ ${value.merchant || "Category"} budget exceeded`);
-        } else if (spent >= budget * 0.9) {
+        } else if (totalSpent >= budget * BUDGET_CRITICAL_THRESHOLD) {
           showErrorToast(
             `⚠️ Approaching ${value.merchant || "category"} budget`,
           );

@@ -32,7 +32,7 @@ import {
 } from "@/lib/constants";
 import { buildListData, type ListItem } from "@/lib/format";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { cn, getRefreshControlProps } from "@/lib/utils";
 
 export default function ReimbursementsScreen() {
   const { format: fmt } = useCurrency();
@@ -214,10 +214,7 @@ export default function ReimbursementsScreen() {
           onEndReachedThreshold={0.5}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.PRIMARY}
-              progressViewOffset={40}
+              {...getRefreshControlProps(refreshing, onRefresh)}
             />
           }
           ListFooterComponent={

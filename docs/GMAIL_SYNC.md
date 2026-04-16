@@ -212,9 +212,9 @@ bank sends alert email -> user forwards to sync+{token}@mail.thechetanjain.com
 
 ## feature flags
 
-gmail sync visibility is controlled by the backend `/feature-flags` endpoint. the profile screen checks if the current `userName` is in the `gmail_sync_enabled_for` list before showing sync options.
+gmail sync visibility is controlled by the backend `/feature-flags` endpoint. the profile screen checks if the `gmail_sync_enabled` flag is `true` before showing sync options.
 
-controlled via `GMAIL_SYNC_ENABLED_FOR` env var (comma-separated) on the backend.
+the endpoint requires `x-device-id` header authentication.
 
 ---
 

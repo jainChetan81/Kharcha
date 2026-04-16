@@ -9,6 +9,7 @@ import { CONFIG_KEYS, PAGE_SIZE, QUERY_KEYS } from "@/lib/constants";
 import {
   clearAllTransactions,
   deleteTransaction,
+  findDuplicateTransaction,
   getCategoryBreakdown,
   getMonthlyInsights,
   getMonthlySummary,
@@ -19,13 +20,18 @@ import {
   getTransactionsPaginated,
   insertTransaction,
   restoreTransaction,
+  seedSampleData,
   setReimbursementStatus,
   type TransactionRow,
   updateTransaction,
 } from "@/lib/db";
+import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
 import { deleteConfig } from "@/lib/db/config";
 import { showErrorToast, showSuccessToast, showUndoToast } from "@/lib/toast";
 import { syncWidgetData } from "@/lib/widget";
+
+// Re-export imperative db functions used in forms
+export { findDuplicateTransaction, getBudgetForCategory, getCategorySpent };
 
 export function useInvalidateTransactions() {
   const queryClient = useQueryClient();
@@ -134,6 +140,9 @@ export function useInsertTransaction() {
   return useMutation({
     mutationFn: insertTransaction,
     onSuccess: () => invalidate(),
+    onError: (err) => {
+      console.error("Transaction mutation failed:", err);
+    },
   });
 }
 
@@ -143,6 +152,9 @@ export function useUpdateTransaction(id: number) {
     mutationFn: (params: Parameters<typeof updateTransaction>[1]) =>
       updateTransaction(id, params),
     onSuccess: () => invalidate(),
+    onError: (err) => {
+      console.error("Transaction mutation failed:", err);
+    },
   });
 }
 
@@ -151,6 +163,9 @@ export function useDeleteTransaction() {
   return useMutation({
     mutationFn: (id: number) => deleteTransaction(id),
     onSuccess: () => invalidate(),
+    onError: (err) => {
+      console.error("Transaction mutation failed:", err);
+    },
   });
 }
 
@@ -159,6 +174,9 @@ export function useRestoreTransaction() {
   return useMutation({
     mutationFn: restoreTransaction,
     onSuccess: () => invalidate(),
+    onError: (err) => {
+      console.error("Transaction mutation failed:", err);
+    },
   });
 }
 
@@ -171,6 +189,9 @@ export function useClearAllTransactions() {
       await deleteConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT);
     },
     onSuccess: () => invalidate(),
+    onError: (err) => {
+      console.error("Transaction mutation failed:", err);
+    },
   });
 }
 
@@ -217,6 +238,9 @@ export function useSetReimbursementStatus() {
       status: "none" | "pending" | "reimbursed";
     }) => setReimbursementStatus(id, status),
     onSuccess: () => invalidate(),
+    onError: (err) => {
+      console.error("Transaction mutation failed:", err);
+    },
   });
 }
 
@@ -234,4 +258,15 @@ export function useSwipeDelete() {
       showErrorToast("Failed to delete");
     }
   };
+}
+
+export function useSeedSampleData() {
+  const invalidate = useInvalidateTransactions();
+  return useMutation({
+    mutationFn: seedSampleData,
+    onSuccess: () => invalidate(),
+    onError: (err) => {
+      console.error("Sample data mutation failed:", err);
+    },
+  });
 }

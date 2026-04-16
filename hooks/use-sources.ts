@@ -7,6 +7,9 @@ import {
   updateSourceOrder,
 } from "@/lib/db";
 
+// Re-export for imperative calls
+export { getAllSources };
+
 export function useAllSources(enabled = true) {
   return useQuery({
     queryKey: [QUERY_KEYS.SOURCES],

@@ -1,7 +1,9 @@
 import { format } from "date-fns";
+import { z } from "zod";
 import {
   DATE_ISO_FORMAT,
   GEMINI_ERROR,
+  GEMINI_MAX_CHARS,
   type GeminiErrorType,
 } from "@/lib/constants";
 import { env } from "@/lib/env";
@@ -9,7 +11,7 @@ import { env } from "@/lib/env";
 const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-const MAX_INPUT_CHARS = 4000;
+const MAX_INPUT_CHARS = GEMINI_MAX_CHARS;
 
 /** Strip common prompt-injection patterns from untrusted text before sending to Gemini. */
 function sanitizeForPrompt(text: string): string {
@@ -27,7 +29,6 @@ function sanitizeForPrompt(text: string): string {
 }
 const GEMINI_TIMEOUT_MS = 15_000;
 const FINISH_REASON_MAX_TOKENS = "MAX_TOKENS";
-const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 const PROMPT = `Extract a financial transaction from an Indian bank SMS, push notification, or email. Treat "INR", "Rs.", "Rs", "NR" as rupees.
 
@@ -80,17 +81,30 @@ function buildResponseSchema(categoryNames: string[]) {
   };
 }
 
-export interface GeminiParsedTransaction {
-  amount: number;
-  merchant: string | null;
-  source: string | null;
-  date: string;
-  type: "expense" | "income";
-  category: string;
-  is_subscription: boolean;
-  billing_day: number | null;
-  confidence: "high" | "medium" | "low";
-}
+export const geminiTransactionSchema = z.object({
+  is_transaction: z.boolean(),
+  amount: z.number().positive("Gemini returned a non-positive amount"),
+  type: z.enum(["expense", "income"], {
+    error: "Type must be expense or income",
+  }),
+  source: z
+    .enum(["UPI", "credit card", "debit card", "other"])
+    .nullable()
+    .optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Gemini returned an invalid date"),
+  merchant: z.string().nullable().optional(),
+  category: z.string().min(1, "Category is required"),
+  is_subscription: z.boolean(),
+  billing_day: z.number().int().min(1).max(31).nullable().optional(),
+  confidence: z.enum(["high", "medium", "low"]),
+});
+
+export type GeminiParsedTransaction = Omit<
+  z.infer<typeof geminiTransactionSchema>,
+  "is_transaction"
+>;
 
 // Alias kept for the paste-message flow callers
 export type GeminiParsedMessage = GeminiParsedTransaction;
@@ -111,18 +125,18 @@ interface GeminiApiResponse {
   }>;
 }
 
-// Shared validation for both parse paths. Returns null when valid, otherwise an error message.
-function validateGeminiTransaction(parsed: {
-  is_transaction: boolean;
-  amount: number;
-  date: string;
-}): string | null {
-  if (!parsed.is_transaction) return "model returned is_transaction=false";
-  if (parsed.amount <= 0)
-    return `model returned non-positive amount: ${parsed.amount}`;
-  if (!DATE_REGEX.test(parsed.date))
-    return `model returned invalid date: ${parsed.date}`;
-  return null;
+/**
+ * Validate raw Gemini output against the Zod schema.
+ * Returns null when valid, otherwise a human-readable error message.
+ */
+function validateGeminiTransaction(raw: unknown): string | null {
+  const result = geminiTransactionSchema.safeParse(raw);
+  if (result.success) {
+    if (!result.data.is_transaction)
+      return "model returned is_transaction=false";
+    return null;
+  }
+  return result.error.issues.map((i) => i.message).join(", ");
 }
 
 interface CallResult<T> {

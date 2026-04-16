@@ -8,7 +8,6 @@ import {
   Mail,
   Plus,
   Settings,
-  TrendingUp,
   User,
 } from "lucide-react-native";
 import { useState } from "react";
@@ -20,10 +19,13 @@ import {
   View,
 } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
+import { CategoryBreakdownSection } from "@/components/category-breakdown-section";
 import {
   ComponentErrorBoundary,
   ScreenError,
 } from "@/components/error-boundary";
+import { InsightsSection } from "@/components/insights-section";
+import { TagBreakdownSection } from "@/components/tag-breakdown-section";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
@@ -48,10 +50,21 @@ import {
   LABELS,
   MONTH_FORMAT,
   SCREENS,
+  TOP_BREAKDOWN_LIMIT,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { buildListData } from "@/lib/format";
-import { cn, isIOS } from "@/lib/utils";
+import { buildListData, getInitials } from "@/lib/format";
+import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
+
+const FAB_STYLE = { marginTop: -44, marginBottom: 8 } as const;
+
+const FAB_SHADOW = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.4,
+  shadowRadius: 12,
+  elevation: 10,
+} as const;
 
 function SpendingRing({
   income,
@@ -128,7 +141,7 @@ export default function HomeScreen() {
   const { format: fmt } = useCurrency();
   const { userName } = useConfig();
   const { refreshing, onRefresh, gmailConnected } = useSyncRefresh();
-  const gmailSyncEnabled = useGmailSyncEnabled(userName);
+  const gmailSyncEnabled = useGmailSyncEnabled();
   const showSyncButton = gmailSyncEnabled && gmailConnected;
 
   const now = new Date();
@@ -163,7 +176,9 @@ export default function HomeScreen() {
   const spendingChange =
     prevExpenses > 0
       ? Math.round(((expenses - prevExpenses) / prevExpenses) * 100)
-      : null;
+      : expenses > 0
+        ? "new"
+        : null;
   const transactions = isCurrentMonth ? recentTransactions : monthTransactions;
   const listData = buildListData(transactions);
 
@@ -173,12 +188,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={COLORS.PRIMARY}
-            progressViewOffset={40}
-          />
+          <RefreshControl {...getRefreshControlProps(refreshing, onRefresh)} />
         }
       >
         <View className={cn("px-6 pb-4", isIOS ? "pt-[60px]" : "pt-12")}>
@@ -205,12 +215,7 @@ export default function HomeScreen() {
                 className="h-10 w-10 items-center justify-center rounded-full bg-primary"
               >
                 <Text className="text-sm font-bold text-primary-foreground">
-                  {userName
-                    .split(" ")
-                    .map((w: string) => w[0])
-                    .join("")
-                    .toUpperCase()
-                    .slice(0, 2)}
+                  {getInitials(userName)}
                 </Text>
               </Pressable>
             </View>
@@ -297,11 +302,16 @@ export default function HomeScreen() {
             <Text
               className={cn(
                 "mt-3 text-center text-xs font-medium",
-                spendingChange > 0 ? "text-negative" : "text-positive",
+                spendingChange === "new"
+                  ? "text-muted-foreground"
+                  : spendingChange > 0
+                    ? "text-negative"
+                    : "text-positive",
               )}
             >
-              {spendingChange > 0 ? "↑" : "↓"} {Math.abs(spendingChange)}% vs
-              last month
+              {spendingChange === "new"
+                ? "First month tracking"
+                : `${spendingChange > 0 ? "↑" : "↓"} ${Math.abs(spendingChange)}% vs last month`}
             </Text>
           )}
 
@@ -331,222 +341,32 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {tagBreakdown.length > 0 && (
-          <ComponentErrorBoundary name="home.tag-breakdown">
-            <View className="px-5 pb-4 pt-2">
-              <Text className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
-                Top Tags
-              </Text>
-              {tagBreakdown.slice(0, 5).map((tag) => (
-                <Pressable
-                  key={tag.tag_id}
-                  onPress={() =>
-                    router.push(
-                      `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&tag_id=${tag.tag_id}`,
-                    )
-                  }
-                  className="mb-3"
-                >
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-base text-foreground">
-                      #{tag.tag_name}
-                    </Text>
-                    <View className="flex-row items-center gap-1">
-                      <Text className="text-xs text-muted-foreground">
-                        {tag.count} tx
-                      </Text>
-                      <Text className="ml-2 text-sm text-muted-foreground">
-                        {fmt(tag.total)}
-                      </Text>
-                      <Icon
-                        as={ChevronRight}
-                        className="size-4 text-muted-foreground"
-                      />
-                    </View>
-                  </View>
-                  <View
-                    className="mt-1.5 h-1 rounded-full"
-                    style={{ backgroundColor: COLORS.BAR_BG }}
-                  >
-                    <View
-                      className="h-1 rounded-full"
-                      style={{
-                        width: `${tag.percentage}%`,
-                        backgroundColor: COLORS.PRIMARY,
-                      }}
-                    />
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          </ComponentErrorBoundary>
-        )}
+        <ComponentErrorBoundary name="home.tag-breakdown">
+          <TagBreakdownSection
+            tagBreakdown={tagBreakdown.slice(0, TOP_BREAKDOWN_LIMIT)}
+            fmt={fmt}
+          />
+        </ComponentErrorBoundary>
 
-        {categoryBreakdown.length > 0 && (
-          <ComponentErrorBoundary name="home.category-breakdown">
-            <View className="px-5 pb-4 pt-2">
-              <Text className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
-                {isCurrentMonth ? "This Month" : format(selectedDate, "MMMM")}
-              </Text>
-              {categoryBreakdown.map((cat) => {
-                const budget = cat.category_id
-                  ? budgetMap.get(cat.category_id)
-                  : undefined;
-                const ratio = budget ? cat.total / budget : 0;
-                const barColor = !budget
-                  ? COLORS.PRIMARY
-                  : ratio >= 1
-                    ? COLORS.DANGER
-                    : ratio >= 0.75
-                      ? COLORS.WARNING
-                      : COLORS.PRIMARY;
-                const barWidth = budget
-                  ? Math.min(ratio * 100, 100)
-                  : cat.percentage;
-
-                return (
-                  <Pressable
-                    key={cat.category_id ?? "other"}
-                    onPress={() =>
-                      router.push(
-                        `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${cat.category_id ?? "other"}&month=${selectedMonth}`,
-                      )
-                    }
-                    className="mb-3"
-                  >
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-base text-foreground">
-                        {cat.category_name}
-                      </Text>
-                      <View className="flex-row items-center gap-1">
-                        <Text className="text-sm text-muted-foreground">
-                          {fmt(cat.total)}
-                          {budget ? ` / ${fmt(budget)}` : ""}
-                        </Text>
-                        <Icon
-                          as={ChevronRight}
-                          className="size-4 text-muted-foreground"
-                        />
-                      </View>
-                    </View>
-                    <View
-                      className="mt-1.5 h-1 rounded-full"
-                      style={{ backgroundColor: COLORS.BAR_BG }}
-                    >
-                      <View
-                        className="h-1 rounded-full"
-                        style={{
-                          width: `${barWidth}%`,
-                          backgroundColor: barColor,
-                        }}
-                      />
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </ComponentErrorBoundary>
-        )}
+        <ComponentErrorBoundary name="home.category-breakdown">
+          <CategoryBreakdownSection
+            categoryBreakdown={categoryBreakdown}
+            budgets={budgetMap}
+            fmt={fmt}
+            selectedDate={selectedDate}
+            isCurrentMonth={isCurrentMonth}
+          />
+        </ComponentErrorBoundary>
 
         <ComponentErrorBoundary name="home.insights">
-          {insightsLoading ? (
-            <View className="mx-5 mb-4 mt-2 rounded-xl bg-card p-4">
-              <View className="h-4 w-3/4 rounded bg-muted" />
-              <View className="mt-2 h-4 w-2/3 rounded bg-muted" />
-            </View>
-          ) : insights?.topCategoryChange || insights?.projectedLow != null ? (
-            <View className="mx-5 mb-4 mt-2 gap-3">
-              {insights?.topCategoryChange && (
-                <Pressable
-                  onPress={() =>
-                    router.push(
-                      `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&category_id=${insights.topCategoryChange?.categoryId ?? "other"}&month=${selectedMonth}`,
-                    )
-                  }
-                  className="flex-row items-center gap-3 rounded-xl bg-card px-4 py-3"
-                >
-                  <Icon
-                    as={TrendingUp}
-                    className={cn(
-                      insights.topCategoryChange.direction === "up"
-                        ? "text-negative"
-                        : "text-positive",
-                    )}
-                    size={16}
-                  />
-                  <Text className="flex-1 text-xs text-muted-foreground">
-                    <Text
-                      className={cn(
-                        "text-xs font-semibold",
-                        insights.topCategoryChange.direction === "up"
-                          ? "text-negative"
-                          : "text-positive",
-                      )}
-                    >
-                      {insights.topCategoryChange.percent}%{" "}
-                      {insights.topCategoryChange.direction === "up"
-                        ? "more"
-                        : "less"}
-                    </Text>{" "}
-                    on {insights.topCategoryChange.category} vs last month
-                  </Text>
-                  <Icon
-                    as={ChevronRight}
-                    className="text-muted-foreground"
-                    size={14}
-                  />
-                </Pressable>
-              )}
-              {insights?.projectedLow != null &&
-                insights?.projectedHigh != null && (
-                  <View className="rounded-xl bg-card p-4">
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-xs font-medium text-muted-foreground">
-                        Projected spending
-                      </Text>
-                      <Text className="text-xs text-muted-foreground">
-                        {insights.daysInMonth - insights.daysElapsed} days left
-                      </Text>
-                    </View>
-                    <Text
-                      className={cn(
-                        "mt-2 text-base font-bold",
-                        totalBudget > 0 && insights.projectedHigh > totalBudget
-                          ? "text-negative"
-                          : "text-foreground",
-                      )}
-                    >
-                      {fmt(Math.round(insights.projectedLow))} –{" "}
-                      {fmt(Math.round(insights.projectedHigh))}
-                    </Text>
-                    <View className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-                      <View
-                        className={cn(
-                          "h-full rounded-full",
-                          totalBudget > 0 &&
-                            insights.projectedHigh > totalBudget
-                            ? "bg-negative"
-                            : "bg-primary",
-                        )}
-                        style={{
-                          width: `${Math.round((insights.daysElapsed / insights.daysInMonth) * 100)}%`,
-                        }}
-                      />
-                    </View>
-                    <View className="mt-1.5 flex-row items-center justify-between">
-                      <Text className="text-[10px] text-muted-foreground">
-                        {fmt(expenses)} spent
-                      </Text>
-                      {totalBudget > 0 && (
-                        <Text className="text-[10px] text-muted-foreground">
-                          {fmt(totalBudget)} budget
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-                )}
-            </View>
-          ) : null}
+          <InsightsSection
+            insights={insights}
+            insightsLoading={insightsLoading}
+            expenses={expenses}
+            totalBudget={totalBudget}
+            fmt={fmt}
+            selectedDate={selectedDate}
+          />
         </ComponentErrorBoundary>
 
         <ComponentErrorBoundary name="home.transaction-list">
@@ -589,19 +409,10 @@ export default function HomeScreen() {
               History
             </Text>
           </Pressable>
-          <Pressable
-            onPress={() => router.push(SCREENS.ADD)}
-            style={{ marginTop: -44, marginBottom: 8 }}
-          >
+          <Pressable onPress={() => router.push(SCREENS.ADD)} style={FAB_STYLE}>
             <View
               className="h-[52px] w-[52px] items-center justify-center rounded-full bg-primary"
-              style={{
-                elevation: 8,
-                shadowColor: COLORS.PRIMARY,
-                shadowOpacity: 0.4,
-                shadowRadius: 12,
-                shadowOffset: { width: 0, height: 4 },
-              }}
+              style={FAB_SHADOW}
             >
               <Icon as={Plus} className="size-6 text-primary-foreground" />
             </View>

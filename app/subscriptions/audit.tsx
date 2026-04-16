@@ -17,12 +17,13 @@ import {
   useUnusedSubscriptions,
 } from "@/hooks/use-subscriptions";
 import {
-  COLORS,
   DATE_FORMAT,
   editSubscriptionScreen,
   SCREENS,
+  SCROLL_BOTTOM_PADDING,
 } from "@/lib/constants";
 import { parseDate } from "@/lib/format";
+import { getRefreshControlProps } from "@/lib/utils";
 
 type CategoryGroup = {
   name: string;
@@ -74,13 +75,10 @@ export default function SubscriptionAuditScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={SCROLL_BOTTOM_PADDING}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.PRIMARY}
-              progressViewOffset={40}
+              {...getRefreshControlProps(refreshing, onRefresh)}
             />
           }
         >

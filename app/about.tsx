@@ -10,7 +10,12 @@ import { InfoRow } from "@/components/ui/info-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { useDataStats } from "@/hooks/use-stats";
-import { DATE_FORMAT, DEVICE_TYPE_NAME, SCREENS } from "@/lib/constants";
+import {
+  DATE_FORMAT,
+  DEVICE_TYPE_NAME,
+  SCREENS,
+  SCROLL_BOTTOM_PADDING,
+} from "@/lib/constants";
 import { parseDate } from "@/lib/format";
 import { showSuccessToast } from "@/lib/toast";
 
@@ -40,7 +45,7 @@ export default function AboutScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={SCROLL_BOTTOM_PADDING}
       >
         <SectionHeader title="App" />
         <Pressable onPress={handleVersionTap}>

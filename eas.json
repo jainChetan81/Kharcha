@@ -20,6 +20,9 @@
     },
     "production": {
       "channel": "production",
+      "env": {
+        "GRADLE_OPTS": "-Xmx6g -XX:MaxMetaspaceSize=2g -Dfile.encoding=UTF-8"
+      },
       "ios": {
         "buildConfiguration": "Release"
       },

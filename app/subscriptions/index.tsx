@@ -2,7 +2,6 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { ClipboardCheck, Plus, Receipt } from "lucide-react-native";
 import {
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -21,8 +20,15 @@ import {
   useSubscriptions,
   useToggleSubscription,
 } from "@/hooks/use-subscriptions";
-import { COLORS, editSubscriptionScreen, SCREENS } from "@/lib/constants";
+import { showDeleteConfirm } from "@/lib/alerts";
+import {
+  COLORS,
+  editSubscriptionScreen,
+  SCREENS,
+  SCROLL_BOTTOM_PADDING,
+} from "@/lib/constants";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { getRefreshControlProps } from "@/lib/utils";
 
 export default function SubscriptionsScreen() {
   const { format: fmt } = useCurrency();
@@ -37,24 +43,17 @@ export default function SubscriptionsScreen() {
 
   function handleDelete(sub: SubscriptionRow) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    Alert.alert(
+    showDeleteConfirm(
       "Delete Subscription",
       `Delete "${sub.name}" and all its transactions?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteMutation.mutateAsync(sub.id);
-              showSuccessToast("Subscription deleted");
-            } catch (err) {
-              showErrorToast("Failed", err);
-            }
-          },
-        },
-      ],
+      async () => {
+        try {
+          await deleteMutation.mutateAsync(sub.id);
+          showSuccessToast("Subscription deleted");
+        } catch (err) {
+          showErrorToast("Failed", err);
+        }
+      },
     );
   }
 
@@ -128,13 +127,10 @@ export default function SubscriptionsScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={SCROLL_BOTTOM_PADDING}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.PRIMARY}
-              progressViewOffset={40}
+              {...getRefreshControlProps(refreshing, onRefresh)}
             />
           }
         >

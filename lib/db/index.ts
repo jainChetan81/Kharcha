@@ -23,12 +23,14 @@ import {
 import {
   CONFIG_KEYS,
   DATE_ISO_FORMAT,
+  MAX_EXPORT_TRANSACTIONS,
   MONTH_FORMAT,
   OTHER_CATEGORY_LABEL,
   type ParsedByType,
   type SourceType,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
+import { transactionInputSchema } from "@/lib/validation";
 import expo, { db, runMigrations } from "./connection";
 import {
   bankEmails,
@@ -1096,7 +1098,7 @@ export async function getTransactionsPaginated(
 export async function getAllTransactionsFiltered(
   filters?: Parameters<typeof getTransactionsPaginated>[2],
 ) {
-  return getTransactionsPaginated(100_000, 0, filters);
+  return getTransactionsPaginated(MAX_EXPORT_TRANSACTIONS, 0, filters);
 }
 
 export async function getTransactionById(id: number) {
@@ -1123,23 +1125,34 @@ export async function insertTransaction(params: {
   note: string | null;
   tagIds?: number[];
 }) {
+  const validation = transactionInputSchema.safeParse(params);
+  if (!validation.success) {
+    throw new Error(
+      `Invalid transaction data: ${validation.error.issues.map((i) => i.message).join(", ")}`,
+    );
+  }
+  const validated = validation.data;
+
   const result = await db.insert(transactions).values({
-    type: params.type,
-    amount: params.amount,
-    merchant: params.merchant,
-    category_id: params.categoryId,
-    source_id: params.sourceId,
-    destination_source_id: params.destinationSourceId ?? null,
-    subscription_id: params.subscriptionId ?? null,
-    source_type: params.sourceType ?? "manual",
-    parsed_by: params.parsedBy ?? null,
-    reimbursement_status: params.reimbursementStatus ?? "none",
-    date: params.date,
-    note: params.note,
+    type: validated.type,
+    amount: validated.amount,
+    merchant: validated.merchant ?? null,
+    category_id: validated.categoryId ?? null,
+    source_id: validated.sourceId ?? null,
+    destination_source_id: validated.destinationSourceId ?? null,
+    subscription_id: validated.subscriptionId ?? null,
+    source_type: validated.sourceType,
+    parsed_by: validated.parsedBy ?? null,
+    reimbursement_status: validated.reimbursementStatus,
+    date: validated.date,
+    note: validated.note ?? null,
   });
   const insertedId = Number(result.lastInsertRowId);
-  if (params.tagIds && params.tagIds.length > 0 && insertedId > 0) {
-    const unique = Array.from(new Set(params.tagIds));
+  if (!Number.isFinite(insertedId) || insertedId <= 0) {
+    throw new Error("Failed to insert transaction: invalid insertedId");
+  }
+  if (validated.tagIds && validated.tagIds.length > 0) {
+    const unique = Array.from(new Set(validated.tagIds));
     await db.insert(transactionTags).values(
       unique.map((tag_id) => ({
         transaction_id: insertedId,
@@ -1166,6 +1179,12 @@ export async function updateTransaction(
     tagIds?: number[];
   },
 ) {
+  const validation = transactionInputSchema.safeParse(params);
+  if (!validation.success) {
+    throw new Error(
+      `Invalid transaction data: ${validation.error.issues.map((i) => i.message).join(", ")}`,
+    );
+  }
   // Only touch source_type when the caller explicitly provides it — otherwise
   // editing a Gmail-synced or subscription-generated transaction would wipe
   // its provenance marker and re-import on the next Gmail sync.

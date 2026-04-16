@@ -1,6 +1,6 @@
 import { Pencil, Plus, Tag as TagIcon, Trash2 } from "lucide-react-native";
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Icon } from "@/components/ui/icon";
@@ -14,6 +14,8 @@ import {
   useDeleteTag,
   useRenameTag,
 } from "@/hooks/use-tags";
+import { showDeleteConfirm } from "@/lib/alerts";
+import { SCROLL_BOTTOM_PADDING } from "@/lib/constants";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 type EditTarget = { id: number; name: string } | null;
@@ -32,24 +34,17 @@ export default function TagsScreen() {
   const statsByTag = new Map(breakdown.map((b) => [b.tag_id, b]));
 
   function handleDelete(id: number, name: string) {
-    Alert.alert(
+    showDeleteConfirm(
       `Delete #${name}?`,
       "The tag will be removed from all transactions. The transactions themselves stay.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteMutation.mutateAsync(id);
-              showSuccessToast("Tag deleted");
-            } catch (err) {
-              showErrorToast("Failed to delete", err);
-            }
-          },
-        },
-      ],
+      async () => {
+        try {
+          await deleteMutation.mutateAsync(id);
+          showSuccessToast("Tag deleted");
+        } catch (err) {
+          showErrorToast("Failed to delete", err);
+        }
+      },
     );
   }
 
@@ -69,7 +64,7 @@ export default function TagsScreen() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={SCROLL_BOTTOM_PADDING}
       >
         <Text className="px-5 pb-3 text-xs text-muted-foreground">
           Use tags to group spend across categories — trips, events, shared

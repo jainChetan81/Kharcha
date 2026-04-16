@@ -2,7 +2,6 @@ import { FlashList } from "@shopify/flash-list";
 import {
   endOfMonth,
   format,
-  parse,
   startOfMonth,
   startOfWeek,
   startOfYear,
@@ -30,7 +29,6 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
-  ScrollView,
   View,
 } from "react-native";
 import {
@@ -38,9 +36,6 @@ import {
   ScreenError,
 } from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { Button } from "@/components/ui/button";
-import { ChipPicker, MultiChipPicker } from "@/components/ui/chip-picker";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
@@ -55,8 +50,8 @@ import {
   useTransactionsPaginated,
 } from "@/hooks/use-transactions";
 import {
+  CATEGORY_SLUG,
   COLORS,
-  DATE_FORMAT,
   DATE_ISO_FORMAT,
   editScreen,
   PERIOD_PRESET,
@@ -69,33 +64,11 @@ import {
   type TransactionFilterType,
 } from "@/lib/constants";
 import { buildListData, type ListItem } from "@/lib/format";
-import { cn, isIOS } from "@/lib/utils";
+import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
 
-const DatePickerModal = lazy(() =>
-  import("@/components/ui/date-picker-modal").then((m) => ({
-    default: m.DatePickerModal,
-  })),
+const HistoryFiltersSheet = lazy(
+  () => import("@/components/history-filters-sheet"),
 );
-
-const TYPE_FILTERS = Object.values(TRANSACTION_TYPE);
-const SOURCE_TYPE_FILTERS = Object.values(SOURCE_TYPE);
-const REIMBURSEMENT_FILTERS = Object.values(REIMBURSEMENT_FILTER);
-
-const REIMBURSEMENT_LABELS: Record<ReimbursementFilterType, string> = {
-  [REIMBURSEMENT_FILTER.ALL]: "All",
-  [REIMBURSEMENT_FILTER.PENDING]: "Pending",
-  [REIMBURSEMENT_FILTER.REIMBURSED]: "Reimbursed",
-};
-
-const PRESET_LABELS: Record<PeriodPresetType, string> = {
-  [PERIOD_PRESET.TODAY]: "Today",
-  [PERIOD_PRESET.THIS_WEEK]: "This Week",
-  [PERIOD_PRESET.LAST_7_DAYS]: "Last 7 Days",
-  [PERIOD_PRESET.THIS_MONTH]: "This Month",
-  [PERIOD_PRESET.LAST_MONTH]: "Last Month",
-  [PERIOD_PRESET.THIS_YEAR]: "This Year",
-  [PERIOD_PRESET.CUSTOM]: "Custom",
-};
 
 function getPresetRange(preset: PeriodPresetType): {
   from: string;
@@ -178,8 +151,6 @@ export default function HistoryScreen() {
   const [draftReimbursement, setDraftReimbursement] =
     useState<ReimbursementFilterType>(REIMBURSEMENT_FILTER.ALL);
   const [draftTagIds, setDraftTagIds] = useState<number[]>([]);
-  const [showFromPicker, setShowFromPicker] = useState(false);
-  const [showToPicker, setShowToPicker] = useState(false);
 
   const { data: allTags = [] } = useAllTags();
 
@@ -191,7 +162,7 @@ export default function HistoryScreen() {
     ) {
       setTypeFilter(params.filter);
     }
-    if (params.category_id && params.category_id !== "other") {
+    if (params.category_id && params.category_id !== CATEGORY_SLUG.OTHER) {
       const parsed = Number(params.category_id);
       if (!Number.isNaN(parsed)) {
         setCategoryId(parsed);
@@ -254,13 +225,16 @@ export default function HistoryScreen() {
 
   const { data: otherLookupCategories = [] } = useCategoriesByType(
     "expense",
-    params.category_id === "other",
+    params.category_id === CATEGORY_SLUG.OTHER,
   );
 
   useEffect(() => {
-    if (params.category_id === "other") {
+    if (
+      params.category_id === CATEGORY_SLUG.OTHER &&
+      otherLookupCategories.length > 0
+    ) {
       const other = otherLookupCategories.find(
-        (c) => c.name.toLowerCase() === "other",
+        (c) => c.name.toLowerCase() === CATEGORY_SLUG.OTHER,
       );
       if (other) setCategoryId(other.id);
     }
@@ -286,8 +260,8 @@ export default function HistoryScreen() {
     if (sourceId !== null) count++;
     if (sourceTypeFilter !== SOURCE_TYPE.ALL) count++;
     if (dateFrom || dateTo) count++;
-    if (amountMin != null && amountMin > 0) count++;
-    if (amountMax != null && amountMax > 0) count++;
+    if (amountMin != null) count++;
+    if (amountMax != null) count++;
     if (reimbursementFilter !== REIMBURSEMENT_FILTER.ALL) count++;
     if (tagIds.length > 0) count++;
     return count;
@@ -335,21 +309,6 @@ export default function HistoryScreen() {
   const totalTransfers = allTransactions
     .filter((t) => t.type === TRANSACTION_TYPE.TRANSFER)
     .reduce((sum, t) => sum + t.amount, 0);
-
-  function handlePresetSelect(preset: PeriodPresetType) {
-    if (preset === draftPreset) {
-      setDraftPreset(null);
-      setDraftDateFrom(null);
-      setDraftDateTo(null);
-      return;
-    }
-    setDraftPreset(preset);
-    if (preset !== PERIOD_PRESET.CUSTOM) {
-      const range = getPresetRange(preset);
-      setDraftDateFrom(range.from);
-      setDraftDateTo(range.to);
-    }
-  }
 
   function openFilters() {
     setDraftType(typeFilter);
@@ -563,10 +522,7 @@ export default function HistoryScreen() {
           onEndReachedThreshold={0.5}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={COLORS.PRIMARY}
-              progressViewOffset={40}
+              {...getRefreshControlProps(refreshing, onRefresh)}
             />
           }
           ListFooterComponent={
@@ -603,297 +559,41 @@ export default function HistoryScreen() {
         />
       </ComponentErrorBoundary>
 
-      <BottomSheet visible={showFilters} onClose={() => setShowFilters(false)}>
-        <View className="mb-6 flex-row items-center justify-between">
-          <Text className="text-base font-bold text-foreground">Filters</Text>
-          {draftHasFilters && (
-            <Pressable
-              onPress={clearAllFilters}
-              className="rounded-xl border border-border px-4 py-2"
-            >
-              <Text className="text-sm font-medium text-negative">
-                Clear All
-              </Text>
-            </Pressable>
-          )}
-        </View>
-
-        <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Type
-        </Text>
-        <View className="mb-5 flex-row gap-2">
-          {TYPE_FILTERS.map((f) => (
-            <Pressable
-              key={f}
-              onPress={() => handleDraftTypeChange(f)}
-              className={cn(
-                "flex-1 items-center rounded-xl py-2.5",
-                draftType === f ? "bg-primary" : "bg-muted",
-              )}
-            >
-              <Text
-                className={cn(
-                  "text-sm font-medium capitalize",
-                  draftType === f
-                    ? "text-primary-foreground"
-                    : "text-muted-foreground",
-                )}
-              >
-                {f}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {draftType !== TRANSACTION_TYPE.TRANSFER && (
-          <>
-            <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Category
-            </Text>
-            <View className="mb-5">
-              <ChipPicker
-                items={categories}
-                selectedId={draftCategoryId}
-                onSelect={setDraftCategoryId}
-                allLabel="All Categories"
-              />
-            </View>
-          </>
-        )}
-
-        {draftType !== TRANSACTION_TYPE.INCOME &&
-          draftType !== TRANSACTION_TYPE.TRANSFER && (
-            <>
-              <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Payment Source
-              </Text>
-              <View className="mb-5">
-                <ChipPicker
-                  items={sources}
-                  selectedId={draftSourceId}
-                  onSelect={setDraftSourceId}
-                  allLabel="All Sources"
-                />
-              </View>
-            </>
-          )}
-
-        {allTags.length > 0 && (
-          <>
-            <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Tags
-            </Text>
-            <View className="mb-5">
-              <MultiChipPicker
-                items={allTags}
-                selectedIds={draftTagIds}
-                onChange={setDraftTagIds}
-              />
-            </View>
-          </>
-        )}
-
-        <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Source Type
-        </Text>
-        <View className="mb-5 flex-row gap-2">
-          {SOURCE_TYPE_FILTERS.map((f) => (
-            <Pressable
-              key={f}
-              onPress={() => setDraftSourceType(f)}
-              className={cn(
-                "flex-1 items-center rounded-xl py-2.5",
-                draftSourceType === f ? "bg-primary" : "bg-muted",
-              )}
-            >
-              <Text
-                className={cn(
-                  "text-sm font-medium capitalize",
-                  draftSourceType === f
-                    ? "text-primary-foreground"
-                    : "text-muted-foreground",
-                )}
-              >
-                {f}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Period
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="mb-3"
-          contentContainerStyle={{ gap: 8, paddingRight: 24 }}
-        >
-          {Object.values(PERIOD_PRESET).map((p) => (
-            <Pressable
-              key={p}
-              onPress={() => handlePresetSelect(p)}
-              className={cn(
-                "rounded-full px-4 py-2.5",
-                draftPreset === p
-                  ? "bg-primary"
-                  : "border border-border bg-card",
-              )}
-            >
-              <Text
-                className={cn(
-                  "text-sm font-medium",
-                  draftPreset === p
-                    ? "text-primary-foreground"
-                    : "text-muted-foreground",
-                )}
-              >
-                {PRESET_LABELS[p]}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-        {draftPreset === PERIOD_PRESET.CUSTOM && (
-          <View className="mb-3 flex-row gap-3">
-            <Pressable
-              onPress={() => setShowFromPicker(true)}
-              className="flex-1 rounded-xl bg-muted px-4 py-3"
-            >
-              <Text className="text-xs text-muted-foreground">From</Text>
-              <Text className="text-sm font-medium text-foreground">
-                {draftDateFrom
-                  ? format(
-                      parse(draftDateFrom, DATE_ISO_FORMAT, new Date()),
-                      DATE_FORMAT,
-                    )
-                  : "Select"}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setShowToPicker(true)}
-              className="flex-1 rounded-xl bg-muted px-4 py-3"
-            >
-              <Text className="text-xs text-muted-foreground">To</Text>
-              <Text className="text-sm font-medium text-foreground">
-                {draftDateTo
-                  ? format(
-                      parse(draftDateTo, DATE_ISO_FORMAT, new Date()),
-                      DATE_FORMAT,
-                    )
-                  : "Select"}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
-        <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Reimbursement
-        </Text>
-        <View className="mb-5 flex-row gap-2">
-          {REIMBURSEMENT_FILTERS.map((f) => (
-            <Pressable
-              key={f}
-              onPress={() => setDraftReimbursement(f)}
-              className={cn(
-                "flex-1 items-center rounded-xl py-2.5",
-                draftReimbursement === f ? "bg-primary" : "bg-muted",
-              )}
-            >
-              <Text
-                className={cn(
-                  "text-sm font-medium",
-                  draftReimbursement === f
-                    ? "text-primary-foreground"
-                    : "text-muted-foreground",
-                )}
-              >
-                {REIMBURSEMENT_LABELS[f]}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text className="mb-2 mt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Amount
-        </Text>
-        <View className="mb-5 flex-row gap-3">
-          <Input
-            placeholder="Min ₹"
-            placeholderTextColor={COLORS.MUTED}
-            keyboardType="decimal-pad"
-            value={draftAmountMin}
-            onChangeText={setDraftAmountMin}
-            className="flex-1"
-          />
-          <Input
-            placeholder="Max ₹"
-            placeholderTextColor={COLORS.MUTED}
-            keyboardType="decimal-pad"
-            value={draftAmountMax}
-            onChangeText={setDraftAmountMax}
-            className="flex-1"
-          />
-        </View>
-
-        <View className={cn("flex-row gap-3", isIOS && "mb-6")}>
-          <Pressable
-            onPress={() => setShowFilters(false)}
-            className="h-14 flex-1 items-center justify-center rounded-xl border border-border"
-          >
-            <Text className="text-sm font-medium text-muted-foreground">
-              Cancel
-            </Text>
-          </Pressable>
-          <Button
-            className="h-14 flex-1 rounded-2xl bg-primary"
-            onPress={applyFilters}
-          >
-            <Text className="text-base font-semibold text-primary-foreground">
-              Apply
-            </Text>
-          </Button>
-        </View>
-      </BottomSheet>
-
-      {/* DatePickerModal instances are hoisted outside BottomSheet to avoid
-          nested RN Modal issues on Android. */}
       <Suspense fallback={null}>
-        <DatePickerModal
-          visible={showFromPicker}
-          value={
-            draftDateFrom
-              ? parse(draftDateFrom, DATE_ISO_FORMAT, new Date())
-              : new Date()
-          }
-          title="From Date"
-          onConfirm={(date) => {
-            setShowFromPicker(false);
-            setDraftDateFrom(format(date, DATE_ISO_FORMAT));
-          }}
-          onCancel={() => setShowFromPicker(false)}
-          onClear={() => {
-            setShowFromPicker(false);
-            setDraftDateFrom(null);
-          }}
-        />
-        <DatePickerModal
-          visible={showToPicker}
-          value={
-            draftDateTo
-              ? parse(draftDateTo, DATE_ISO_FORMAT, new Date())
-              : new Date()
-          }
-          title="To Date"
-          onConfirm={(date) => {
-            setShowToPicker(false);
-            setDraftDateTo(format(date, DATE_ISO_FORMAT));
-          }}
-          onCancel={() => setShowToPicker(false)}
-          onClear={() => {
-            setShowToPicker(false);
-            setDraftDateTo(null);
-          }}
-        />
+        <ComponentErrorBoundary>
+          <HistoryFiltersSheet
+            visible={showFilters}
+            onClose={() => setShowFilters(false)}
+            draftType={draftType}
+            onDraftTypeChange={handleDraftTypeChange}
+            draftCategoryId={draftCategoryId}
+            onDraftCategoryIdChange={setDraftCategoryId}
+            draftSourceId={draftSourceId}
+            onDraftSourceIdChange={setDraftSourceId}
+            draftSourceType={draftSourceType}
+            onDraftSourceTypeChange={setDraftSourceType}
+            draftPreset={draftPreset}
+            onDraftPresetChange={setDraftPreset}
+            draftDateFrom={draftDateFrom}
+            onDraftDateFromChange={setDraftDateFrom}
+            draftDateTo={draftDateTo}
+            onDraftDateToChange={setDraftDateTo}
+            draftAmountMin={draftAmountMin}
+            onDraftAmountMinChange={setDraftAmountMin}
+            draftAmountMax={draftAmountMax}
+            onDraftAmountMaxChange={setDraftAmountMax}
+            draftReimbursement={draftReimbursement}
+            onDraftReimbursementChange={setDraftReimbursement}
+            draftTagIds={draftTagIds}
+            onDraftTagIdsChange={setDraftTagIds}
+            categories={categories}
+            sources={sources}
+            allTags={allTags}
+            onApplyFilters={applyFilters}
+            onClearAllFilters={clearAllFilters}
+            draftHasFilters={draftHasFilters}
+          />
+        </ComponentErrorBoundary>
       </Suspense>
     </View>
   );

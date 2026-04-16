@@ -1,6 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
-import { getAndroidId, getIosIdForVendorAsync } from "expo-application";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
@@ -9,13 +8,21 @@ import { InfoRow } from "@/components/ui/info-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Text } from "@/components/ui/text";
+import {
+  useDeviceSync,
+  useDeviceSyncConfig,
+  useRegisterDevice,
+} from "@/hooks/use-sync";
 import { copyToClipboard } from "@/lib/clipboard";
-import { COLORS, CONFIG_KEYS, DATE_FORMAT, QUERY_KEYS } from "@/lib/constants";
-import { insertTransaction, syncedTransactionExists } from "@/lib/db";
-import { getConfig, updateConfig } from "@/lib/db/config";
-import { env } from "@/lib/env";
+import {
+  COLORS,
+  CONFIG_KEYS,
+  DATE_FORMAT,
+  QUERY_KEYS,
+  SCROLL_BOTTOM_PADDING,
+} from "@/lib/constants";
+import { updateConfig } from "@/lib/db/config";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
-import { isIOS } from "@/lib/utils";
 
 const SyncResultsSheet = lazy(() =>
   import("@/components/sync-results-sheet").then((m) => ({
@@ -28,74 +35,20 @@ const DatePickerModal = lazy(() =>
   })),
 );
 
-async function parseErrorResponse(
-  res: Response,
-  fallback: string,
-): Promise<string> {
-  try {
-    const body = await res.json();
-    return body.error ?? fallback;
-  } catch {
-    return `${fallback} (${res.status})`;
-  }
-}
-
-type BackendTransaction = {
-  id: string;
-  device_id: string;
-  amount: number;
-  merchant: string | null;
-  category: string | null;
-  date: string;
-  type: "income" | "expense";
-  source: string | null;
-  source_type: string | null;
-  note: string | null;
-  created_at: string;
-  fetched_at: string | null;
-};
-
-type SyncResponse = {
-  transactions: BackendTransaction[];
-  last_synced_at: string;
-};
-
-type SyncResult = {
-  inserted: number;
-  skipped: number;
-  total: number;
-};
-
-async function getOrCreateDeviceId(): Promise<string> {
-  const existing = await getConfig(CONFIG_KEYS.DEVICE_ID);
-  if (existing) return existing;
-
-  const vendorId = isIOS ? await getIosIdForVendorAsync() : getAndroidId();
-  const id = `kharcha-${vendorId ?? crypto.randomUUID()}`;
-  await updateConfig(CONFIG_KEYS.DEVICE_ID, id);
-  return id;
-}
-
 export default function DeviceSyncScreen() {
   const queryClient = useQueryClient();
-  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const [syncResult, setSyncResult] = useState<{
+    inserted: number;
+    skipped: number;
+    total: number;
+  } | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [syncFromDate, setSyncFromDate] = useState<Date>(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
 
-  const { data: settings, isLoading } = useQuery({
-    queryKey: [QUERY_KEYS.CONFIG, "device-sync"],
-    queryFn: async () => {
-      const [deviceId, forwardingEmail, lastSyncedAt] = await Promise.all([
-        getOrCreateDeviceId(),
-        getConfig(CONFIG_KEYS.BACKEND_FORWARDING_EMAIL),
-        getConfig(CONFIG_KEYS.BACKEND_LAST_SYNCED_AT),
-      ]);
-      return { deviceId, forwardingEmail, lastSyncedAt };
-    },
-  });
+  const { data: settings, isLoading } = useDeviceSyncConfig();
 
   const isRegistered = !!settings?.forwardingEmail;
 
@@ -116,115 +69,28 @@ export default function DeviceSyncScreen() {
     });
   }
 
-  const registerMutation = useMutation({
-    mutationFn: async () => {
-      const deviceId = settings?.deviceId;
-      if (!deviceId) throw new Error("No device ID");
+  const registerMutation = useRegisterDevice();
+  const syncMutation = useDeviceSync();
 
-      const res = await fetch(`${env.API_URL}/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ device_id: deviceId }),
-      });
-
-      if (!res.ok) {
-        throw new Error(await parseErrorResponse(res, "Registration failed"));
-      }
-
-      const data = (await res.json()) as { forwarding_email: string };
-
-      await updateConfig(
-        CONFIG_KEYS.BACKEND_FORWARDING_EMAIL,
-        data.forwarding_email,
-      );
-
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CONFIG, "device-sync"],
-      });
-      showSuccessToast("Device registered");
-    },
-    onError: (err) => showErrorToast("Registration failed", err),
-  });
-
-  const syncMutation = useMutation({
-    mutationFn: async () => {
-      const deviceId = settings?.deviceId;
-      if (!deviceId) throw new Error("Not registered");
-
-      const params = new URLSearchParams();
-      const startOfMonth = new Date(
-        new Date().getFullYear(),
-        new Date().getMonth(),
-        1,
-      );
-      if (syncFromDate.getTime() !== startOfMonth.getTime()) {
-        params.set("last_synced_at", syncFromDate.toISOString());
-      }
-
-      const url = `${env.API_URL}/sync${params.toString() ? `?${params}` : ""}`;
-      const res = await fetch(url, {
-        headers: { "x-device-id": deviceId },
-      });
-
-      if (!res.ok) {
-        throw new Error(await parseErrorResponse(res, "Sync failed"));
-      }
-
-      const data = (await res.json()) as SyncResponse;
-
-      let inserted = 0;
-      let skipped = 0;
-
-      for (const tx of data.transactions) {
-        const exists = await syncedTransactionExists(tx.date, tx.amount);
-        if (exists) {
-          skipped++;
-          continue;
-        }
-
-        await insertTransaction({
-          type: tx.type,
-          amount: tx.amount,
-          merchant: tx.merchant,
-          categoryId: null,
-          sourceId: null,
-          sourceType: "synced",
-          date: tx.date,
-          note: tx.note,
-        });
-        inserted++;
-      }
-
-      await updateConfig(
-        CONFIG_KEYS.BACKEND_LAST_SYNCED_AT,
-        data.last_synced_at,
-      );
-
-      return { inserted, skipped, total: data.transactions.length };
-    },
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CONFIG, "device-sync"],
-      });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TRANSACTIONS] });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
-      });
-
+  const handleSync = async () => {
+    try {
+      const result = await syncMutation.mutateAsync(syncFromDate);
       setSyncResult(result);
       setShowResults(true);
-    },
-    onError: (err) => showErrorToast("Sync failed", err),
-  });
+      showSuccessToast("Sync completed");
+    } catch (err) {
+      showErrorToast("Sync failed", err);
+    }
+  };
+
+  const handleRegister = async () => {
+    try {
+      await registerMutation.mutateAsync();
+      showSuccessToast("Device registered");
+    } catch (err) {
+      showErrorToast("Registration failed", err);
+    }
+  };
 
   const busy =
     isLoading || registerMutation.isPending || syncMutation.isPending;
@@ -240,7 +106,7 @@ export default function DeviceSyncScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={SCROLL_BOTTOM_PADDING}
         >
           <SectionHeader title="User ID" />
           <Pressable
@@ -291,7 +157,7 @@ export default function DeviceSyncScreen() {
             <View className="mx-5 mt-4">
               <Button
                 className="h-12 rounded-xl bg-primary"
-                onPress={() => registerMutation.mutate()}
+                onPress={handleRegister}
                 disabled={busy}
               >
                 {registerMutation.isPending ? (
@@ -351,7 +217,7 @@ export default function DeviceSyncScreen() {
               <View className="mx-5 mt-4">
                 <Button
                   className="h-12 rounded-xl bg-primary"
-                  onPress={() => syncMutation.mutate()}
+                  onPress={handleSync}
                   disabled={busy}
                 >
                   {syncMutation.isPending ? (

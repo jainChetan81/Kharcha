@@ -4,7 +4,7 @@ import { DATE_TIME_FORMAT } from "@/lib/constants";
 export interface ParsedTransaction {
   amount: number;
   merchant: string;
-  date: string;
+  date: string | null;
   type: "expense" | "income";
   category?: string;
   confidence?: "high" | "medium" | "low";
@@ -47,7 +47,7 @@ const INDIAN_DATE_FORMATS = [
   "dd MMM, yyyy",
 ];
 
-export function parseIndianDate(raw: string, rawTime?: string): string {
+export function parseIndianDate(raw: string, rawTime?: string): string | null {
   const cleaned = raw.replace(/\s+/g, " ").trim();
   const timeStr = rawTime?.trim();
 
@@ -70,16 +70,22 @@ export function parseIndianDate(raw: string, rawTime?: string): string {
       if (!Number.isNaN(d.getTime())) return format(d, DATE_TIME_FORMAT);
     } catch {}
   }
-  return fallbackNow();
+  return null;
 }
 
 // Keep these for backward compat with the existing Axis / HDFC parsers that
 // pass a separate time argument in a bank-specific format.
-export function parseAxisDate(rawDate: string, rawTime?: string): string {
+export function parseAxisDate(
+  rawDate: string,
+  rawTime?: string,
+): string | null {
   return parseIndianDate(rawDate, rawTime);
 }
 
-export function parseHdfcDate(rawDate: string, rawTime?: string): string {
+export function parseHdfcDate(
+  rawDate: string,
+  rawTime?: string,
+): string | null {
   return parseIndianDate(rawDate, rawTime);
 }
 

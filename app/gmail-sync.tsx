@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { router } from "expo-router";
 import { ChevronRight, Copy, Landmark } from "lucide-react-native";
@@ -12,6 +11,7 @@ import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Text } from "@/components/ui/text";
 import { useBanksWithEmails } from "@/hooks/use-banks";
+import { useGmailSync, useGmailSyncConfig } from "@/hooks/use-gmail-sync";
 import { useSyncState } from "@/hooks/use-sync-state";
 import { copyMaskedToClipboard } from "@/lib/clipboard";
 import {
@@ -20,16 +20,12 @@ import {
   DATE_FORMAT,
   EMAIL_LOG_STATUS,
   GMAIL_API,
-  QUERY_KEYS,
   SCREENS,
+  SCROLL_BOTTOM_PADDING,
 } from "@/lib/constants";
-import { deleteConfig, getConfig, updateConfig } from "@/lib/db/config";
+import { getConfig, updateConfig } from "@/lib/db/config";
 import { useGoogleAuth } from "@/lib/gmail/auth";
-import {
-  type EmailLog,
-  type SyncResult,
-  syncGmailTransactions,
-} from "@/lib/gmail/sync";
+import type { EmailLog, SyncResult } from "@/lib/gmail/sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +41,6 @@ const DatePickerModal = lazy(() =>
 );
 
 export default function GmailSyncScreen() {
-  const queryClient = useQueryClient();
   const { signIn, signOut, getValidAccessToken } = useGoogleAuth();
   const {
     connected,
@@ -61,7 +56,6 @@ export default function GmailSyncScreen() {
     setSyncFromDate,
   } = useSyncState();
   const [email, setEmail] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -71,6 +65,9 @@ export default function GmailSyncScreen() {
     (b) => b.is_active === 1 && b.emails.length > 0,
   );
   const noActiveBanks = activeBanks.length === 0;
+  const gmailSyncConfig = useGmailSyncConfig();
+  const gmailSyncMutation = useGmailSync();
+  const syncing = gmailSyncMutation.isPending;
   const busy = loading || syncing || verifying;
 
   const emailToBankName = new Map<string, string>();
@@ -140,68 +137,39 @@ export default function GmailSyncScreen() {
   async function handleUpdateSyncFrom(date: Date) {
     setSyncFromDate(date);
     setShowDatePicker(false);
-    await updateConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT, date.toISOString());
+    await gmailSyncConfig.updateSyncFromDate(date);
     setLastSynced(date.toISOString());
   }
 
   async function handleSync() {
-    setSyncing(true);
     try {
-      const result = await syncGmailTransactions();
-
-      if (result.nobanks) {
+      const response = await gmailSyncMutation.mutateAsync();
+      if (response.result.nobanks) {
         showErrorToast("No active banks", "Add a bank in settings to sync");
         return;
       }
 
-      const newFetched = String(
-        Number(emailsFetched ?? "0") +
-          result.added +
-          result.skipped +
-          result.failed,
+      setLastSynced(
+        (await getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT)) ?? null,
       );
-      const newAdded = String(Number(transactionsAdded ?? "0") + result.added);
+      setEmailsFetched(response.newFetched);
+      setTransactionsAdded(response.newAdded);
 
-      await Promise.all([
-        updateConfig(CONFIG_KEYS.GMAIL_EMAILS_FETCHED, newFetched),
-        updateConfig(CONFIG_KEYS.GMAIL_TRANSACTIONS_ADDED, newAdded),
-      ]);
-
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TRANSACTIONS] }),
-        queryClient.invalidateQueries({
-          queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
-        }),
-      ]);
-
-      const synced = await getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT);
-      setLastSynced(synced);
-      setEmailsFetched(newFetched);
-      setTransactionsAdded(newAdded);
-
-      setSyncResult(result);
+      setSyncResult(response.result);
       setShowResults(true);
+      showSuccessToast("Sync completed");
     } catch (err) {
-      showErrorToast("Sync failed", err);
-    } finally {
-      setSyncing(false);
+      if (err instanceof Error && err.message === "No active banks") {
+        showErrorToast("No active banks", "Add a bank in settings to sync");
+      } else {
+        showErrorToast("Sync failed", err);
+      }
     }
   }
 
   async function handleDisconnect() {
     await signOut();
-    await Promise.all([
-      deleteConfig(CONFIG_KEYS.GMAIL_CONNECTED),
-      deleteConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT),
-      deleteConfig(CONFIG_KEYS.GMAIL_EMAILS_FETCHED),
-      deleteConfig(CONFIG_KEYS.GMAIL_TRANSACTIONS_ADDED),
-    ]);
+    await gmailSyncConfig.disconnect();
     setConnected(false);
     setEmail(null);
     setLastSynced(null);
@@ -221,7 +189,7 @@ export default function GmailSyncScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={SCROLL_BOTTOM_PADDING}
         >
           <SectionHeader title="Status" />
           <View className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3">
@@ -459,7 +427,7 @@ function StatLine({
       </Text>
       <View
         className="rounded-full px-2 py-0.5"
-        style={{ backgroundColor: `${color}22` }}
+        style={{ backgroundColor: `${color}22` }} // Dynamic opacity suffix — cannot use NativeWind
       >
         <Text className="text-[11px] font-semibold" style={{ color }}>
           {count}
@@ -473,7 +441,7 @@ function Badge({ text, color }: { text: string; color: string }) {
   return (
     <View
       className="rounded-full px-2 py-0.5"
-      style={{ backgroundColor: `${color}22` }}
+      style={{ backgroundColor: `${color}22` }} // Dynamic opacity suffix — cannot use NativeWind
     >
       <Text
         className="text-[9px] font-bold uppercase tracking-wide"
