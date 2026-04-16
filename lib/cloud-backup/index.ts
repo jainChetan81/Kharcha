@@ -9,6 +9,7 @@ import { Platform } from "react-native";
 import { CONFIG_KEYS, DB_NAME } from "@/lib/constants";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import expo from "@/lib/db/connection";
+import { withTrace } from "@/lib/firebase";
 import {
   type DriveBackupFile,
   downloadBackupFromDrive,
@@ -73,27 +74,33 @@ function writeDbBytes(bytes: ArrayBuffer): void {
 
 export async function backupNow(): Promise<BackupSummary> {
   const provider = getProvider();
-  const bytes = await readDbBytes();
-  let modifiedTime: string;
-  let fileId: string | undefined;
+  return withTrace(
+    "cloud_backup",
+    async () => {
+      const bytes = await readDbBytes();
+      let modifiedTime: string;
+      let fileId: string | undefined;
 
-  if (provider === "icloud") {
-    const r = await uploadBackupToICloud(bytes);
-    modifiedTime = r.modifiedTime;
-  } else if (provider === "gdrive") {
-    const r = await uploadBackupToDrive(bytes);
-    modifiedTime = r.modifiedTime;
-    fileId = r.fileId;
-  } else {
-    throw new Error("Cloud backup not supported on this platform");
-  }
+      if (provider === "icloud") {
+        const r = await uploadBackupToICloud(bytes);
+        modifiedTime = r.modifiedTime;
+      } else if (provider === "gdrive") {
+        const r = await uploadBackupToDrive(bytes);
+        modifiedTime = r.modifiedTime;
+        fileId = r.fileId;
+      } else {
+        throw new Error("Cloud backup not supported on this platform");
+      }
 
-  await updateConfig(CONFIG_KEYS.CLOUD_BACKUP_LAST_AT, modifiedTime);
-  if (fileId) {
-    await updateConfig(CONFIG_KEYS.CLOUD_BACKUP_LAST_FILE_ID, fileId);
-  }
+      await updateConfig(CONFIG_KEYS.CLOUD_BACKUP_LAST_AT, modifiedTime);
+      if (fileId) {
+        await updateConfig(CONFIG_KEYS.CLOUD_BACKUP_LAST_FILE_ID, fileId);
+      }
 
-  return { modifiedTime, size: bytes.byteLength, provider };
+      return { modifiedTime, size: bytes.byteLength, provider };
+    },
+    { provider },
+  );
 }
 
 export async function getLatestBackup(): Promise<BackupSummary | null> {

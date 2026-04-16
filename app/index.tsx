@@ -19,6 +19,7 @@ import {
   View,
 } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CategoryBreakdownSection } from "@/components/category-breakdown-section";
 import {
   ComponentErrorBoundary,
@@ -138,6 +139,7 @@ function SpendingRing({
 }
 
 export default function HomeScreen() {
+  const { bottom } = useSafeAreaInsets();
   const { format: fmt } = useCurrency();
   const { userName } = useConfig();
   const { refreshing, onRefresh, gmailConnected } = useSyncRefresh();
@@ -390,10 +392,8 @@ export default function HomeScreen() {
       </ScrollView>
 
       <View
-        className={cn(
-          "border-t border-border bg-card pt-2.5",
-          isIOS ? "pb-7" : "pb-3.5",
-        )}
+        className="border-t border-border bg-card pt-2.5"
+        style={{ paddingBottom: Math.max(bottom, 14) }}
       >
         <View className="flex-row items-center justify-around">
           <View className="items-center gap-1">

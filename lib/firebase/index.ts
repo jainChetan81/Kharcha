@@ -1,6 +1,3 @@
-import crashlytics from "@react-native-firebase/crashlytics";
-import perf from "@react-native-firebase/perf";
-
 export const FIREBASE_EVENTS = {
   TRANSACTION_ADDED: "transaction_added",
   TRANSACTION_DELETED: "transaction_deleted",
@@ -27,13 +24,18 @@ export function logFirebaseError(
     console.error("[Firebase]", error, context);
     return;
   }
-  const err = error instanceof Error ? error : new Error(String(error));
-  if (context) {
-    for (const [key, value] of Object.entries(context)) {
-      crashlytics().setAttribute(key, value);
-    }
-  }
-  crashlytics().recordError(err);
+  import("@react-native-firebase/crashlytics")
+    .then((mod) => {
+      const crash = mod.default();
+      if (context) {
+        for (const [key, value] of Object.entries(context)) {
+          crash.setAttribute(key, value);
+        }
+      }
+      const err = error instanceof Error ? error : new Error(String(error));
+      crash.recordError(err);
+    })
+    .catch(() => {});
 }
 
 export function logEvent(
@@ -44,12 +46,8 @@ export function logEvent(
     console.log("[Firebase]", name, params);
     return;
   }
-  // @react-native-firebase/analytics is lazily imported to avoid pulling the
-  // module into the JS bundle when it's only needed at event-fire time.
   import("@react-native-firebase/analytics")
-    .then((mod) => {
-      mod.default().logEvent(name, params);
-    })
+    .then((mod) => mod.default().logEvent(name, params))
     .catch(() => {});
 }
 
@@ -61,19 +59,28 @@ export async function withTrace<T>(
   if (__DEV__) {
     return fn();
   }
-  const trace = await perf().newTrace(name);
-  if (attributes) {
-    for (const [key, value] of Object.entries(attributes)) {
-      trace.putAttribute(key, value);
+  const stopTrace = await (async () => {
+    try {
+      const mod = await import("@react-native-firebase/perf");
+      const trace = await mod.default().newTrace(name);
+      if (attributes) {
+        for (const [key, value] of Object.entries(attributes)) {
+          trace.putAttribute(key, value);
+        }
+      }
+      await trace.start();
+      return () => trace.stop();
+    } catch {
+      return null;
     }
-  }
-  await trace.start();
+  })();
+  if (!stopTrace) return fn();
   try {
     const result = await fn();
-    await trace.stop();
+    await stopTrace();
     return result;
   } catch (error) {
-    await trace.stop();
+    await stopTrace();
     throw error;
   }
 }

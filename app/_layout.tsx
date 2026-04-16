@@ -144,14 +144,15 @@ export default function RootLayout() {
   }, [dbReady]);
 
   useEffect(() => {
-    if (!dbReady) return;
-    import("@react-native-firebase/crashlytics").then((mod) => {
-      const crash = mod.default;
-      crash().setCrashlyticsCollectionEnabled(!__DEV__);
-      getConfig(CONFIG_KEYS.USER_NAME).then((userName) => {
-        crash().setAttribute("user_name", userName ?? "unknown");
-      });
-    });
+    if (!dbReady || __DEV__) return;
+    import("@react-native-firebase/crashlytics")
+      .then(async (mod) => {
+        const crash = mod.default();
+        crash.setCrashlyticsCollectionEnabled(true);
+        const userName = await getConfig(CONFIG_KEYS.USER_NAME);
+        crash.setAttribute("user_name", userName ?? "unknown");
+      })
+      .catch(() => {});
   }, [dbReady]);
 
   useEffect(() => {
