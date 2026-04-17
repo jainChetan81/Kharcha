@@ -11,7 +11,11 @@ import {
   type GeminiParsedMessage,
   parseMessageWithGemini,
 } from "@/lib/gemini/parser";
+import { parseMessage } from "@/lib/parsers";
 import { showErrorToast } from "@/lib/toast";
+
+const PLACEHOLDER_EXAMPLE =
+  "Amount Debited: INR 250.00 From A/c: XX0532 Date & Time: 15-04-26, 14:30:00 Transaction Info: UPI/P2M/Swiggy";
 
 export function ParseMessageSheet({
   visible,
@@ -40,6 +44,26 @@ export function ParseMessageSheet({
     setParsing(true);
     setParseError(null);
     try {
+      // Try local regex parsers first (instant, no network)
+      const local = parseMessage(messageText);
+      if (local) {
+        onParsed(
+          {
+            amount: local.amount,
+            type: local.type,
+            date: local.date,
+            merchant: local.merchant,
+            category: "Other",
+            is_subscription: false,
+            billing_day: null,
+            confidence: "high",
+          },
+          messageText,
+        );
+        return;
+      }
+
+      // Fall back to Gemini AI parsing
       const result = await parseMessageWithGemini(messageText, categoryNames);
       if (result.error === GEMINI_ERROR.SERVICE_UNAVAILABLE) {
         showErrorToast("AI is busy right now, try again in a moment");
@@ -92,9 +116,13 @@ export function ParseMessageSheet({
           <Icon as={X} className="size-5 text-muted-foreground" />
         </Pressable>
       </View>
+      <Text className="mb-3 text-xs text-muted-foreground">
+        Paste a bank SMS or notification below and we'll auto-fill the amount,
+        merchant, and date for you.
+      </Text>
       <Input
         multiline
-        placeholder="paste your bank SMS, notification, or email text..."
+        placeholder={PLACEHOLDER_EXAMPLE}
         value={messageText}
         onChangeText={(v) => {
           setMessageText(v);

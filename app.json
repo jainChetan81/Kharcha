@@ -3,7 +3,7 @@
     "name": "kharcha",
     "slug": "kharcha",
     "scheme": "kharcha",
-    "version": "0.4.0",
+    "version": "0.5.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -41,7 +41,7 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "versionCode": 4,
+      "versionCode": 5,
       "permissions": [],
       "intentFilters": [
         {

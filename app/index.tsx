@@ -9,8 +9,10 @@ import {
   Plus,
   Settings,
   User,
+  UserRoundPen,
+  X,
 } from "lucide-react-native";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -36,6 +38,7 @@ import { useCurrency } from "@/hooks/use-currency";
 import { useGmailSyncEnabled } from "@/hooks/use-feature-flags";
 import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
+import { useUpdateDeviceName } from "@/hooks/use-sync";
 import { useTagBreakdown } from "@/hooks/use-tags";
 import {
   useCategoryBreakdown,
@@ -55,7 +58,10 @@ import {
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { buildListData, getInitials } from "@/lib/format";
+import { showSuccessToast } from "@/lib/toast";
 import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
+
+const EditNameSheet = lazy(() => import("@/components/edit-name-sheet"));
 
 const FAB_STYLE = { marginTop: -44, marginBottom: 8 } as const;
 
@@ -141,10 +147,21 @@ function SpendingRing({
 export default function HomeScreen() {
   const { bottom } = useSafeAreaInsets();
   const { format: fmt } = useCurrency();
-  const { userName } = useConfig();
+  const { userName, updateUserName } = useConfig();
   const { refreshing, onRefresh, gmailConnected } = useSyncRefresh();
   const gmailSyncEnabled = useGmailSyncEnabled();
   const showSyncButton = gmailSyncEnabled && gmailConnected;
+  const updateDeviceNameMutation = useUpdateDeviceName();
+  const [showEditName, setShowEditName] = useState(false);
+  const [nameBannerDismissed, setNameBannerDismissed] = useState(false);
+  const showNameBanner = userName === "User" && !nameBannerDismissed;
+
+  async function handleSaveNameFromBanner(name: string) {
+    await updateUserName(name);
+    updateDeviceNameMutation.mutate(name);
+    setShowEditName(false);
+    showSuccessToast("Name updated");
+  }
 
   const now = new Date();
   const [selectedDate, setSelectedDate] = useState(now);
@@ -328,6 +345,27 @@ export default function HomeScreen() {
             </Pressable>
           )}
 
+          {showNameBanner && (
+            <Pressable
+              onPress={() => setShowEditName(true)}
+              className="mx-5 mt-3 flex-row items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3"
+            >
+              <Icon as={UserRoundPen} className="size-4 text-primary" />
+              <Text className="flex-1 text-xs font-medium text-foreground">
+                Set your name so we can identify your device
+              </Text>
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setNameBannerDismissed(true);
+                }}
+                hitSlop={10}
+              >
+                <Icon as={X} className="size-4 text-muted-foreground" />
+              </Pressable>
+            </Pressable>
+          )}
+
           {reimbursementSummary && reimbursementSummary.pending_count > 0 && (
             <Pressable
               onPress={() => router.push(SCREENS.REIMBURSEMENTS)}
@@ -437,6 +475,14 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       </View>
+      <Suspense fallback={null}>
+        <EditNameSheet
+          visible={showEditName}
+          onClose={() => setShowEditName(false)}
+          userName={userName}
+          onSave={handleSaveNameFromBanner}
+        />
+      </Suspense>
     </View>
   );
 }

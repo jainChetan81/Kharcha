@@ -15,6 +15,7 @@ import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { LockedScreen } from "@/components/locked-screen";
 import { Text } from "@/components/ui/text";
 import { useAppLock } from "@/hooks/use-app-lock";
+import { getOrCreateDeviceId, registerDevice } from "@/hooks/use-sync";
 import { maybeAutoBackup } from "@/lib/cloud-backup";
 import {
   COLORS,
@@ -30,6 +31,23 @@ import { isIOS } from "@/lib/utils";
 import { syncWidgetData } from "@/lib/widget";
 
 SplashScreen.preventAutoHideAsync();
+
+async function autoRegisterDevice() {
+  const existing = await getConfig(CONFIG_KEYS.BACKEND_FORWARDING_EMAIL);
+  if (existing) return;
+
+  const deviceId = await getOrCreateDeviceId();
+  const userName = await getConfig(CONFIG_KEYS.USER_NAME);
+
+  try {
+    await registerDevice(
+      deviceId,
+      userName && userName !== "User" ? userName : undefined,
+    );
+  } catch {
+    // Silent fail — will retry next launch
+  }
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -124,6 +142,7 @@ export default function RootLayout() {
         }
         setDbReady(true);
         syncWidgetData();
+        autoRegisterDevice();
       })
       .catch((err) => {
         showErrorToast("Database Error", err);

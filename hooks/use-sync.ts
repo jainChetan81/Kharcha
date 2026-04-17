@@ -40,7 +40,7 @@ async function parseErrorResponse(
   }
 }
 
-async function getOrCreateDeviceId(): Promise<string> {
+export async function getOrCreateDeviceId(): Promise<string> {
   const existing = await getConfig(CONFIG_KEYS.DEVICE_ID);
   if (existing) return existing;
 
@@ -48,6 +48,40 @@ async function getOrCreateDeviceId(): Promise<string> {
   const id = `kharcha-${vendorId ?? crypto.randomUUID()}`;
   await updateConfig(CONFIG_KEYS.DEVICE_ID, id);
   return id;
+}
+
+let registerInFlight: Promise<{ forwarding_email: string }> | null = null;
+
+export async function registerDevice(
+  deviceId: string,
+  name?: string,
+): Promise<{ forwarding_email: string }> {
+  if (registerInFlight) return registerInFlight;
+
+  registerInFlight = (async () => {
+    const res = await apiFetch(`${env.API_URL}/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device_id: deviceId, name: name || undefined }),
+    });
+
+    if (!res.ok) {
+      throw new Error(await parseErrorResponse(res, "Registration failed"));
+    }
+
+    const data = (await res.json()) as { forwarding_email: string };
+
+    await updateConfig(
+      CONFIG_KEYS.BACKEND_FORWARDING_EMAIL,
+      data.forwarding_email,
+    );
+
+    return data;
+  })().finally(() => {
+    registerInFlight = null;
+  });
+
+  return registerInFlight;
 }
 
 export function useDeviceSyncConfig() {
@@ -69,32 +103,49 @@ export function useRegisterDevice() {
   const { data: settings } = useDeviceSyncConfig();
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (name?: string) => {
       const deviceId = settings?.deviceId;
       if (!deviceId) throw new Error("No device ID");
 
-      const res = await apiFetch(`${env.API_URL}/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ device_id: deviceId }),
-      });
-
-      if (!res.ok) {
-        throw new Error(await parseErrorResponse(res, "Registration failed"));
-      }
-
-      const data = (await res.json()) as { forwarding_email: string };
-
-      await updateConfig(
-        CONFIG_KEYS.BACKEND_FORWARDING_EMAIL,
-        data.forwarding_email,
-      );
-
-      return data;
+      return registerDevice(deviceId, name);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.CONFIG, "device-sync"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.FEATURE_FLAGS],
+      });
+    },
+  });
+}
+
+export function useUpdateDeviceName() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const deviceId = await getConfig(CONFIG_KEYS.DEVICE_ID);
+      if (!deviceId) throw new Error("Device not registered");
+
+      const res = await apiFetch(`${env.API_URL}/device/name`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-device-id": deviceId,
+        },
+        body: JSON.stringify({ name }),
+      });
+
+      if (!res.ok) {
+        throw new Error(await parseErrorResponse(res, "Failed to update name"));
+      }
+
+      return (await res.json()) as { name: string };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.FEATURE_FLAGS],
       });
     },
   });

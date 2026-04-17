@@ -30,7 +30,11 @@ import { Text } from "@/components/ui/text";
 import { useAppLockSetting } from "@/hooks/use-app-lock";
 import { isAppUpdateSupported, useAppUpdate } from "@/hooks/use-app-update";
 import { CURRENCIES, useConfig } from "@/hooks/use-config";
-import { useGmailSyncEnabled } from "@/hooks/use-feature-flags";
+import {
+  useDeviceSyncEnabled,
+  useGmailSyncEnabled,
+} from "@/hooks/use-feature-flags";
+import { useUpdateDeviceName } from "@/hooks/use-sync";
 import {
   useClearTransactionsWithConfirm,
   useSeedSampleData,
@@ -56,11 +60,14 @@ export default function ProfileScreen() {
   const { checking: checkingUpdate, checkForUpdate } = useAppUpdate();
 
   const gmailSyncEnabled = useGmailSyncEnabled();
+  const deviceSyncEnabled = useDeviceSyncEnabled();
+  const updateDeviceNameMutation = useUpdateDeviceName();
 
   const initials = getInitials(userName);
 
   async function handleSaveName(name: string) {
     await updateUserName(name);
+    updateDeviceNameMutation.mutate(name);
     setShowEditName(false);
     showSuccessToast("Name updated");
   }
@@ -150,19 +157,29 @@ export default function ProfileScreen() {
           <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
         </Pressable>
 
-        <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Sync
-        </Text>
-        <Pressable
-          onPress={() => router.push(SCREENS.DEVICE_SYNC)}
-          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Icon as={RefreshCw} className="mr-3 size-4 text-muted-foreground" />
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            Device Sync
-          </Text>
-          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-        </Pressable>
+        {deviceSyncEnabled && (
+          <>
+            <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Sync
+            </Text>
+            <Pressable
+              onPress={() => router.push(SCREENS.DEVICE_SYNC)}
+              className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+            >
+              <Icon
+                as={RefreshCw}
+                className="mr-3 size-4 text-muted-foreground"
+              />
+              <Text className="flex-1 text-sm font-medium text-foreground">
+                Device Sync
+              </Text>
+              <Icon
+                as={ChevronRight}
+                className="size-4 text-muted-foreground"
+              />
+            </Pressable>
+          </>
+        )}
 
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Export

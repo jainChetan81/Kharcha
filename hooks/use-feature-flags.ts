@@ -6,6 +6,14 @@ import { apiFetch } from "@/lib/firebase/api-fetch";
 
 type FeatureFlags = {
   gmail_sync_enabled: boolean;
+  device_sync_enabled: boolean;
+  name: string | null;
+};
+
+const DEFAULT_FLAGS: FeatureFlags = {
+  gmail_sync_enabled: false,
+  device_sync_enabled: false,
+  name: null,
 };
 
 export function useFeatureFlags() {
@@ -25,7 +33,15 @@ export function useFeatureFlags() {
   });
 }
 
-export function useGmailSyncEnabled(): boolean {
+export function useFlag<K extends keyof FeatureFlags>(key: K): FeatureFlags[K] {
   const { data } = useFeatureFlags();
-  return data?.gmail_sync_enabled ?? false;
+  return data?.[key] ?? DEFAULT_FLAGS[key];
+}
+
+export function useGmailSyncEnabled(): boolean {
+  return useFlag("gmail_sync_enabled");
+}
+
+export function useDeviceSyncEnabled(): boolean {
+  return useFlag("device_sync_enabled");
 }

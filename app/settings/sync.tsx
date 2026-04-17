@@ -85,7 +85,7 @@ export default function DeviceSyncScreen() {
 
   const handleRegister = async () => {
     try {
-      await registerMutation.mutateAsync();
+      await registerMutation.mutateAsync(undefined);
       showSuccessToast("Device registered");
     } catch (err) {
       showErrorToast("Registration failed", err);
