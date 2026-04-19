@@ -25,6 +25,7 @@ import {
 const EditNameSheet = lazy(() => import("@/components/edit-name-sheet"));
 
 import { Icon } from "@/components/ui/icon";
+import { NavRow } from "@/components/ui/nav-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useAppLockSetting } from "@/hooks/use-app-lock";
@@ -117,92 +118,63 @@ export default function ProfileScreen() {
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Manage
         </Text>
-        {gmailSyncEnabled && (
-          <Pressable
-            onPress={() => router.push(SCREENS.GMAIL_SYNC)}
-            className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-          >
-            <Icon as={Mail} className="mr-3 size-4 text-muted-foreground" />
-            <Text className="flex-1 text-sm font-medium text-foreground">
-              Gmail Sync
-            </Text>
-            <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-          </Pressable>
-        )}
-        <Pressable
+        <NavRow
+          title="Monthly Budgets"
+          description="Set per-category monthly spend limits."
           onPress={() => router.push(SCREENS.BUDGETS)}
-          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            Monthly Budgets
-          </Text>
-          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-        </Pressable>
-        <Pressable
+        />
+        <NavRow
+          title="Subscriptions"
+          description="Track recurring charges and when they renew."
           onPress={() => router.push(SCREENS.SUBSCRIPTIONS)}
-          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            Subscriptions
-          </Text>
-          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-        </Pressable>
-        <Pressable
-          onPress={() => router.push(SCREENS.TAGS)}
-          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            Tags
-          </Text>
-          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-        </Pressable>
-
-        {deviceSyncEnabled && (
+        />
+        {(gmailSyncEnabled || deviceSyncEnabled) && (
           <>
             <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Sync
             </Text>
-            <Pressable
-              onPress={() => router.push(SCREENS.DEVICE_SYNC)}
-              className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-            >
-              <Icon
-                as={RefreshCw}
-                className="mr-3 size-4 text-muted-foreground"
+            {gmailSyncEnabled && (
+              <NavRow
+                icon={Mail}
+                title="Gmail Sync"
+                description="Parse bank emails to auto-import transactions."
+                onPress={() => router.push(SCREENS.GMAIL_SYNC)}
               />
-              <Text className="flex-1 text-sm font-medium text-foreground">
-                Device Sync
-              </Text>
-              <Icon
-                as={ChevronRight}
-                className="size-4 text-muted-foreground"
+            )}
+            {deviceSyncEnabled && (
+              <NavRow
+                icon={RefreshCw}
+                title="Device Sync"
+                description="Mirror your data across your other devices."
+                onPress={() => router.push(SCREENS.DEVICE_SYNC)}
               />
-            </Pressable>
+            )}
           </>
         )}
 
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Export
         </Text>
-        <Pressable
+        <NavRow
+          icon={FileText}
+          title="Export & Backup"
+          description="Download your transactions as CSV or JSON."
           onPress={() => router.push(SCREENS.EXPORT)}
-          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Icon as={FileText} className="mr-3 size-4 text-muted-foreground" />
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            Export & Backup
-          </Text>
-          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-        </Pressable>
+        />
 
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Security
         </Text>
         <View className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3">
           <Icon as={Lock} className="mr-3 size-4 text-muted-foreground" />
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            App Lock
-          </Text>
+          <View className="flex-1">
+            <Text className="text-sm font-medium text-foreground">
+              App Lock
+            </Text>
+            <Text className="mt-0.5 text-xs text-muted-foreground">
+              Require Face ID or passcode to open the app.
+            </Text>
+          </View>
           <Switch
             value={appLockEnabled}
             onValueChange={() => void toggleAppLock()}
@@ -221,9 +193,14 @@ export default function ProfileScreen() {
             className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
           >
             <Icon as={Download} className="mr-3 size-4 text-muted-foreground" />
-            <Text className="flex-1 text-sm font-medium text-foreground">
-              Check for Updates
-            </Text>
+            <View className="flex-1">
+              <Text className="text-sm font-medium text-foreground">
+                Check for Updates
+              </Text>
+              <Text className="mt-0.5 text-xs text-muted-foreground">
+                Pull the latest build from Expo.
+              </Text>
+            </View>
             {checkingUpdate ? (
               <ActivityIndicator size="small" color={COLORS.PRIMARY} />
             ) : (
@@ -234,22 +211,23 @@ export default function ProfileScreen() {
             )}
           </Pressable>
         )}
-        <Pressable
+        <NavRow
+          title="About"
+          description="App version, device, and data stats."
           onPress={() => router.push(SCREENS.ABOUT)}
-          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            About
-          </Text>
-          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-        </Pressable>
+        />
         <Pressable
           onPress={handleClearTransactions}
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
         >
-          <Text className="flex-1 text-sm font-medium text-negative">
-            Clear All Transactions
-          </Text>
+          <View className="flex-1">
+            <Text className="text-sm font-medium text-negative">
+              Clear All Transactions
+            </Text>
+            <Text className="mt-0.5 text-xs text-muted-foreground">
+              Permanently delete every transaction.
+            </Text>
+          </View>
           <Icon as={Trash2} className="size-4 text-negative" />
         </Pressable>
         <Pressable
@@ -271,9 +249,14 @@ export default function ProfileScreen() {
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
         >
           <Icon as={Database} className="mr-3 size-4 text-muted-foreground" />
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            Load Sample Data
-          </Text>
+          <View className="flex-1">
+            <Text className="text-sm font-medium text-foreground">
+              Load Sample Data
+            </Text>
+            <Text className="mt-0.5 text-xs text-muted-foreground">
+              Populate with fake transactions for demo purposes.
+            </Text>
+          </View>
         </Pressable>
       </ScrollView>
 

@@ -163,7 +163,7 @@ export default function HistoryFiltersSheet({
 
   return (
     <>
-      <BottomSheet visible={visible} onClose={onClose}>
+      <BottomSheet visible={visible} onClose={onClose} avoidKeyboard>
         <View className="mb-6 flex-row items-center justify-between">
           <Text className="text-base font-bold text-foreground">Filters</Text>
           {draftHasFilters && (

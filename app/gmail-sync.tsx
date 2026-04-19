@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/icon";
 import { InfoRow } from "@/components/ui/info-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
+import { StepCard } from "@/components/ui/step-card";
 import { Text } from "@/components/ui/text";
 import { useBanksWithEmails } from "@/hooks/use-banks";
 import { useGmailSync, useGmailSyncConfig } from "@/hooks/use-gmail-sync";
@@ -191,6 +192,29 @@ export default function GmailSyncScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={SCROLL_BOTTOM_PADDING}
         >
+          <Text className="px-5 pb-3 pt-2 text-xs text-muted-foreground">
+            Connect your Gmail so Kharcha can read bank transaction emails and
+            turn them into entries automatically. We only read messages sent
+            from the bank addresses you've configured — nothing else.
+          </Text>
+
+          <SectionHeader
+            title="How it works"
+            description="Two things are required for Gmail Sync to work."
+          />
+          <View className="mx-5 mb-2 flex-row gap-3">
+            <StepCard
+              step="1"
+              title="Connect Gmail"
+              body="Sign in with the Google account that receives your bank emails. We use read-only access."
+            />
+            <StepCard
+              step="2"
+              title="Add your banks"
+              body="Tell us which sender addresses belong to your banks (e.g. alerts@hdfcbank.net). Only those are scanned."
+            />
+          </View>
+
           <SectionHeader title="Status" />
           <View className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3">
             <View

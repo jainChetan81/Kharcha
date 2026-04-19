@@ -171,7 +171,9 @@ export default function BanksScreen() {
           contentContainerStyle={{ paddingBottom: 120, paddingTop: 8 }}
         >
           <Text className="mx-5 mb-3 text-xs text-muted-foreground">
-            Only keep the banks you actually use as active.
+            Banks whose transaction emails should be parsed into Kharcha. Toggle
+            off the ones you don't use — their emails will be ignored during
+            Gmail sync. Tap a bank to manage its sender addresses.
           </Text>
 
           {isLoading ? (

@@ -12,7 +12,10 @@ export const SCREENS = {
   GMAIL_SYNC: "/gmail-sync",
   DEVICE_SYNC: "/settings/sync",
   BANKS: "/settings/banks",
-  TAGS: "/settings/tags",
+  TAGS: "/config/tags",
+  CONFIG_EXPENSE_CATEGORIES: "/config/expense-categories",
+  CONFIG_INCOME_CATEGORIES: "/config/income-categories",
+  CONFIG_SOURCES: "/config/sources",
   NETWORK_LOGS: "/network-logs",
   EXPORT: "/export",
   SUBSCRIPTION_AUDIT: "/subscriptions/audit",
@@ -219,6 +222,7 @@ export const QUERY_KEYS = {
   TAG_BREAKDOWN: "tag-breakdown",
   TAG_BREAKDOWN_ALL_TIME: "tag-breakdown-all-time",
   CLOUD_BACKUP: "cloud-backup",
+  DEVICE_SYNC_CONFIG: "device-sync",
 } as const;
 
 // Layout

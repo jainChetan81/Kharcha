@@ -4,7 +4,7 @@ import { useReactQueryDevTools } from "@dev-plugins/react-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as QuickActions from "expo-quick-actions";
 import { useQuickActionRouting } from "expo-quick-actions/router";
-import { SplashScreen, Stack } from "expo-router";
+import { SplashScreen, Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Suspense, useEffect, useState } from "react";
 import { ActivityIndicator, AppState, Pressable, View } from "react-native";
@@ -20,34 +20,19 @@ import { maybeAutoBackup } from "@/lib/cloud-backup";
 import {
   COLORS,
   CONFIG_KEYS,
+  QUERY_KEYS,
   SCREENS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { initDB } from "@/lib/db";
 import { getConfig } from "@/lib/db/config";
 import { processSubscriptions } from "@/lib/db/subscriptions";
+import { logScreenView } from "@/lib/firebase";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { isIOS } from "@/lib/utils";
 import { syncWidgetData } from "@/lib/widget";
 
 SplashScreen.preventAutoHideAsync();
-
-async function autoRegisterDevice() {
-  const existing = await getConfig(CONFIG_KEYS.BACKEND_FORWARDING_EMAIL);
-  if (existing) return;
-
-  const deviceId = await getOrCreateDeviceId();
-  const userName = await getConfig(CONFIG_KEYS.USER_NAME);
-
-  try {
-    await registerDevice(
-      deviceId,
-      userName && userName !== "User" ? userName : undefined,
-    );
-  } catch {
-    // Silent fail — will retry next launch
-  }
-}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,6 +42,27 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+async function autoRegisterDevice() {
+  const existing = await getConfig(CONFIG_KEYS.BACKEND_FORWARDING_EMAIL);
+  if (existing) {
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.FEATURE_FLAGS] });
+    return;
+  }
+
+  const deviceId = await getOrCreateDeviceId();
+  const userName = await getConfig(CONFIG_KEYS.USER_NAME);
+
+  try {
+    await registerDevice(
+      deviceId,
+      userName && userName !== "User" ? userName : undefined,
+    );
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.FEATURE_FLAGS] });
+  } catch {
+    // Silent fail — will retry next launch
+  }
+}
 
 const TOAST_SHADOW = {
   elevation: 6,
@@ -117,6 +123,14 @@ const toastConfig: ToastConfig = {
     </View>
   ),
 };
+
+function ScreenViewTracker() {
+  const pathname = usePathname();
+  useEffect(() => {
+    if (pathname) logScreenView(pathname);
+  }, [pathname]);
+  return null;
+}
 
 export default function RootLayout() {
   if (__DEV__) {
@@ -211,7 +225,10 @@ export default function RootLayout() {
               locked ? (
                 <LockedScreen onUnlock={authenticate} />
               ) : (
-                <Stack screenOptions={{ headerShown: false }} />
+                <>
+                  <ScreenViewTracker />
+                  <Stack screenOptions={{ headerShown: false }} />
+                </>
               )
             ) : null}
           </Suspense>
