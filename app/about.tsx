@@ -47,7 +47,7 @@ export default function AboutScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={SCROLL_BOTTOM_PADDING}
       >
-        <SectionHeader title="App" />
+        <SectionHeader title="App" description="Version info for this build." />
         <Pressable onPress={handleVersionTap}>
           <InfoRow
             label="App Version"
@@ -60,7 +60,10 @@ export default function AboutScreen() {
         <InfoRow label="Build Number" value={Application.nativeBuildVersion} />
         <InfoRow label="Bundle ID" value={Application.applicationId} />
 
-        <SectionHeader title="Device" />
+        <SectionHeader
+          title="Device"
+          description="Hardware and OS this app is running on."
+        />
         <InfoRow label="Device" value={Device.modelName} />
         <InfoRow
           label="OS Version"
@@ -71,7 +74,10 @@ export default function AboutScreen() {
           value={DEVICE_TYPE_NAME[Device.deviceType ?? 0] ?? "Unknown"}
         />
 
-        <SectionHeader title="Data" />
+        <SectionHeader
+          title="Data"
+          description="Quick counts of what's in your local database."
+        />
         <InfoRow
           label="Total Transactions"
           value={String(stats?.total_transactions ?? 0)}

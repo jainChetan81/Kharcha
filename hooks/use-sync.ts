@@ -86,7 +86,7 @@ export async function registerDevice(
 
 export function useDeviceSyncConfig() {
   return useQuery({
-    queryKey: [QUERY_KEYS.CONFIG, "device-sync"],
+    queryKey: [QUERY_KEYS.CONFIG, QUERY_KEYS.DEVICE_SYNC_CONFIG],
     queryFn: async () => {
       const [deviceId, forwardingEmail, lastSyncedAt] = await Promise.all([
         getOrCreateDeviceId(),
@@ -111,7 +111,7 @@ export function useRegisterDevice() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CONFIG, "device-sync"],
+        queryKey: [QUERY_KEYS.CONFIG, QUERY_KEYS.DEVICE_SYNC_CONFIG],
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.FEATURE_FLAGS],
@@ -221,7 +221,7 @@ export function useDeviceSync() {
         count: String(data.inserted),
       });
       queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CONFIG, "device-sync"],
+        queryKey: [QUERY_KEYS.CONFIG, QUERY_KEYS.DEVICE_SYNC_CONFIG],
       });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TRANSACTIONS] });
       queryClient.invalidateQueries({

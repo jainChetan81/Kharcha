@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { InfoRow } from "@/components/ui/info-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
+import { StepCard } from "@/components/ui/step-card";
 import { Text } from "@/components/ui/text";
 import {
   useDeviceSync,
@@ -65,7 +66,7 @@ export default function DeviceSyncScreen() {
     setShowDatePicker(false);
     await updateConfig(CONFIG_KEYS.BACKEND_LAST_SYNCED_AT, date.toISOString());
     queryClient.invalidateQueries({
-      queryKey: [QUERY_KEYS.CONFIG, "device-sync"],
+      queryKey: [QUERY_KEYS.CONFIG, QUERY_KEYS.DEVICE_SYNC_CONFIG],
     });
   }
 
@@ -108,6 +109,13 @@ export default function DeviceSyncScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={SCROLL_BOTTOM_PADDING}
         >
+          <Text className="px-5 pb-3 pt-2 text-xs text-muted-foreground">
+            Device Sync pulls transactions from your personal forwarding inbox.
+            Your bank emails forward there, our backend parses them, and this
+            device pulls the results. Set up Gmail forwarding once — see the
+            steps at the bottom of this screen.
+          </Text>
+
           <SectionHeader title="User ID" />
           <Pressable
             onPress={() => {
@@ -232,6 +240,51 @@ export default function DeviceSyncScreen() {
                   </Text>
                 </Button>
               </View>
+
+              <SectionHeader
+                title="Set up Gmail forwarding"
+                description="Follow these steps once to let bank emails flow into your forwarding inbox."
+              />
+              <View className="mx-5 mb-2 flex-row gap-3">
+                <StepCard
+                  step="1"
+                  title="Copy address"
+                  body="Tap your forwarding email above to copy it."
+                />
+                <StepCard
+                  step="2"
+                  title="Gmail Settings"
+                  body="Open Gmail on web → Settings → Forwarding and POP/IMAP."
+                />
+              </View>
+              <View className="mx-5 mb-2 flex-row gap-3">
+                <StepCard
+                  step="3"
+                  title="Add address"
+                  body="Click 'Add a forwarding address' and paste the copied email. Confirm it."
+                />
+                <StepCard
+                  step="4"
+                  title="Create filter"
+                  body="Go to Filters → Create filter → From: your bank's email (e.g. alerts@hdfcbank.net)."
+                />
+              </View>
+              <View className="mx-5 mb-2 flex-row gap-3">
+                <StepCard
+                  step="5"
+                  title="Forward to"
+                  body="Check 'Forward it to' and pick your Kharcha forwarding address. Save."
+                />
+                <StepCard
+                  step="6"
+                  title="Repeat"
+                  body="Add one filter per bank. New transactions flow in within a few minutes."
+                />
+              </View>
+              <Text className="mx-5 mb-2 mt-2 text-[11px] text-muted-foreground">
+                Only emails that match your filter rules are forwarded. Gmail
+                keeps the originals; nothing is deleted.
+              </Text>
             </>
           )}
         </ScrollView>

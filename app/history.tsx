@@ -36,6 +36,7 @@ import {
   ScreenError,
 } from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
@@ -533,27 +534,26 @@ export default function HistoryScreen() {
             ) : null
           }
           ListEmptyComponent={
-            <View className="items-center pt-20">
-              <Icon
-                as={debouncedSearch ? Search : Receipt}
-                className="mb-3 size-12 text-muted-foreground"
-              />
-              <Text className="text-sm text-muted-foreground">
-                {debouncedSearch
+            <EmptyState
+              icon={debouncedSearch ? Search : Receipt}
+              title={
+                debouncedSearch
                   ? `no results for '${debouncedSearch}'`
-                  : "No transactions found"}
-              </Text>
-              {debouncedSearch && hasActiveFilters && (
-                <Text className="mt-1 text-xs text-muted-foreground">
-                  try clearing filters or changing your search
-                </Text>
-              )}
-              {!debouncedSearch && hasActiveFilters && (
-                <Pressable onPress={resetAllFilters} className="mt-2">
+                  : "No transactions found"
+              }
+              description={
+                debouncedSearch && hasActiveFilters
+                  ? "try clearing filters or changing your search"
+                  : undefined
+              }
+              inList
+            >
+              {!debouncedSearch && hasActiveFilters ? (
+                <Pressable onPress={resetAllFilters}>
                   <Text className="text-xs text-primary">Clear filters</Text>
                 </Pressable>
-              )}
-            </View>
+              ) : null}
+            </EmptyState>
           }
           contentContainerStyle={{ paddingBottom: 60 }}
         />

@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  ScrollView,
   Switch,
   View,
 } from "react-native";
@@ -30,7 +31,7 @@ import {
   useRestoreFromCloud,
 } from "@/hooks/use-cloud-backup";
 import { DriveScopeMissingError, ICloudSyncingError } from "@/lib/cloud-backup";
-import { COLORS } from "@/lib/constants";
+import { COLORS, SCROLL_BOTTOM_PADDING } from "@/lib/constants";
 import { initDB } from "@/lib/db";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
@@ -85,31 +86,50 @@ export default function ExportScreen() {
     <View className="flex-1 bg-background">
       <ScreenHeader title="Export & Backup" />
 
-      <SectionHeader title="Export" />
-      <Row
-        icon={FileText}
-        label="Export as CSV"
-        disabled={exportMutation.isPending || importMutation.isPending}
-        onPress={() => setShowExport(true)}
-      />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={SCROLL_BOTTOM_PADDING}
+      >
+        <Text className="px-5 pb-3 pt-2 text-xs text-muted-foreground">
+          Send your data out of the app for spreadsheets, archives, or moving to
+          a new phone. CSV is for humans, database files are for a full restore.
+        </Text>
 
-      <SectionHeader title="Backup" />
-      <Row
-        icon={Download}
-        label="Export Database"
-        loading={exportMutation.isPending}
-        disabled={exportMutation.isPending || importMutation.isPending}
-        onPress={handleDbExport}
-      />
-      <Row
-        icon={Upload}
-        label="Import Database"
-        loading={importMutation.isPending}
-        disabled={exportMutation.isPending || importMutation.isPending}
-        onPress={handleDbImport}
-      />
+        <SectionHeader
+          title="Export"
+          description="Spreadsheet-friendly format for analysis or sharing."
+        />
+        <Row
+          icon={FileText}
+          label="Export as CSV"
+          description="One row per transaction. Opens in Excel, Numbers, Google Sheets."
+          disabled={exportMutation.isPending || importMutation.isPending}
+          onPress={() => setShowExport(true)}
+        />
 
-      <CloudBackupSection />
+        <SectionHeader
+          title="Backup"
+          description="Full snapshot of every transaction, category, and setting."
+        />
+        <Row
+          icon={Download}
+          label="Export Database"
+          description="Save a complete backup file you can re-import later."
+          loading={exportMutation.isPending}
+          disabled={exportMutation.isPending || importMutation.isPending}
+          onPress={handleDbExport}
+        />
+        <Row
+          icon={Upload}
+          label="Import Database"
+          description="Replace all current data with a backup file. Destructive."
+          loading={importMutation.isPending}
+          disabled={exportMutation.isPending || importMutation.isPending}
+          onPress={handleDbImport}
+        />
+
+        <CloudBackupSection />
+      </ScrollView>
 
       <Suspense fallback={null}>
         <ExportSheet
@@ -213,7 +233,10 @@ function CloudBackupSection() {
 
   return (
     <>
-      <SectionHeader title={`${providerLabel} Backup`} />
+      <SectionHeader
+        title={`${providerLabel} Backup`}
+        description={`Keep an automatic encrypted copy in your ${providerLabel} so you can recover if you lose or switch phones.`}
+      />
 
       <View className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3">
         <Icon as={Cloud} className="mr-3 size-4 text-muted-foreground" />
@@ -236,6 +259,7 @@ function CloudBackupSection() {
       <Row
         icon={CloudUpload}
         label="Back up now"
+        description={`Run a one-off backup to ${providerLabel} right now.`}
         loading={backupMutation.isPending}
         disabled={busy}
         onPress={handleBackupNow}
@@ -243,6 +267,7 @@ function CloudBackupSection() {
       <Row
         icon={CloudDownload}
         label={`Restore from ${providerLabel}`}
+        description="Replace everything on this device with your latest cloud backup. Destructive."
         loading={restoreMutation.isPending}
         disabled={busy}
         onPress={handleRestore}
@@ -254,12 +279,14 @@ function CloudBackupSection() {
 function Row({
   icon,
   label,
+  description,
   loading = false,
   disabled = false,
   onPress,
 }: {
   icon: LucideIcon;
   label: string;
+  description?: string;
   loading?: boolean;
   disabled?: boolean;
   onPress: () => void;
@@ -271,9 +298,14 @@ function Row({
       className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
     >
       <Icon as={icon} className="mr-3 size-4 text-muted-foreground" />
-      <Text className="flex-1 text-sm font-medium text-foreground">
-        {label}
-      </Text>
+      <View className="flex-1">
+        <Text className="text-sm font-medium text-foreground">{label}</Text>
+        {description ? (
+          <Text className="mt-0.5 text-xs text-muted-foreground">
+            {description}
+          </Text>
+        ) : null}
+      </View>
       {loading && <ActivityIndicator size="small" color={COLORS.PRIMARY} />}
     </Pressable>
   );

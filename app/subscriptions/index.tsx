@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
@@ -110,20 +111,15 @@ export default function SubscriptionsScreen() {
       </ScreenHeader>
 
       {subs.length === 0 ? (
-        <View className="flex-1 items-center justify-center">
-          <Icon as={Receipt} className="mb-3 size-12 text-muted-foreground" />
-          <Text className="text-sm text-muted-foreground">
-            No subscriptions yet
-          </Text>
+        <EmptyState icon={Receipt} title="No subscriptions yet">
           <Pressable
             onPress={() => router.push(`${SCREENS.ADD}?mode=subscription`)}
-            className="mt-3"
           >
             <Text className="text-sm font-medium text-primary">
               Add your first subscription
             </Text>
           </Pressable>
-        </View>
+        </EmptyState>
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}

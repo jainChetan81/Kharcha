@@ -13,6 +13,7 @@ import {
   ScreenError,
 } from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
@@ -226,20 +227,16 @@ export default function ReimbursementsScreen() {
           }
           ListEmptyComponent={
             isLoading ? null : (
-              <View className="items-center pt-20">
-                <Icon
-                  as={Receipt}
-                  className="mb-3 size-12 text-muted-foreground"
-                />
-                <Text className="text-sm text-muted-foreground">
-                  {isPendingTab
+              <EmptyState
+                icon={Receipt}
+                title={
+                  isPendingTab
                     ? "No pending reimbursements"
-                    : "Nothing reimbursed yet"}
-                </Text>
-                <Text className="mt-1 px-8 text-center text-xs text-muted-foreground">
-                  Toggle "Reimbursable" on any expense to track it here.
-                </Text>
-              </View>
+                    : "Nothing reimbursed yet"
+                }
+                description='Toggle "Reimbursable" on any expense to track it here.'
+                inList
+              />
             )
           }
           contentContainerStyle={{ paddingBottom: 60 }}

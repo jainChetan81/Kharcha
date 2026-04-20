@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   type KeyboardTypeOptions,
@@ -48,8 +48,18 @@ export function BottomSheet(props: BottomSheetProps) {
 
   const [value, setValue] = useState(props.defaultValue ?? "");
 
+  // Re-sync internal state to the latest defaultValue each time the sheet
+  // opens — without this, reopening the sheet (e.g. renaming a second tag
+  // or editing the user name after a prior save) shows stale/empty input
+  // because useState only initializes on first mount.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sync on open only; ignoring defaultValue avoids clobbering user edits mid-session
+  useEffect(() => {
+    if (visible) {
+      setValue(props.defaultValue ?? "");
+    }
+  }, [visible]);
+
   function handleClose() {
-    setValue(props.defaultValue ?? "");
     onClose();
   }
 
@@ -58,7 +68,6 @@ export function BottomSheet(props: BottomSheetProps) {
     const trimmed = value.trim();
     if (!trimmed) return;
     await props.onSave(trimmed);
-    setValue("");
   }
 
   const content = (

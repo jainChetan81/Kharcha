@@ -51,6 +51,25 @@ export function logEvent(
     .catch(() => {});
 }
 
+export function logScreenView(pathname: string): void {
+  // Collapse numeric path segments (IDs) so dynamic routes like `/edit/123`
+  // all roll up to a single "/edit/:id" in analytics instead of fragmenting
+  // metrics per transaction.
+  const screenName = pathname.replace(/\/\d+/g, "/:id") || "/";
+  if (__DEV__) {
+    console.log("[Firebase] screen_view", screenName);
+    return;
+  }
+  import("@react-native-firebase/analytics")
+    .then((mod) =>
+      mod.default().logScreenView({
+        screen_name: screenName,
+        screen_class: screenName,
+      }),
+    )
+    .catch(() => {});
+}
+
 export async function withTrace<T>(
   name: string,
   fn: () => Promise<T>,

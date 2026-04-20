@@ -37,9 +37,14 @@ export function DatePickerModal({
 }) {
   const [tempDate, setTempDate] = useState(value);
 
+  // Only seed tempDate from `value` when the modal opens. Parents often pass
+  // `value` as a freshly-parsed Date on every render (e.g. parse(dateFrom, ...)),
+  // so depending on `value` here would clobber the user's spinner selection
+  // whenever the parent re-renders (e.g. a query refetch).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sync on open only
   useEffect(() => {
     if (visible) setTempDate(value);
-  }, [visible, value]);
+  }, [visible]);
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -108,12 +113,16 @@ export function DateTimePickerModal({
   const [tempDate, setTempDate] = useState(value);
   const [step, setStep] = useState<"date" | "time">("date");
 
+  // See note in DatePickerModal above: seed only on open, not on every render,
+  // otherwise a parent re-render rebuilds the `value` Date and snaps the
+  // spinner back to the committed value.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sync on open only
   useEffect(() => {
     if (visible) {
       setTempDate(value);
       setStep("date");
     }
-  }, [visible, value]);
+  }, [visible]);
 
   function handleNext() {
     if (step === "date") {
