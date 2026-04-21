@@ -11,6 +11,7 @@ export const FIREBASE_EVENTS = {
   EXPORT_TRIGGERED: "export_triggered",
   IMPORT_TRIGGERED: "import_triggered",
   BUDGET_SET: "budget_set",
+  SYNC_PREF_TOGGLED: "sync_pref_toggled",
 } as const;
 
 export type KharchaEvent =

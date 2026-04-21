@@ -99,6 +99,7 @@ export function DateTimePickerModal({
   visible,
   value,
   maximumDate,
+  minimumDate,
   onConfirm,
   onCancel,
   onClear,
@@ -106,6 +107,7 @@ export function DateTimePickerModal({
   visible: boolean;
   value: Date;
   maximumDate?: Date;
+  minimumDate?: Date;
   onConfirm: (date: Date) => void;
   onCancel: () => void;
   onClear?: () => void;
@@ -170,6 +172,7 @@ export function DateTimePickerModal({
                 themeVariant="dark"
                 textColor={COLORS.WHITE}
                 maximumDate={maximumDate}
+                minimumDate={minimumDate}
                 onChange={(_event, selectedDate) => {
                   if (selectedDate) setTempDate(selectedDate);
                 }}

@@ -11,6 +11,7 @@ import {
 import { ScreenError } from "@/components/error-boundary";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { ScreenDescription } from "@/components/ui/screen-description";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
@@ -130,6 +131,12 @@ export default function SubscriptionsScreen() {
             />
           }
         >
+          <ScreenDescription>
+            Recurring charges like Netflix, rent, or insurance. Kharcha
+            auto-creates a transaction on each billing day. Toggle off to pause
+            tracking without deleting.
+          </ScreenDescription>
+
           {thisMonth.length > 0 && (
             <>
               <Text className="mb-2 mt-2 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

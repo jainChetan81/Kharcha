@@ -1,23 +1,13 @@
 import { FlexWidget, TextWidget } from "react-native-android-widget";
-import { TAG_DISPLAY_LIMIT } from "@/lib/constants";
+import { CATEGORY_PALETTE, COLORS, TAG_DISPLAY_LIMIT } from "@/lib/constants";
 
-const BG = "#0a0a0a";
-const FG = "#f0f0f0";
-const MUTED = "#888888";
-const PRIMARY = "#7c3aed";
-const BAR_BG = "#2a2a2a";
-const DANGER = "#ef4444";
-const POSITIVE = "#22c55e";
-
-const CATEGORY_PALETTE: `#${string}`[] = [
-  "#7c3aed",
-  "#f59e0b",
-  "#22c55e",
-  "#3b82f6",
-  "#ef4444",
-  "#ec4899",
-  "#06b6d4",
-];
+const BG = COLORS.BACKGROUND;
+const FG = COLORS.FOREGROUND;
+const MUTED = COLORS.MUTED;
+const PRIMARY = COLORS.PRIMARY;
+const BAR_BG = COLORS.BAR_BG;
+const DANGER = COLORS.DANGER;
+const POSITIVE = COLORS.POSITIVE;
 
 export type AndroidWidgetData = {
   totalExpenses: number;

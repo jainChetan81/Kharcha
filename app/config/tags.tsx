@@ -1,7 +1,10 @@
 import { Pencil, Plus, Tag as TagIcon, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { ScreenError } from "@/components/error-boundary";
+import {
+  ComponentErrorBoundary,
+  ScreenError,
+} from "@/components/error-boundary";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
@@ -119,41 +122,43 @@ export default function TagsScreen() {
         )}
       </ScrollView>
 
-      <BottomSheet
-        visible={addSheetVisible}
-        onClose={() => setAddSheetVisible(false)}
-        title="New Tag"
-        placeholder="e.g. goa-trip, birthday, wfh"
-        submitLabel="Add Tag"
-        onSave={async (name) => {
-          try {
-            const { isNew } = await addMutation.mutateAsync(name);
-            setAddSheetVisible(false);
-            showSuccessToast(isNew ? "Tag added" : "Tag already exists");
-          } catch (err) {
-            showErrorToast("Failed to add tag", err);
-          }
-        }}
-      />
+      <ComponentErrorBoundary>
+        <BottomSheet
+          visible={addSheetVisible}
+          onClose={() => setAddSheetVisible(false)}
+          title="New Tag"
+          placeholder="e.g. goa-trip, birthday, wfh"
+          submitLabel="Add Tag"
+          onSave={async (name) => {
+            try {
+              const { isNew } = await addMutation.mutateAsync(name);
+              setAddSheetVisible(false);
+              showSuccessToast(isNew ? "Tag added" : "Tag already exists");
+            } catch (err) {
+              showErrorToast("Failed to add tag", err);
+            }
+          }}
+        />
 
-      <BottomSheet
-        visible={!!editTarget}
-        onClose={() => setEditTarget(null)}
-        title="Rename Tag"
-        placeholder="Tag name"
-        submitLabel="Save"
-        defaultValue={editTarget?.name ?? ""}
-        onSave={async (name) => {
-          if (!editTarget) return;
-          try {
-            await renameMutation.mutateAsync({ id: editTarget.id, name });
-            setEditTarget(null);
-            showSuccessToast("Tag updated");
-          } catch (err) {
-            showErrorToast("Failed to update", err);
-          }
-        }}
-      />
+        <BottomSheet
+          visible={!!editTarget}
+          onClose={() => setEditTarget(null)}
+          title="Rename Tag"
+          placeholder="Tag name"
+          submitLabel="Save"
+          defaultValue={editTarget?.name ?? ""}
+          onSave={async (name) => {
+            if (!editTarget) return;
+            try {
+              await renameMutation.mutateAsync({ id: editTarget.id, name });
+              setEditTarget(null);
+              showSuccessToast("Tag updated");
+            } catch (err) {
+              showErrorToast("Failed to update", err);
+            }
+          }}
+        />
+      </ComponentErrorBoundary>
     </View>
   );
 }

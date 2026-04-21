@@ -1,4 +1,4 @@
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, subMonths } from "date-fns";
 import { router } from "expo-router";
 import { ChevronRight, Copy, Landmark } from "lucide-react-native";
 import { lazy, Suspense, useState } from "react";
@@ -10,7 +10,12 @@ import { InfoRow } from "@/components/ui/info-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StepCard } from "@/components/ui/step-card";
+import { SwitchRow } from "@/components/ui/switch-row";
 import { Text } from "@/components/ui/text";
+import {
+  useAutoRefreshPrefs,
+  useSetAutoRefreshPref,
+} from "@/hooks/use-auto-refresh-prefs";
 import { useBanksWithEmails } from "@/hooks/use-banks";
 import { useGmailSync, useGmailSyncConfig } from "@/hooks/use-gmail-sync";
 import { useSyncState } from "@/hooks/use-sync-state";
@@ -18,9 +23,10 @@ import { copyMaskedToClipboard } from "@/lib/clipboard";
 import {
   COLORS,
   CONFIG_KEYS,
-  DATE_FORMAT,
+  DATE_DISPLAY_FORMAT,
   EMAIL_LOG_STATUS,
   GMAIL_API,
+  GMAIL_SYNC_MAX_MONTHS_BACK,
   SCREENS,
   SCROLL_BOTTOM_PADDING,
 } from "@/lib/constants";
@@ -35,9 +41,9 @@ const SyncResultsSheet = lazy(() =>
     default: m.SyncResultsSheet,
   })),
 );
-const DatePickerModal = lazy(() =>
+const DateTimePickerModal = lazy(() =>
   import("@/components/ui/date-picker-modal").then((m) => ({
-    default: m.DatePickerModal,
+    default: m.DateTimePickerModal,
   })),
 );
 
@@ -70,6 +76,8 @@ export default function GmailSyncScreen() {
   const gmailSyncMutation = useGmailSync();
   const syncing = gmailSyncMutation.isPending;
   const busy = loading || syncing || verifying;
+  const { data: autoRefreshPrefs } = useAutoRefreshPrefs();
+  const setAutoRefreshPref = useSetAutoRefreshPref();
 
   const emailToBankName = new Map<string, string>();
   for (const b of banksData) {
@@ -262,6 +270,15 @@ export default function GmailSyncScreen() {
                 value={transactionsAdded ?? "0"}
               />
 
+              <SwitchRow
+                label="Enable Gmail Sync"
+                description="Turn off to pause all Gmail syncing — manual and automatic."
+                value={autoRefreshPrefs?.gmail ?? false}
+                onValueChange={(next) =>
+                  setAutoRefreshPref.mutate({ key: "gmail", enabled: next })
+                }
+              />
+
               <SectionHeader title="Banks" />
               <Pressable
                 onPress={() => router.push(SCREENS.BANKS)}
@@ -304,15 +321,22 @@ export default function GmailSyncScreen() {
                   Fetch emails after
                 </Text>
                 <Text className="text-sm text-primary">
-                  {format(syncFromDate, DATE_FORMAT)}
+                  {format(syncFromDate, DATE_DISPLAY_FORMAT)}
                 </Text>
               </Pressable>
+              <Text className="mx-5 mb-2 text-[11px] text-muted-foreground">
+                Can't go earlier than {GMAIL_SYNC_MAX_MONTHS_BACK} month
+                {GMAIL_SYNC_MAX_MONTHS_BACK === 1 ? "" : "s"} ago.
+              </Text>
               <Suspense fallback={null}>
-                <DatePickerModal
+                <DateTimePickerModal
                   visible={showDatePicker}
                   value={syncFromDate}
-                  title="Fetch Emails After"
                   maximumDate={new Date()}
+                  minimumDate={subMonths(
+                    new Date(),
+                    GMAIL_SYNC_MAX_MONTHS_BACK,
+                  )}
                   onConfirm={(date) => {
                     setShowDatePicker(false);
                     handleUpdateSyncFrom(date);
@@ -325,7 +349,7 @@ export default function GmailSyncScreen() {
                 <Button
                   className="h-12 rounded-xl bg-primary"
                   onPress={handleSync}
-                  disabled={busy || noActiveBanks}
+                  disabled={busy || noActiveBanks || !autoRefreshPrefs?.gmail}
                 >
                   {syncing ? (
                     <ActivityIndicator

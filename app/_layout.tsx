@@ -15,6 +15,7 @@ import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { LockedScreen } from "@/components/locked-screen";
 import { Text } from "@/components/ui/text";
 import { useAppLock } from "@/hooks/use-app-lock";
+import { readAutoRefreshPrefs } from "@/hooks/use-auto-refresh-prefs";
 import { getOrCreateDeviceId, registerDevice } from "@/hooks/use-sync";
 import { maybeAutoBackup } from "@/lib/cloud-backup";
 import {
@@ -22,6 +23,7 @@ import {
   CONFIG_KEYS,
   QUERY_KEYS,
   SCREENS,
+  SHADOWS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { initDB } from "@/lib/db";
@@ -64,19 +66,11 @@ async function autoRegisterDevice() {
   }
 }
 
-const TOAST_SHADOW = {
-  elevation: 6,
-  shadowColor: COLORS.SHADOW,
-  shadowOpacity: 0.3,
-  shadowRadius: 8,
-  shadowOffset: { width: 0, height: 2 },
-} as const;
-
 const toastConfig: ToastConfig = {
   success: ({ text1, text2, props }) => (
     <View
       className="mx-4 mt-2 flex-row items-center rounded-xl border-l-4 border-positive bg-card px-4 py-3"
-      style={TOAST_SHADOW}
+      style={SHADOWS.TOAST}
     >
       <View className="flex-1">
         <Text className="text-sm font-semibold text-foreground">{text1}</Text>
@@ -97,7 +91,7 @@ const toastConfig: ToastConfig = {
   error: ({ text1, text2 }) => (
     <View
       className="mx-4 mt-2 flex-row items-center rounded-xl border-l-4 border-negative bg-card px-4 py-3"
-      style={TOAST_SHADOW}
+      style={SHADOWS.TOAST}
     >
       <View className="flex-1">
         <Text className="text-sm font-semibold text-foreground">{text1}</Text>
@@ -110,7 +104,7 @@ const toastConfig: ToastConfig = {
   undo: ({ text1, props }) => (
     <View
       className="mx-4 mt-2 flex-row items-center rounded-xl bg-card px-4 py-3"
-      style={TOAST_SHADOW}
+      style={SHADOWS.TOAST}
     >
       <Text className="flex-1 text-sm font-semibold text-foreground">
         {text1}
@@ -154,6 +148,10 @@ export default function RootLayout() {
             created.join(", "),
           );
         }
+        await queryClient.prefetchQuery({
+          queryKey: [QUERY_KEYS.USER_SYNC_PREFS],
+          queryFn: readAutoRefreshPrefs,
+        });
         setDbReady(true);
         syncWidgetData();
         autoRegisterDevice();

@@ -118,6 +118,33 @@ export const COLORS = {
   SHADOW: "#000000",
 } as const;
 
+export const CATEGORY_PALETTE: readonly `#${string}`[] = [
+  "#7c3aed",
+  "#f59e0b",
+  "#22c55e",
+  "#3b82f6",
+  "#ef4444",
+  "#ec4899",
+  "#06b6d4",
+];
+
+export const SHADOWS = {
+  TOAST: {
+    elevation: 6,
+    shadowColor: COLORS.SHADOW,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  FAB: {
+    elevation: 10,
+    shadowColor: COLORS.SHADOW,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 10 },
+  },
+} as const;
+
 export const LABELS = {
   AVAILABLE: "available",
   SPENT: "spent",
@@ -146,6 +173,8 @@ export const CONFIG_KEYS = {
   CLOUD_BACKUP_ENABLED: "cloud_backup_enabled",
   CLOUD_BACKUP_LAST_AT: "cloud_backup_last_at",
   CLOUD_BACKUP_LAST_FILE_ID: "cloud_backup_last_file_id",
+  GMAIL_SYNC_USER_ENABLED: "gmail_sync_user_enabled",
+  DEVICE_SYNC_USER_ENABLED: "device_sync_user_enabled",
 } as const;
 
 export const SUBSCRIPTION_NOTE = "Auto-created from subscription";
@@ -223,10 +252,20 @@ export const QUERY_KEYS = {
   TAG_BREAKDOWN_ALL_TIME: "tag-breakdown-all-time",
   CLOUD_BACKUP: "cloud-backup",
   DEVICE_SYNC_CONFIG: "device-sync",
+  USER_SYNC_PREFS: "user-sync-prefs",
+} as const;
+
+export const BOOL_FLAG = {
+  ON: "1",
+  OFF: "0",
 } as const;
 
 // Layout
 export const SCROLL_BOTTOM_PADDING = { paddingBottom: 60 } as const;
+export const SHEET_MAX_HEIGHT_FRACTION = 0.65;
+
+// Gmail sync
+export const GMAIL_SYNC_MAX_MONTHS_BACK = 1;
 
 // Thresholds
 export const BUDGET_WARN_THRESHOLD = 0.75;

@@ -35,7 +35,7 @@ import { Text } from "@/components/ui/text";
 import { useBudgets } from "@/hooks/use-budgets";
 import { useConfig } from "@/hooks/use-config";
 import { useCurrency } from "@/hooks/use-currency";
-import { useGmailSyncEnabled } from "@/hooks/use-feature-flags";
+import { useGmailSyncActive } from "@/hooks/use-feature-flags";
 import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
 import { useUpdateDeviceName } from "@/hooks/use-sync";
@@ -54,6 +54,7 @@ import {
   LABELS,
   MONTH_FORMAT,
   SCREENS,
+  SHADOWS,
   TOP_BREAKDOWN_LIMIT,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
@@ -64,14 +65,6 @@ import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
 const EditNameSheet = lazy(() => import("@/components/edit-name-sheet"));
 
 const FAB_STYLE = { marginTop: -44, marginBottom: 8 } as const;
-
-const FAB_SHADOW = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 10 },
-  shadowOpacity: 0.4,
-  shadowRadius: 12,
-  elevation: 10,
-} as const;
 
 function SpendingRing({
   income,
@@ -149,8 +142,8 @@ export default function HomeScreen() {
   const { format: fmt } = useCurrency();
   const { userName, updateUserName } = useConfig();
   const { refreshing, onRefresh, gmailConnected } = useSyncRefresh();
-  const gmailSyncEnabled = useGmailSyncEnabled();
-  const showSyncButton = gmailSyncEnabled && gmailConnected;
+  const gmailSyncActive = useGmailSyncActive();
+  const showSyncButton = gmailSyncActive && gmailConnected;
   const updateDeviceNameMutation = useUpdateDeviceName();
   const [showEditName, setShowEditName] = useState(false);
   const [nameBannerDismissed, setNameBannerDismissed] = useState(false);
@@ -450,7 +443,7 @@ export default function HomeScreen() {
           <Pressable onPress={() => router.push(SCREENS.ADD)} style={FAB_STYLE}>
             <View
               className="h-[52px] w-[52px] items-center justify-center rounded-full bg-primary"
-              style={FAB_SHADOW}
+              style={SHADOWS.FAB}
             >
               <Icon as={Plus} className="size-6 text-primary-foreground" />
             </View>

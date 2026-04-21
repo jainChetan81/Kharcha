@@ -2,18 +2,14 @@
  * App version helpers
  * Tracks app version and schema version for migration handling
  *
- * Version locations and intentional divergence:
- *   - package.json: "0.1.0-beta.1" (full semver with prerelease tag)
- *   - app.json:     "0.1.0"        (Expo does not support prerelease suffixes)
- *   - version.ts:   "0.1.0"        (used for runtime comparisons — matches app.json
- *                                    since compareVersions() only handles major.minor.patch)
- *
- * When bumping versions, update all three. The prerelease tag in package.json
- * is intentionally omitted here and in app.json due to platform limitations.
+ * Keep in sync with package.json and app.json when bumping. Expo does not
+ * support prerelease suffixes in app.json, and compareVersions() below only
+ * handles major.minor.patch — so any `-beta`/`-rc` tag lives in package.json
+ * alone.
  */
 
-// Keep in sync with app.json (see comment above for why this omits prerelease tag)
-const APP_VERSION = "0.1.0";
+// Keep in sync with app.json
+const APP_VERSION = "0.6.0";
 export function compareVersions(v1: string, v2: string): -1 | 0 | 1 {
   const [major1, minor1, patch1] = v1.split(".").map(Number);
   const [major2, minor2, patch2] = v2.split(".").map(Number);

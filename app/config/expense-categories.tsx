@@ -1,23 +1,21 @@
-import { Plus } from "lucide-react-native";
 import { lazy, Suspense, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { ConfigRow } from "@/components/config-row";
 import {
   ComponentErrorBoundary,
   ScreenError,
 } from "@/components/error-boundary";
-import { Icon } from "@/components/ui/icon";
+import { DashedAddButton } from "@/components/ui/dashed-add-button";
+import { ScreenDescription } from "@/components/ui/screen-description";
 import { ScreenHeader } from "@/components/ui/screen-header";
-import { Text } from "@/components/ui/text";
 import {
   useAddCategory,
   useAllCategories,
   useDeleteCategory,
   useReorderCategories,
 } from "@/hooks/use-categories";
-import { showDeleteConfirm } from "@/lib/alerts";
+import { useConfigItemActions } from "@/hooks/use-config-item-actions";
 import { SCROLL_BOTTOM_PADDING, TRANSACTION_TYPE } from "@/lib/constants";
-import { reorder } from "@/lib/reorder";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 const AddCategorySheet = lazy(() => import("@/components/add-category-sheet"));
@@ -31,26 +29,12 @@ export default function ExpenseCategoriesScreen() {
 
   const list = categories.filter((c) => c.type === TRANSACTION_TYPE.EXPENSE);
 
-  function handleDelete(id: number) {
-    showDeleteConfirm(
-      "Delete Category",
-      "This will remove the category.",
-      async () => {
-        try {
-          await deleteMutation.mutateAsync(id);
-          showSuccessToast("Category deleted");
-        } catch (err) {
-          showErrorToast("Failed", err);
-        }
-      },
-    );
-  }
-
-  function move(index: number, direction: -1 | 1) {
-    const updates = reorder(list, index, direction);
-    if (!updates) return;
-    reorderMutation.mutate(updates);
-  }
+  const { handleDelete, move } = useConfigItemActions({
+    items: list,
+    label: "Category",
+    deleteMutation,
+    reorderMutation,
+  });
 
   return (
     <View className="flex-1 bg-background">
@@ -60,10 +44,10 @@ export default function ExpenseCategoriesScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={SCROLL_BOTTOM_PADDING}
       >
-        <Text className="px-5 pb-3 pt-2 text-xs text-muted-foreground">
+        <ScreenDescription>
           Buckets you tag spending against. Reorder to control how they appear
           in the Add screen. The default category is locked.
-        </Text>
+        </ScreenDescription>
 
         {list.map((cat, index) => (
           <ConfigRow
@@ -78,15 +62,10 @@ export default function ExpenseCategoriesScreen() {
           />
         ))}
 
-        <Pressable
+        <DashedAddButton
+          label="Add Expense Category"
           onPress={() => setShowAdd(true)}
-          className="mx-5 mt-2 flex-row items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3"
-        >
-          <Icon as={Plus} className="size-4 text-primary" />
-          <Text className="text-sm font-medium text-primary">
-            Add Expense Category
-          </Text>
-        </Pressable>
+        />
       </ScrollView>
 
       <Suspense fallback={null}>

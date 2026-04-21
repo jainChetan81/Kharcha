@@ -5,6 +5,7 @@ import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { ScreenDescription } from "@/components/ui/screen-description";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Text } from "@/components/ui/text";
@@ -78,6 +79,12 @@ export default function SubscriptionAuditScreen() {
             />
           }
         >
+          <ScreenDescription>
+            A health check of your recurring charges — what you're paying each
+            month and which subscriptions haven't been charged recently (likely
+            stale or cancelled upstream).
+          </ScreenDescription>
+
           <View className="mx-5 mt-2 rounded-xl border border-border bg-card px-4 py-4">
             <Text className="text-2xl font-bold text-foreground">
               {fmt(totalCost)}

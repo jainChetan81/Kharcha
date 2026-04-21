@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useAutoRefreshPrefs } from "@/hooks/use-auto-refresh-prefs";
 import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
 import { getConfig } from "@/lib/db/config";
 import { env } from "@/lib/env";
@@ -44,4 +45,16 @@ export function useGmailSyncEnabled(): boolean {
 
 export function useDeviceSyncEnabled(): boolean {
   return useFlag("device_sync_enabled");
+}
+
+export function useGmailSyncActive(): boolean {
+  const flag = useGmailSyncEnabled();
+  const { data } = useAutoRefreshPrefs();
+  return flag && !!data?.gmail;
+}
+
+export function useDeviceSyncActive(): boolean {
+  const flag = useDeviceSyncEnabled();
+  const { data } = useAutoRefreshPrefs();
+  return flag && !!data?.device;
 }

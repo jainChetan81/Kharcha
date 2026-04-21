@@ -1,5 +1,6 @@
+import { subMonths } from "date-fns";
 import { useCallback, useEffect, useState } from "react";
-import { CONFIG_KEYS } from "@/lib/constants";
+import { CONFIG_KEYS, GMAIL_SYNC_MAX_MONTHS_BACK } from "@/lib/constants";
 import { deleteConfig, getConfig } from "@/lib/db/config";
 import { useGoogleAuth } from "@/lib/gmail/auth";
 import { showErrorToast } from "@/lib/toast";
@@ -48,7 +49,9 @@ export function useSyncState() {
     setEmailsFetched(fetched);
     setTransactionsAdded(added);
     if (synced) {
-      setSyncFromDate(new Date(synced));
+      const stored = new Date(synced);
+      const floor = subMonths(new Date(), GMAIL_SYNC_MAX_MONTHS_BACK);
+      setSyncFromDate(stored.getTime() < floor.getTime() ? floor : stored);
     }
     setLoading(false);
   }, []);

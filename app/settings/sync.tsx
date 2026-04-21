@@ -8,7 +8,12 @@ import { InfoRow } from "@/components/ui/info-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StepCard } from "@/components/ui/step-card";
+import { SwitchRow } from "@/components/ui/switch-row";
 import { Text } from "@/components/ui/text";
+import {
+  useAutoRefreshPrefs,
+  useSetAutoRefreshPref,
+} from "@/hooks/use-auto-refresh-prefs";
 import {
   useDeviceSync,
   useDeviceSyncConfig,
@@ -72,6 +77,8 @@ export default function DeviceSyncScreen() {
 
   const registerMutation = useRegisterDevice();
   const syncMutation = useDeviceSync();
+  const { data: autoRefreshPrefs } = useAutoRefreshPrefs();
+  const setAutoRefreshPref = useSetAutoRefreshPref();
 
   const handleSync = async () => {
     try {
@@ -196,6 +203,15 @@ export default function DeviceSyncScreen() {
                 }
               />
 
+              <SwitchRow
+                label="Enable Device Sync"
+                description="Turn off to pause all Device syncing — manual and automatic."
+                value={autoRefreshPrefs?.device ?? false}
+                onValueChange={(next) =>
+                  setAutoRefreshPref.mutate({ key: "device", enabled: next })
+                }
+              />
+
               <SectionHeader title="Sync From" />
               <Pressable
                 onPress={() => setShowDatePicker(!showDatePicker)}
@@ -226,7 +242,7 @@ export default function DeviceSyncScreen() {
                 <Button
                   className="h-12 rounded-xl bg-primary"
                   onPress={handleSync}
-                  disabled={busy}
+                  disabled={busy || !autoRefreshPrefs?.device}
                 >
                   {syncMutation.isPending ? (
                     <ActivityIndicator

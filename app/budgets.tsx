@@ -9,6 +9,7 @@ import {
 const SetBudgetSheet = lazy(() => import("@/components/set-budget-sheet"));
 
 import { Icon } from "@/components/ui/icon";
+import { ScreenDescription } from "@/components/ui/screen-description";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useBudgets, useDeleteBudget, useSetBudget } from "@/hooks/use-budgets";
@@ -49,6 +50,12 @@ export default function BudgetsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={SCROLL_BOTTOM_PADDING}
       >
+        <ScreenDescription>
+          Set a monthly ceiling for each expense category. Kharcha warns you
+          when spending crosses 75% and again at 90%. Tap a category to set or
+          change its limit.
+        </ScreenDescription>
+
         <Text className="mb-2 mt-2 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Expense Categories
         </Text>
