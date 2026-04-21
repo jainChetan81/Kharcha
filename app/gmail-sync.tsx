@@ -1,10 +1,11 @@
-import { format, formatDistanceToNow, subMonths } from "date-fns";
+import { formatDistanceToNow, subMonths } from "date-fns";
 import { router } from "expo-router";
 import { ChevronRight, Copy, Landmark } from "lucide-react-native";
 import { lazy, Suspense, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
+import { DateTimePickerRow } from "@/components/ui/date-time-picker-row";
 import { Icon } from "@/components/ui/icon";
 import { InfoRow } from "@/components/ui/info-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
@@ -23,7 +24,6 @@ import { copyMaskedToClipboard } from "@/lib/clipboard";
 import {
   COLORS,
   CONFIG_KEYS,
-  DATE_DISPLAY_FORMAT,
   EMAIL_LOG_STATUS,
   GMAIL_API,
   GMAIL_SYNC_MAX_MONTHS_BACK,
@@ -41,12 +41,6 @@ const SyncResultsSheet = lazy(() =>
     default: m.SyncResultsSheet,
   })),
 );
-const DateTimePickerModal = lazy(() =>
-  import("@/components/ui/date-picker-modal").then((m) => ({
-    default: m.DateTimePickerModal,
-  })),
-);
-
 export default function GmailSyncScreen() {
   const { signIn, signOut, getValidAccessToken } = useGoogleAuth();
   const {
@@ -54,10 +48,6 @@ export default function GmailSyncScreen() {
     setConnected,
     lastSynced,
     setLastSynced,
-    emailsFetched,
-    setEmailsFetched,
-    transactionsAdded,
-    setTransactionsAdded,
     loading,
     syncFromDate,
     setSyncFromDate,
@@ -66,7 +56,6 @@ export default function GmailSyncScreen() {
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const { data: banksData = [] } = useBanksWithEmails();
   const activeBanks = banksData.filter(
     (b) => b.is_active === 1 && b.emails.length > 0,
@@ -145,7 +134,6 @@ export default function GmailSyncScreen() {
 
   async function handleUpdateSyncFrom(date: Date) {
     setSyncFromDate(date);
-    setShowDatePicker(false);
     await gmailSyncConfig.updateSyncFromDate(date);
     setLastSynced(date.toISOString());
   }
@@ -161,8 +149,6 @@ export default function GmailSyncScreen() {
       setLastSynced(
         (await getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT)) ?? null,
       );
-      setEmailsFetched(response.newFetched);
-      setTransactionsAdded(response.newAdded);
 
       setSyncResult(response.result);
       setShowResults(true);
@@ -182,8 +168,6 @@ export default function GmailSyncScreen() {
     setConnected(false);
     setEmail(null);
     setLastSynced(null);
-    setEmailsFetched(null);
-    setTransactionsAdded(null);
     showSuccessToast("Gmail disconnected");
   }
 
@@ -255,6 +239,39 @@ export default function GmailSyncScreen() {
 
           {connected && (
             <>
+              <SectionHeader title="Sync From" />
+              <DateTimePickerRow
+                label="Fetch emails after"
+                value={syncFromDate}
+                dateTitle="Fetch Emails After"
+                maximumDate={new Date()}
+                minimumDate={subMonths(new Date(), GMAIL_SYNC_MAX_MONTHS_BACK)}
+                onChange={handleUpdateSyncFrom}
+              />
+              <Text className="mx-5 mb-2 text-[11px] text-muted-foreground">
+                Can't go earlier than {GMAIL_SYNC_MAX_MONTHS_BACK} month
+                {GMAIL_SYNC_MAX_MONTHS_BACK === 1 ? "" : "s"} ago.
+              </Text>
+
+              <View className="mx-5 mb-3 mt-2">
+                <Button
+                  className="h-12 rounded-xl bg-primary"
+                  onPress={handleSync}
+                  disabled={busy || noActiveBanks || !autoRefreshPrefs?.gmail}
+                >
+                  {syncing ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={COLORS.WHITE}
+                      className="mr-2"
+                    />
+                  ) : null}
+                  <Text className="text-sm font-semibold text-primary-foreground">
+                    {syncing ? "Syncing..." : "Sync Now"}
+                  </Text>
+                </Button>
+              </View>
+
               <SectionHeader title="Info" />
               <InfoRow
                 label="Last Synced"
@@ -264,12 +281,6 @@ export default function GmailSyncScreen() {
                     : "Never"
                 }
               />
-              <InfoRow label="Emails Fetched" value={emailsFetched ?? "0"} />
-              <InfoRow
-                label="Transactions Added"
-                value={transactionsAdded ?? "0"}
-              />
-
               <SwitchRow
                 label="Enable Gmail Sync"
                 description="Turn off to pause all Gmail syncing — manual and automatic."
@@ -312,58 +323,7 @@ export default function GmailSyncScreen() {
                 </View>
               )}
 
-              <SectionHeader title="Sync From" />
-              <Pressable
-                onPress={() => setShowDatePicker(!showDatePicker)}
-                className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-              >
-                <Text className="flex-1 text-sm font-medium text-foreground">
-                  Fetch emails after
-                </Text>
-                <Text className="text-sm text-primary">
-                  {format(syncFromDate, DATE_DISPLAY_FORMAT)}
-                </Text>
-              </Pressable>
-              <Text className="mx-5 mb-2 text-[11px] text-muted-foreground">
-                Can't go earlier than {GMAIL_SYNC_MAX_MONTHS_BACK} month
-                {GMAIL_SYNC_MAX_MONTHS_BACK === 1 ? "" : "s"} ago.
-              </Text>
-              <Suspense fallback={null}>
-                <DateTimePickerModal
-                  visible={showDatePicker}
-                  value={syncFromDate}
-                  maximumDate={new Date()}
-                  minimumDate={subMonths(
-                    new Date(),
-                    GMAIL_SYNC_MAX_MONTHS_BACK,
-                  )}
-                  onConfirm={(date) => {
-                    setShowDatePicker(false);
-                    handleUpdateSyncFrom(date);
-                  }}
-                  onCancel={() => setShowDatePicker(false)}
-                />
-              </Suspense>
-
-              <View className="mx-5 mb-3 mt-6">
-                <Button
-                  className="h-12 rounded-xl bg-primary"
-                  onPress={handleSync}
-                  disabled={busy || noActiveBanks || !autoRefreshPrefs?.gmail}
-                >
-                  {syncing ? (
-                    <ActivityIndicator
-                      size="small"
-                      color={COLORS.WHITE}
-                      className="mr-2"
-                    />
-                  ) : null}
-                  <Text className="text-sm font-semibold text-primary-foreground">
-                    {syncing ? "Syncing..." : "Sync Now"}
-                  </Text>
-                </Button>
-              </View>
-              <View className="mx-5 flex-row gap-3">
+              <View className="mx-5 mt-6 flex-row gap-3">
                 <Button
                   variant="outline"
                   className="h-12 flex-1 rounded-xl border-border"

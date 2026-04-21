@@ -201,7 +201,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     const cursorDate = syncFromCursor ? new Date(syncFromCursor) : oneMonthAgo;
     const sinceDate =
       cursorDate.getTime() < oneMonthAgo.getTime() ? oneMonthAgo : cursorDate;
-    const formatted = `${sinceDate.getFullYear()}/${sinceDate.getMonth() + 1}/${sinceDate.getDate()}`;
+    const formatted = String(Math.floor(sinceDate.getTime() / 1000));
 
     const allCategories = await getAllCategories();
     const categoryNames = allCategories.map((c) => c.name);

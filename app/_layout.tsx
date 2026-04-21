@@ -1,6 +1,15 @@
 import "react-native-gesture-handler";
 import "../global.css";
 import { useReactQueryDevTools } from "@dev-plugins/react-query";
+import {
+  Geist_400Regular,
+  Geist_500Medium,
+  Geist_600SemiBold,
+  Geist_700Bold,
+  Geist_800ExtraBold,
+  useFonts,
+} from "@expo-google-fonts/geist";
+import { GeistMono_400Regular } from "@expo-google-fonts/geist-mono";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as QuickActions from "expo-quick-actions";
 import { useQuickActionRouting } from "expo-quick-actions/router";
@@ -135,8 +144,18 @@ export default function RootLayout() {
 
   useQuickActionRouting();
 
+  const [fontsLoaded] = useFonts({
+    Geist_400Regular,
+    Geist_500Medium,
+    Geist_600SemiBold,
+    Geist_700Bold,
+    Geist_800ExtraBold,
+    GeistMono_400Regular,
+  });
+
   const [dbReady, setDbReady] = useState(false);
   const { locked, authenticate } = useAppLock(dbReady);
+  const ready = dbReady && fontsLoaded;
 
   useEffect(() => {
     initDB()
@@ -158,9 +177,12 @@ export default function RootLayout() {
       })
       .catch((err) => {
         showErrorToast("Database Error", err);
-      })
-      .finally(() => SplashScreen.hideAsync());
+      });
   }, []);
+
+  useEffect(() => {
+    if (ready) SplashScreen.hideAsync();
+  }, [ready]);
 
   // Refresh widget data when app returns to foreground (catches midnight resets)
   // and opportunistically run an auto-backup if it's been >24h since the last.
@@ -219,7 +241,7 @@ export default function RootLayout() {
               </View>
             }
           >
-            {dbReady ? (
+            {ready ? (
               locked ? (
                 <LockedScreen onUnlock={authenticate} />
               ) : (

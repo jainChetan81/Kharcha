@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
-import { deleteConfig, getConfig, updateConfig } from "@/lib/db/config";
+import { deleteConfig, updateConfig } from "@/lib/db/config";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 import { syncGmailTransactions } from "@/lib/gmail/sync";
 
@@ -13,8 +13,6 @@ export function useGmailSyncConfig() {
     await Promise.all([
       deleteConfig(CONFIG_KEYS.GMAIL_CONNECTED),
       deleteConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT),
-      deleteConfig(CONFIG_KEYS.GMAIL_EMAILS_FETCHED),
-      deleteConfig(CONFIG_KEYS.GMAIL_TRANSACTIONS_ADDED),
     ]);
   };
 
@@ -36,23 +34,7 @@ export function useGmailSync() {
         throw new Error("No active banks");
       }
 
-      const newFetched = String(
-        Number((await getConfig(CONFIG_KEYS.GMAIL_EMAILS_FETCHED)) ?? "0") +
-          result.added +
-          result.skipped +
-          result.failed,
-      );
-      const newAdded = String(
-        Number((await getConfig(CONFIG_KEYS.GMAIL_TRANSACTIONS_ADDED)) ?? "0") +
-          result.added,
-      );
-
-      await Promise.all([
-        updateConfig(CONFIG_KEYS.GMAIL_EMAILS_FETCHED, newFetched),
-        updateConfig(CONFIG_KEYS.GMAIL_TRANSACTIONS_ADDED, newAdded),
-      ]);
-
-      return { result, newFetched, newAdded };
+      return { result };
     },
     onSuccess: (data) => {
       logEvent(FIREBASE_EVENTS.GMAIL_SYNC_COMPLETED, {

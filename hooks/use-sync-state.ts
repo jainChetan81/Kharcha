@@ -9,10 +9,6 @@ export function useSyncState() {
   const { isConnected, getValidAccessToken, signOut } = useGoogleAuth();
   const [connected, setConnected] = useState(false);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
-  const [emailsFetched, setEmailsFetched] = useState<string | null>(null);
-  const [transactionsAdded, setTransactionsAdded] = useState<string | null>(
-    null,
-  );
   const [loading, setLoading] = useState(true);
   const [syncFromDate, setSyncFromDate] = useState<Date>(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -20,11 +16,9 @@ export function useSyncState() {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: auth fns are stable from hook
   const loadState = useCallback(async () => {
-    const [isConn, synced, fetched, added] = await Promise.all([
+    const [isConn, synced] = await Promise.all([
       isConnected(),
       getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT),
-      getConfig(CONFIG_KEYS.GMAIL_EMAILS_FETCHED),
-      getConfig(CONFIG_KEYS.GMAIL_TRANSACTIONS_ADDED),
     ]);
 
     if (isConn) {
@@ -34,8 +28,6 @@ export function useSyncState() {
         await Promise.all([
           deleteConfig(CONFIG_KEYS.GMAIL_CONNECTED),
           deleteConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT),
-          deleteConfig(CONFIG_KEYS.GMAIL_EMAILS_FETCHED),
-          deleteConfig(CONFIG_KEYS.GMAIL_TRANSACTIONS_ADDED),
         ]);
         setConnected(false);
         setLoading(false);
@@ -46,8 +38,6 @@ export function useSyncState() {
 
     setConnected(isConn);
     setLastSynced(synced);
-    setEmailsFetched(fetched);
-    setTransactionsAdded(added);
     if (synced) {
       const stored = new Date(synced);
       const floor = subMonths(new Date(), GMAIL_SYNC_MAX_MONTHS_BACK);
@@ -65,10 +55,6 @@ export function useSyncState() {
     setConnected,
     lastSynced,
     setLastSynced,
-    emailsFetched,
-    setEmailsFetched,
-    transactionsAdded,
-    setTransactionsAdded,
     loading,
     syncFromDate,
     setSyncFromDate,

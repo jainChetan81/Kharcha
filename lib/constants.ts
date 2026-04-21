@@ -163,8 +163,6 @@ export const CONFIG_KEYS = {
   SCHEMA_VERSION: "schema_version",
   GMAIL_CONNECTED: "gmail_connected",
   GMAIL_LAST_SYNCED_AT: "gmail_last_synced_at",
-  GMAIL_EMAILS_FETCHED: "gmail_emails_fetched",
-  GMAIL_TRANSACTIONS_ADDED: "gmail_transactions_added",
   DEVICE_ID: "device_id",
   BACKEND_FORWARDING_EMAIL: "backend_forwarding_email",
   BACKEND_LAST_SYNCED_AT: "backend_last_synced_at",

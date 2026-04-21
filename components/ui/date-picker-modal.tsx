@@ -95,6 +95,64 @@ export function DatePickerModal({
   );
 }
 
+export function TimePickerModal({
+  visible,
+  value,
+  title = "Select Time",
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  value: Date;
+  title?: string;
+  onConfirm: (date: Date) => void;
+  onCancel: () => void;
+}) {
+  const [tempDate, setTempDate] = useState(value);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sync on open only
+  useEffect(() => {
+    if (visible) setTempDate(value);
+  }, [visible]);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <Pressable className="flex-1 bg-black/50" onPress={onCancel} />
+      <View className="rounded-t-2xl bg-card">
+        <View className="flex-row items-center justify-between border-b border-border px-5 py-3">
+          <Pressable onPress={onCancel}>
+            <Text className="text-base font-medium text-muted-foreground">
+              Cancel
+            </Text>
+          </Pressable>
+          <Text className="text-base font-semibold text-foreground">
+            {title}
+          </Text>
+          <Pressable onPress={() => onConfirm(tempDate)}>
+            <Text className="text-base font-semibold text-primary">Done</Text>
+          </Pressable>
+        </View>
+        <ComponentErrorBoundary onDismiss={onCancel}>
+          <Suspense fallback={<PickerLoader />}>
+            <View className="items-center pb-6">
+              <DateTimePicker
+                value={tempDate}
+                mode="time"
+                display="spinner"
+                themeVariant="dark"
+                textColor={COLORS.WHITE}
+                onChange={(_event, selectedDate) => {
+                  if (selectedDate) setTempDate(selectedDate);
+                }}
+              />
+            </View>
+          </Suspense>
+        </ComponentErrorBoundary>
+      </View>
+    </Modal>
+  );
+}
+
 export function DateTimePickerModal({
   visible,
   value,

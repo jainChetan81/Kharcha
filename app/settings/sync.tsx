@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
+import { DateTimePickerRow } from "@/components/ui/date-time-picker-row";
 import { InfoRow } from "@/components/ui/info-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -23,7 +24,6 @@ import { copyToClipboard } from "@/lib/clipboard";
 import {
   COLORS,
   CONFIG_KEYS,
-  DATE_FORMAT,
   QUERY_KEYS,
   SCROLL_BOTTOM_PADDING,
 } from "@/lib/constants";
@@ -35,12 +35,6 @@ const SyncResultsSheet = lazy(() =>
     default: m.SyncResultsSheet,
   })),
 );
-const DatePickerModal = lazy(() =>
-  import("@/components/ui/date-picker-modal").then((m) => ({
-    default: m.DatePickerModal,
-  })),
-);
-
 export default function DeviceSyncScreen() {
   const queryClient = useQueryClient();
   const [syncResult, setSyncResult] = useState<{
@@ -49,7 +43,6 @@ export default function DeviceSyncScreen() {
     total: number;
   } | null>(null);
   const [showResults, setShowResults] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [syncFromDate, setSyncFromDate] = useState<Date>(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
@@ -68,7 +61,6 @@ export default function DeviceSyncScreen() {
 
   async function handleUpdateSyncFrom(date: Date) {
     setSyncFromDate(date);
-    setShowDatePicker(false);
     await updateConfig(CONFIG_KEYS.BACKEND_LAST_SYNCED_AT, date.toISOString());
     queryClient.invalidateQueries({
       queryKey: [QUERY_KEYS.CONFIG, QUERY_KEYS.DEVICE_SYNC_CONFIG],
@@ -193,6 +185,34 @@ export default function DeviceSyncScreen() {
 
           {isRegistered && (
             <>
+              <SectionHeader title="Sync From" />
+              <DateTimePickerRow
+                label="Fetch transactions after"
+                value={syncFromDate}
+                dateTitle="Fetch Transactions After"
+                maximumDate={new Date()}
+                onChange={handleUpdateSyncFrom}
+              />
+
+              <View className="mx-5 mb-3 mt-2">
+                <Button
+                  className="h-12 rounded-xl bg-primary"
+                  onPress={handleSync}
+                  disabled={busy || !autoRefreshPrefs?.device}
+                >
+                  {syncMutation.isPending ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={COLORS.WHITE}
+                      className="mr-2"
+                    />
+                  ) : null}
+                  <Text className="text-sm font-semibold text-primary-foreground">
+                    {syncMutation.isPending ? "Syncing..." : "Sync Now"}
+                  </Text>
+                </Button>
+              </View>
+
               <SectionHeader title="Sync" />
               <InfoRow
                 label="Last Synced"
@@ -211,51 +231,6 @@ export default function DeviceSyncScreen() {
                   setAutoRefreshPref.mutate({ key: "device", enabled: next })
                 }
               />
-
-              <SectionHeader title="Sync From" />
-              <Pressable
-                onPress={() => setShowDatePicker(!showDatePicker)}
-                className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-              >
-                <Text className="flex-1 text-sm font-medium text-foreground">
-                  Fetch transactions after
-                </Text>
-                <Text className="text-sm text-primary">
-                  {format(syncFromDate, DATE_FORMAT)}
-                </Text>
-              </Pressable>
-              <Suspense fallback={null}>
-                <DatePickerModal
-                  visible={showDatePicker}
-                  value={syncFromDate}
-                  title="Fetch Transactions After"
-                  maximumDate={new Date()}
-                  onConfirm={(date) => {
-                    setShowDatePicker(false);
-                    handleUpdateSyncFrom(date);
-                  }}
-                  onCancel={() => setShowDatePicker(false)}
-                />
-              </Suspense>
-
-              <View className="mx-5 mt-4">
-                <Button
-                  className="h-12 rounded-xl bg-primary"
-                  onPress={handleSync}
-                  disabled={busy || !autoRefreshPrefs?.device}
-                >
-                  {syncMutation.isPending ? (
-                    <ActivityIndicator
-                      size="small"
-                      color={COLORS.WHITE}
-                      className="mr-2"
-                    />
-                  ) : null}
-                  <Text className="text-sm font-semibold text-primary-foreground">
-                    {syncMutation.isPending ? "Syncing..." : "Sync Now"}
-                  </Text>
-                </Button>
-              </View>
 
               <SectionHeader
                 title="Set up Gmail forwarding"

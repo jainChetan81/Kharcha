@@ -1,3 +1,5 @@
+const plugin = require("tailwindcss/plugin");
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -6,6 +8,9 @@ module.exports = {
     "./components/**/*.{js,jsx,ts,tsx}"
   ],
   presets: [require("nativewind/preset")],
+  corePlugins: {
+    fontWeight: false,
+  },
   theme: {
     extend: {
       colors: {
@@ -24,7 +29,21 @@ module.exports = {
         negative: '#ef4444',
         warning: '#f59e0b',
       },
+      fontFamily: {
+        sans: ['Geist_400Regular'],
+        mono: ['GeistMono_400Regular'],
+      },
     },
   },
-  plugins: [],
+  plugins: [
+    plugin(({ addUtilities }) => {
+      addUtilities({
+        ".font-normal": { fontFamily: "Geist_400Regular", fontWeight: "400" },
+        ".font-medium": { fontFamily: "Geist_500Medium", fontWeight: "500" },
+        ".font-semibold": { fontFamily: "Geist_600SemiBold", fontWeight: "600" },
+        ".font-bold": { fontFamily: "Geist_700Bold", fontWeight: "700" },
+        ".font-extrabold": { fontFamily: "Geist_800ExtraBold", fontWeight: "800" },
+      });
+    }),
+  ],
 }
