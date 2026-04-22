@@ -43,6 +43,8 @@ play-store-key.json
 
 # typescript
 *.tsbuildinfo
+modules/*/android/build/
+modules/*/android/.gradle/
 
 # generated native folders
 /ios

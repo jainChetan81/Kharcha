@@ -12,6 +12,7 @@ export const FIREBASE_EVENTS = {
   IMPORT_TRIGGERED: "import_triggered",
   BUDGET_SET: "budget_set",
   SYNC_PREF_TOGGLED: "sync_pref_toggled",
+  SMS_LISTENER_GRANT_TAPPED: "sms_listener_grant_tapped",
 } as const;
 
 export type KharchaEvent =

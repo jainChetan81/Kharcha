@@ -78,6 +78,11 @@
       "@react-native-firebase/crashlytics",
       "@react-native-firebase/perf",
       "./plugins/firebase-ios-fix",
+      ["expo-share-intent", {
+        "iosActivationRules": { "NSExtensionActivationSupportsText": false },
+        "androidIntentFilters": ["text/*"],
+        "disableIOS": true
+      }],
       ["react-native-android-widget", {
         "widgets": [
           {

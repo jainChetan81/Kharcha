@@ -11,6 +11,9 @@ export const SCREENS = {
   EDIT_SUBSCRIPTION: "/edit-subscription",
   GMAIL_SYNC: "/gmail-sync",
   DEVICE_SYNC: "/settings/sync",
+  SMS_SYNC: "/sms-sync",
+  SMS_LISTENER: "/sms-listener",
+  SMS_FORWARD: "/sms-forward",
   BANKS: "/settings/banks",
   TAGS: "/config/tags",
   CONFIG_EXPENSE_CATEGORIES: "/config/expense-categories",
@@ -173,10 +176,14 @@ export const CONFIG_KEYS = {
   CLOUD_BACKUP_LAST_FILE_ID: "cloud_backup_last_file_id",
   GMAIL_SYNC_USER_ENABLED: "gmail_sync_user_enabled",
   DEVICE_SYNC_USER_ENABLED: "device_sync_user_enabled",
+  SMS_SYNC_USER_ENABLED: "sms_sync_user_enabled",
+  SMS_LISTENER_USER_ENABLED: "sms_listener_user_enabled",
 } as const;
 
 export const SUBSCRIPTION_NOTE = "Auto-created from subscription";
 export const GMAIL_SYNC_NOTE = "synced from gmail";
+export const SMS_SYNC_NOTE = "synced from sms";
+export const SMS_LISTENER_NOTE = "synced from sms notification";
 
 export const OTHER_CATEGORY_LABEL = "Other";
 
@@ -251,6 +258,7 @@ export const QUERY_KEYS = {
   CLOUD_BACKUP: "cloud-backup",
   DEVICE_SYNC_CONFIG: "device-sync",
   USER_SYNC_PREFS: "user-sync-prefs",
+  SMS_LISTENER_STATUS: "sms-listener-status",
 } as const;
 
 export const BOOL_FLAG = {

@@ -13,7 +13,8 @@ import { GeistMono_400Regular } from "@expo-google-fonts/geist-mono";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as QuickActions from "expo-quick-actions";
 import { useQuickActionRouting } from "expo-quick-actions/router";
-import { SplashScreen, Stack, usePathname } from "expo-router";
+import { router, SplashScreen, Stack, usePathname } from "expo-router";
+import { ShareIntentProvider, useShareIntent } from "expo-share-intent";
 import { StatusBar } from "expo-status-bar";
 import { Suspense, useEffect, useState } from "react";
 import { ActivityIndicator, AppState, Pressable, View } from "react-native";
@@ -25,6 +26,7 @@ import { LockedScreen } from "@/components/locked-screen";
 import { Text } from "@/components/ui/text";
 import { useAppLock } from "@/hooks/use-app-lock";
 import { readAutoRefreshPrefs } from "@/hooks/use-auto-refresh-prefs";
+import { runSmsListenerDrain } from "@/hooks/use-sms-listener";
 import { getOrCreateDeviceId, registerDevice } from "@/hooks/use-sync";
 import { maybeAutoBackup } from "@/lib/cloud-backup";
 import {
@@ -135,6 +137,19 @@ function ScreenViewTracker() {
   return null;
 }
 
+function ShareIntentListener() {
+  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
+  useEffect(() => {
+    if (!hasShareIntent || !shareIntent) return;
+    const text = shareIntent.text ?? shareIntent.webUrl;
+    if (text) {
+      router.push(`${SCREENS.SMS_FORWARD}?text=${encodeURIComponent(text)}`);
+    }
+    resetShareIntent();
+  }, [hasShareIntent, shareIntent, resetShareIntent]);
+  return null;
+}
+
 export default function RootLayout() {
   if (__DEV__) {
     startNetworkLogging();
@@ -174,6 +189,7 @@ export default function RootLayout() {
         setDbReady(true);
         syncWidgetData();
         autoRegisterDevice();
+        void runSmsListenerDrain(queryClient);
       })
       .catch((err) => {
         showErrorToast("Database Error", err);
@@ -191,6 +207,7 @@ export default function RootLayout() {
       if (state === "active" && dbReady) {
         syncWidgetData();
         void maybeAutoBackup();
+        void runSmsListenerDrain(queryClient);
       }
     });
     return () => sub.remove();
@@ -231,30 +248,33 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView className="flex-1">
-      <QueryClientProvider client={queryClient}>
-        <StatusBar style="light" />
-        <ComponentErrorBoundary name="root">
-          <Suspense
-            fallback={
-              <View className="flex-1 items-center justify-center bg-background">
-                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-              </View>
-            }
-          >
-            {ready ? (
-              locked ? (
-                <LockedScreen onUnlock={authenticate} />
-              ) : (
-                <>
-                  <ScreenViewTracker />
-                  <Stack screenOptions={{ headerShown: false }} />
-                </>
-              )
-            ) : null}
-          </Suspense>
-        </ComponentErrorBoundary>
-        <Toast config={toastConfig} position="top" topOffset={60} />
-      </QueryClientProvider>
+      <ShareIntentProvider>
+        <QueryClientProvider client={queryClient}>
+          <StatusBar style="light" />
+          <ComponentErrorBoundary name="root">
+            <Suspense
+              fallback={
+                <View className="flex-1 items-center justify-center bg-background">
+                  <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+                </View>
+              }
+            >
+              {ready ? (
+                locked ? (
+                  <LockedScreen onUnlock={authenticate} />
+                ) : (
+                  <>
+                    <ScreenViewTracker />
+                    <ShareIntentListener />
+                    <Stack screenOptions={{ headerShown: false }} />
+                  </>
+                )
+              ) : null}
+            </Suspense>
+          </ComponentErrorBoundary>
+          <Toast config={toastConfig} position="top" topOffset={60} />
+        </QueryClientProvider>
+      </ShareIntentProvider>
     </GestureHandlerRootView>
   );
 }

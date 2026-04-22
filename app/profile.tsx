@@ -1,11 +1,13 @@
 import { router } from "expo-router";
 import {
+  BellRing,
   ChevronRight,
   Database,
   Download,
   FileText,
   Lock,
   Mail,
+  MessageSquare,
   RefreshCw,
   Trash2,
 } from "lucide-react-native";
@@ -34,6 +36,8 @@ import { CURRENCIES, useConfig } from "@/hooks/use-config";
 import {
   useDeviceSyncEnabled,
   useGmailSyncEnabled,
+  useSmsListenerEnabled,
+  useSmsSyncEnabled,
 } from "@/hooks/use-feature-flags";
 import { useUpdateDeviceName } from "@/hooks/use-sync";
 import {
@@ -62,6 +66,13 @@ export default function ProfileScreen() {
 
   const gmailSyncEnabled = useGmailSyncEnabled();
   const deviceSyncEnabled = useDeviceSyncEnabled();
+  const smsSyncEnabled = useSmsSyncEnabled();
+  const smsListenerEnabled = useSmsListenerEnabled();
+  const anySyncEnabled =
+    gmailSyncEnabled ||
+    deviceSyncEnabled ||
+    smsSyncEnabled ||
+    smsListenerEnabled;
   const updateDeviceNameMutation = useUpdateDeviceName();
 
   const initials = getInitials(userName);
@@ -128,7 +139,7 @@ export default function ProfileScreen() {
           description="Track recurring charges and when they renew."
           onPress={() => router.push(SCREENS.SUBSCRIPTIONS)}
         />
-        {(gmailSyncEnabled || deviceSyncEnabled) && (
+        {anySyncEnabled && (
           <>
             <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Sync
@@ -139,6 +150,22 @@ export default function ProfileScreen() {
                 title="Gmail Sync"
                 description="Parse bank emails to auto-import transactions."
                 onPress={() => router.push(SCREENS.GMAIL_SYNC)}
+              />
+            )}
+            {smsSyncEnabled && (
+              <NavRow
+                icon={MessageSquare}
+                title="SMS Sync"
+                description="Share bank SMS into Kharcha to turn them into transactions."
+                onPress={() => router.push(SCREENS.SMS_SYNC)}
+              />
+            )}
+            {smsListenerEnabled && (
+              <NavRow
+                icon={BellRing}
+                title="SMS Listener"
+                description="Auto-capture bank SMS as they arrive — no sharing needed."
+                onPress={() => router.push(SCREENS.SMS_LISTENER)}
               />
             )}
             {deviceSyncEnabled && (
