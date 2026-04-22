@@ -51,5 +51,14 @@ class SmsNotificationListenerModule : Module() {
       SmsQueueStorage.clear(context)
       null
     }
+
+    // Preserves entries that arrived *during* a drain — called with the
+    // max received_at of the batch JS just processed. Any notification
+    // with a higher timestamp (i.e. arrived mid-drain) survives.
+    Function("clearQueueBefore") { cutoffMs: Double ->
+      val context = appContext.reactContext ?: return@Function null
+      SmsQueueStorage.clearBefore(context, cutoffMs.toLong())
+      null
+    }
   }
 }

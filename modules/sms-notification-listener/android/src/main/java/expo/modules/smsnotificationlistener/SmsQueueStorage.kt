@@ -42,4 +42,36 @@ object SmsQueueStorage {
       if (queueFile.exists()) queueFile.delete()
     }
   }
+
+  /**
+   * Remove entries with `received_at <= cutoffMs`, preserving anything newer.
+   *
+   * Used after the JS layer drains a snapshot of the queue: the snapshot is
+   * processed, and we only want to delete the entries that were actually
+   * read — any notification that landed *during* processing must survive.
+   */
+  fun clearBefore(context: Context, cutoffMs: Long) {
+    synchronized(lock) {
+      val queueFile = File(context.filesDir, QUEUE_FILE_NAME)
+      if (!queueFile.exists()) return
+      val survivors = mutableListOf<String>()
+      queueFile.forEachLine { line ->
+        if (line.isBlank()) return@forEachLine
+        try {
+          val entry = JSONObject(line)
+          val receivedAt = entry.optLong("received_at", 0L)
+          if (receivedAt > cutoffMs) survivors.add(line)
+        } catch (_: Exception) {
+          // Drop malformed lines — same behaviour as readAll.
+        }
+      }
+      if (survivors.isEmpty()) {
+        queueFile.delete()
+      } else {
+        FileWriter(queueFile, false).use { writer ->
+          survivors.forEach { writer.appendLine(it) }
+        }
+      }
+    }
+  }
 }
