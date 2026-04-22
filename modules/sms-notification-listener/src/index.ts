@@ -36,3 +36,10 @@ export function readQueue(): SmsQueueEntry[] {
 export function clearQueue(): void {
   SmsNotificationListenerModule.clearQueue();
 }
+
+// Clear only entries with received_at <= cutoffMs. Use this after draining a
+// snapshot so notifications that arrived mid-drain are preserved for the
+// next pass.
+export function clearQueueBefore(cutoffMs: number): void {
+  SmsNotificationListenerModule.clearQueueBefore(cutoffMs);
+}

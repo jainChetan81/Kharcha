@@ -7,6 +7,7 @@ type NativeModule = {
   isEnabled(): boolean;
   readQueue(): string;
   clearQueue(): void;
+  clearQueueBefore(cutoffMs: number): void;
 };
 
 const stub: NativeModule = {
@@ -16,6 +17,7 @@ const stub: NativeModule = {
   isEnabled: () => false,
   readQueue: () => "[]",
   clearQueue: () => {},
+  clearQueueBefore: () => {},
 };
 
 export default Platform.OS === "android"

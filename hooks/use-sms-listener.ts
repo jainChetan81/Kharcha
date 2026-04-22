@@ -60,12 +60,29 @@ export async function drainSmsListenerQueue(): Promise<DrainResult> {
     return { processed: 0, inserted: 0, skipped: 0 };
   }
 
+  // Remember the latest timestamp in the batch so we only clear up to this
+  // point after processing — any notification that arrives *during* the
+  // drain will have a higher received_at and must survive for the next run.
+  const cutoffMs = entries.reduce(
+    (max, e) => (e.received_at > max ? e.received_at : max),
+    0,
+  );
+
   let inserted = 0;
   let skipped = 0;
 
   for (const entry of entries) {
     const parsed = parseMessage(entry.text);
     if (!parsed) {
+      // Surface unparsed bank SMS as a Firebase signal so we can widen the
+      // regex parsers when a real sender slips through. Silent skipping
+      // made the failure invisible.
+      logFirebaseError(new Error("SMS regex parser matched no pattern"), {
+        error_type: "SMS_PARSE_FAILED",
+        operation: "sms_listener_parse",
+        sender: entry.sender,
+        text_preview: entry.text.slice(0, 80),
+      });
       skipped++;
       continue;
     }
@@ -109,7 +126,10 @@ export async function drainSmsListenerQueue(): Promise<DrainResult> {
     }
   }
 
-  SmsListener.clearQueue();
+  // clearQueueBefore (not clearQueue) preserves any notification that landed
+  // between readQueue and now. Without this, a notification posted mid-drain
+  // would be wiped without ever being processed.
+  SmsListener.clearQueueBefore(cutoffMs);
 
   return { processed: entries.length, inserted, skipped };
 }
