@@ -1496,9 +1496,14 @@ export async function getCategoryBreakdown(yearMonth: string) {
 
 export async function getMerchantBreakdown(yearMonth: string) {
   try {
+    // GROUP BY LOWER(merchant) collapses casing variants ("Starbucks",
+    // "STARBUCKS", "starbucks") into one group — but SQLite would otherwise
+    // return an arbitrary row's raw `merchant` as the group representative,
+    // flipping the displayed casing between runs. MIN(merchant) picks a
+    // deterministic string per group so the label doesn't flicker.
     const rows = await db
       .select({
-        merchant: transactions.merchant,
+        merchant: sql<string>`MIN(${transactions.merchant})`,
         total: sql<number>`SUM(${transactions.amount})`,
         count: sql<number>`COUNT(*)`,
       })
