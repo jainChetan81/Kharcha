@@ -13,6 +13,9 @@ export const FIREBASE_EVENTS = {
   BUDGET_SET: "budget_set",
   SYNC_PREF_TOGGLED: "sync_pref_toggled",
   SMS_LISTENER_GRANT_TAPPED: "sms_listener_grant_tapped",
+  INSIGHT_CARD_TAPPED: "insight_card_tapped",
+  SPENDING_LENS_CHANGED: "spending_lens_changed",
+  HISTORY_INSIGHTS_EXPANDED: "history_insights_expanded",
 } as const;
 
 export type KharchaEvent =

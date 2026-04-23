@@ -27,7 +27,6 @@ import { Text } from "@/components/ui/text";
 import { useAppLock } from "@/hooks/use-app-lock";
 import { readAutoRefreshPrefs } from "@/hooks/use-auto-refresh-prefs";
 import { runSmsListenerDrain } from "@/hooks/use-sms-listener";
-import { getOrCreateDeviceId, registerDevice } from "@/hooks/use-sync";
 import { maybeAutoBackup } from "@/lib/cloud-backup";
 import {
   COLORS,
@@ -40,7 +39,8 @@ import {
 import { initDB } from "@/lib/db";
 import { getConfig } from "@/lib/db/config";
 import { processSubscriptions } from "@/lib/db/subscriptions";
-import { logScreenView } from "@/lib/firebase";
+import { getOrCreateDeviceId, registerDevice } from "@/lib/device";
+import { logFirebaseError, logScreenView } from "@/lib/firebase";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { isIOS } from "@/lib/utils";
 import { syncWidgetData } from "@/lib/widget";
@@ -72,8 +72,8 @@ async function autoRegisterDevice() {
       userName && userName !== "User" ? userName : undefined,
     );
     queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.FEATURE_FLAGS] });
-  } catch {
-    // Silent fail — will retry next launch
+  } catch (err) {
+    logFirebaseError(err, { operation: "auto_register_device" });
   }
 }
 

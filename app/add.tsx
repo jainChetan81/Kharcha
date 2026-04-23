@@ -43,7 +43,7 @@ import {
 } from "@/lib/constants";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import type { Source } from "@/lib/db/types";
-import type { GeminiParsedMessage } from "@/lib/gemini/parser";
+import type { GeminiParsedTransaction } from "@/lib/gemini/client";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -163,7 +163,7 @@ export default function AddTransaction() {
   }
 
   async function handleParsed(
-    parsed: GeminiParsedMessage,
+    parsed: GeminiParsedTransaction,
     originalText: string,
   ) {
     const sources =

@@ -5,17 +5,26 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { Alert } from "react-native";
-import { CONFIG_KEYS, PAGE_SIZE, QUERY_KEYS } from "@/lib/constants";
+import {
+  CONFIG_KEYS,
+  OTHER_CATEGORY_LABEL,
+  PAGE_SIZE,
+  QUERY_KEYS,
+  TRANSACTION_TYPE,
+} from "@/lib/constants";
 import {
   clearAllTransactions,
   deleteTransaction,
   findDuplicateTransaction,
+  getAllTransactionsFiltered,
   getCategoryBreakdown,
+  getMerchantBreakdown,
   getMonthlyInsights,
   getMonthlySummary,
   getMonthTransactions,
   getRecentTransactions,
   getReimbursementSummary,
+  getTotalMonthlyBudget,
   getTransactionById,
   getTransactionsPaginated,
   insertTransaction,
@@ -51,6 +60,12 @@ export function useInvalidateTransactions() {
         queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
       }),
       queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.MERCHANT_BREAKDOWN],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TOTAL_MONTHLY_BUDGET],
+      }),
+      queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MONTHLY_INSIGHTS],
       }),
       queryClient.invalidateQueries({
@@ -61,6 +76,9 @@ export function useInvalidateTransactions() {
       }),
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.TAG_BREAKDOWN_ALL_TIME],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.FILTERED_INSIGHTS],
       }),
     ]).then((result) => {
       syncWidgetData();
@@ -103,11 +121,107 @@ export function useCategoryBreakdown(yearMonth: string) {
   });
 }
 
+export function useMerchantBreakdown(yearMonth: string) {
+  return useQuery({
+    queryKey: [QUERY_KEYS.MERCHANT_BREAKDOWN, yearMonth],
+    queryFn: () => getMerchantBreakdown(yearMonth),
+  });
+}
+
+export function useTotalMonthlyBudget() {
+  return useQuery({
+    queryKey: [QUERY_KEYS.TOTAL_MONTHLY_BUDGET],
+    queryFn: getTotalMonthlyBudget,
+  });
+}
+
 export function useTransactionById(id: number) {
   return useQuery({
     queryKey: [QUERY_KEYS.TRANSACTION, id],
     queryFn: () => getTransactionById(id),
     enabled: !!id,
+  });
+}
+
+export type FilteredInsights = {
+  count: number;
+  income: number;
+  spent: number;
+  transferred: number;
+  net: number;
+  topCategories: { name: string; total: number }[];
+  biggestTransaction: { label: string; amount: number } | null;
+  mostFrequentMerchant: { merchant: string; count: number } | null;
+  daySpan: number;
+  avgPerDay: number;
+};
+
+type InsightsFilters = Parameters<typeof getAllTransactionsFiltered>[0];
+
+function computeInsights(txs: TransactionRow[]): FilteredInsights {
+  let income = 0;
+  let spent = 0;
+  let transferred = 0;
+  const byCategory = new Map<string, number>();
+  const byMerchant = new Map<string, number>();
+  const distinctDays = new Set<string>();
+  let biggest: { label: string; amount: number } | null = null;
+
+  for (const t of txs) {
+    if (t.type === TRANSACTION_TYPE.INCOME) income += t.amount;
+    else if (t.type === TRANSACTION_TYPE.EXPENSE) spent += t.amount;
+    else if (t.type === TRANSACTION_TYPE.TRANSFER) transferred += t.amount;
+
+    if (t.type === TRANSACTION_TYPE.EXPENSE) {
+      const cat = t.category_name ?? OTHER_CATEGORY_LABEL;
+      byCategory.set(cat, (byCategory.get(cat) ?? 0) + t.amount);
+      if (!biggest || t.amount > biggest.amount) {
+        biggest = {
+          label: t.merchant || cat,
+          amount: t.amount,
+        };
+      }
+      if (t.merchant) {
+        byMerchant.set(t.merchant, (byMerchant.get(t.merchant) ?? 0) + 1);
+      }
+      distinctDays.add(t.date.slice(0, 10));
+    }
+  }
+
+  const topCategories = [...byCategory.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name, total]) => ({ name, total }));
+
+  const topMerchant = [...byMerchant.entries()].sort((a, b) => b[1] - a[1])[0];
+  const mostFrequentMerchant = topMerchant
+    ? { merchant: topMerchant[0], count: topMerchant[1] }
+    : null;
+
+  const daySpan = distinctDays.size;
+  const avgPerDay = daySpan > 0 ? spent / daySpan : 0;
+
+  return {
+    count: txs.length,
+    income,
+    spent,
+    transferred,
+    net: income - spent,
+    topCategories,
+    biggestTransaction: biggest,
+    mostFrequentMerchant,
+    daySpan,
+    avgPerDay,
+  };
+}
+
+export function useFilteredInsights(filters: InsightsFilters) {
+  return useQuery({
+    queryKey: [QUERY_KEYS.FILTERED_INSIGHTS, filters],
+    queryFn: async () => {
+      const rows = await getAllTransactionsFiltered(filters);
+      return computeInsights(rows);
+    },
   });
 }
 
@@ -123,6 +237,7 @@ export function useTransactionsPaginated(filters: {
   search?: string;
   reimbursement?: "all" | "pending" | "reimbursed";
   tagIds?: number[] | null;
+  merchant?: string | null;
 }) {
   return useInfiniteQuery({
     queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED, filters],

@@ -23,6 +23,7 @@ import {
   ComponentErrorBoundary,
   ScreenError,
 } from "@/components/error-boundary";
+import { VersionFooter } from "@/components/version-footer";
 
 const EditNameSheet = lazy(() => import("@/components/edit-name-sheet"));
 
@@ -32,7 +33,7 @@ import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useAppLockSetting } from "@/hooks/use-app-lock";
 import { isAppUpdateSupported, useAppUpdate } from "@/hooks/use-app-update";
-import { CURRENCIES, useConfig } from "@/hooks/use-config";
+import { useConfig } from "@/hooks/use-config";
 import {
   useDeviceSyncEnabled,
   useGmailSyncEnabled,
@@ -47,17 +48,11 @@ import {
 import { COLORS, SCREENS, SCROLL_BOTTOM_PADDING } from "@/lib/constants";
 import { getInitials } from "@/lib/format";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
-
-const CurrencyPicker = lazy(() =>
-  import("@/components/currency-picker").then((m) => ({
-    default: m.CurrencyPicker,
-  })),
-);
+import { cn } from "@/lib/utils";
 
 export default function ProfileScreen() {
-  const { userName, updateUserName, currency, updateCurrency } = useConfig();
+  const { userName, updateUserName } = useConfig();
   const [showEditName, setShowEditName] = useState(false);
-  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const handleClearTransactions = useClearTransactionsWithConfirm();
   const seedMutation = useSeedSampleData();
   const { enabled: appLockEnabled, toggle: toggleAppLock } =
@@ -105,25 +100,31 @@ export default function ProfileScreen() {
         </Text>
         <Pressable
           onPress={() => setShowEditName(true)}
-          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+          className={cn(
+            "mx-5 mb-2 flex-row items-center rounded-xl border px-4 py-3",
+            userName
+              ? "border-border bg-card"
+              : "border-primary/40 bg-primary/10",
+          )}
         >
           <Text className="flex-1 text-sm font-medium text-foreground">
             Name
           </Text>
-          <Text className="mr-2 text-sm text-muted-foreground">{userName}</Text>
-          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
-        </Pressable>
-        <Pressable
-          onPress={() => setShowCurrencyPicker(true)}
-          className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-        >
-          <Text className="flex-1 text-sm font-medium text-foreground">
-            Currency
+          <Text
+            className={cn(
+              "mr-2 text-sm",
+              userName ? "text-muted-foreground" : "font-medium text-primary",
+            )}
+          >
+            {userName || "Tap to set"}
           </Text>
-          <Text className="mr-2 text-sm text-muted-foreground">
-            {CURRENCIES[currency].symbol} {currency}
-          </Text>
-          <Icon as={ChevronRight} className="size-4 text-muted-foreground" />
+          <Icon
+            as={ChevronRight}
+            className={cn(
+              "size-4",
+              userName ? "text-muted-foreground" : "text-primary",
+            )}
+          />
         </Pressable>
 
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -285,6 +286,8 @@ export default function ProfileScreen() {
             </Text>
           </View>
         </Pressable>
+
+        <VersionFooter />
       </ScrollView>
 
       <Suspense fallback={null}>
@@ -296,18 +299,6 @@ export default function ProfileScreen() {
             onSave={handleSaveName}
           />
         </ComponentErrorBoundary>
-      </Suspense>
-
-      <Suspense fallback={null}>
-        <CurrencyPicker
-          visible={showCurrencyPicker}
-          onClose={() => setShowCurrencyPicker(false)}
-          selected={currency}
-          onSelect={async (code) => {
-            await updateCurrency(code);
-            setShowCurrencyPicker(false);
-          }}
-        />
       </Suspense>
     </View>
   );

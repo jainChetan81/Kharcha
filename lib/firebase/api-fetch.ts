@@ -16,3 +16,15 @@ export async function apiFetch(
   }
   return res;
 }
+
+export async function parseErrorResponse(
+  res: Response,
+  fallback: string,
+): Promise<string> {
+  try {
+    const body = await res.json();
+    return body.error ?? fallback;
+  } catch {
+    return `${fallback} (${res.status})`;
+  }
+}

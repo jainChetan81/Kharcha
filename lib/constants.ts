@@ -19,6 +19,7 @@ export const SCREENS = {
   CONFIG_EXPENSE_CATEGORIES: "/config/expense-categories",
   CONFIG_INCOME_CATEGORIES: "/config/income-categories",
   CONFIG_SOURCES: "/config/sources",
+  CONFIG_CURRENCY: "/config/currency",
   NETWORK_LOGS: "/network-logs",
   EXPORT: "/export",
   SUBSCRIPTION_AUDIT: "/subscriptions/audit",
@@ -114,6 +115,7 @@ export const COLORS = {
   POSITIVE: "#22c55e",
   BAR_BG: "#2a2a2a",
   BACKGROUND: "#0a0a0a",
+  CARD: "#141414",
   MUTED: "#888888",
   FOREGROUND: "#f0f0f0",
   WHITE: "#ffffff",
@@ -242,7 +244,10 @@ export const QUERY_KEYS = {
   TRANSACTIONS_PAGINATED: "transactions-paginated",
   MONTHLY_SUMMARY: "monthly-summary",
   CATEGORY_BREAKDOWN: "category-breakdown",
+  MERCHANT_BREAKDOWN: "merchant-breakdown",
+  TOTAL_MONTHLY_BUDGET: "total-monthly-budget",
   MONTHLY_INSIGHTS: "monthly-insights",
+  FILTERED_INSIGHTS: "filtered-insights",
   CATEGORIES: "categories",
   SOURCES: "sources",
   DATA_STATS: "data-stats",
@@ -264,6 +269,10 @@ export const QUERY_KEYS = {
 export const BOOL_FLAG = {
   ON: "1",
   OFF: "0",
+} as const;
+
+export const API_ERRORS = {
+  DEVICE_NOT_REGISTERED: "Device not registered",
 } as const;
 
 // Layout
@@ -301,6 +310,3 @@ export const CATEGORY_SLUG = {
 
 // Source defaults
 export const DEFAULT_SOURCE_NAME = "upi";
-
-// Gemini limits
-export const GEMINI_MAX_CHARS = 4000;

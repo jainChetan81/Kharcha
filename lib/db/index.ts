@@ -36,6 +36,7 @@ import expo, { db, runMigrations } from "./connection";
 import {
   bankEmails,
   banks,
+  budgets,
   categories,
   config,
   sources,
@@ -46,6 +47,7 @@ import {
 import { getTagsForTransactions } from "./tags";
 import type {
   CategoryBreakdownRow,
+  MerchantBreakdownRow,
   MonthlyInsights,
   MonthlySummary,
   TransactionRow,
@@ -55,6 +57,7 @@ export { db } from "./connection";
 export type {
   Category,
   CategoryBreakdownRow,
+  MerchantBreakdownRow,
   MonthlyInsights,
   MonthlySummary,
   ReimbursementSummary,
@@ -1046,6 +1049,7 @@ export async function getTransactionsPaginated(
     search?: string;
     reimbursement?: "all" | "pending" | "reimbursed";
     tagIds?: number[] | null;
+    merchant?: string | null;
   },
 ) {
   try {
@@ -1101,6 +1105,11 @@ export async function getTransactionsPaginated(
     if (filters?.reimbursement && filters.reimbursement !== "all") {
       conditions.push(
         eq(transactions.reimbursement_status, filters.reimbursement),
+      );
+    }
+    if (filters?.merchant) {
+      conditions.push(
+        sql`LOWER(${transactions.merchant}) = LOWER(${filters.merchant})`,
       );
     }
     if (filters?.tagIds && filters.tagIds.length > 0) {
@@ -1438,6 +1447,7 @@ export async function getCategoryBreakdown(yearMonth: string) {
         category_id: transactions.category_id,
         category_name: categories.name,
         total: sql<number>`SUM(${transactions.amount})`,
+        count: sql<number>`COUNT(*)`,
       })
       .from(transactions)
       .leftJoin(categories, eq(transactions.category_id, categories.id))
@@ -1460,24 +1470,77 @@ export async function getCategoryBreakdown(yearMonth: string) {
       rows[otherIndex] = {
         ...rows[otherIndex],
         total: rows[otherIndex].total + rows[nullIndex].total,
+        count: rows[otherIndex].count + rows[nullIndex].count,
       };
       rows.splice(nullIndex, 1);
     }
 
     rows.sort((a, b) => b.total - a.total);
-    const top = rows.slice(0, 5);
-    const grandTotal = top.reduce((sum, r) => sum + r.total, 0);
+    const monthTotal = rows.reduce((sum, r) => sum + r.total, 0);
 
-    return top.map((r) => ({
+    return rows.map((r) => ({
       category_id: r.category_id,
       category_name: r.category_name ?? OTHER_CATEGORY_LABEL,
       total: r.total,
-      percentage: grandTotal > 0 ? (r.total / grandTotal) * 100 : 0,
+      count: r.count,
+      percentage: monthTotal > 0 ? (r.total / monthTotal) * 100 : 0,
     })) as CategoryBreakdownRow[];
   } catch (error) {
     logFirebaseError(error, {
       error_type: "DB_ERROR",
       operation: "getCategoryBreakdown",
+    });
+    throw error;
+  }
+}
+
+export async function getMerchantBreakdown(yearMonth: string) {
+  try {
+    const rows = await db
+      .select({
+        merchant: transactions.merchant,
+        total: sql<number>`SUM(${transactions.amount})`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+          sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+          sql`${transactions.merchant} IS NOT NULL`,
+          sql`TRIM(${transactions.merchant}) != ''`,
+        ),
+      )
+      .groupBy(sql`LOWER(${transactions.merchant})`)
+      .orderBy(sql`SUM(${transactions.amount}) DESC`);
+
+    const monthTotal = rows.reduce((sum, r) => sum + r.total, 0);
+
+    return rows.map((r) => ({
+      merchant: r.merchant ?? "",
+      total: r.total,
+      count: r.count,
+      percentage: monthTotal > 0 ? (r.total / monthTotal) * 100 : 0,
+    })) as MerchantBreakdownRow[];
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "getMerchantBreakdown",
+    });
+    throw error;
+  }
+}
+
+export async function getTotalMonthlyBudget(): Promise<number> {
+  try {
+    const rows = await db
+      .select({ total: sql<number>`COALESCE(SUM(${budgets.amount}), 0)` })
+      .from(budgets);
+    return Number(rows[0]?.total ?? 0);
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "getTotalMonthlyBudget",
     });
     throw error;
   }

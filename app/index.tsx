@@ -9,10 +9,8 @@ import {
   Plus,
   Settings,
   User,
-  UserRoundPen,
-  X,
 } from "lucide-react-native";
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -22,31 +20,29 @@ import {
 } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CategoryBreakdownSection } from "@/components/category-breakdown-section";
 import {
   ComponentErrorBoundary,
   ScreenError,
 } from "@/components/error-boundary";
-import { InsightsSection } from "@/components/insights-section";
-import { TagBreakdownSection } from "@/components/tag-breakdown-section";
+import { ProjectedSpendingCard } from "@/components/projected-spending-card";
+import { SpendingPanel } from "@/components/spending-panel";
+import { TopCategoryCard } from "@/components/top-category-card";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
+import { ALERT_TONE_TEXT, AlertBanner } from "@/components/ui/alert-banner";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { useBudgets } from "@/hooks/use-budgets";
 import { useConfig } from "@/hooks/use-config";
 import { useCurrency } from "@/hooks/use-currency";
 import { useGmailSyncActive } from "@/hooks/use-feature-flags";
 import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
-import { useUpdateDeviceName } from "@/hooks/use-sync";
-import { useTagBreakdown } from "@/hooks/use-tags";
 import {
-  useCategoryBreakdown,
   useMonthlyInsights,
   useMonthlySummary,
   useMonthTransactions,
   useRecentTransactions,
   useReimbursementSummary,
+  useTotalMonthlyBudget,
 } from "@/hooks/use-transactions";
 import {
   COLORS,
@@ -55,16 +51,13 @@ import {
   MONTH_FORMAT,
   SCREENS,
   SHADOWS,
-  TOP_BREAKDOWN_LIMIT,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { buildListData, getInitials } from "@/lib/format";
-import { showSuccessToast } from "@/lib/toast";
+import { buildListData, getInitials, historyHref } from "@/lib/format";
 import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
 
-const EditNameSheet = lazy(() => import("@/components/edit-name-sheet"));
-
 const FAB_STYLE = { marginTop: -44, marginBottom: 8 } as const;
+const RECENT_LIMIT = 5;
 
 function SpendingRing({
   income,
@@ -77,27 +70,20 @@ function SpendingRing({
 }) {
   const hasIncome = income > 0;
   const hasExpenses = expenses > 0;
-  const overspent = expenses > income;
+  const hasAny = hasIncome || hasExpenses;
+  const net = income - expenses;
+  const overspent = net < 0;
 
-  const spentPercent = hasIncome ? Math.min((expenses / income) * 100, 100) : 0;
-
-  const pieData = hasIncome
-    ? [
-        {
-          value: overspent ? 0 : 100 - spentPercent,
-          color: COLORS.PRIMARY,
-        },
-        {
-          value: overspent ? 100 : spentPercent,
-          color: overspent ? COLORS.DANGER : COLORS.BAR_BG,
-        },
-      ]
-    : hasExpenses
+  const pieData = !hasAny
+    ? [{ value: 100, color: COLORS.BAR_BG }]
+    : !hasIncome
       ? [{ value: 100, color: COLORS.DANGER }]
-      : [{ value: 100, color: COLORS.BAR_BG }];
-
-  const centerAmount = hasIncome ? income - expenses : expenses;
-  const centerLabel = hasIncome ? LABELS.AVAILABLE : LABELS.SPENT;
+      : !hasExpenses
+        ? [{ value: 100, color: COLORS.POSITIVE }]
+        : [
+            { value: income, color: COLORS.POSITIVE },
+            { value: expenses, color: COLORS.DANGER },
+          ];
 
   return (
     <View className="items-center">
@@ -109,20 +95,18 @@ function SpendingRing({
         innerCircleColor={COLORS.BACKGROUND}
         centerLabelComponent={() => (
           <View className="items-center justify-center">
-            {hasIncome || hasExpenses ? (
+            {hasAny ? (
               <>
                 <Text
                   className={cn(
                     "text-xl font-bold",
-                    !hasIncome || overspent
-                      ? "text-negative"
-                      : "text-foreground",
+                    overspent ? "text-negative" : "text-foreground",
                   )}
                 >
-                  {fmt(Math.abs(centerAmount))}
+                  {fmt(Math.abs(net))}
                 </Text>
                 <Text className="mt-0.5 text-xs text-muted-foreground">
-                  {centerLabel}
+                  {overspent ? LABELS.SPENT : LABELS.AVAILABLE}
                 </Text>
               </>
             ) : (
@@ -140,21 +124,10 @@ function SpendingRing({
 export default function HomeScreen() {
   const { bottom } = useSafeAreaInsets();
   const { format: fmt } = useCurrency();
-  const { userName, updateUserName } = useConfig();
+  const { userName } = useConfig();
   const { refreshing, onRefresh, gmailConnected } = useSyncRefresh();
   const gmailSyncActive = useGmailSyncActive();
   const showSyncButton = gmailSyncActive && gmailConnected;
-  const updateDeviceNameMutation = useUpdateDeviceName();
-  const [showEditName, setShowEditName] = useState(false);
-  const [nameBannerDismissed, setNameBannerDismissed] = useState(false);
-  const showNameBanner = userName === "User" && !nameBannerDismissed;
-
-  async function handleSaveNameFromBanner(name: string) {
-    await updateUserName(name);
-    updateDeviceNameMutation.mutate(name);
-    setShowEditName(false);
-    showSuccessToast("Name updated");
-  }
 
   const now = new Date();
   const [selectedDate, setSelectedDate] = useState(now);
@@ -163,24 +136,20 @@ export default function HomeScreen() {
   const selectedMonth = format(selectedDate, MONTH_FORMAT);
   const prevMonth = format(subMonths(selectedDate, 1), MONTH_FORMAT);
 
-  const { data: recentTransactions = [] } = useRecentTransactions(10);
+  const { data: recentTransactions = [] } = useRecentTransactions(RECENT_LIMIT);
   const { data: monthTransactions = [] } = useMonthTransactions(
     selectedMonth,
-    10,
+    RECENT_LIMIT,
   );
   const { data: summary } = useMonthlySummary(selectedMonth);
   const { data: prevSummary } = useMonthlySummary(prevMonth);
-  const { data: categoryBreakdown = [] } = useCategoryBreakdown(selectedMonth);
-  const { data: tagBreakdown = [] } = useTagBreakdown(selectedMonth);
-  const { data: budgetsList = [] } = useBudgets();
   const { data: subsTotal = 0 } = useSubscriptionsTotal();
   const { data: reimbursementSummary } = useReimbursementSummary();
-  const { data: insights, isLoading: insightsLoading } = useMonthlyInsights(
+  const { data: totalBudget = 0 } = useTotalMonthlyBudget();
+  const { data: insights } = useMonthlyInsights(
     selectedDate.getFullYear(),
     selectedDate.getMonth() + 1,
   );
-  const budgetMap = new Map(budgetsList.map((b) => [b.category_id, b.amount]));
-  const totalBudget = budgetsList.reduce((sum, b) => sum + b.amount, 0);
 
   const income = summary?.total_income ?? 0;
   const expenses = summary?.total_expenses ?? 0;
@@ -193,6 +162,8 @@ export default function HomeScreen() {
         : null;
   const transactions = isCurrentMonth ? recentTransactions : monthTransactions;
   const listData = buildListData(transactions);
+
+  const historyForMonth = historyHref({ month: selectedMonth });
 
   return (
     <View className="flex-1 bg-background">
@@ -273,7 +244,10 @@ export default function HomeScreen() {
             <Pressable
               onPress={() =>
                 router.push(
-                  `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.INCOME}&month=${selectedMonth}`,
+                  historyHref({
+                    type: TRANSACTION_TYPE.INCOME,
+                    month: selectedMonth,
+                  }),
                 )
               }
               className="flex-1 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
@@ -292,7 +266,10 @@ export default function HomeScreen() {
             <Pressable
               onPress={() =>
                 router.push(
-                  `${SCREENS.HISTORY}?filter=${TRANSACTION_TYPE.EXPENSE}&month=${selectedMonth}`,
+                  historyHref({
+                    type: TRANSACTION_TYPE.EXPENSE,
+                    month: selectedMonth,
+                  }),
                 )
               }
               className="flex-1 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
@@ -338,75 +315,60 @@ export default function HomeScreen() {
             </Pressable>
           )}
 
-          {showNameBanner && (
-            <Pressable
-              onPress={() => setShowEditName(true)}
-              className="mx-5 mt-3 flex-row items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3"
-            >
-              <Icon as={UserRoundPen} className="size-4 text-primary" />
-              <Text className="flex-1 text-xs font-medium text-foreground">
-                Set your name so we can identify your device
-              </Text>
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
-                  setNameBannerDismissed(true);
-                }}
-                hitSlop={10}
+          <View className="mt-4 gap-3">
+            {reimbursementSummary && reimbursementSummary.pending_count > 0 && (
+              <AlertBanner
+                tone="warn"
+                onPress={() => router.push(SCREENS.REIMBURSEMENTS)}
               >
-                <Icon as={X} className="size-4 text-muted-foreground" />
-              </Pressable>
-            </Pressable>
-          )}
+                <Text
+                  className={cn("text-sm font-medium", ALERT_TONE_TEXT.warn)}
+                >
+                  {fmt(reimbursementSummary.pending_total)} in{" "}
+                  {reimbursementSummary.pending_count} pending reimbursement
+                  {reimbursementSummary.pending_count === 1 ? "" : "s"}
+                </Text>
+              </AlertBanner>
+            )}
 
-          {reimbursementSummary && reimbursementSummary.pending_count > 0 && (
-            <Pressable
-              onPress={() => router.push(SCREENS.REIMBURSEMENTS)}
-              className="mt-3 flex-row items-center justify-between rounded-xl border border-amber-600/40 bg-amber-600/10 px-4 py-2.5"
-            >
-              <Text className="text-xs font-medium text-amber-500">
-                {fmt(reimbursementSummary.pending_total)} in{" "}
-                {reimbursementSummary.pending_count} pending reimbursement
-                {reimbursementSummary.pending_count === 1 ? "" : "s"}
-              </Text>
-              <Icon as={ChevronRight} className="size-4 text-amber-500" />
-            </Pressable>
-          )}
+            {insights?.topCategoryChange && (
+              <TopCategoryCard
+                change={insights.topCategoryChange}
+                selectedMonth={selectedMonth}
+              />
+            )}
+
+            {insights?.projectedLow != null &&
+              insights?.projectedHigh != null && (
+                <ProjectedSpendingCard
+                  projectedLow={insights.projectedLow}
+                  projectedHigh={insights.projectedHigh}
+                  daysElapsed={insights.daysElapsed}
+                  daysInMonth={insights.daysInMonth}
+                  expenses={expenses}
+                  totalBudget={totalBudget}
+                  fmt={fmt}
+                />
+              )}
+          </View>
         </View>
 
-        <ComponentErrorBoundary name="home.tag-breakdown">
-          <TagBreakdownSection
-            tagBreakdown={tagBreakdown.slice(0, TOP_BREAKDOWN_LIMIT)}
-            fmt={fmt}
-          />
-        </ComponentErrorBoundary>
-
-        <ComponentErrorBoundary name="home.category-breakdown">
-          <CategoryBreakdownSection
-            categoryBreakdown={categoryBreakdown}
-            budgets={budgetMap}
-            fmt={fmt}
-            selectedDate={selectedDate}
-            isCurrentMonth={isCurrentMonth}
-          />
-        </ComponentErrorBoundary>
-
-        <ComponentErrorBoundary name="home.insights">
-          <InsightsSection
-            insights={insights}
-            insightsLoading={insightsLoading}
-            expenses={expenses}
-            totalBudget={totalBudget}
-            fmt={fmt}
-            selectedDate={selectedDate}
-          />
+        <ComponentErrorBoundary name="home.spending-panel">
+          <SpendingPanel selectedMonth={selectedMonth} fmt={fmt} />
         </ComponentErrorBoundary>
 
         <ComponentErrorBoundary name="home.transaction-list">
-          <View className="px-5 pt-2">
-            <Text className="mb-3 text-sm font-semibold text-muted-foreground">
-              {isCurrentMonth ? "Recent Transactions" : "Transactions"}
-            </Text>
+          <View className="px-5 pt-4">
+            <View className="mb-3 flex-row items-center justify-between">
+              <Text className="text-lg font-semibold text-foreground">
+                Recent activity
+              </Text>
+              <Pressable onPress={() => router.push(historyForMonth)}>
+                <Text className="text-sm font-medium text-primary">
+                  View all →
+                </Text>
+              </Pressable>
+            </View>
             {listData.map((item) =>
               item.type === "header" ? (
                 <DateHeader key={`h-${item.label}`} label={item.label} />
@@ -468,14 +430,6 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       </View>
-      <Suspense fallback={null}>
-        <EditNameSheet
-          visible={showEditName}
-          onClose={() => setShowEditName(false)}
-          userName={userName}
-          onSave={handleSaveNameFromBanner}
-        />
-      </Suspense>
     </View>
   );
 }

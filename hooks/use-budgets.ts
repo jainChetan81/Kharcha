@@ -30,6 +30,9 @@ export function useSetBudget() {
     onSuccess: () => {
       logEvent(FIREBASE_EVENTS.BUDGET_SET);
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TOTAL_MONTHLY_BUDGET],
+      });
     },
   });
 }
@@ -38,7 +41,11 @@ export function useDeleteBudget() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (categoryId: number) => deleteBudget(categoryId),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BUDGETS] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TOTAL_MONTHLY_BUDGET],
+      });
+    },
   });
 }

@@ -3,7 +3,7 @@
     "name": "kharcha",
     "slug": "kharcha",
     "scheme": "kharcha",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -17,7 +17,7 @@
       "bundleIdentifier": "com.chetanjain.kharcha",
       "googleServicesFile": "./GoogleService-Info.plist",
       "deploymentTarget": "17.0",
-      "buildNumber": "6",
+      "buildNumber": "7",
       "icon": "./assets/icon.png",
       "splash": {
         "image": "./assets/splash-icon.png",
@@ -41,7 +41,7 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "versionCode": 6,
+      "versionCode": 7,
       "permissions": [],
       "intentFilters": [
         {

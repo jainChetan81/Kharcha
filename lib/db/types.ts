@@ -57,6 +57,14 @@ export type CategoryBreakdownRow = {
   category_id: number | null;
   category_name: string;
   total: number;
+  count: number;
+  percentage: number;
+};
+
+export type MerchantBreakdownRow = {
+  merchant: string;
+  total: number;
+  count: number;
   percentage: number;
 };
 

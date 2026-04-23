@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAutoRefreshPrefs } from "@/hooks/use-auto-refresh-prefs";
-import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
-import { getConfig } from "@/lib/db/config";
+import { QUERY_KEYS } from "@/lib/constants";
+import { apiFetchAuthed } from "@/lib/device";
 import { env } from "@/lib/env";
-import { apiFetch } from "@/lib/firebase/api-fetch";
 import { isAndroid } from "@/lib/utils";
 
 type FeatureFlags = {
@@ -29,12 +28,7 @@ export function useFeatureFlags() {
   return useQuery({
     queryKey: [QUERY_KEYS.FEATURE_FLAGS],
     queryFn: async () => {
-      const deviceId = await getConfig(CONFIG_KEYS.DEVICE_ID);
-      if (!deviceId) throw new Error("Device ID not found");
-
-      const res = await apiFetch(`${env.API_URL}/feature-flags`, {
-        headers: { "x-device-id": deviceId },
-      });
+      const res = await apiFetchAuthed(`${env.API_URL}/feature-flags`);
       if (!res.ok) throw new Error("Failed to fetch feature flags");
       return res.json() as Promise<FeatureFlags>;
     },

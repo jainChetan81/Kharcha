@@ -3,7 +3,7 @@ import {
   PARSED_BY,
   type ParsedByType,
 } from "@/lib/constants";
-import { parseTransactionWithGemini } from "@/lib/gemini/parser";
+import { parseWithGemini } from "@/lib/gemini/client";
 import { AXIS_PARSERS } from "./axis";
 import { CITI_PARSERS } from "./citi";
 import { ONECARD_PARSERS, SLICE_PARSERS, UNI_PARSERS } from "./fintech-cards";
@@ -61,7 +61,7 @@ export async function parseEmailWithFallback(
     if (result) return { parsed: result, parsedBy: PARSED_BY.REGEX };
   }
 
-  const gemini = await parseTransactionWithGemini(decoded, categoryNames);
+  const gemini = await parseWithGemini(decoded, categoryNames);
   if (gemini.parsed) {
     return {
       parsed: {

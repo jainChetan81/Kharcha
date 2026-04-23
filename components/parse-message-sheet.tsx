@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { COLORS, GEMINI_ERROR } from "@/lib/constants";
 import {
-  type GeminiParsedMessage,
-  parseMessageWithGemini,
-} from "@/lib/gemini/parser";
+  type GeminiParsedTransaction,
+  parseWithGemini,
+} from "@/lib/gemini/client";
 import { parseMessage } from "@/lib/parsers";
 import { showErrorToast } from "@/lib/toast";
 
@@ -25,7 +25,7 @@ export function ParseMessageSheet({
 }: {
   visible: boolean;
   onClose: () => void;
-  onParsed: (parsed: GeminiParsedMessage, originalText: string) => void;
+  onParsed: (parsed: GeminiParsedTransaction, originalText: string) => void;
   categoryNames: string[];
 }) {
   const [messageText, setMessageText] = useState("");
@@ -64,7 +64,7 @@ export function ParseMessageSheet({
       }
 
       // Fall back to Gemini AI parsing
-      const result = await parseMessageWithGemini(messageText, categoryNames);
+      const result = await parseWithGemini(messageText, categoryNames);
       if (result.error === GEMINI_ERROR.SERVICE_UNAVAILABLE) {
         showErrorToast("AI is busy right now, try again in a moment");
         return;

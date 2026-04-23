@@ -1,6 +1,32 @@
 import { format, isToday, isYesterday } from "date-fns";
-import { DATE_FORMAT } from "@/lib/constants";
+import {
+  DATE_FORMAT,
+  SCREENS,
+  type TransactionFilterType,
+} from "@/lib/constants";
 import type { TransactionRow } from "@/lib/db";
+
+export type HistoryHrefParams = {
+  type?: TransactionFilterType;
+  categoryId?: number | "other" | null;
+  tagId?: number | null;
+  merchant?: string | null;
+  month?: string | null;
+};
+
+export function historyHref(params: HistoryHrefParams = {}): string {
+  const query: string[] = [];
+  if (params.type) query.push(`filter=${params.type}`);
+  if (params.categoryId != null) query.push(`category_id=${params.categoryId}`);
+  if (params.tagId != null) query.push(`tag_id=${params.tagId}`);
+  if (params.merchant) {
+    query.push(`merchant=${encodeURIComponent(params.merchant)}`);
+  }
+  if (params.month) query.push(`month=${params.month}`);
+  return query.length
+    ? `${SCREENS.HISTORY}?${query.join("&")}`
+    : SCREENS.HISTORY;
+}
 
 export type CurrencyCode = "INR" | "USD" | "GBP" | "EUR";
 

@@ -1,11 +1,18 @@
 import { router } from "expo-router";
-import { CreditCard, Tag, TrendingDown, TrendingUp } from "lucide-react-native";
+import {
+  CircleDollarSign,
+  CreditCard,
+  Tag,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react-native";
 import { ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { NavRow } from "@/components/ui/nav-row";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useAllCategories } from "@/hooks/use-categories";
+import { CURRENCIES, useConfig } from "@/hooks/use-config";
 import { useAllSources } from "@/hooks/use-sources";
 import { useAllTags } from "@/hooks/use-tags";
 import {
@@ -14,11 +21,11 @@ import {
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 
-function CountChip({ count }: { count: number }) {
+function InlineChip({ label }: { label: string }) {
   return (
     <View className="mr-2 rounded-full bg-muted px-2 py-0.5">
       <Text className="text-[10px] font-medium text-muted-foreground">
-        {count}
+        {label}
       </Text>
     </View>
   );
@@ -28,6 +35,7 @@ export default function ConfigHubScreen() {
   const { data: categories = [] } = useAllCategories();
   const { data: sources = [] } = useAllSources();
   const { data: tags = [] } = useAllTags();
+  const { currency } = useConfig();
 
   const expenseCount = categories.filter(
     (c) => c.type === TRANSACTION_TYPE.EXPENSE,
@@ -53,29 +61,38 @@ export default function ConfigHubScreen() {
           icon={TrendingDown}
           title="Expense Categories"
           description="Buckets for things you spend on."
-          accessory={<CountChip count={expenseCount} />}
+          accessory={<InlineChip label={String(expenseCount)} />}
           onPress={() => router.push(SCREENS.CONFIG_EXPENSE_CATEGORIES)}
         />
         <NavRow
           icon={TrendingUp}
           title="Income Categories"
           description="Buckets for money coming in."
-          accessory={<CountChip count={incomeCount} />}
+          accessory={<InlineChip label={String(incomeCount)} />}
           onPress={() => router.push(SCREENS.CONFIG_INCOME_CATEGORIES)}
         />
         <NavRow
           icon={CreditCard}
           title="Payment Sources"
           description="Cards, accounts, and wallets you pay from."
-          accessory={<CountChip count={sources.length} />}
+          accessory={<InlineChip label={String(sources.length)} />}
           onPress={() => router.push(SCREENS.CONFIG_SOURCES)}
         />
         <NavRow
           icon={Tag}
           title="Tags"
           description="Cross-cutting labels — trips, events, shared costs."
-          accessory={<CountChip count={tags.length} />}
+          accessory={<InlineChip label={String(tags.length)} />}
           onPress={() => router.push(SCREENS.TAGS)}
+        />
+        <NavRow
+          icon={CircleDollarSign}
+          title="Currency"
+          description="Symbol and formatting used across the app."
+          accessory={
+            <InlineChip label={`${CURRENCIES[currency].symbol} ${currency}`} />
+          }
+          onPress={() => router.push(SCREENS.CONFIG_CURRENCY)}
         />
       </ScrollView>
     </View>

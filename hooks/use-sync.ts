@@ -1,12 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getAndroidId, getIosIdForVendorAsync } from "expo-application";
 import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
 import { insertTransaction, syncedTransactionExists } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
+import {
+  apiFetchAuthed,
+  DEVICE_PLATFORM,
+  getOrCreateDeviceId,
+  registerDevice,
+} from "@/lib/device";
 import { env } from "@/lib/env";
 import { FIREBASE_EVENTS, logEvent, withTrace } from "@/lib/firebase";
-import { apiFetch } from "@/lib/firebase/api-fetch";
-import { isIOS } from "@/lib/utils";
+import { parseErrorResponse } from "@/lib/firebase/api-fetch";
 
 type BackendTransaction = {
   id: string;
@@ -27,62 +31,6 @@ type SyncResponse = {
   transactions: BackendTransaction[];
   last_synced_at: string;
 };
-
-async function parseErrorResponse(
-  res: Response,
-  fallback: string,
-): Promise<string> {
-  try {
-    const body = await res.json();
-    return body.error ?? fallback;
-  } catch {
-    return `${fallback} (${res.status})`;
-  }
-}
-
-export async function getOrCreateDeviceId(): Promise<string> {
-  const existing = await getConfig(CONFIG_KEYS.DEVICE_ID);
-  if (existing) return existing;
-
-  const vendorId = isIOS ? await getIosIdForVendorAsync() : getAndroidId();
-  const id = `kharcha-${vendorId ?? crypto.randomUUID()}`;
-  await updateConfig(CONFIG_KEYS.DEVICE_ID, id);
-  return id;
-}
-
-let registerInFlight: Promise<{ forwarding_email: string }> | null = null;
-
-export async function registerDevice(
-  deviceId: string,
-  name?: string,
-): Promise<{ forwarding_email: string }> {
-  if (registerInFlight) return registerInFlight;
-
-  registerInFlight = (async () => {
-    const res = await apiFetch(`${env.API_URL}/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ device_id: deviceId, name: name || undefined }),
-    });
-
-    if (!res.ok) {
-      throw new Error(await parseErrorResponse(res, "Registration failed"));
-    }
-
-    const data = (await res.json()) as { forwarding_email: string };
-
-    await updateConfig(
-      CONFIG_KEYS.BACKEND_FORWARDING_EMAIL,
-      data.forwarding_email,
-    );
-
-    return data;
-  })().finally(() => {
-    registerInFlight = null;
-  });
-
-  return registerInFlight;
-}
 
 export function useDeviceSyncConfig() {
   return useQuery({
@@ -125,16 +73,10 @@ export function useUpdateDeviceName() {
 
   return useMutation({
     mutationFn: async (name: string) => {
-      const deviceId = await getConfig(CONFIG_KEYS.DEVICE_ID);
-      if (!deviceId) throw new Error("Device not registered");
-
-      const res = await apiFetch(`${env.API_URL}/device/name`, {
+      const res = await apiFetchAuthed(`${env.API_URL}/device/name`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-device-id": deviceId,
-        },
-        body: JSON.stringify({ name }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, platform: DEVICE_PLATFORM }),
       });
 
       if (!res.ok) {
@@ -153,14 +95,10 @@ export function useUpdateDeviceName() {
 
 export function useDeviceSync() {
   const queryClient = useQueryClient();
-  const { data: settings } = useDeviceSyncConfig();
 
   return useMutation({
     mutationFn: async (syncFromDate: Date) => {
       return withTrace("device_sync", async () => {
-        const deviceId = settings?.deviceId;
-        if (!deviceId) throw new Error("Not registered");
-
         const params = new URLSearchParams();
         const startOfMonth = new Date(
           new Date().getFullYear(),
@@ -172,9 +110,7 @@ export function useDeviceSync() {
         }
 
         const url = `${env.API_URL}/sync${params.toString() ? `?${params}` : ""}`;
-        const res = await apiFetch(url, {
-          headers: { "x-device-id": deviceId },
-        });
+        const res = await apiFetchAuthed(url);
 
         if (!res.ok) {
           throw new Error(await parseErrorResponse(res, "Sync failed"));

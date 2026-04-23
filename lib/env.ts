@@ -23,5 +23,4 @@ export const env = {
     GOOGLE_WEB_CLIENT_ID,
   ),
   API_URL: process.env.EXPO_PUBLIC_API_URL ?? "",
-  GEMINI_API_KEY: process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? "",
 } as const;

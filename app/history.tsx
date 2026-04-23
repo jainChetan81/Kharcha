@@ -26,6 +26,7 @@ import {
   ComponentErrorBoundary,
   ScreenError,
 } from "@/components/error-boundary";
+import { HistoryInsightsStrip } from "@/components/history-insights-strip";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
@@ -38,6 +39,7 @@ import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useAllSources } from "@/hooks/use-sources";
 import { useAllTags } from "@/hooks/use-tags";
 import {
+  useFilteredInsights,
   useSwipeDelete,
   useTransactionsPaginated,
 } from "@/hooks/use-transactions";
@@ -74,6 +76,8 @@ export default function HistoryScreen() {
     amount_max?: string;
     reimbursement?: string;
     tag_id?: string;
+    merchant?: string;
+    month?: string;
   }>();
 
   // Applied filters
@@ -95,6 +99,7 @@ export default function HistoryScreen() {
   const [reimbursementFilter, setReimbursementFilter] =
     useState<ReimbursementFilterType>(REIMBURSEMENT_FILTER.ALL);
   const [tagIds, setTagIds] = useState<number[]>([]);
+  const [merchant, setMerchant] = useState<string | null>(null);
   const handleSwipeDelete = useSwipeDelete();
   const [searchText, setSearchText] = useState("");
   const debouncedSearch = useDebounce(searchText);
@@ -171,6 +176,18 @@ export default function HistoryScreen() {
       const parsed = Number(params.tag_id);
       if (!Number.isNaN(parsed)) setTagIds([parsed]);
     }
+    if (params.merchant) {
+      setMerchant(params.merchant);
+    }
+    if (params.month && /^\d{4}-\d{2}$/.test(params.month)) {
+      const [y, m] = params.month.split("-").map(Number);
+      const from = `${params.month}-01`;
+      const lastDay = new Date(y, m, 0).getDate();
+      const to = `${params.month}-${String(lastDay).padStart(2, "0")}`;
+      setDateFrom(from);
+      setDateTo(to);
+      setPeriodPreset(PERIOD_PRESET.CUSTOM);
+    }
   }, [
     params.filter,
     params.category_id,
@@ -180,6 +197,8 @@ export default function HistoryScreen() {
     params.amount_max,
     params.reimbursement,
     params.tag_id,
+    params.merchant,
+    params.month,
   ]);
 
   function handleDraftTypeChange(next: TransactionFilterType) {
@@ -230,6 +249,7 @@ export default function HistoryScreen() {
     if (amountMax != null) count++;
     if (reimbursementFilter !== REIMBURSEMENT_FILTER.ALL) count++;
     if (tagIds.length > 0) count++;
+    if (merchant) count++;
     return count;
   }, [
     typeFilter,
@@ -242,6 +262,7 @@ export default function HistoryScreen() {
     amountMax,
     reimbursementFilter,
     tagIds,
+    merchant,
   ]);
 
   const hasActiveFilters = activeFilterCount > 0;
@@ -258,6 +279,7 @@ export default function HistoryScreen() {
     search: debouncedSearch || undefined,
     reimbursement: reimbursementFilter,
     tagIds: tagIds.length > 0 ? tagIds : null,
+    merchant,
   };
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -266,15 +288,7 @@ export default function HistoryScreen() {
   const allTransactions = data?.pages.flat() ?? [];
   const listData = buildListData(allTransactions);
 
-  const totalSpent = allTransactions
-    .filter((t) => t.type === TRANSACTION_TYPE.EXPENSE)
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalIncome = allTransactions
-    .filter((t) => t.type === TRANSACTION_TYPE.INCOME)
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalTransfers = allTransactions
-    .filter((t) => t.type === TRANSACTION_TYPE.TRANSFER)
-    .reduce((sum, t) => sum + t.amount, 0);
+  const { data: insights } = useFilteredInsights(filters);
 
   function openFilters() {
     setDraftType(typeFilter);
@@ -353,6 +367,7 @@ export default function HistoryScreen() {
     setAmountMax(null);
     setReimbursementFilter(REIMBURSEMENT_FILTER.ALL);
     setTagIds([]);
+    setMerchant(null);
   }
 
   const draftHasFilters =
@@ -410,38 +425,9 @@ export default function HistoryScreen() {
         </View>
       </View>
 
-      {allTransactions.length > 0 &&
-        (totalSpent > 0 || totalIncome > 0 || totalTransfers > 0) && (
-          <View className="mx-5 mb-3 rounded-xl bg-card p-3">
-            <Text className="text-xs text-muted-foreground">
-              {allTransactions.length} transactions
-              {totalSpent > 0 && (
-                <>
-                  {"  ·  "}
-                  <Text className="text-xs font-semibold text-negative">
-                    {fmt(totalSpent)} spent
-                  </Text>
-                </>
-              )}
-              {totalIncome > 0 && (
-                <>
-                  {"  ·  "}
-                  <Text className="text-xs font-semibold text-positive">
-                    {fmt(totalIncome)} income
-                  </Text>
-                </>
-              )}
-              {totalTransfers > 0 && (
-                <>
-                  {"  ·  "}
-                  <Text className="text-xs font-semibold text-muted-foreground">
-                    {fmt(totalTransfers)} transferred
-                  </Text>
-                </>
-              )}
-            </Text>
-          </View>
-        )}
+      {insights && insights.count > 0 && (
+        <HistoryInsightsStrip insights={insights} fmt={fmt} />
+      )}
 
       <View className="mx-5 mb-3 flex-row items-center rounded-xl border border-border bg-card px-3">
         <Icon as={Search} className="mr-2 size-4 text-muted-foreground" />
