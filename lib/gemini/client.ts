@@ -2,6 +2,11 @@ import { GEMINI_ERROR, type GeminiErrorType } from "@/lib/constants";
 import { apiFetchAuthed } from "@/lib/device";
 import { env } from "@/lib/env";
 
+// Cap the proxy request at 30s. Backend Gemini calls typically return in
+// 1–3s; anything longer is a stuck connection or a provider outage. Without
+// a timeout the user sees an infinite spinner and can't retry.
+const GEMINI_REQUEST_TIMEOUT_MS = 30_000;
+
 export type GeminiParsedTransaction = {
   amount: number;
   type: "expense" | "income";
@@ -38,11 +43,18 @@ export async function parseWithGemini(
   text: string,
   categoryNames: string[],
 ): Promise<GeminiParseResult> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    GEMINI_REQUEST_TIMEOUT_MS,
+  );
+
   try {
     const res = await apiFetchAuthed(`${env.API_URL}/ai/parse`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, categories: categoryNames }),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
@@ -65,6 +77,20 @@ export async function parseWithGemini(
       errorMessage: body.errorMessage ?? undefined,
     };
   } catch (err) {
+    // `controller.abort()` surfaces here as a DOMException with name
+    // "AbortError" — map it to the existing TIMEOUT error code so the UI
+    // already-defined timeout copy kicks in instead of "unknown failure".
+    const isAbort =
+      (err as { name?: string } | null)?.name === "AbortError" ||
+      controller.signal.aborted;
+    if (isAbort) {
+      return {
+        parsed: null,
+        raw: null,
+        error: GEMINI_ERROR.TIMEOUT,
+        errorMessage: `request timed out after ${GEMINI_REQUEST_TIMEOUT_MS / 1000}s`,
+      };
+    }
     const message =
       (err as { message?: string } | null)?.message ?? String(err);
     return {
@@ -73,5 +99,7 @@ export async function parseWithGemini(
       error: GEMINI_ERROR.UNKNOWN,
       errorMessage: `network failure: ${message}`.slice(0, 300),
     };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
