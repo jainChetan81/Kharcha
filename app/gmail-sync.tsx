@@ -1,7 +1,7 @@
 import { formatDistanceToNow, subMonths } from "date-fns";
 import { router } from "expo-router";
 import { ChevronRight, Copy, Landmark } from "lucide-react-native";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import { Button } from "@/components/ui/button";
@@ -13,27 +13,16 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { StepCard } from "@/components/ui/step-card";
 import { SwitchRow } from "@/components/ui/switch-row";
 import { Text } from "@/components/ui/text";
-import {
-  useAutoRefreshPrefs,
-  useSetAutoRefreshPref,
-} from "@/hooks/use-auto-refresh-prefs";
-import { useBanksWithEmails } from "@/hooks/use-banks";
-import { useGmailSync, useGmailSyncConfig } from "@/hooks/use-gmail-sync";
-import { useSyncState } from "@/hooks/use-sync-state";
+import { useGmailSyncUi } from "@/hooks/use-gmail-sync-ui";
 import { copyMaskedToClipboard } from "@/lib/clipboard";
 import {
   COLORS,
-  CONFIG_KEYS,
   EMAIL_LOG_STATUS,
-  GMAIL_API,
   GMAIL_SYNC_MAX_MONTHS_BACK,
   SCREENS,
   SCROLL_BOTTOM_PADDING,
 } from "@/lib/constants";
-import { getConfig, updateConfig } from "@/lib/db/config";
-import { useGoogleAuth } from "@/lib/gmail/auth";
-import type { EmailLog, SyncResult } from "@/lib/gmail/sync";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import type { EmailLog } from "@/lib/gmail/sync";
 import { cn } from "@/lib/utils";
 
 const SyncResultsSheet = lazy(() =>
@@ -41,135 +30,31 @@ const SyncResultsSheet = lazy(() =>
     default: m.SyncResultsSheet,
   })),
 );
+
 export default function GmailSyncScreen() {
-  const { signIn, signOut, getValidAccessToken } = useGoogleAuth();
   const {
     connected,
-    setConnected,
-    lastSynced,
-    setLastSynced,
+    email,
     loading,
+    syncing,
+    verifying,
+    busy,
     syncFromDate,
-    setSyncFromDate,
-  } = useSyncState();
-  const [email, setEmail] = useState<string | null>(null);
-  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
-  const [showResults, setShowResults] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const { data: banksData = [] } = useBanksWithEmails();
-  const activeBanks = banksData.filter(
-    (b) => b.is_active === 1 && b.emails.length > 0,
-  );
-  const noActiveBanks = activeBanks.length === 0;
-  const gmailSyncConfig = useGmailSyncConfig();
-  const gmailSyncMutation = useGmailSync();
-  const syncing = gmailSyncMutation.isPending;
-  const busy = loading || syncing || verifying;
-  const { data: autoRefreshPrefs } = useAutoRefreshPrefs();
-  const setAutoRefreshPref = useSetAutoRefreshPref();
-
-  const emailToBankName = new Map<string, string>();
-  for (const b of banksData) {
-    for (const e of b.emails)
-      emailToBankName.set(e.email.toLowerCase(), b.name);
-  }
-
-  function lookupBankName(from: string): string {
-    return (
-      emailToBankName.get(from.toLowerCase()) ?? from.split("@")[0] ?? from
-    );
-  }
-
-  async function handleConnect() {
-    try {
-      const success = await signIn();
-      if (success) {
-        setConnected(true);
-        await updateConfig(CONFIG_KEYS.GMAIL_CONNECTED, "true");
-        showSuccessToast("Gmail connected");
-      } else {
-        showErrorToast("Could not connect", "Sign in was cancelled or failed");
-      }
-    } catch (err) {
-      showErrorToast("Connection failed", err);
-    }
-  }
-
-  async function handleSessionExpired() {
-    await handleDisconnect();
-    showErrorToast("Session expired", "Please reconnect your Gmail");
-  }
-
-  async function handleVerify() {
-    setVerifying(true);
-    try {
-      const token = await getValidAccessToken();
-      if (!token) {
-        await handleSessionExpired();
-        return;
-      }
-      const res = await fetch(`${GMAIL_API.MESSAGES}?maxResults=1`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        await handleSessionExpired();
-        return;
-      }
-
-      const profileRes = await fetch(GMAIL_API.PROFILE, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (profileRes.ok) {
-        const profile = await profileRes.json();
-        setEmail(profile.emailAddress);
-      }
-
-      showSuccessToast("Connection verified");
-    } catch {
-      await handleSessionExpired();
-    } finally {
-      setVerifying(false);
-    }
-  }
-
-  async function handleUpdateSyncFrom(date: Date) {
-    setSyncFromDate(date);
-    await gmailSyncConfig.updateSyncFromDate(date);
-    setLastSynced(date.toISOString());
-  }
-
-  async function handleSync() {
-    try {
-      const response = await gmailSyncMutation.mutateAsync();
-      if (response.result.nobanks) {
-        showErrorToast("No active banks", "Add a bank in settings to sync");
-        return;
-      }
-
-      setLastSynced(
-        (await getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT)) ?? null,
-      );
-
-      setSyncResult(response.result);
-      setShowResults(true);
-      showSuccessToast("Sync completed");
-    } catch (err) {
-      if (err instanceof Error && err.message === "No active banks") {
-        showErrorToast("No active banks", "Add a bank in settings to sync");
-      } else {
-        showErrorToast("Sync failed", err);
-      }
-    }
-  }
-
-  async function handleDisconnect() {
-    await signOut();
-    await gmailSyncConfig.disconnect();
-    setConnected(false);
-    setEmail(null);
-    setLastSynced(null);
-    showSuccessToast("Gmail disconnected");
-  }
+    lastSynced,
+    activeBanks,
+    noActiveBanks,
+    autoRefreshEnabled,
+    toggleAutoRefresh,
+    syncResult,
+    showResults,
+    closeResults,
+    lookupBankName,
+    handleConnect,
+    handleVerify,
+    handleSync,
+    handleDisconnect,
+    handleUpdateSyncFrom,
+  } = useGmailSyncUi();
 
   return (
     <View className="flex-1 bg-background">
@@ -257,7 +142,7 @@ export default function GmailSyncScreen() {
                 <Button
                   className="h-12 rounded-xl bg-primary"
                   onPress={handleSync}
-                  disabled={busy || noActiveBanks || !autoRefreshPrefs?.gmail}
+                  disabled={busy || noActiveBanks || !autoRefreshEnabled}
                 >
                   {syncing ? (
                     <ActivityIndicator
@@ -284,10 +169,8 @@ export default function GmailSyncScreen() {
               <SwitchRow
                 label="Enable Gmail Sync"
                 description="Turn off to pause all Gmail syncing — manual and automatic."
-                value={autoRefreshPrefs?.gmail ?? false}
-                onValueChange={(next) =>
-                  setAutoRefreshPref.mutate({ key: "gmail", enabled: next })
-                }
+                value={autoRefreshEnabled}
+                onValueChange={toggleAutoRefresh}
               />
 
               <SectionHeader title="Banks" />
@@ -360,7 +243,7 @@ export default function GmailSyncScreen() {
         <Suspense fallback={null}>
           <SyncResultsSheet
             visible={showResults}
-            onClose={() => setShowResults(false)}
+            onClose={closeResults}
             subtitle={`${syncResult.added + syncResult.failed + syncResult.skipped} emails processed`}
             emptyMessage="No emails found"
             stats={[]}
@@ -435,7 +318,7 @@ function StatLine({
       </Text>
       <View
         className="rounded-full px-2 py-0.5"
-        style={{ backgroundColor: `${color}22` }} // Dynamic opacity suffix — cannot use NativeWind
+        style={{ backgroundColor: `${color}22` }}
       >
         <Text className="text-[11px] font-semibold" style={{ color }}>
           {count}
@@ -449,7 +332,7 @@ function Badge({ text, color }: { text: string; color: string }) {
   return (
     <View
       className="rounded-full px-2 py-0.5"
-      style={{ backgroundColor: `${color}22` }} // Dynamic opacity suffix — cannot use NativeWind
+      style={{ backgroundColor: `${color}22` }}
     >
       <Text
         className="text-[9px] font-bold uppercase tracking-wide"

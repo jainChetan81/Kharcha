@@ -1,4 +1,3 @@
-import { formatDistanceToNow } from "date-fns";
 import {
   Cloud,
   CloudDownload,
@@ -22,15 +21,8 @@ import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Text } from "@/components/ui/text";
-import {
-  useBackupNow,
-  useCloudBackupSettings,
-  useExportDatabase,
-  useImportDatabase,
-  useLatestBackup,
-  useRestoreFromCloud,
-} from "@/hooks/use-cloud-backup";
-import { DriveScopeMissingError, ICloudSyncingError } from "@/lib/cloud-backup";
+import { useExportDatabase, useImportDatabase } from "@/hooks/use-cloud-backup";
+import { useCloudBackupUi } from "@/hooks/use-cloud-backup-ui";
 import { COLORS, SCROLL_BOTTOM_PADDING } from "@/lib/constants";
 import { initDB } from "@/lib/db";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
@@ -142,94 +134,20 @@ export default function ExportScreen() {
 }
 
 function CloudBackupSection() {
-  const { enabled, hasEverBackedUp, setEnabled, provider } =
-    useCloudBackupSettings();
-  const { data: latest } = useLatestBackup({
-    enabled: enabled || hasEverBackedUp,
-  });
-  const backupMutation = useBackupNow();
-  const restoreMutation = useRestoreFromCloud();
+  const {
+    supported,
+    enabled,
+    providerLabel,
+    lastLabel,
+    backupPending,
+    restorePending,
+    busy,
+    handleToggle,
+    handleBackupNow,
+    handleRestore,
+  } = useCloudBackupUi();
 
-  if (provider === "unsupported") return null;
-
-  const providerLabel = provider === "icloud" ? "iCloud" : "Google Drive";
-  const lastLabel = latest
-    ? `Last backed up ${formatDistanceToNow(new Date(latest.modifiedTime), { addSuffix: true })}`
-    : "No backup yet";
-
-  function reportBackupError(err: unknown, fallbackTitle: string) {
-    if (err instanceof DriveScopeMissingError) {
-      showErrorToast(
-        "Reconnect Google",
-        "Drive permission missing — sign in again in Gmail Sync.",
-      );
-      return;
-    }
-    showErrorToast(fallbackTitle, err);
-  }
-
-  async function handleToggle(next: boolean) {
-    try {
-      await setEnabled(next);
-      if (next && !latest) {
-        try {
-          await backupMutation.mutateAsync();
-          showSuccessToast(`Backed up to ${providerLabel}`);
-        } catch (err) {
-          reportBackupError(err, "First backup failed");
-        }
-      }
-    } catch (err) {
-      showErrorToast("Couldn't update setting", err);
-    }
-  }
-
-  async function handleBackupNow() {
-    try {
-      await backupMutation.mutateAsync();
-      showSuccessToast(`Backed up to ${providerLabel}`);
-    } catch (err) {
-      reportBackupError(err, "Backup failed");
-    }
-  }
-
-  function handleRestore() {
-    if (!latest && !hasEverBackedUp) {
-      showErrorToast(
-        "No backup found",
-        `Nothing to restore from ${providerLabel} yet.`,
-      );
-      return;
-    }
-    Alert.alert(
-      `Restore from ${providerLabel}`,
-      "This will replace all current data with the cloud backup. Continue?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Restore",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await restoreMutation.mutateAsync();
-              showSuccessToast("Restored");
-            } catch (err) {
-              if (err instanceof ICloudSyncingError) {
-                showErrorToast(
-                  "iCloud still syncing",
-                  "Your backup is downloading — try again in a minute.",
-                );
-                return;
-              }
-              reportBackupError(err, "Restore failed");
-            }
-          },
-        },
-      ],
-    );
-  }
-
-  const busy = backupMutation.isPending || restoreMutation.isPending;
+  if (!supported) return null;
 
   return (
     <>
@@ -260,7 +178,7 @@ function CloudBackupSection() {
         icon={CloudUpload}
         label="Back up now"
         description={`Run a one-off backup to ${providerLabel} right now.`}
-        loading={backupMutation.isPending}
+        loading={backupPending}
         disabled={busy}
         onPress={handleBackupNow}
       />
@@ -268,7 +186,7 @@ function CloudBackupSection() {
         icon={CloudDownload}
         label={`Restore from ${providerLabel}`}
         description="Replace everything on this device with your latest cloud backup. Destructive."
-        loading={restoreMutation.isPending}
+        loading={restorePending}
         disabled={busy}
         onPress={handleRestore}
       />

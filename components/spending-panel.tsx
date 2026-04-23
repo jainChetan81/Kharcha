@@ -61,10 +61,6 @@ export function SpendingPanel({
   const totalGroups = rows.length;
   const top = rows.slice(0, TOP_BREAKDOWN_LIMIT);
   const monthTotal = rows.reduce((sum, r) => sum + r.total, 0);
-  const viewAllHref = historyHref({
-    type: TRANSACTION_TYPE.EXPENSE,
-    month: selectedMonth,
-  });
 
   return (
     <View className="px-5 pb-2 pt-4">
@@ -110,7 +106,12 @@ export function SpendingPanel({
               <Pressable
                 key={row.key}
                 onPress={() => router.push(row.href)}
-                className="flex-row items-center py-2.5"
+                className="-mx-3 flex-row items-center rounded-xl px-3 py-2.5"
+                style={({ pressed }) => ({
+                  backgroundColor: pressed
+                    ? "rgba(150, 150, 150, 0.1)"
+                    : "transparent",
+                })}
               >
                 <Text className="w-5 text-sm text-muted-foreground">
                   {i + 1}
@@ -142,7 +143,16 @@ export function SpendingPanel({
           </View>
 
           <Pressable
-            onPress={() => router.push(viewAllHref)}
+            onPress={() =>
+              router.push({
+                pathname: "/history",
+                params: {
+                  filter: TRANSACTION_TYPE.EXPENSE,
+                  month: selectedMonth,
+                  isSummaryOpen: "true",
+                },
+              })
+            }
             className="items-center pt-4"
           >
             <Text className="text-sm font-medium text-primary">

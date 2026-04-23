@@ -1531,6 +1531,39 @@ export async function getMerchantBreakdown(yearMonth: string) {
   }
 }
 
+export async function searchMerchants(
+  searchTerm: string,
+  limit = 5,
+): Promise<string[]> {
+  try {
+    const term = `%${searchTerm}%`;
+    const rows = await db
+      .select({
+        merchant: transactions.merchant,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          like(transactions.merchant, term),
+          sql`${transactions.merchant} IS NOT NULL`,
+          sql`TRIM(${transactions.merchant}) != ''`,
+        ),
+      )
+      .groupBy(sql`LOWER(${transactions.merchant})`)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(limit);
+
+    return rows.map((r) => r.merchant ?? "");
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: "DB_ERROR",
+      operation: "searchMerchants",
+    });
+    throw error;
+  }
+}
+
 export async function getTotalMonthlyBudget(): Promise<number> {
   try {
     const rows = await db

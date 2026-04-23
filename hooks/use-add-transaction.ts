@@ -1,0 +1,374 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import * as Haptics from "expo-haptics";
+import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { SubscriptionFormDefaults } from "@/components/subscription-form";
+import type { TransactionFormValues } from "@/components/transaction-form";
+import { useAllCategories } from "@/hooks/use-categories";
+import { useCurrency } from "@/hooks/use-currency";
+import { getAllSources, useAllSources } from "@/hooks/use-sources";
+import {
+  processSubscriptions,
+  useAddSubscription,
+} from "@/hooks/use-subscriptions";
+import {
+  findDuplicateTransaction,
+  getBudgetForCategory,
+  getCategorySpent,
+  useInsertTransaction,
+} from "@/hooks/use-transactions";
+import {
+  BUDGET_CRITICAL_THRESHOLD,
+  CONFIG_KEYS,
+  DATE_TIME_FORMAT,
+  DEFAULT_SOURCE_NAME,
+  PARSED_BY,
+  type ParsedByType,
+  QUERY_KEYS,
+  REIMBURSEMENT_STATUS,
+  TRANSACTION_TYPE,
+} from "@/lib/constants";
+import { getConfig, updateConfig } from "@/lib/db/config";
+import type { Source } from "@/lib/db/types";
+import type { GeminiParsedTransaction } from "@/lib/gemini/client";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
+
+const FAILED_TO_SAVE = "Failed to save";
+
+export type UseAddTransactionReturn = {
+  isSubscription: boolean;
+  toggleSubscription: (val: boolean) => void;
+  formKey: number;
+  upiSourceId: number | null;
+  transactionDefaults: TransactionFormValues;
+  subscriptionDefaults: SubscriptionFormDefaults | undefined;
+  hintDismissed: boolean;
+  dismissHint: () => void;
+  openParseSheet: () => void;
+  onTransactionSubmit: (value: TransactionFormValues) => Promise<void>;
+  onSubscriptionSubmit: (value: {
+    name: string;
+    amount: number;
+    billingDay: number;
+    categoryId: number | null;
+    sourceId: number | null;
+  }) => Promise<void>;
+  dupSheetVisible: boolean;
+  dupSheetAmountFormatted: string;
+  dupSheetMerchant: string;
+  dupSheetDate: string;
+  onDupCancel: () => void;
+  onDupConfirm: () => Promise<void>;
+  parseSheetVisible: boolean;
+  closeParseSheet: () => void;
+  onParsed: (
+    parsed: GeminiParsedTransaction,
+    originalText: string,
+  ) => Promise<void>;
+  categoryNames: string[];
+};
+
+function matchSourceId(name: string | null, sources: Source[]): number | null {
+  if (!name) return null;
+  const needle = name.toLowerCase().trim();
+  if (!needle) return null;
+  const exact = sources.find((s) => s.name.toLowerCase() === needle);
+  if (exact) return exact.id;
+  if (needle.length < 3) return null;
+  const partial = sources.find((s) => {
+    const sourceName = s.name.toLowerCase();
+    if (sourceName.length < 3) return false;
+    return sourceName.includes(needle) || needle.includes(sourceName);
+  });
+  return partial?.id ?? null;
+}
+
+export function useAddTransaction(): UseAddTransactionReturn {
+  const { type: typeParam, mode: modeParam } = useLocalSearchParams<{
+    type?: string;
+    mode?: string;
+  }>();
+  const queryClient = useQueryClient();
+  const { format: fmt } = useCurrency();
+  const insertMutation = useInsertTransaction();
+  const addSubMutation = useAddSubscription();
+
+  const [isSubscription, setIsSubscription] = useState(
+    modeParam === "subscription",
+  );
+
+  const { data: allCategoriesList = [] } = useAllCategories();
+  const categoryNames = useMemo(
+    () => allCategoriesList.map((c) => c.name),
+    [allCategoriesList],
+  );
+  const { data: sourcesList = [] } = useAllSources();
+  const upiSourceId =
+    sourcesList.find(
+      (s) => s.name.toLowerCase() === DEFAULT_SOURCE_NAME.toLowerCase(),
+    )?.id ?? null;
+
+  const [dupSheetVisible, setDupSheetVisible] = useState(false);
+  const pendingTxRef = useRef<TransactionFormValues | null>(null);
+
+  const [parseSheetVisible, setParseSheetVisible] = useState(false);
+  const [parsedTxDefaults, setParsedTxDefaults] =
+    useState<TransactionFormValues | null>(null);
+  const [parsedSubDefaults, setParsedSubDefaults] =
+    useState<SubscriptionFormDefaults | null>(null);
+  const [formKey, setFormKey] = useState(0);
+  // Track whether the current draft was prefilled by Gemini so we can stamp
+  // parsed_by on the row at insert time. Reset on every new form mount —
+  // editing the AI-filled draft still counts as AI-parsed (provenance is
+  // about origin, not the final values).
+  const [aiParsedBy, setAiParsedBy] = useState<ParsedByType | null>(null);
+  const [hintDismissed, setHintDismissed] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    getConfig(CONFIG_KEYS.AI_HINT_DISMISSED).then((v) => {
+      if (alive) setHintDismissed(v === "1");
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  function dismissHint() {
+    setHintDismissed(true);
+    void updateConfig(CONFIG_KEYS.AI_HINT_DISMISSED, "1");
+  }
+
+  function openParseSheet() {
+    Haptics.selectionAsync();
+    setParseSheetVisible(true);
+    if (!hintDismissed) dismissHint();
+  }
+
+  function toggleSubscription(val: boolean) {
+    Haptics.selectionAsync();
+    setIsSubscription(val);
+  }
+
+  const baseDefaults: TransactionFormValues = {
+    type: TRANSACTION_TYPE.EXPENSE,
+    amount: "",
+    merchant: "",
+    categoryId: null,
+    sourceId: upiSourceId,
+    destinationSourceId: null,
+    date: format(new Date(), DATE_TIME_FORMAT),
+    note: "",
+    reimbursementStatus: REIMBURSEMENT_STATUS.NONE,
+    tagIds: [],
+  };
+
+  const oneTimeDefaults: TransactionFormValues = {
+    ...baseDefaults,
+    type:
+      typeParam === TRANSACTION_TYPE.INCOME
+        ? TRANSACTION_TYPE.INCOME
+        : typeParam === TRANSACTION_TYPE.TRANSFER
+          ? TRANSACTION_TYPE.TRANSFER
+          : TRANSACTION_TYPE.EXPENSE,
+  };
+
+  async function handleParsed(
+    parsed: GeminiParsedTransaction,
+    originalText: string,
+  ) {
+    const sources =
+      queryClient.getQueryData<Source[]>([QUERY_KEYS.SOURCES]) ??
+      (await getAllSources());
+    const sourceId = matchSourceId(parsed.source ?? null, sources);
+
+    const matchedCategory = allCategoriesList.find(
+      (c) =>
+        c.name.toLowerCase() === parsed.category.toLowerCase() &&
+        c.type === parsed.type,
+    );
+
+    const txDefaults: TransactionFormValues = {
+      type: parsed.type,
+      amount: String(parsed.amount),
+      merchant: parsed.merchant ?? "",
+      categoryId: matchedCategory?.id ?? null,
+      sourceId,
+      destinationSourceId: null,
+      date: `${parsed.date} 12:00`,
+      note: originalText.trim(),
+      reimbursementStatus: REIMBURSEMENT_STATUS.NONE,
+      tagIds: [],
+    };
+    setParsedTxDefaults(txDefaults);
+
+    if (parsed.is_subscription) {
+      setParsedSubDefaults({
+        name: parsed.merchant ?? "",
+        amount: String(parsed.amount),
+        billingDay: parsed.billing_day ? String(parsed.billing_day) : "",
+        sourceId,
+      });
+      setIsSubscription(true);
+    } else {
+      setParsedSubDefaults(null);
+      setIsSubscription(false);
+    }
+
+    setAiParsedBy(PARSED_BY.GEMINI);
+    setFormKey((k) => k + 1);
+    setParseSheetVisible(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    if (parsed.confidence === "high") {
+      showSuccessToast("form filled from message ✨");
+    } else if (parsed.confidence === "medium") {
+      showSuccessToast(
+        "form filled from message ✨",
+        "please verify the parsed details",
+      );
+    } else {
+      showErrorToast("low confidence — please check all fields");
+    }
+  }
+
+  async function commitTransaction(value: TransactionFormValues) {
+    const isTransfer = value.type === TRANSACTION_TYPE.TRANSFER;
+    const isExpense = value.type === TRANSACTION_TYPE.EXPENSE;
+    await insertMutation.mutateAsync({
+      type: value.type,
+      amount: Number(value.amount),
+      merchant: value.merchant || null,
+      categoryId: isTransfer ? null : value.categoryId,
+      sourceId: value.type === TRANSACTION_TYPE.INCOME ? null : value.sourceId,
+      destinationSourceId: isTransfer ? value.destinationSourceId : null,
+      sourceType: isTransfer ? "transfer" : undefined,
+      // Stamp parsed_by so the AI badge in TransactionItem renders for manual
+      // AI-parsed entries — without this it only ever fires for Gmail-synced
+      // rows, even though the data flow is identical.
+      parsedBy: aiParsedBy ?? undefined,
+      reimbursementStatus: isExpense
+        ? value.reimbursementStatus
+        : REIMBURSEMENT_STATUS.NONE,
+      date: value.date,
+      note: value.note || null,
+      tagIds: value.tagIds,
+    });
+
+    if (isTransfer) {
+      showSuccessToast("Transfer added", fmt(Number(value.amount)));
+    } else {
+      showSuccessToast(
+        "Transaction added",
+        `${value.type === TRANSACTION_TYPE.INCOME ? "+" : "-"}${fmt(Number(value.amount))}`,
+      );
+    }
+
+    if (value.type === TRANSACTION_TYPE.EXPENSE && value.categoryId) {
+      const budget = await getBudgetForCategory(value.categoryId);
+      if (budget) {
+        const yearMonth = value.date.slice(0, 7);
+        const spent = await getCategorySpent(value.categoryId, yearMonth);
+        const totalSpent = spent + Number(value.amount);
+        if (totalSpent >= budget) {
+          showErrorToast(`⚠️ ${value.merchant || "Category"} budget exceeded`);
+        } else if (totalSpent >= budget * BUDGET_CRITICAL_THRESHOLD) {
+          showErrorToast(
+            `⚠️ Approaching ${value.merchant || "category"} budget`,
+          );
+        }
+      }
+    }
+
+    setAiParsedBy(null);
+    router.back();
+  }
+
+  async function handleTransactionSubmit(value: TransactionFormValues) {
+    try {
+      const merchant = value.merchant?.trim();
+      // Skip duplicate check when no merchant is provided — merchant is the
+      // strongest dedupe signal, and date+amount alone produce too many
+      // false positives (e.g. multiple ₹100 cash expenses on the same day).
+      if (merchant) {
+        const isDuplicate = await findDuplicateTransaction(
+          value.date,
+          Number(value.amount),
+          merchant,
+        );
+        if (isDuplicate) {
+          pendingTxRef.current = value;
+          setDupSheetVisible(true);
+          return;
+        }
+      }
+      await commitTransaction(value);
+    } catch (err) {
+      showErrorToast(FAILED_TO_SAVE, err);
+    }
+  }
+
+  async function handleSubscriptionSubmit(value: {
+    name: string;
+    amount: number;
+    billingDay: number;
+    categoryId: number | null;
+    sourceId: number | null;
+  }) {
+    try {
+      await addSubMutation.mutateAsync(value);
+      await processSubscriptions();
+      await queryClient.invalidateQueries();
+      showSuccessToast(
+        "Subscription added",
+        `Renews on day ${value.billingDay} every month`,
+      );
+      router.back();
+    } catch (err) {
+      showErrorToast(FAILED_TO_SAVE, err);
+    }
+  }
+
+  function onDupCancel() {
+    pendingTxRef.current = null;
+    setDupSheetVisible(false);
+  }
+
+  async function onDupConfirm() {
+    const value = pendingTxRef.current;
+    pendingTxRef.current = null;
+    setDupSheetVisible(false);
+    if (value) {
+      try {
+        await commitTransaction(value);
+      } catch (err) {
+        showErrorToast(FAILED_TO_SAVE, err);
+      }
+    }
+  }
+
+  return {
+    isSubscription,
+    toggleSubscription,
+    formKey,
+    upiSourceId,
+    transactionDefaults: parsedTxDefaults ?? oneTimeDefaults,
+    subscriptionDefaults: parsedSubDefaults ?? undefined,
+    hintDismissed,
+    dismissHint,
+    openParseSheet,
+    onTransactionSubmit: handleTransactionSubmit,
+    onSubscriptionSubmit: handleSubscriptionSubmit,
+    dupSheetVisible,
+    dupSheetAmountFormatted: fmt(Number(pendingTxRef.current?.amount ?? 0)),
+    dupSheetMerchant: pendingTxRef.current?.merchant ?? "",
+    dupSheetDate: pendingTxRef.current?.date.slice(0, 10) ?? "",
+    onDupCancel,
+    onDupConfirm,
+    parseSheetVisible,
+    closeParseSheet: () => setParseSheetVisible(false),
+    onParsed: handleParsed,
+    categoryNames,
+  };
+}

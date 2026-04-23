@@ -18,6 +18,7 @@ import { FormLabel } from "@/components/ui/form-label";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { useDebounce } from "@/hooks/use-debounce";
 import { useAddTag, useAllTags } from "@/hooks/use-tags";
 import {
   COLORS,
@@ -32,6 +33,7 @@ import {
   getAllSources,
   getCategoriesByType,
   getMostUsedCategoryForMerchant,
+  searchMerchants,
 } from "@/lib/db";
 import { parseDate } from "@/lib/format";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
@@ -79,6 +81,8 @@ export function TransactionForm({
   const [autoFilledMerchant, setAutoFilledMerchant] = useState<string | null>(
     null,
   );
+  const [merchantSearch, setMerchantSearch] = useState(defaultValues.merchant);
+  const debouncedMerchant = useDebounce(merchantSearch, 300);
   const [newTagSheetVisible, setNewTagSheetVisible] = useState(false);
   const { data: allTags = [] } = useAllTags();
   const addTagMutation = useAddTag();
@@ -117,6 +121,16 @@ export function TransactionForm({
     queryKey: [QUERY_KEYS.SOURCES],
     queryFn: getAllSources,
   });
+
+  const { data: suggestedMerchants = [] } = useQuery({
+    queryKey: ["merchant-suggestions", debouncedMerchant],
+    queryFn: () => searchMerchants(debouncedMerchant),
+    enabled: !isTransfer && debouncedMerchant.length > 1,
+  });
+
+  const filteredSuggestions = suggestedMerchants.filter(
+    (m) => m.toLowerCase() !== merchantSearch.toLowerCase(),
+  );
 
   const form = useForm({
     defaultValues,
@@ -236,10 +250,38 @@ export function TransactionForm({
               <Input
                 placeholder="e.g. Swiggy, Amazon"
                 value={field.state.value}
-                onChangeText={(v) => field.handleChange(v)}
+                onChangeText={(v) => {
+                  field.handleChange(v);
+                  setMerchantSearch(v);
+                }}
                 onBlur={() => autoCategoryFromMerchant(field.state.value)}
                 placeholderTextColor={COLORS.MUTED}
               />
+              {filteredSuggestions.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  className="mt-2"
+                  contentContainerStyle={{ gap: 8 }}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {filteredSuggestions.map((suggestion) => (
+                    <Pressable
+                      key={suggestion}
+                      onPress={() => {
+                        field.handleChange(suggestion);
+                        setMerchantSearch(suggestion);
+                        autoCategoryFromMerchant(suggestion);
+                      }}
+                      className="rounded-lg border border-border bg-card px-3 py-1.5"
+                    >
+                      <Text className="text-sm font-medium text-foreground">
+                        {suggestion}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )}
             </View>
           )}
         </form.Field>
@@ -253,7 +295,10 @@ export function TransactionForm({
               <Input
                 placeholder="Optional description"
                 value={field.state.value}
-                onChangeText={(v) => field.handleChange(v)}
+                onChangeText={(v) => {
+                  field.handleChange(v);
+                  setMerchantSearch(v);
+                }}
                 placeholderTextColor={COLORS.MUTED}
               />
             </View>
@@ -287,10 +332,38 @@ export function TransactionForm({
               <Input
                 placeholder="e.g. Employer, Client name"
                 value={field.state.value}
-                onChangeText={(v) => field.handleChange(v)}
+                onChangeText={(v) => {
+                  field.handleChange(v);
+                  setMerchantSearch(v);
+                }}
                 onBlur={() => autoCategoryFromMerchant(field.state.value)}
                 placeholderTextColor={COLORS.MUTED}
               />
+              {filteredSuggestions.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  className="mt-2"
+                  contentContainerStyle={{ gap: 8 }}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {filteredSuggestions.map((suggestion) => (
+                    <Pressable
+                      key={suggestion}
+                      onPress={() => {
+                        field.handleChange(suggestion);
+                        setMerchantSearch(suggestion);
+                        autoCategoryFromMerchant(suggestion);
+                      }}
+                      className="rounded-lg border border-border bg-card px-3 py-1.5"
+                    >
+                      <Text className="text-sm font-medium text-foreground">
+                        {suggestion}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )}
             </View>
           )}
         </form.Field>

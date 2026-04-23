@@ -1,6 +1,4 @@
-import { useForm } from "@tanstack/react-form";
-import * as Haptics from "expo-haptics";
-import { router, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,17 +13,8 @@ import { ChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
-import { useCategoriesByType } from "@/hooks/use-categories";
-import { useAllSources } from "@/hooks/use-sources";
-import {
-  useDeleteSubscription,
-  useSubscriptionById,
-  useToggleSubscription,
-  useUpdateSubscription,
-} from "@/hooks/use-subscriptions";
-import { showDeleteConfirm } from "@/lib/alerts";
-import { COLORS, TRANSACTION_TYPE } from "@/lib/constants";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { useEditSubscription } from "@/hooks/use-edit-subscription";
+import { COLORS } from "@/lib/constants";
 import { cn, isIOS } from "@/lib/utils";
 import {
   amountStringSchema,
@@ -34,48 +23,15 @@ import {
 } from "@/lib/validation";
 
 export default function EditSubscriptionScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const subscriptionId = Number(id);
-
-  const { data: subscription, isLoading } = useSubscriptionById(subscriptionId);
-  const updateMutation = useUpdateSubscription();
-  const deleteMutation = useDeleteSubscription();
-  const toggleMutation = useToggleSubscription();
-
-  const { data: categories = [] } = useCategoriesByType(
-    TRANSACTION_TYPE.EXPENSE,
-  );
-
-  const { data: sources = [] } = useAllSources();
-
-  const form = useForm({
-    defaultValues: {
-      name: subscription?.name ?? "",
-      amount: subscription ? String(subscription.amount) : "",
-      categoryId: (subscription?.category_id ?? null) as number | null,
-      sourceId: (subscription?.source_id ?? null) as number | null,
-    },
-    onSubmit: async ({ value }) => {
-      if (!subscription) return;
-      const amount = Number(value.amount);
-      if (!value.name.trim() || amount <= 0) return;
-
-      try {
-        await updateMutation.mutateAsync({
-          id: subscriptionId,
-          name: value.name.trim(),
-          amount,
-          billingDay: subscription.billing_day,
-          categoryId: value.categoryId,
-          sourceId: value.sourceId,
-        });
-        showSuccessToast("Subscription updated");
-        router.back();
-      } catch (err) {
-        showErrorToast("Failed to update", err);
-      }
-    },
-  });
+  const {
+    subscription,
+    isLoading,
+    form,
+    categories,
+    sources,
+    toggleActive,
+    confirmDelete,
+  } = useEditSubscription();
 
   if (isLoading || !subscription) {
     return (
@@ -111,13 +67,7 @@ export default function EditSubscriptionScreen() {
           <Text className="text-sm font-medium text-foreground">Active</Text>
           <Switch
             value={subscription.is_active === 1}
-            onValueChange={(val) => {
-              Haptics.selectionAsync();
-              toggleMutation.mutate({
-                id: subscriptionId,
-                isActive: val,
-              });
-            }}
+            onValueChange={toggleActive}
             trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
             thumbColor={COLORS.FOREGROUND}
           />
@@ -223,21 +173,7 @@ export default function EditSubscriptionScreen() {
               <Button
                 variant="outline"
                 className="h-12 flex-1 rounded-2xl border-negative"
-                onPress={() => {
-                  showDeleteConfirm(
-                    "Delete Subscription",
-                    "This cannot be undone.",
-                    async () => {
-                      try {
-                        await deleteMutation.mutateAsync(subscriptionId);
-                        showSuccessToast("Subscription deleted");
-                        router.back();
-                      } catch (err) {
-                        showErrorToast("Failed to delete", err);
-                      }
-                    },
-                  );
-                }}
+                onPress={confirmDelete}
               >
                 <Text className="text-base font-semibold text-negative">
                   Delete

@@ -1,7 +1,6 @@
 import { FlashList } from "@shopify/flash-list";
 import { router } from "expo-router";
 import { CheckCircle2, Receipt, RotateCcw } from "lucide-react-native";
-import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -19,76 +18,29 @@ import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
 import { useSyncRefresh } from "@/hooks/use-refresh";
-import {
-  useReimbursementSummary,
-  useSetReimbursementStatus,
-  useTransactionsPaginated,
-} from "@/hooks/use-transactions";
-import {
-  COLORS,
-  editScreen,
-  REIMBURSEMENT_FILTER,
-  REIMBURSEMENT_STATUS,
-  type ReimbursementFilterType,
-} from "@/lib/constants";
-import { buildListData, type ListItem } from "@/lib/format";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { useReimbursementList } from "@/hooks/use-reimbursement-list";
+import { COLORS, editScreen, REIMBURSEMENT_FILTER } from "@/lib/constants";
+import type { ListItem } from "@/lib/format";
 import { cn, getRefreshControlProps } from "@/lib/utils";
 
 export default function ReimbursementsScreen() {
   const { format: fmt } = useCurrency();
   const { refreshing, onRefresh } = useSyncRefresh();
-  const { data: summary } = useReimbursementSummary();
-  const setStatus = useSetReimbursementStatus();
-
-  const [tab, setTab] = useState<Exclude<ReimbursementFilterType, "all">>(
-    REIMBURSEMENT_FILTER.PENDING,
-  );
-
-  const filters = useMemo(
-    () => ({
-      type: "expense" as const,
-      reimbursement: tab,
-    }),
-    [tab],
-  );
-
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useTransactionsPaginated(filters);
-
-  const allTransactions = data?.pages.flat() ?? [];
-  const listData = buildListData(allTransactions);
-
-  async function markReimbursed(id: number) {
-    try {
-      await setStatus.mutateAsync({
-        id,
-        status: REIMBURSEMENT_STATUS.REIMBURSED,
-      });
-      showSuccessToast("Marked as reimbursed");
-    } catch (err) {
-      showErrorToast("Failed", err);
-    }
-  }
-
-  async function markPending(id: number) {
-    try {
-      await setStatus.mutateAsync({
-        id,
-        status: REIMBURSEMENT_STATUS.PENDING,
-      });
-      showSuccessToast("Moved back to pending");
-    } catch (err) {
-      showErrorToast("Failed", err);
-    }
-  }
-
-  const pendingCount = summary?.pending_count ?? 0;
-  const pendingTotal = summary?.pending_total ?? 0;
-  const reimbursedCount = summary?.reimbursed_count ?? 0;
-  const reimbursedTotal = summary?.reimbursed_total ?? 0;
-
-  const isPendingTab = tab === REIMBURSEMENT_FILTER.PENDING;
+  const {
+    setTab,
+    isPendingTab,
+    pendingCount,
+    pendingTotal,
+    reimbursedCount,
+    reimbursedTotal,
+    listData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    markReimbursed,
+    markPending,
+  } = useReimbursementList();
 
   return (
     <View className="flex-1 bg-background">

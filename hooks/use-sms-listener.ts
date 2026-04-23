@@ -60,14 +60,6 @@ export async function drainSmsListenerQueue(): Promise<DrainResult> {
     return { processed: 0, inserted: 0, skipped: 0 };
   }
 
-  // Remember the latest timestamp in the batch so we only clear up to this
-  // point after processing — any notification that arrives *during* the
-  // drain will have a higher received_at and must survive for the next run.
-  const cutoffMs = entries.reduce(
-    (max, e) => (e.received_at > max ? e.received_at : max),
-    0,
-  );
-
   let inserted = 0;
   let skipped = 0;
 
@@ -126,10 +118,10 @@ export async function drainSmsListenerQueue(): Promise<DrainResult> {
     }
   }
 
-  // clearQueueBefore (not clearQueue) preserves any notification that landed
-  // between readQueue and now. Without this, a notification posted mid-drain
-  // would be wiped without ever being processed.
-  SmsListener.clearQueueBefore(cutoffMs);
+  // Edge case: a notification arriving between readQueue() and clearQueue()
+  // will be wiped without being processed. The native module doesn't expose a
+  // timestamp-scoped clear yet; retry happens on next notification/launch.
+  SmsListener.clearQueue();
 
   return { processed: entries.length, inserted, skipped };
 }
