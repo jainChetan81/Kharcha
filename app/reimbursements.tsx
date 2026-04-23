@@ -12,6 +12,7 @@ import {
   ScreenError,
 } from "@/components/error-boundary";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
+import { TransactionSkeleton } from "@/components/transaction-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
@@ -119,11 +120,9 @@ export default function ReimbursementsScreen() {
           getItemType={(item) => item.type}
           renderItem={({ item }: { item: ListItem }) =>
             item.type === "header" ? (
-              <View className="px-5">
-                <DateHeader label={item.label} />
-              </View>
+              <DateHeader label={item.label} />
             ) : (
-              <View className="px-5">
+              <>
                 <TransactionItem
                   item={item.data}
                   showTime
@@ -158,7 +157,7 @@ export default function ReimbursementsScreen() {
                     </Pressable>
                   )}
                 </View>
-              </View>
+              </>
             )
           }
           onEndReached={() => {
@@ -178,7 +177,9 @@ export default function ReimbursementsScreen() {
             ) : null
           }
           ListEmptyComponent={
-            isLoading ? null : (
+            isLoading ? (
+              <TransactionSkeleton count={10} />
+            ) : (
               <EmptyState
                 icon={Receipt}
                 title={
@@ -191,7 +192,7 @@ export default function ReimbursementsScreen() {
               />
             )
           }
-          contentContainerStyle={{ paddingBottom: 60 }}
+          contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 20 }}
         />
       </ComponentErrorBoundary>
     </View>

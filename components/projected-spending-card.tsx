@@ -1,6 +1,5 @@
 import { View } from "react-native";
 import { Text } from "@/components/ui/text";
-import { cn } from "@/lib/utils";
 
 export function ProjectedSpendingCard({
   projectedLow,
@@ -36,20 +35,19 @@ export function ProjectedSpendingCard({
           {daysLeft} days left
         </Text>
       </View>
-      <Text
-        className={cn(
-          "mt-2 text-lg font-bold",
-          overBudget ? "text-negative" : "text-foreground",
+      <View className="mt-1.5 flex-row items-center gap-2">
+        <Text className="text-base font-semibold text-foreground">
+          {fmt(Math.round(projectedLow))} – {fmt(Math.round(projectedHigh))}
+        </Text>
+        {overBudget && (
+          <Text className="text-[10px] font-medium uppercase tracking-wider text-negative">
+            over budget
+          </Text>
         )}
-      >
-        {fmt(Math.round(projectedLow))} – {fmt(Math.round(projectedHigh))}
-      </Text>
-      <View className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+      </View>
+      <View className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
         <View
-          className={cn(
-            "h-full rounded-full",
-            overBudget ? "bg-negative" : "bg-primary",
-          )}
+          className="h-full rounded-full bg-primary"
           style={{ width: `${Math.round(progressRatio * 100)}%` }}
         />
       </View>
@@ -59,7 +57,7 @@ export function ProjectedSpendingCard({
         </Text>
         {totalBudget > 0 && (
           <Text className="text-[11px] text-muted-foreground">
-            {fmt(totalBudget)} budget
+            of {fmt(totalBudget)}
           </Text>
         )}
       </View>

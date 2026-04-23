@@ -1,7 +1,11 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { format, parseISO } from "date-fns";
+import { useLocalSearchParams } from "expo-router";
 import { startTransition, useEffect, useMemo, useState } from "react";
-import { useCategoriesByType } from "@/hooks/use-categories";
+import { useAllCategories, useCategoriesByType } from "@/hooks/use-categories";
+import { useCurrency } from "@/hooks/use-currency";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useAllSources } from "@/hooks/use-sources";
+import { useAllTags } from "@/hooks/use-tags";
 import {
   useFilteredInsights,
   useTransactionsPaginated,
@@ -18,6 +22,25 @@ import {
   type TransactionFilterType,
 } from "@/lib/constants";
 import { getPresetRange } from "@/lib/date";
+import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
+
+export type AppliedFilterChip = {
+  id: string;
+  label: string;
+  onRemove: () => void;
+};
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function formatDateRange(from: string | null, to: string | null): string {
+  const fmtIso = (iso: string) => format(parseISO(iso), "d MMM");
+  if (from && to) return `${fmtIso(from)} – ${fmtIso(to)}`;
+  if (from) return `from ${fmtIso(from)}`;
+  if (to) return `to ${fmtIso(to)}`;
+  return "Date";
+}
 
 export function useHistoryFilters() {
   const params = useLocalSearchParams<{
@@ -31,7 +54,6 @@ export function useHistoryFilters() {
     tag_id?: string;
     merchant?: string;
     month?: string;
-    isSummaryOpen?: string;
   }>();
 
   // Applied filters
@@ -58,9 +80,13 @@ export function useHistoryFilters() {
   const [searchText, setSearchText] = useState("");
   const debouncedSearch = useDebounce(searchText);
 
+  const { data: allCategories = [] } = useAllCategories();
+  const { data: allSources = [] } = useAllSources();
+  const { data: allTags = [] } = useAllTags();
+  const { format: fmt } = useCurrency();
+
   // Draft filters (inside modal)
   const [showFilters, setShowFilters] = useState(false);
-  const [showSummary, setShowSummary] = useState(false);
   const [draftType, setDraftType] = useState<TransactionFilterType>(
     TRANSACTION_TYPE.ALL,
   );
@@ -139,11 +165,6 @@ export function useHistoryFilters() {
       setDateTo(to);
       setPeriodPreset(PERIOD_PRESET.CUSTOM);
     }
-
-    if (params.isSummaryOpen === "true") {
-      setShowSummary(true);
-      router.setParams({ isSummaryOpen: "" }); // Clear it so it doesn't re-trigger on subsequent renders
-    }
   }, [
     params.filter,
     params.category_id,
@@ -155,7 +176,6 @@ export function useHistoryFilters() {
     params.tag_id,
     params.merchant,
     params.month,
-    params.isSummaryOpen,
   ]);
 
   const { data: otherLookupCategories = [] } = useCategoriesByType(
@@ -174,6 +194,129 @@ export function useHistoryFilters() {
       if (other) setCategoryId(other.id);
     }
   }, [params.category_id, otherLookupCategories]);
+
+  const appliedChips = useMemo<AppliedFilterChip[]>(() => {
+    const chips: AppliedFilterChip[] = [];
+    const withLog =
+      (filterId: string, fn: () => void): (() => void) =>
+      () => {
+        logEvent(FIREBASE_EVENTS.FILTER_CHIP_REMOVED, { filter: filterId });
+        fn();
+      };
+
+    if (typeFilter !== TRANSACTION_TYPE.ALL) {
+      chips.push({
+        id: "type",
+        label: capitalize(typeFilter),
+        onRemove: withLog("type", () => setTypeFilter(TRANSACTION_TYPE.ALL)),
+      });
+    }
+
+    if (categoryId !== null) {
+      const name =
+        allCategories.find((c) => c.id === categoryId)?.name ?? "Category";
+      chips.push({
+        id: "category",
+        label: name,
+        onRemove: withLog("category", () => setCategoryId(null)),
+      });
+    }
+
+    if (sourceId !== null) {
+      const name = allSources.find((s) => s.id === sourceId)?.name ?? "Source";
+      chips.push({
+        id: "source",
+        label: name,
+        onRemove: withLog("source", () => setSourceId(null)),
+      });
+    }
+
+    if (sourceTypeFilter !== SOURCE_TYPE.ALL) {
+      chips.push({
+        id: "source-type",
+        label: capitalize(sourceTypeFilter),
+        onRemove: withLog("source-type", () =>
+          setSourceTypeFilter(SOURCE_TYPE.ALL),
+        ),
+      });
+    }
+
+    if (dateFrom || dateTo) {
+      chips.push({
+        id: "date",
+        label: formatDateRange(dateFrom, dateTo),
+        onRemove: withLog("date", () => {
+          setDateFrom(null);
+          setDateTo(null);
+          setPeriodPreset(null);
+        }),
+      });
+    }
+
+    if (amountMin != null || amountMax != null) {
+      const label =
+        amountMin != null && amountMax != null
+          ? `${fmt(amountMin)} – ${fmt(amountMax)}`
+          : amountMin != null
+            ? `≥ ${fmt(amountMin)}`
+            : `≤ ${fmt(amountMax ?? 0)}`;
+      chips.push({
+        id: "amount",
+        label,
+        onRemove: withLog("amount", () => {
+          setAmountMin(null);
+          setAmountMax(null);
+        }),
+      });
+    }
+
+    if (reimbursementFilter !== REIMBURSEMENT_FILTER.ALL) {
+      chips.push({
+        id: "reimbursement",
+        label: capitalize(reimbursementFilter),
+        onRemove: withLog("reimbursement", () =>
+          setReimbursementFilter(REIMBURSEMENT_FILTER.ALL),
+        ),
+      });
+    }
+
+    for (const tid of tagIds) {
+      const name = allTags.find((t) => t.id === tid)?.name ?? "Tag";
+      chips.push({
+        id: `tag-${tid}`,
+        label: `#${name}`,
+        onRemove: withLog("tag", () =>
+          setTagIds((prev) => prev.filter((x) => x !== tid)),
+        ),
+      });
+    }
+
+    if (merchant) {
+      chips.push({
+        id: "merchant",
+        label: merchant,
+        onRemove: withLog("merchant", () => setMerchant(null)),
+      });
+    }
+
+    return chips;
+  }, [
+    typeFilter,
+    categoryId,
+    sourceId,
+    sourceTypeFilter,
+    dateFrom,
+    dateTo,
+    amountMin,
+    amountMax,
+    reimbursementFilter,
+    tagIds,
+    merchant,
+    allCategories,
+    allSources,
+    allTags,
+    fmt,
+  ]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -219,7 +362,7 @@ export function useHistoryFilters() {
     merchant,
   };
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useTransactionsPaginated(filters);
   const { data: insights } = useFilteredInsights(filters);
 
@@ -294,6 +437,7 @@ export function useHistoryFilters() {
   }
 
   function resetAllFilters() {
+    logEvent(FIREBASE_EVENTS.FILTERS_CLEARED_ALL);
     setTypeFilter(TRANSACTION_TYPE.ALL);
     setCategoryId(null);
     setSourceId(null);
@@ -324,16 +468,17 @@ export function useHistoryFilters() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isLoading,
     insights,
     searchText,
     setSearchText,
     debouncedSearch,
     showFilters,
     setShowFilters,
-    showSummary,
-    setShowSummary,
     activeFilterCount,
     hasActiveFilters,
+    appliedChips,
+    allTags,
     openFilters,
     applyFilters,
     clearAllFilters,

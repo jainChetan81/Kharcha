@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
+import { RadarChart } from "react-native-gifted-charts";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StackedBar } from "@/components/ui/stacked-bar";
 import { Text } from "@/components/ui/text";
@@ -11,6 +12,7 @@ import {
 } from "@/hooks/use-transactions";
 import {
   CATEGORY_PALETTE,
+  COLORS,
   TOP_BREAKDOWN_LIMIT,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
@@ -91,15 +93,50 @@ export function SpendingPanel({
         </View>
       ) : (
         <>
-          <View className="mb-4">
-            <StackedBar
-              segments={top.map((row, i) => ({
-                value: row.total,
-                color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length],
-              }))}
-              total={monthTotal}
-            />
-          </View>
+          {lens === "category" && top.length >= 3 ? (
+            <View className="mb-4 items-center">
+              <RadarChart
+                data={top.map((r) => r.total)}
+                labels={top.map((r) =>
+                  r.label.length > 12 ? `${r.label.slice(0, 11)}…` : r.label,
+                )}
+                chartSize={240}
+                noOfSections={4}
+                maxValue={Math.max(...top.map((r) => r.total)) * 1.15}
+                circular
+                hideAsterLines
+                polygonConfig={{
+                  fill: COLORS.PRIMARY,
+                  opacity: 0.3,
+                  stroke: COLORS.PRIMARY,
+                  strokeWidth: 2,
+                  showGradient: false,
+                }}
+                gridConfig={{
+                  fill: "transparent",
+                  stroke: COLORS.BAR_BG,
+                  strokeWidth: 0.5,
+                  showGradient: false,
+                  gradientColor: COLORS.BACKGROUND,
+                  opacity: 1,
+                }}
+                labelConfig={{
+                  fontSize: 11,
+                  stroke: COLORS.MUTED,
+                }}
+              />
+            </View>
+          ) : (
+            <View className="mb-4">
+              <StackedBar
+                segments={top.map((row, i) => ({
+                  value: row.total,
+                  color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length],
+                }))}
+                total={monthTotal}
+              />
+            </View>
+          )}
 
           <View>
             {top.map((row, i) => (
@@ -144,14 +181,12 @@ export function SpendingPanel({
 
           <Pressable
             onPress={() =>
-              router.push({
-                pathname: "/history",
-                params: {
-                  filter: TRANSACTION_TYPE.EXPENSE,
+              router.push(
+                historyHref({
+                  type: TRANSACTION_TYPE.EXPENSE,
                   month: selectedMonth,
-                  isSummaryOpen: "true",
-                },
-              })
+                }),
+              )
             }
             className="items-center pt-4"
           >

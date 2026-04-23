@@ -123,14 +123,17 @@ export const COLORS = {
   SHADOW: "#000000",
 } as const;
 
+// Original multi-hue palette, dampened to 70% alpha so the stacked bar and
+// rank dots read as tinted rather than competing with the semantic red / green
+// / amber used elsewhere.
 export const CATEGORY_PALETTE: readonly `#${string}`[] = [
-  "#7c3aed",
-  "#f59e0b",
-  "#22c55e",
-  "#3b82f6",
-  "#ef4444",
-  "#ec4899",
-  "#06b6d4",
+  "#7c3aedb3",
+  "#f59e0bb3",
+  "#22c55eb3",
+  "#3b82f6b3",
+  "#ef4444b3",
+  "#ec4899b3",
+  "#06b6d4b3",
 ];
 
 export const SHADOWS = {

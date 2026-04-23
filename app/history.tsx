@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
+  ScrollView,
   View,
 } from "react-native";
 import {
@@ -21,6 +22,7 @@ import {
 } from "@/components/error-boundary";
 import { HistoryInsightsStrip } from "@/components/history-insights-strip";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
+import { TransactionSkeleton } from "@/components/transaction-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
@@ -30,7 +32,6 @@ import { useCurrency } from "@/hooks/use-currency";
 import { useHistoryFilters } from "@/hooks/use-history-filters";
 import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useAllSources } from "@/hooks/use-sources";
-import { useAllTags } from "@/hooks/use-tags";
 import { useSwipeDelete } from "@/hooks/use-transactions";
 import { COLORS, editScreen, TRANSACTION_TYPE } from "@/lib/constants";
 import { buildListData, type ListItem } from "@/lib/format";
@@ -38,11 +39,6 @@ import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
 
 const HistoryFiltersSheet = lazy(
   () => import("@/components/history-filters-sheet"),
-);
-const HistorySummarySheet = lazy(() =>
-  import("@/components/history-summary-sheet").then((m) => ({
-    default: m.HistorySummarySheet,
-  })),
 );
 
 export default function HistoryScreen() {
@@ -55,16 +51,17 @@ export default function HistoryScreen() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isLoading,
     insights,
     searchText,
     setSearchText,
     debouncedSearch,
     showFilters,
     setShowFilters,
-    showSummary,
-    setShowSummary,
     activeFilterCount,
     hasActiveFilters,
+    appliedChips,
+    allTags,
     openFilters,
     applyFilters,
     clearAllFilters,
@@ -93,8 +90,6 @@ export default function HistoryScreen() {
     setDraftTagIds,
     draftHasFilters,
   } = useHistoryFilters();
-
-  const { data: allTags = [] } = useAllTags();
 
   const categoryFilterType =
     draftType === TRANSACTION_TYPE.TRANSFER ? TRANSACTION_TYPE.ALL : draftType;
@@ -160,6 +155,34 @@ export default function HistoryScreen() {
         <HistoryInsightsStrip insights={insights} fmt={fmt} />
       )}
 
+      {appliedChips.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
+          className="mb-3 flex-grow-0"
+        >
+          {appliedChips.map((chip) => (
+            <Pressable
+              key={chip.id}
+              onPress={chip.onRemove}
+              className="flex-row items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5"
+            >
+              <Text className="text-xs text-foreground" numberOfLines={1}>
+                {chip.label}
+              </Text>
+              <Icon as={X} className="size-3 text-muted-foreground" />
+            </Pressable>
+          ))}
+          <Pressable
+            onPress={resetAllFilters}
+            className="items-center justify-center rounded-full px-3 py-1.5"
+          >
+            <Text className="text-xs font-medium text-primary">Clear all</Text>
+          </Pressable>
+        </ScrollView>
+      )}
+
       <View className="mx-5 mb-3 flex-row items-center rounded-xl border border-border bg-card px-3">
         <Icon as={Search} className="mr-2 size-4 text-muted-foreground" />
         <Input
@@ -212,26 +235,30 @@ export default function HistoryScreen() {
             ) : null
           }
           ListEmptyComponent={
-            <EmptyState
-              icon={debouncedSearch ? Search : Receipt}
-              title={
-                debouncedSearch
-                  ? `no results for '${debouncedSearch}'`
-                  : "No transactions found"
-              }
-              description={
-                debouncedSearch && hasActiveFilters
-                  ? "try clearing filters or changing your search"
-                  : undefined
-              }
-              inList
-            >
-              {!debouncedSearch && hasActiveFilters ? (
-                <Pressable onPress={resetAllFilters}>
-                  <Text className="text-xs text-primary">Clear filters</Text>
-                </Pressable>
-              ) : null}
-            </EmptyState>
+            isLoading ? (
+              <TransactionSkeleton count={10} />
+            ) : (
+              <EmptyState
+                icon={debouncedSearch ? Search : Receipt}
+                title={
+                  debouncedSearch
+                    ? `no results for '${debouncedSearch}'`
+                    : "No transactions found"
+                }
+                description={
+                  debouncedSearch && hasActiveFilters
+                    ? "try clearing filters or changing your search"
+                    : undefined
+                }
+                inList
+              >
+                {!debouncedSearch && hasActiveFilters ? (
+                  <Pressable onPress={resetAllFilters}>
+                    <Text className="text-xs text-primary">Clear filters</Text>
+                  </Pressable>
+                ) : null}
+              </EmptyState>
+            )
           }
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 20 }}
@@ -271,16 +298,6 @@ export default function HistoryScreen() {
             onApplyFilters={applyFilters}
             onClearAllFilters={clearAllFilters}
             draftHasFilters={draftHasFilters}
-          />
-        </ComponentErrorBoundary>
-      </Suspense>
-
-      <Suspense fallback={null}>
-        <ComponentErrorBoundary>
-          <HistorySummarySheet
-            visible={showSummary}
-            onClose={() => setShowSummary(false)}
-            insights={insights}
           />
         </ComponentErrorBoundary>
       </Suspense>

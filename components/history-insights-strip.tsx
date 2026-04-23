@@ -167,7 +167,6 @@ export function HistoryInsightsStrip({
           <View className="mt-4 flex-row gap-2">
             <FactCard
               icon={Award}
-              iconTone="text-primary"
               label="Biggest"
               primary={
                 insights.biggestTransaction
@@ -179,7 +178,6 @@ export function HistoryInsightsStrip({
             />
             <FactCard
               icon={Repeat2}
-              iconTone="text-amber-500"
               label="Frequent"
               primary={insights.mostFrequentMerchant?.merchant ?? "—"}
               secondary={
@@ -190,7 +188,6 @@ export function HistoryInsightsStrip({
             />
             <FactCard
               icon={CalendarDays}
-              iconTone="text-positive"
               label="Avg/day"
               primary={insights.avgPerDay > 0 ? fmt(insights.avgPerDay) : "—"}
               primaryMono
@@ -216,14 +213,12 @@ export function HistoryInsightsStrip({
 
 function FactCard({
   icon,
-  iconTone,
   label,
   primary,
   primaryMono,
   secondary,
 }: {
   icon: LucideIcon;
-  iconTone: string;
   label: string;
   primary: string;
   primaryMono?: boolean;
@@ -232,14 +227,7 @@ function FactCard({
   return (
     <View className="flex-1 rounded-xl bg-background p-3">
       <View className="mb-2.5 flex-row items-center gap-1.5">
-        <View
-          className={cn(
-            "size-6 items-center justify-center rounded-md",
-            TONE_BG[iconTone] ?? "bg-muted",
-          )}
-        >
-          <Icon as={icon} className={iconTone} size={13} />
-        </View>
+        <Icon as={icon} className="text-muted-foreground" size={14} />
         <Text className="text-[11px] font-medium text-muted-foreground">
           {label}
         </Text>
@@ -264,10 +252,3 @@ function FactCard({
     </View>
   );
 }
-
-const TONE_BG: Record<string, string> = {
-  "text-primary": "bg-primary/15",
-  "text-amber-500": "bg-amber-500/15",
-  "text-positive": "bg-positive/15",
-  "text-negative": "bg-negative/15",
-};

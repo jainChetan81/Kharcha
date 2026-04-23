@@ -23,6 +23,8 @@ export const FIREBASE_EVENTS = {
   INSIGHT_CARD_TAPPED: "insight_card_tapped",
   SPENDING_LENS_CHANGED: "spending_lens_changed",
   HISTORY_INSIGHTS_EXPANDED: "history_insights_expanded",
+  FILTER_CHIP_REMOVED: "filter_chip_removed",
+  FILTERS_CLEARED_ALL: "filters_cleared_all",
 } as const;
 
 export type KharchaEvent =

@@ -28,6 +28,7 @@ import { ProjectedSpendingCard } from "@/components/projected-spending-card";
 import { SpendingPanel } from "@/components/spending-panel";
 import { TopCategoryCard } from "@/components/top-category-card";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
+import { TransactionSkeleton } from "@/components/transaction-skeleton";
 import { ALERT_TONE_TEXT, AlertBanner } from "@/components/ui/alert-banner";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
@@ -37,6 +38,7 @@ import { useGmailSyncActive } from "@/hooks/use-feature-flags";
 import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
 import {
+  useCategoryBreakdown,
   useMonthlyInsights,
   useMonthlySummary,
   useMonthTransactions,
@@ -45,6 +47,7 @@ import {
   useTotalMonthlyBudget,
 } from "@/hooks/use-transactions";
 import {
+  CATEGORY_PALETTE,
   COLORS,
   editScreen,
   LABELS,
@@ -59,40 +62,57 @@ import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
 const FAB_STYLE = { marginTop: -44, marginBottom: 8 } as const;
 const RECENT_LIMIT = 5;
 
-function SpendingRing({
+const TOP_CATEGORIES_ON_RING = 5;
+
+function CategoryDonut({
+  selectedMonth,
   income,
   expenses,
   fmt,
 }: {
+  selectedMonth: string;
   income: number;
   expenses: number;
   fmt: (n: number) => string;
 }) {
+  const { data: categories = [] } = useCategoryBreakdown(selectedMonth);
+
   const hasIncome = income > 0;
   const hasExpenses = expenses > 0;
   const hasAny = hasIncome || hasExpenses;
   const net = income - expenses;
   const overspent = net < 0;
 
-  const pieData = !hasAny
-    ? [{ value: 100, color: COLORS.BAR_BG }]
-    : !hasIncome
-      ? [{ value: 100, color: COLORS.DANGER }]
-      : !hasExpenses
-        ? [{ value: 100, color: COLORS.POSITIVE }]
-        : [
-            { value: income, color: COLORS.POSITIVE },
-            { value: expenses, color: COLORS.DANGER },
-          ];
+  const top = categories.slice(0, TOP_CATEGORIES_ON_RING);
+  const topTotal = top.reduce((s, c) => s + c.total, 0);
+  const categoriesTotal = categories.reduce((s, c) => s + c.total, 0);
+  const otherTotal = Math.max(categoriesTotal - topTotal, 0);
+
+  const pieData =
+    hasExpenses && top.length > 0
+      ? [
+          ...top.map((c, i) => ({
+            value: c.total,
+            color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length],
+          })),
+          ...(otherTotal > 0
+            ? [{ value: otherTotal, color: COLORS.BAR_BG }]
+            : []),
+        ]
+      : hasIncome
+        ? [{ value: 100, color: `${COLORS.POSITIVE}b3` }]
+        : [{ value: 100, color: COLORS.BAR_BG }];
 
   return (
     <View className="items-center">
       <PieChart
         data={pieData}
         donut
-        radius={76}
-        innerRadius={63}
+        radius={90}
+        innerRadius={62}
         innerCircleColor={COLORS.BACKGROUND}
+        strokeColor={COLORS.BACKGROUND}
+        strokeWidth={2}
         centerLabelComponent={() => (
           <View className="items-center justify-center">
             {hasAny ? (
@@ -105,7 +125,7 @@ function SpendingRing({
                 >
                   {fmt(Math.abs(net))}
                 </Text>
-                <Text className="mt-0.5 text-xs text-muted-foreground">
+                <Text className="mt-0.5 text-[11px] text-muted-foreground">
                   {overspent ? LABELS.SPENT : LABELS.AVAILABLE}
                 </Text>
               </>
@@ -136,11 +156,10 @@ export default function HomeScreen() {
   const selectedMonth = format(selectedDate, MONTH_FORMAT);
   const prevMonth = format(subMonths(selectedDate, 1), MONTH_FORMAT);
 
-  const { data: recentTransactions = [] } = useRecentTransactions(RECENT_LIMIT);
-  const { data: monthTransactions = [] } = useMonthTransactions(
-    selectedMonth,
-    RECENT_LIMIT,
-  );
+  const { data: recentTransactions = [], isLoading: recentLoading } =
+    useRecentTransactions(RECENT_LIMIT);
+  const { data: monthTransactions = [], isLoading: monthLoading } =
+    useMonthTransactions(selectedMonth, RECENT_LIMIT);
   const { data: summary } = useMonthlySummary(selectedMonth);
   const { data: prevSummary } = useMonthlySummary(prevMonth);
   const { data: subsTotal = 0 } = useSubscriptionsTotal();
@@ -161,9 +180,8 @@ export default function HomeScreen() {
         ? "new"
         : null;
   const transactions = isCurrentMonth ? recentTransactions : monthTransactions;
+  const recentActivityLoading = isCurrentMonth ? recentLoading : monthLoading;
   const listData = buildListData(transactions);
-
-  const historyForMonth = historyHref({ month: selectedMonth });
 
   return (
     <View className="flex-1 bg-background">
@@ -235,8 +253,13 @@ export default function HomeScreen() {
           </View>
 
           <View className="mt-3">
-            <ComponentErrorBoundary name="home.spending-ring">
-              <SpendingRing income={income} expenses={expenses} fmt={fmt} />
+            <ComponentErrorBoundary name="home.category-donut">
+              <CategoryDonut
+                selectedMonth={selectedMonth}
+                income={income}
+                expenses={expenses}
+                fmt={fmt}
+              />
             </ComponentErrorBoundary>
           </View>
 
@@ -359,26 +382,23 @@ export default function HomeScreen() {
 
         <ComponentErrorBoundary name="home.transaction-list">
           <View className="px-5 pt-4">
-            <View className="mb-3 flex-row items-center justify-between">
-              <Text className="text-lg font-semibold text-foreground">
-                Recent activity
-              </Text>
-              <Pressable onPress={() => router.push(historyForMonth)}>
-                <Text className="text-sm font-medium text-primary">
-                  View all →
-                </Text>
-              </Pressable>
-            </View>
-            {listData.map((item) =>
-              item.type === "header" ? (
-                <DateHeader key={`h-${item.label}`} label={item.label} />
-              ) : (
-                <TransactionItem
-                  key={`t-${item.data.id}`}
-                  item={item.data}
-                  onPress={(id) => router.push(editScreen(id))}
-                />
-              ),
+            <Text className="mb-3 text-lg font-semibold text-foreground">
+              Recent activity
+            </Text>
+            {recentActivityLoading ? (
+              <TransactionSkeleton count={RECENT_LIMIT} />
+            ) : (
+              listData.map((item) =>
+                item.type === "header" ? (
+                  <DateHeader key={`h-${item.label}`} label={item.label} />
+                ) : (
+                  <TransactionItem
+                    key={`t-${item.data.id}`}
+                    item={item.data}
+                    onPress={(id) => router.push(editScreen(id))}
+                  />
+                ),
+              )
             )}
           </View>
         </ComponentErrorBoundary>
