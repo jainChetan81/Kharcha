@@ -31,7 +31,6 @@ import { TopCategoryCard } from "@/components/top-category-card";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { TransactionSkeleton } from "@/components/transaction-skeleton";
 import { ALERT_TONE_TEXT, AlertBanner } from "@/components/ui/alert-banner";
-import { GainLabel } from "@/components/ui/gain-label";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useConfig } from "@/hooks/use-config";
@@ -268,9 +267,6 @@ export default function HomeScreen() {
     totalBudget,
     insights,
     portfolioInvested,
-    portfolioValue,
-    portfolioGain,
-    portfolioGainPct,
     portfolioMonthInvested,
   } = useHomeData(
     selectedMonth,
@@ -432,22 +428,17 @@ export default function HomeScreen() {
               className="mt-3 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
             >
               <View className="flex-1">
-                <Text className="text-xs text-muted-foreground">Portfolio</Text>
-                <Text className="mt-0.5 text-base font-bold text-foreground">
-                  {fmt(portfolioValue)}
+                <Text className="text-xs text-muted-foreground">
+                  {LABELS.TOTAL_INVESTED}
                 </Text>
-                <View className="mt-0.5">
-                  <GainLabel
-                    amount={portfolioGain}
-                    pct={portfolioGainPct}
-                    variant="right-aligned"
-                    extraText={
-                      portfolioMonthInvested > 0
-                        ? `${fmt(portfolioMonthInvested)} this month`
-                        : undefined
-                    }
-                  />
-                </View>
+                <Text className="mt-0.5 text-base font-bold text-foreground">
+                  {fmt(portfolioInvested)}
+                </Text>
+                {portfolioMonthInvested > 0 && (
+                  <Text className="mt-0.5 text-xs text-muted-foreground">
+                    {fmt(portfolioMonthInvested)} this month
+                  </Text>
+                )}
               </View>
               <Icon
                 as={ChevronRight}

@@ -80,9 +80,6 @@ export function useHomeData(
       totalBudget: totalBudget.data ?? 0,
       insights: insights.data,
       portfolioInvested: portfolio.data?.invested ?? 0,
-      portfolioValue: portfolio.data?.current_value ?? 0,
-      portfolioGain: portfolio.data?.unrealized_gain ?? 0,
-      portfolioGainPct: portfolio.data?.unrealized_gain_pct ?? 0,
       portfolioMonthInvested: portfolioMonth.data?.invested ?? 0,
     };
   }, [

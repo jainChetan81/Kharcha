@@ -65,8 +65,6 @@ export const holdings = sqliteTable("holdings", {
   units: real("units").notNull().default(0),
   avg_cost: real("avg_cost").notNull().default(0),
   invested: real("invested").notNull().default(0),
-  current_value: real("current_value"),
-  last_price_updated_at: text("last_price_updated_at"),
   note: text("note"),
   is_closed: integer("is_closed").default(0),
   sort_order: integer("sort_order").default(0),

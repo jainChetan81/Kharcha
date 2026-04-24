@@ -24,16 +24,8 @@ export type Holding = InferSelectModel<typeof holdings>;
 export type InstrumentType = NonNullable<Holding["instrument_type"]>;
 export type InvestmentKind = "buy" | "sell" | "dividend" | "interest";
 
-export type HoldingWithStats = Holding & {
-  unrealized_gain: number;
-  unrealized_gain_pct: number;
-};
-
 export type PortfolioSummary = {
   invested: number;
-  current_value: number;
-  unrealized_gain: number;
-  unrealized_gain_pct: number;
 };
 
 export type PortfolioMonthSummary = {

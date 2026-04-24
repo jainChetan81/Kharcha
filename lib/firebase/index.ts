@@ -27,7 +27,6 @@ export const FIREBASE_EVENTS = {
   FILTER_CHIP_REMOVED: "filter_chip_removed",
   FILTERS_CLEARED_ALL: "filters_cleared_all",
   HOLDING_ADDED: "holding_added",
-  HOLDING_PRICE_UPDATED: "holding_price_updated",
   HOLDING_CLOSED: "holding_closed",
   HOLDING_REOPENED: "holding_reopened",
   HOLDING_DELETED: "holding_deleted",

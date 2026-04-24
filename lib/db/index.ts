@@ -220,8 +220,6 @@ export async function initDB(): Promise<void> {
       units REAL NOT NULL DEFAULT 0,
       avg_cost REAL NOT NULL DEFAULT 0,
       invested REAL NOT NULL DEFAULT 0,
-      current_value REAL,
-      last_price_updated_at TEXT,
       note TEXT,
       is_closed INTEGER DEFAULT 0,
       sort_order INTEGER DEFAULT 0,
@@ -1933,7 +1931,6 @@ export {
   closeHolding,
   deleteHolding,
   getAllHoldings,
-  getAllHoldingsWithStats,
   getHolding,
   getPortfolioSummary,
   getPortfolioSummaryForMonth,
@@ -1942,7 +1939,6 @@ export {
   safeRecomputeHolding,
   updateHolding,
   updateHoldingOrder,
-  updateHoldingPrice,
 } from "./holdings";
 export {
   addSource,

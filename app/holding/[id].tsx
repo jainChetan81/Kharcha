@@ -1,11 +1,8 @@
 import { format as formatDate, parseISO } from "date-fns";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
-import { GainLabel } from "@/components/ui/gain-label";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
@@ -15,7 +12,6 @@ import {
   useHolding,
   useHoldingTransactions,
   useReopenHolding,
-  useUpdateHoldingPrice,
 } from "@/hooks/use-holdings";
 import { showDeleteConfirm } from "@/lib/alerts";
 import {
@@ -34,11 +30,9 @@ export default function HoldingDetailScreen() {
   const { format } = useCurrency();
   const { data: holding, isLoading } = useHolding(id);
   const { data: txs = [] } = useHoldingTransactions(id);
-  const updatePrice = useUpdateHoldingPrice();
   const closeMutation = useCloseHolding();
   const reopenMutation = useReopenHolding();
   const deleteMutation = useDeleteHolding();
-  const [priceSheetVisible, setPriceSheetVisible] = useState(false);
 
   if (isLoading || !holding) {
     return (
@@ -47,13 +41,6 @@ export default function HoldingDetailScreen() {
       </View>
     );
   }
-
-  const currentValue = holding.current_value ?? holding.invested;
-  const gain = currentValue - holding.invested;
-  const gainPct = holding.invested > 0 ? (gain / holding.invested) * 100 : 0;
-  const lastUpdated = holding.last_price_updated_at
-    ? formatDate(parseISO(holding.last_price_updated_at), DATE_FORMAT)
-    : null;
 
   return (
     <View className="flex-1 bg-background">
@@ -69,43 +56,26 @@ export default function HoldingDetailScreen() {
             {holding.is_closed === 1 ? " · Closed" : ""}
           </Text>
           <Text className="mt-1 text-3xl font-bold text-foreground">
-            {format(currentValue)}
+            {format(holding.invested)}
           </Text>
-          <View className="mt-1">
-            <GainLabel amount={gain} pct={gainPct} variant="text" />
-          </View>
+          <Text className="mt-0.5 text-[11px] text-muted-foreground">
+            Invested
+          </Text>
 
-          <View className="mt-4 flex-row flex-wrap gap-4">
-            <Stat label="Invested" value={format(holding.invested)} />
-            {!isUnitlessInstrument(holding.instrument_type) && (
-              <>
-                <Stat label="Units" value={holding.units.toFixed(4)} />
-                <Stat
-                  label="Avg Cost"
-                  value={holding.avg_cost > 0 ? format(holding.avg_cost) : "—"}
-                />
-              </>
-            )}
-          </View>
-
-          {lastUpdated && (
-            <Text className="mt-3 text-[11px] text-muted-foreground">
-              Price updated {lastUpdated}
-            </Text>
+          {!isUnitlessInstrument(holding.instrument_type) && (
+            <View className="mt-4 flex-row flex-wrap gap-4">
+              <Stat label="Units" value={holding.units.toFixed(4)} />
+              <Stat
+                label="Avg Cost"
+                value={holding.avg_cost > 0 ? format(holding.avg_cost) : "—"}
+              />
+            </View>
           )}
 
-          <View className="mt-4 flex-row gap-2">
-            <Button
-              className="h-10 flex-1 rounded-xl bg-primary"
-              onPress={() => setPriceSheetVisible(true)}
-            >
-              <Text className="text-sm font-semibold text-primary-foreground">
-                Update price
-              </Text>
-            </Button>
+          <View className="mt-4">
             <Button
               variant="outline"
-              className="h-10 flex-1 rounded-xl border-border"
+              className="h-10 rounded-xl border-border"
               onPress={() => {
                 if (holding.is_closed === 1) {
                   reopenMutation.mutate(id, {
@@ -185,29 +155,6 @@ export default function HoldingDetailScreen() {
           </View>
         )}
       </ScrollView>
-
-      <BottomSheet
-        visible={priceSheetVisible}
-        onClose={() => setPriceSheetVisible(false)}
-        title="Update Current Value"
-        placeholder="Enter current value"
-        submitLabel="Save"
-        keyboardType="decimal-pad"
-        onSave={async (value) => {
-          const num = Number(value);
-          if (!Number.isFinite(num) || num < 0) {
-            showErrorToast("Invalid value");
-            return;
-          }
-          try {
-            await updatePrice.mutateAsync({ id, currentValue: num });
-            setPriceSheetVisible(false);
-            showSuccessToast("Price updated");
-          } catch (err) {
-            showErrorToast("Failed to update price", err);
-          }
-        }}
-      />
     </View>
   );
 }

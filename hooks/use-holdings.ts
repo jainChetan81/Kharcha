@@ -5,14 +5,12 @@ import {
   closeHolding,
   deleteHolding,
   getAllHoldings,
-  getAllHoldingsWithStats,
   getHolding,
   getPortfolioSummary,
   getPortfolioSummaryForMonth,
   getTransactionsForHolding,
   reopenHolding,
   updateHolding,
-  updateHoldingPrice,
 } from "@/lib/db";
 import type { InstrumentType } from "@/lib/db/types";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
@@ -21,14 +19,6 @@ export function useAllHoldings(enabled = true) {
   return useQuery({
     queryKey: [QUERY_KEYS.HOLDINGS],
     queryFn: getAllHoldings,
-    enabled,
-  });
-}
-
-export function useAllHoldingsWithStats(enabled = true) {
-  return useQuery({
-    queryKey: [QUERY_KEYS.HOLDINGS, "stats"],
-    queryFn: getAllHoldingsWithStats,
     enabled,
   });
 }
@@ -105,18 +95,6 @@ export function useUpdateHolding() {
       };
     }) => updateHolding(id, patch),
     onSuccess: () => invalidatePortfolio(qc),
-  });
-}
-
-export function useUpdateHoldingPrice() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, currentValue }: { id: number; currentValue: number }) =>
-      updateHoldingPrice(id, currentValue),
-    onSuccess: () => {
-      logEvent(FIREBASE_EVENTS.HOLDING_PRICE_UPDATED);
-      invalidatePortfolio(qc);
-    },
   });
 }
 

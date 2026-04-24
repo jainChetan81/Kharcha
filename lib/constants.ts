@@ -249,6 +249,7 @@ export const LABELS = {
   AVAILABLE: "available",
   SPENT: "spent",
   NO_DATA: "no data",
+  TOTAL_INVESTED: "Total Invested",
 } as const;
 
 export const GMAIL_API = {

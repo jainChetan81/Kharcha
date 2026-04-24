@@ -9,7 +9,6 @@ import { db } from "./connection";
 import { holdings, transactions } from "./schema";
 import type {
   Holding,
-  HoldingWithStats,
   InstrumentType,
   InvestmentKind,
   PortfolioMonthSummary,
@@ -32,20 +31,6 @@ export async function getHolding(id: number): Promise<Holding | null> {
     .where(eq(holdings.id, id))
     .limit(1);
   return (row as Holding | undefined) ?? null;
-}
-
-export async function getAllHoldingsWithStats(): Promise<HoldingWithStats[]> {
-  const rows = await getAllHoldings();
-  return rows.map((h) => {
-    const currentValue = h.current_value ?? h.invested;
-    const gain = currentValue - h.invested;
-    const pct = h.invested > 0 ? (gain / h.invested) * 100 : 0;
-    return {
-      ...h,
-      unrealized_gain: gain,
-      unrealized_gain_pct: pct,
-    };
-  });
 }
 
 export async function addHolding(input: {
@@ -84,19 +69,6 @@ export async function updateHolding(
   if (patch.note !== undefined) values.note = patch.note;
   if (Object.keys(values).length === 0) return;
   await db.update(holdings).set(values).where(eq(holdings.id, id));
-}
-
-export async function updateHoldingPrice(
-  id: number,
-  currentValue: number,
-): Promise<void> {
-  await db
-    .update(holdings)
-    .set({
-      current_value: currentValue,
-      last_price_updated_at: new Date().toISOString(),
-    })
-    .where(eq(holdings.id, id));
 }
 
 export async function closeHolding(id: number): Promise<void> {
@@ -251,18 +223,10 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
     .from(holdings)
     .where(eq(holdings.is_closed, 0))) as Holding[];
   let invested = 0;
-  let currentValue = 0;
   for (const h of rows) {
     invested += h.invested ?? 0;
-    currentValue += h.current_value ?? h.invested ?? 0;
   }
-  const gain = currentValue - invested;
-  return {
-    invested,
-    current_value: currentValue,
-    unrealized_gain: gain,
-    unrealized_gain_pct: invested > 0 ? (gain / invested) * 100 : 0,
-  };
+  return { invested };
 }
 
 export async function getPortfolioSummaryForMonth(
