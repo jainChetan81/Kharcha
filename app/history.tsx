@@ -8,12 +8,15 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react-native";
-import { lazy, Suspense, useMemo } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
 import {
   ActivityIndicator,
+  LayoutAnimation,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
+  UIManager,
   View,
 } from "react-native";
 import {
@@ -91,6 +94,22 @@ export default function HistoryScreen() {
     setDraftTagIds,
     draftHasFilters,
   } = useHistoryFilters();
+
+  // Animate chip row appearance/disappearance so filter pills slide in
+  // instead of popping.
+  const prevChipCount = useRef(appliedChips.length);
+  useEffect(() => {
+    if (appliedChips.length !== prevChipCount.current) {
+      if (
+        Platform.OS === "android" &&
+        UIManager.setLayoutAnimationEnabledExperimental
+      ) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+      }
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      prevChipCount.current = appliedChips.length;
+    }
+  }, [appliedChips.length]);
 
   const categoryFilterType =
     draftType === TRANSACTION_TYPE.TRANSFER ? TRANSACTION_TYPE.ALL : draftType;

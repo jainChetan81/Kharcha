@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+import { Animated } from "react-native";
 import Svg, { Circle, Line, Polygon, Text as SvgText } from "react-native-svg";
 
 type RadarChartProps = {
@@ -30,6 +32,18 @@ export function RadarChart({
   labelFontSize = 11,
 }: RadarChartProps) {
   const n = data.length;
+
+  const entrance = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    entrance.setValue(0);
+    Animated.spring(entrance, {
+      toValue: 1,
+      friction: 8,
+      tension: 60,
+      useNativeDriver: true,
+    }).start();
+  }, [entrance]);
+
   if (n < 3) return null;
 
   const cx = size / 2;
@@ -107,18 +121,22 @@ export function RadarChart({
   ));
 
   return (
-    <Svg width={size} height={size}>
-      {gridPolygons}
-      {axes}
-      <Polygon
-        points={dataPolygon}
-        fill={fillColor}
-        fillOpacity={fillOpacity}
-        stroke={strokeColor}
-        strokeWidth={strokeWidth}
-      />
-      {dots}
-      {labelElements}
-    </Svg>
+    <Animated.View
+      style={{ opacity: entrance, transform: [{ scale: entrance }] }}
+    >
+      <Svg width={size} height={size}>
+        {gridPolygons}
+        {axes}
+        <Polygon
+          points={dataPolygon}
+          fill={fillColor}
+          fillOpacity={fillOpacity}
+          stroke={strokeColor}
+          strokeWidth={strokeWidth}
+        />
+        {dots}
+        {labelElements}
+      </Svg>
+    </Animated.View>
   );
 }

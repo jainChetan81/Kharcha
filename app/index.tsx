@@ -1,4 +1,5 @@
 import { addMonths, format, isSameMonth, subMonths } from "date-fns";
+import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import {
   ChevronLeft,
@@ -10,9 +11,10 @@ import {
   Settings,
   User,
 } from "lucide-react-native";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -146,6 +148,23 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState(now);
   const isCurrentMonth = isSameMonth(selectedDate, now);
 
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+  function navigateMonth(next: Date) {
+    Haptics.selectionAsync();
+    Animated.timing(contentOpacity, {
+      toValue: 0.4,
+      duration: 80,
+      useNativeDriver: true,
+    }).start(() => {
+      setSelectedDate(next);
+      Animated.timing(contentOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+  }
+
   const selectedMonth = format(selectedDate, MONTH_FORMAT);
   const prevMonth = format(subMonths(selectedDate, 1), MONTH_FORMAT);
 
@@ -170,9 +189,10 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
+        style={{ opacity: contentOpacity }}
         refreshControl={
           <RefreshControl {...getRefreshControlProps(refreshing, onRefresh)} />
         }
@@ -209,7 +229,7 @@ export default function HomeScreen() {
 
           <View className="mt-4 flex-row items-center justify-between">
             <Pressable
-              onPress={() => setSelectedDate(subMonths(selectedDate, 1))}
+              onPress={() => navigateMonth(subMonths(selectedDate, 1))}
               hitSlop={12}
               className="rounded-full p-2"
             >
@@ -220,7 +240,7 @@ export default function HomeScreen() {
             </Text>
             <Pressable
               onPress={() =>
-                !isCurrentMonth && setSelectedDate(addMonths(selectedDate, 1))
+                !isCurrentMonth && navigateMonth(addMonths(selectedDate, 1))
               }
               hitSlop={12}
               className="rounded-full p-2"
@@ -387,7 +407,7 @@ export default function HomeScreen() {
             )}
           </View>
         </ComponentErrorBoundary>
-      </ScrollView>
+      </Animated.ScrollView>
 
       <View
         className="border-t border-border bg-card pt-2.5"
@@ -407,7 +427,16 @@ export default function HomeScreen() {
               History
             </Text>
           </Pressable>
-          <Pressable onPress={() => router.push(SCREENS.ADD)} style={FAB_STYLE}>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push(SCREENS.ADD);
+            }}
+            style={({ pressed }) => [
+              FAB_STYLE,
+              { transform: [{ scale: pressed ? 0.92 : 1 }] },
+            ]}
+          >
             <View
               className="h-[52px] w-[52px] items-center justify-center rounded-full bg-primary"
               style={SHADOWS.FAB}

@@ -1,3 +1,4 @@
+import * as Haptics from "expo-haptics";
 import { Switch, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { COLORS } from "@/lib/constants";
@@ -27,7 +28,10 @@ export function SwitchRow({
       </View>
       <Switch
         value={value}
-        onValueChange={onValueChange}
+        onValueChange={(next) => {
+          Haptics.selectionAsync();
+          onValueChange(next);
+        }}
         disabled={disabled}
         trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
         thumbColor={COLORS.WHITE}

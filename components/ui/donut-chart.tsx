@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { View } from "react-native";
+import { type ReactNode, useEffect, useRef } from "react";
+import { Animated, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 
 type Segment = { value: number; color: string };
@@ -29,6 +29,17 @@ export function DonutChart({
   const strokeWidth = radius - innerRadius;
   const chartRadius = innerRadius + strokeWidth / 2;
   const circumference = 2 * Math.PI * chartRadius;
+
+  const entrance = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    entrance.setValue(0);
+    Animated.spring(entrance, {
+      toValue: 1,
+      friction: 8,
+      tension: 60,
+      useNativeDriver: true,
+    }).start();
+  }, [entrance]);
 
   const total = data.reduce((sum, s) => sum + s.value, 0);
   if (total <= 0) {
@@ -88,7 +99,16 @@ export function DonutChart({
   });
 
   return (
-    <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+    <Animated.View
+      style={{
+        width: size,
+        height: size,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: entrance,
+        transform: [{ scale: entrance }],
+      }}
+    >
       <Svg width={size} height={size}>
         <Circle
           cx={cx}
@@ -113,6 +133,6 @@ export function DonutChart({
           {centerLabel}
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
