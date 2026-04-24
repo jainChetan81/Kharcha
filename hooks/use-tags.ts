@@ -14,6 +14,7 @@ export function useAllTags() {
   return useQuery({
     queryKey: [QUERY_KEYS.TAGS],
     queryFn: getAllTags,
+    staleTime: Number.POSITIVE_INFINITY,
   });
 }
 
