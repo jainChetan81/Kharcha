@@ -1541,7 +1541,14 @@ export async function getReimbursementSummary() {
         total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
       })
       .from(transactions)
-      .where(sql`${transactions.reimbursement_status} != 'none'`)
+      .where(
+        and(
+          sql`${transactions.reimbursement_status} != 'none'`,
+          // Investments aren't expenses — never let a stray reimbursement
+          // flag on an investment row inflate the reimbursable totals.
+          sql`${transactions.type} != 'investment'`,
+        ),
+      )
       .groupBy(transactions.reimbursement_status);
 
     const pending = rows.find((r) => r.status === "pending");

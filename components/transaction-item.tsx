@@ -204,9 +204,13 @@ export const TransactionItem = memo(function TransactionItem({
             "text-sm font-bold",
             isTransfer
               ? "text-muted-foreground"
-              : isIncome || investmentInflow
+              : investmentInflow
                 ? "text-positive"
-                : "text-negative",
+                : isInvestment
+                  ? "text-muted-foreground"
+                  : isIncome
+                    ? "text-positive"
+                    : "text-negative",
           )}
         >
           {isTransfer ? "" : isIncome || investmentInflow ? "+" : "-"}
