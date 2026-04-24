@@ -1,5 +1,5 @@
 import { FlashList } from "@shopify/flash-list";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import {
   ChevronLeft,
   FileDown,
@@ -45,6 +45,7 @@ const HistoryFiltersSheet = lazy(
 );
 
 export default function HistoryScreen() {
+  const { summary } = useLocalSearchParams<{ summary?: string }>();
   const { format: fmt } = useCurrency();
   const { refreshing, onRefresh } = useSyncRefresh();
   const handleSwipeDelete = useSwipeDelete();
@@ -174,7 +175,11 @@ export default function HistoryScreen() {
       </View>
 
       {insights && insights.count > 0 && (
-        <HistoryInsightsStrip insights={insights} fmt={fmt} />
+        <HistoryInsightsStrip
+          insights={insights}
+          fmt={fmt}
+          defaultExpanded={summary === "1"}
+        />
       )}
 
       {appliedChips.length > 0 && (

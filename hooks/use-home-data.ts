@@ -58,9 +58,7 @@ export function useHomeData(
     return {
       recentTransactions: recent.data ?? [],
       monthTransactions: monthTx.data ?? [],
-      transactions: isCurrentMonth
-        ? (recent.data ?? [])
-        : (monthTx.data ?? []),
+      transactions: isCurrentMonth ? (recent.data ?? []) : (monthTx.data ?? []),
       transactionsLoading: isCurrentMonth
         ? recent.isLoading
         : monthTx.isLoading,

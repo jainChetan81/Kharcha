@@ -44,7 +44,14 @@ export function DonutChart({
   const total = data.reduce((sum, s) => sum + s.value, 0);
   if (total <= 0) {
     return (
-      <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
+      <View
+        style={{
+          width: size,
+          height: size,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <Svg width={size} height={size}>
           <Circle
             cx={cx}
@@ -73,14 +80,13 @@ export function DonutChart({
   }
 
   let offset = 0;
-  const arcs = data.map((segment, i) => {
+  const arcs = data.map((segment) => {
     const pct = segment.value / total;
     const dashLength = pct * circumference;
-    const gapForSeparator =
-      data.length > 1 ? strokeSeparatorWidth : 0;
+    const gapForSeparator = data.length > 1 ? strokeSeparatorWidth : 0;
     const arc = (
       <Circle
-        key={`arc-${i}`}
+        key={`${segment.color}-${offset}`}
         cx={cx}
         cy={cy}
         r={chartRadius}

@@ -67,7 +67,7 @@ export function RadarChart({
     }).join(" ");
     return (
       <Polygon
-        key={`grid-${level}`}
+        key={points}
         points={points}
         fill="transparent"
         stroke={gridColor}
@@ -80,7 +80,7 @@ export function RadarChart({
     const p = polarToXY(i * angleStep, radius);
     return (
       <Line
-        key={`axis-${i}`}
+        key={`${p.x},${p.y}`}
         x1={cx}
         y1={cy}
         x2={p.x}
@@ -103,7 +103,7 @@ export function RadarChart({
     const truncated = label.length > 12 ? `${label.slice(0, 11)}…` : label;
     return (
       <SvgText
-        key={`label-${i}`}
+        key={`${label}-${p.x},${p.y}`}
         x={p.x}
         y={p.y}
         fontSize={labelFontSize}
@@ -116,8 +116,8 @@ export function RadarChart({
     );
   });
 
-  const dots = dataPoints.map((p, i) => (
-    <Circle key={`dot-${i}`} cx={p.x} cy={p.y} r={3} fill={strokeColor} />
+  const dots = dataPoints.map((p) => (
+    <Circle key={`${p.x},${p.y}`} cx={p.x} cy={p.y} r={3} fill={strokeColor} />
   ));
 
   return (

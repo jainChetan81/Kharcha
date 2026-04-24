@@ -11,16 +11,14 @@ import {
   Settings,
   User,
 } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
   Pressable,
   RefreshControl,
-  ScrollView,
   View,
 } from "react-native";
-import { DonutChart } from "@/components/ui/donut-chart";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ComponentErrorBoundary,
@@ -32,6 +30,7 @@ import { TopCategoryCard } from "@/components/top-category-card";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { TransactionSkeleton } from "@/components/transaction-skeleton";
 import { ALERT_TONE_TEXT, AlertBanner } from "@/components/ui/alert-banner";
+import { DonutChart } from "@/components/ui/donut-chart";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useConfig } from "@/hooks/use-config";
@@ -39,9 +38,7 @@ import { useCurrency } from "@/hooks/use-currency";
 import { useGmailSyncActive } from "@/hooks/use-feature-flags";
 import { useHomeData } from "@/hooks/use-home-data";
 import { useSyncRefresh } from "@/hooks/use-refresh";
-import {
-  useCategoryBreakdown,
-} from "@/hooks/use-transactions";
+import { useCategoryBreakdown } from "@/hooks/use-transactions";
 import {
   CATEGORY_PALETTE,
   COLORS,
@@ -78,6 +75,18 @@ function CategoryDonut({
   const net = income - expenses;
   const overspent = net < 0;
 
+  if (!hasAny) {
+    return (
+      <View
+        className="h-[180px] items-center justify-center"
+        accessibilityRole="summary"
+        accessibilityLabel={LABELS.NO_DATA}
+      >
+        <Text className="text-xs text-muted-foreground">{LABELS.NO_DATA}</Text>
+      </View>
+    );
+  }
+
   const top = categories.slice(0, TOP_CATEGORIES_ON_RING);
   const topTotal = top.reduce((s, c) => s + c.total, 0);
   const categoriesTotal = categories.reduce((s, c) => s + c.total, 0);
@@ -94,9 +103,7 @@ function CategoryDonut({
             ? [{ value: otherTotal, color: COLORS.BAR_BG }]
             : []),
         ]
-      : hasIncome
-        ? [{ value: 100, color: `${COLORS.POSITIVE}b3` }]
-        : [{ value: 100, color: COLORS.BAR_BG }];
+      : [{ value: 100, color: `${COLORS.POSITIVE}b3` }];
 
   return (
     <View className="items-center">
@@ -108,25 +115,17 @@ function CategoryDonut({
         strokeSeparator={COLORS.BACKGROUND}
         centerLabel={
           <View className="items-center justify-center">
-            {hasAny ? (
-              <>
-                <Text
-                  className={cn(
-                    "text-xl font-bold",
-                    overspent ? "text-negative" : "text-foreground",
-                  )}
-                >
-                  {fmt(Math.abs(net))}
-                </Text>
-                <Text className="mt-0.5 text-[11px] text-muted-foreground">
-                  {overspent ? LABELS.SPENT : LABELS.AVAILABLE}
-                </Text>
-              </>
-            ) : (
-              <Text className="text-xs text-muted-foreground">
-                {LABELS.NO_DATA}
-              </Text>
-            )}
+            <Text
+              className={cn(
+                "text-xl font-bold",
+                overspent ? "text-negative" : "text-foreground",
+              )}
+            >
+              {fmt(Math.abs(net))}
+            </Text>
+            <Text className="mt-0.5 text-[11px] text-muted-foreground">
+              {overspent ? LABELS.SPENT : LABELS.AVAILABLE}
+            </Text>
           </View>
         }
       />
@@ -187,9 +186,10 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
+        style={{ opacity: contentOpacity }}
         refreshControl={
           <RefreshControl {...getRefreshControlProps(refreshing, onRefresh)} />
         }
@@ -254,7 +254,7 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          <Animated.View className="mt-3" style={{ opacity: contentOpacity }}>
+          <View className="mt-3">
             <ComponentErrorBoundary name="home.category-donut">
               <CategoryDonut
                 selectedMonth={selectedMonth}
@@ -404,8 +404,7 @@ export default function HomeScreen() {
             )}
           </View>
         </ComponentErrorBoundary>
-      </Animated.View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       <View
         className="border-t border-border bg-card pt-2.5"

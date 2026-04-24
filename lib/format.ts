@@ -12,6 +12,7 @@ export type HistoryHrefParams = {
   tagId?: number | null;
   merchant?: string | null;
   month?: string | null;
+  summary?: boolean;
 };
 
 export function historyHref(params: HistoryHrefParams = {}): string {
@@ -23,6 +24,7 @@ export function historyHref(params: HistoryHrefParams = {}): string {
     query.push(`merchant=${encodeURIComponent(params.merchant)}`);
   }
   if (params.month) query.push(`month=${params.month}`);
+  if (params.summary) query.push("summary=1");
   return query.length
     ? `${SCREENS.HISTORY}?${query.join("&")}`
     : SCREENS.HISTORY;

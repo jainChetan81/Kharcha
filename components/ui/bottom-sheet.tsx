@@ -162,7 +162,11 @@ export function BottomSheet(props: BottomSheetProps) {
       onRequestClose={handleClose}
     >
       <Animated.View
-        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", opacity: backdropOpacity }}
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.5)",
+          opacity: backdropOpacity,
+        }}
       >
         <Pressable style={{ flex: 1 }} onPress={handleClose} />
       </Animated.View>
