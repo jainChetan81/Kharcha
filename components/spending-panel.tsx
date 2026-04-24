@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
-import { RadarChart } from "react-native-gifted-charts";
+import { RadarChart } from "@/components/ui/radar-chart";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StackedBar } from "@/components/ui/stacked-bar";
 import { Text } from "@/components/ui/text";
@@ -110,33 +110,12 @@ export function SpendingPanel({
             <View className="mb-4 items-center">
               <RadarChart
                 data={top.map((r) => r.total)}
-                labels={top.map((r) =>
-                  r.label.length > 12 ? `${r.label.slice(0, 11)}…` : r.label,
-                )}
-                chartSize={240}
-                noOfSections={4}
-                maxValue={Math.max(...top.map((r) => r.total)) * 1.15}
-                circular
-                hideAsterLines
-                polygonConfig={{
-                  fill: COLORS.PRIMARY,
-                  opacity: 0.3,
-                  stroke: COLORS.PRIMARY,
-                  strokeWidth: 2,
-                  showGradient: false,
-                }}
-                gridConfig={{
-                  fill: "transparent",
-                  stroke: COLORS.BAR_BG,
-                  strokeWidth: 0.5,
-                  showGradient: false,
-                  gradientColor: COLORS.BACKGROUND,
-                  opacity: 1,
-                }}
-                labelConfig={{
-                  fontSize: 11,
-                  stroke: COLORS.MUTED,
-                }}
+                labels={top.map((r) => r.label)}
+                size={240}
+                fillColor={COLORS.PRIMARY}
+                strokeColor={COLORS.PRIMARY}
+                gridColor={COLORS.BAR_BG}
+                labelColor={COLORS.MUTED}
               />
             </View>
           ) : (

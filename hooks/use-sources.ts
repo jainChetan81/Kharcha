@@ -15,6 +15,7 @@ export function useAllSources(enabled = true) {
     queryKey: [QUERY_KEYS.SOURCES],
     queryFn: getAllSources,
     enabled,
+    staleTime: Number.POSITIVE_INFINITY,
   });
 }
 

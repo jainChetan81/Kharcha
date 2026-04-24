@@ -14,6 +14,7 @@ export function useBudgets() {
   return useQuery({
     queryKey: [QUERY_KEYS.BUDGETS],
     queryFn: getBudgets,
+    staleTime: Number.POSITIVE_INFINITY,
   });
 }
 

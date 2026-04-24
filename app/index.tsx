@@ -18,7 +18,7 @@ import {
   ScrollView,
   View,
 } from "react-native";
-import { PieChart } from "react-native-gifted-charts";
+import { DonutChart } from "@/components/ui/donut-chart";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ComponentErrorBoundary,
@@ -35,16 +35,10 @@ import { Text } from "@/components/ui/text";
 import { useConfig } from "@/hooks/use-config";
 import { useCurrency } from "@/hooks/use-currency";
 import { useGmailSyncActive } from "@/hooks/use-feature-flags";
+import { useHomeData } from "@/hooks/use-home-data";
 import { useSyncRefresh } from "@/hooks/use-refresh";
-import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
 import {
   useCategoryBreakdown,
-  useMonthlyInsights,
-  useMonthlySummary,
-  useMonthTransactions,
-  useRecentTransactions,
-  useReimbursementSummary,
-  useTotalMonthlyBudget,
 } from "@/hooks/use-transactions";
 import {
   CATEGORY_PALETTE,
@@ -60,7 +54,6 @@ import { buildListData, getInitials, historyHref } from "@/lib/format";
 import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
 
 const FAB_STYLE = { marginTop: -44, marginBottom: 8 } as const;
-const RECENT_LIMIT = 5;
 
 const TOP_CATEGORIES_ON_RING = 5;
 
@@ -115,15 +108,13 @@ function CategoryDonut({
 
   return (
     <View className="items-center">
-      <PieChart
+      <DonutChart
         data={pieData}
-        donut
         radius={90}
         innerRadius={62}
-        innerCircleColor={COLORS.BACKGROUND}
-        strokeColor={COLORS.BACKGROUND}
-        strokeWidth={2}
-        centerLabelComponent={() => (
+        backgroundColor={COLORS.BACKGROUND}
+        strokeSeparator={COLORS.BACKGROUND}
+        centerLabel={
           <View className="items-center justify-center">
             <Text
               className={cn(
@@ -137,7 +128,7 @@ function CategoryDonut({
               {overspent ? LABELS.SPENT : LABELS.AVAILABLE}
             </Text>
           </View>
-        )}
+        }
       />
     </View>
   );
@@ -158,31 +149,23 @@ export default function HomeScreen() {
   const selectedMonth = format(selectedDate, MONTH_FORMAT);
   const prevMonth = format(subMonths(selectedDate, 1), MONTH_FORMAT);
 
-  const { data: recentTransactions = [], isLoading: recentLoading } =
-    useRecentTransactions(RECENT_LIMIT);
-  const { data: monthTransactions = [], isLoading: monthLoading } =
-    useMonthTransactions(selectedMonth, RECENT_LIMIT);
-  const { data: summary } = useMonthlySummary(selectedMonth);
-  const { data: prevSummary } = useMonthlySummary(prevMonth);
-  const { data: subsTotal = 0 } = useSubscriptionsTotal();
-  const { data: reimbursementSummary } = useReimbursementSummary();
-  const { data: totalBudget = 0 } = useTotalMonthlyBudget();
-  const { data: insights } = useMonthlyInsights(
+  const {
+    transactions,
+    transactionsLoading: recentActivityLoading,
+    income,
+    expenses,
+    spendingChange,
+    subsTotal,
+    reimbursementSummary,
+    totalBudget,
+    insights,
+  } = useHomeData(
+    selectedMonth,
+    prevMonth,
     selectedDate.getFullYear(),
     selectedDate.getMonth() + 1,
+    isCurrentMonth,
   );
-
-  const income = summary?.total_income ?? 0;
-  const expenses = summary?.total_expenses ?? 0;
-  const prevExpenses = prevSummary?.total_expenses ?? 0;
-  const spendingChange =
-    prevExpenses > 0
-      ? Math.round(((expenses - prevExpenses) / prevExpenses) * 100)
-      : expenses > 0
-        ? "new"
-        : null;
-  const transactions = isCurrentMonth ? recentTransactions : monthTransactions;
-  const recentActivityLoading = isCurrentMonth ? recentLoading : monthLoading;
   const listData = useMemo(() => buildListData(transactions), [transactions]);
 
   return (
