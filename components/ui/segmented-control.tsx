@@ -1,3 +1,4 @@
+import * as Haptics from "expo-haptics";
 import { Pressable, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,10 @@ export function SegmentedControl<T extends string>({
         return (
           <Pressable
             key={option.value}
-            onPress={() => onChange(option.value)}
+            onPress={() => {
+              if (!selected) Haptics.selectionAsync();
+              onChange(option.value);
+            }}
             className={cn(
               "flex-1 items-center justify-center rounded-full px-3 py-2",
               selected && "bg-primary",

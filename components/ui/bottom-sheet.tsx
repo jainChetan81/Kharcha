@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   KeyboardAvoidingView,
   type KeyboardTypeOptions,
   Modal,
@@ -45,6 +46,19 @@ export function BottomSheet(props: BottomSheetProps) {
   const { visible, onClose } = props;
   const { bottom } = useSafeAreaInsets();
   const isFormMode = !!props.onSave;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.timing(backdropOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      backdropOpacity.setValue(0);
+    }
+  }, [visible, backdropOpacity]);
 
   const [value, setValue] = useState(props.defaultValue ?? "");
 
@@ -136,7 +150,11 @@ export function BottomSheet(props: BottomSheetProps) {
       animationType="slide"
       onRequestClose={handleClose}
     >
-      <Pressable className="flex-1 bg-black/50" onPress={handleClose} />
+      <Animated.View
+        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", opacity: backdropOpacity }}
+      >
+        <Pressable style={{ flex: 1 }} onPress={handleClose} />
+      </Animated.View>
       {isFormMode || ("avoidKeyboard" in props && props.avoidKeyboard) ? (
         <KeyboardAvoidingView behavior="padding">
           {content}
