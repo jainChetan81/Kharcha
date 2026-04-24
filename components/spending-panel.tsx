@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 import { RadarChart } from "react-native-gifted-charts";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -59,7 +59,10 @@ export function SpendingPanel({
     setLens(next);
   }
 
-  const rows = toRows(lens, categories, tags, merchants, selectedMonth);
+  const rows = useMemo(
+    () => toRows(lens, categories, tags, merchants, selectedMonth),
+    [lens, categories, tags, merchants, selectedMonth],
+  );
   const totalGroups = rows.length;
   const top = rows.slice(0, TOP_BREAKDOWN_LIMIT);
   const monthTotal = rows.reduce((sum, r) => sum + r.total, 0);

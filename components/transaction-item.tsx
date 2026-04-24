@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 import { ChevronRight } from "lucide-react-native";
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -53,7 +53,7 @@ function Tag({
   );
 }
 
-export function TransactionItem({
+export const TransactionItem = memo(function TransactionItem({
   item,
   showTime = false,
   onPress,
@@ -238,7 +238,7 @@ export function TransactionItem({
       </Animated.View>
     </Animated.View>
   );
-}
+});
 
 export function DateHeader({ label }: { label: string }) {
   return (

@@ -10,7 +10,7 @@ import {
   Settings,
   User,
 } from "lucide-react-native";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -181,7 +181,7 @@ export default function HomeScreen() {
         : null;
   const transactions = isCurrentMonth ? recentTransactions : monthTransactions;
   const recentActivityLoading = isCurrentMonth ? recentLoading : monthLoading;
-  const listData = buildListData(transactions);
+  const listData = useMemo(() => buildListData(transactions), [transactions]);
 
   return (
     <View className="flex-1 bg-background">

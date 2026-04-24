@@ -8,7 +8,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react-native";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -105,7 +105,10 @@ export default function HistoryScreen() {
   );
 
   const allTransactions = data?.pages.flat() ?? [];
-  const listData = buildListData(allTransactions);
+  const listData = useMemo(
+    () => buildListData(allTransactions),
+    [allTransactions],
+  );
 
   return (
     <View className="flex-1 bg-background">
@@ -202,6 +205,7 @@ export default function HistoryScreen() {
       <ComponentErrorBoundary>
         <FlashList
           data={listData}
+          estimatedItemSize={72}
           keyExtractor={(item) =>
             item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
           }

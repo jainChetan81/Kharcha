@@ -5,6 +5,23 @@ import { DB_NAME } from "@/lib/constants";
 import migrations from "../../drizzle/migrations";
 
 const expo = SQLite.openDatabaseSync(DB_NAME);
+
+// Tune SQLite for a mobile expense-tracker workload: many small reads,
+// infrequent writes, single-user. These run once at connection open and
+// persist for the lifetime of the process.
+//   - cache_size: -4000 = 4 MB page cache (default ~2 MB). Keeps hot
+//     category/source/config rows resident across queries.
+//   - journal_mode: already WAL by default in expo-sqlite, but explicit
+//     so restored backups from other SQLite builds inherit it.
+//   - synchronous NORMAL: safe with WAL (fsync only on checkpoint, not
+//     every commit). Cuts write latency ~50% vs FULL.
+//   - temp_store MEMORY: temp tables and sort spill go to RAM instead of
+//     disk. Safe for our dataset size.
+expo.execSync("PRAGMA cache_size = -4000;");
+expo.execSync("PRAGMA journal_mode = WAL;");
+expo.execSync("PRAGMA synchronous = NORMAL;");
+expo.execSync("PRAGMA temp_store = MEMORY;");
+
 const db: ExpoSQLiteDatabase = drizzle(expo, { logger: __DEV__ });
 
 /**
