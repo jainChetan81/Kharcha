@@ -6,6 +6,7 @@ import {
   getAllSources,
   updateSourceOrder,
 } from "@/lib/db";
+import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 
 // Re-export for imperative calls
 export { getAllSources };
@@ -22,8 +23,12 @@ export function useAddSource() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (name: string) => addSource(name),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.SOURCES] }),
+    onSuccess: ({ isNew }) => {
+      if (isNew) {
+        logEvent(FIREBASE_EVENTS.SOURCE_ADDED);
+      }
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.SOURCES] });
+    },
   });
 }
 

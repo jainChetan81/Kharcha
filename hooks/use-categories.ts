@@ -7,6 +7,7 @@ import {
   getCategoriesByType,
   updateCategoryOrder,
 } from "@/lib/db";
+import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 
 export function useAllCategories() {
   return useQuery({
@@ -39,8 +40,12 @@ export function useAddCategory() {
       name: string;
       type: "income" | "expense";
     }) => addCategory(name, type),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CATEGORIES] }),
+    onSuccess: ({ isNew }, variables) => {
+      if (isNew) {
+        logEvent(FIREBASE_EVENTS.CATEGORY_ADDED, { type: variables.type });
+      }
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CATEGORIES] });
+    },
   });
 }
 

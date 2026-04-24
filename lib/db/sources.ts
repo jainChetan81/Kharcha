@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "./connection";
 import { sources } from "./schema";
 import type { Source } from "./types";
@@ -23,7 +23,18 @@ export async function updateSourceOrder(
 }
 
 export async function addSource(name: string) {
-  return db.insert(sources).values({ name, is_default: 0 });
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Source name is required");
+  const [existing] = await db
+    .select()
+    .from(sources)
+    .where(sql`LOWER(${sources.name}) = ${trimmed.toLowerCase()}`)
+    .limit(1);
+  if (existing) return { id: existing.id, isNew: false };
+  const result = await db
+    .insert(sources)
+    .values({ name: trimmed, is_default: 0 });
+  return { id: Number(result.lastInsertRowId), isNew: true };
 }
 
 export async function deleteSource(id: number) {

@@ -68,15 +68,16 @@ export default function SourcesScreen() {
           <AddSourceSheet
             visible={showAdd}
             onClose={() => setShowAdd(false)}
-            sources={sources}
             onSave={async (name) => {
               try {
-                await addMutation.mutateAsync(name);
+                const { isNew } = await addMutation.mutateAsync(name);
                 setShowAdd(false);
-                showSuccessToast("Source added");
+                showSuccessToast(
+                  isNew ? "Source added" : "Already exists — kept existing",
+                );
               } catch (err) {
                 if (err instanceof Error) {
-                  showErrorToast("Duplicate", err.message);
+                  showErrorToast("Failed", err.message);
                 } else {
                   showErrorToast("Failed", "Could not add source");
                 }

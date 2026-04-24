@@ -17,10 +17,12 @@ import {
 import { showDeleteConfirm } from "@/lib/alerts";
 import {
   COLORS,
+  INVESTMENT_KIND,
   REIMBURSEMENT_STATUS,
   SOURCE_TYPE,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
+import { recomputeHoldingFromTransactions } from "@/lib/db";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -53,6 +55,9 @@ export default function EditTransactionScreen() {
     categoryId: transaction.category_id,
     sourceId: transaction.source_id,
     destinationSourceId: transaction.destination_source_id,
+    holdingId: transaction.holding_id ?? null,
+    investmentKind: transaction.investment_kind ?? INVESTMENT_KIND.BUY,
+    units: transaction.units != null ? String(transaction.units) : "",
     date: transaction.date,
     note: transaction.note ?? "",
     reimbursementStatus:
@@ -63,6 +68,7 @@ export default function EditTransactionScreen() {
   async function handleSubmit(value: TransactionFormValues) {
     try {
       const isTransfer = value.type === TRANSACTION_TYPE.TRANSFER;
+      const isInvestment = value.type === TRANSACTION_TYPE.INVESTMENT;
       const originallyTransfer = transaction?.source_type === "transfer";
       // Only pass sourceType when the transfer flag is changing — otherwise
       // leave it alone so Gmail-synced / subscription-recurring provenance
@@ -78,10 +84,13 @@ export default function EditTransactionScreen() {
         type: value.type,
         amount: Number(value.amount),
         merchant: value.merchant || null,
-        categoryId: isTransfer ? null : value.categoryId,
+        categoryId: isTransfer || isInvestment ? null : value.categoryId,
         sourceId:
           value.type === TRANSACTION_TYPE.INCOME ? null : value.sourceId,
         destinationSourceId: isTransfer ? value.destinationSourceId : null,
+        holdingId: isInvestment ? value.holdingId : null,
+        investmentKind: isInvestment ? value.investmentKind : null,
+        units: isInvestment && value.units ? Number(value.units) : null,
         sourceType,
         reimbursementStatus: isExpense
           ? value.reimbursementStatus
@@ -90,6 +99,13 @@ export default function EditTransactionScreen() {
         note: value.note || null,
         tagIds: value.tagIds,
       });
+      const originalHoldingId = transaction?.holding_id ?? null;
+      if (originalHoldingId && originalHoldingId !== value.holdingId) {
+        await recomputeHoldingFromTransactions(originalHoldingId);
+      }
+      if (isInvestment && value.holdingId) {
+        await recomputeHoldingFromTransactions(value.holdingId);
+      }
       showSuccessToast("Transaction updated");
       router.back();
     } catch (err) {

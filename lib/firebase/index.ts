@@ -26,6 +26,14 @@ export const FIREBASE_EVENTS = {
   HISTORY_INSIGHTS_EXPANDED: "history_insights_expanded",
   FILTER_CHIP_REMOVED: "filter_chip_removed",
   FILTERS_CLEARED_ALL: "filters_cleared_all",
+  HOLDING_ADDED: "holding_added",
+  HOLDING_PRICE_UPDATED: "holding_price_updated",
+  HOLDING_CLOSED: "holding_closed",
+  HOLDING_REOPENED: "holding_reopened",
+  HOLDING_DELETED: "holding_deleted",
+  CATEGORY_ADDED: "category_added",
+  SOURCE_ADDED: "source_added",
+  RECURRING_TRANSACTION_POSTED: "recurring_transaction_posted",
 } as const;
 
 export type KharchaEvent =

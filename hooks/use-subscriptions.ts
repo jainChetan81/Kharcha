@@ -10,6 +10,7 @@ import {
   getUnusedSubscriptions,
   processSubscriptions,
   type SubscriptionAuditRow,
+  type SubscriptionMutationInput,
   type SubscriptionRow,
   toggleSubscription,
   updateSubscription,
@@ -76,14 +77,8 @@ export function useUpdateSubscription() {
     mutationFn: ({
       id,
       ...params
-    }: {
-      id: number;
-      name: string;
-      amount: number;
-      billingDay: number;
-      categoryId: number | null;
-      sourceId: number | null;
-    }) => updateSubscription(id, params),
+    }: { id: number } & SubscriptionMutationInput) =>
+      updateSubscription(id, params),
     onSuccess: () => invalidate(),
     onError: (err) => {
       console.error("Subscription mutation failed:", err);

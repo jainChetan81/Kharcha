@@ -47,6 +47,13 @@ export function useEditSubscription() {
           billingDay: subscription.billing_day,
           categoryId: value.categoryId,
           sourceId: value.sourceId,
+          // Preserve SIP identity on edit — the UI here doesn't let the user
+          // flip expense↔investment, so carry the stored type + holding link
+          // through unchanged. (Conversion would require delete + recreate.)
+          type: subscription.type,
+          holdingId: subscription.holding_id,
+          investmentKind: subscription.investment_kind,
+          defaultUnits: subscription.default_units,
         });
         showSuccessToast("Subscription updated");
         router.back();

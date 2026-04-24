@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "./connection";
 import { budgets, categories, subscriptions, transactions } from "./schema";
 import type { Category } from "./types";
@@ -34,7 +34,23 @@ export async function updateCategoryOrder(
 }
 
 export async function addCategory(name: string, type: "income" | "expense") {
-  return db.insert(categories).values({ name, type, is_default: 0 });
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Category name is required");
+  const [existing] = await db
+    .select()
+    .from(categories)
+    .where(
+      and(
+        eq(categories.type, type),
+        sql`LOWER(${categories.name}) = ${trimmed.toLowerCase()}`,
+      ),
+    )
+    .limit(1);
+  if (existing) return { id: existing.id, isNew: false };
+  const result = await db
+    .insert(categories)
+    .values({ name: trimmed, type, is_default: 0 });
+  return { id: Number(result.lastInsertRowId), isNew: true };
 }
 
 export async function deleteCategory(id: number) {

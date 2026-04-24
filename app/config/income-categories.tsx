@@ -74,18 +74,19 @@ export default function IncomeCategoriesScreen() {
             visible={showAdd}
             onClose={() => setShowAdd(false)}
             categoryType={TRANSACTION_TYPE.INCOME}
-            categories={categories}
             onSave={async (name) => {
               try {
-                await addMutation.mutateAsync({
+                const { isNew } = await addMutation.mutateAsync({
                   name,
                   type: TRANSACTION_TYPE.INCOME,
                 });
                 setShowAdd(false);
-                showSuccessToast("Category added");
+                showSuccessToast(
+                  isNew ? "Category added" : "Already exists — kept existing",
+                );
               } catch (err) {
                 if (err instanceof Error) {
-                  showErrorToast("Duplicate", err.message);
+                  showErrorToast("Failed", err.message);
                 } else {
                   showErrorToast("Failed", "Could not add category");
                 }

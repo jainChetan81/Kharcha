@@ -2,11 +2,15 @@ import { format, getDaysInMonth, subDays } from "date-fns";
 import { and, eq, sql } from "drizzle-orm";
 import {
   DATE_ISO_FORMAT,
+  INVESTMENT_KIND,
   MONTH_FORMAT,
   SUBSCRIPTION_NOTE,
+  TRANSACTION_TYPE,
 } from "@/lib/constants";
+import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 import { subscriptionInputSchema } from "@/lib/validation";
 import expo, { db } from "./connection";
+import { recomputeHoldingFromTransactions } from "./holdings";
 import { categories, sources, subscriptions, transactions } from "./schema";
 import type { SubscriptionRow } from "./types";
 
@@ -21,6 +25,10 @@ function subscriptionSelect() {
       billing_day: subscriptions.billing_day,
       category_id: subscriptions.category_id,
       source_id: subscriptions.source_id,
+      type: subscriptions.type,
+      holding_id: subscriptions.holding_id,
+      investment_kind: subscriptions.investment_kind,
+      default_units: subscriptions.default_units,
       is_active: subscriptions.is_active,
       created_at: subscriptions.created_at,
       category_name: categories.name,
@@ -42,13 +50,19 @@ export async function getSubscriptionById(
   return (rows[0] as SubscriptionRow) ?? null;
 }
 
-export async function addSubscription(params: {
+export type SubscriptionMutationInput = {
   name: string;
   amount: number;
   billingDay: number;
   categoryId: number | null;
   sourceId: number | null;
-}) {
+  type?: "expense" | "investment";
+  holdingId?: number | null;
+  investmentKind?: "buy" | "sell" | "dividend" | "interest" | null;
+  defaultUnits?: number | null;
+};
+
+export async function addSubscription(params: SubscriptionMutationInput) {
   const validation = subscriptionInputSchema.safeParse(params);
   if (!validation.success) {
     throw new Error(
@@ -56,24 +70,28 @@ export async function addSubscription(params: {
     );
   }
   const v = validation.data;
+  const isInvestment = v.type === "investment";
   return db.insert(subscriptions).values({
     name: v.name,
     amount: v.amount,
     billing_day: v.billingDay,
-    category_id: v.categoryId,
+    // SIPs ignore category: the generated tx is type=investment, which is
+    // excluded from category pies anyway. Keep null to avoid stale wiring if
+    // the user later flips the subscription back to expense.
+    category_id: isInvestment ? null : v.categoryId,
     source_id: v.sourceId,
+    type: v.type,
+    holding_id: isInvestment ? (v.holdingId ?? null) : null,
+    investment_kind: isInvestment
+      ? (v.investmentKind ?? INVESTMENT_KIND.BUY)
+      : null,
+    default_units: isInvestment ? (v.defaultUnits ?? null) : null,
   });
 }
 
 export async function updateSubscription(
   id: number,
-  params: {
-    name: string;
-    amount: number;
-    billingDay: number;
-    categoryId: number | null;
-    sourceId: number | null;
-  },
+  params: SubscriptionMutationInput,
 ) {
   const validation = subscriptionInputSchema.safeParse(params);
   if (!validation.success) {
@@ -82,14 +100,21 @@ export async function updateSubscription(
     );
   }
   const v = validation.data;
+  const isInvestment = v.type === "investment";
   return db
     .update(subscriptions)
     .set({
       name: v.name,
       amount: v.amount,
       billing_day: v.billingDay,
-      category_id: v.categoryId,
+      category_id: isInvestment ? null : v.categoryId,
       source_id: v.sourceId,
+      type: v.type,
+      holding_id: isInvestment ? (v.holdingId ?? null) : null,
+      investment_kind: isInvestment
+        ? (v.investmentKind ?? INVESTMENT_KIND.BUY)
+        : null,
+      default_units: isInvestment ? (v.defaultUnits ?? null) : null,
     })
     .where(eq(subscriptions.id, id));
 }
@@ -165,17 +190,45 @@ export async function processSubscriptions(): Promise<string[]> {
       if (existing) continue;
 
       const billingDate = `${yearMonth}-${String(effectiveDay).padStart(2, "0")}`;
+      const isInvestmentSub =
+        sub.type === TRANSACTION_TYPE.INVESTMENT && sub.holding_id != null;
 
       await db.insert(transactions).values({
-        type: "expense",
+        type: isInvestmentSub
+          ? TRANSACTION_TYPE.INVESTMENT
+          : TRANSACTION_TYPE.EXPENSE,
         amount: sub.amount,
         merchant: sub.name,
-        category_id: sub.category_id,
+        // Investment txns don't use category — the holding is the grouping.
+        category_id: isInvestmentSub ? null : sub.category_id,
         source_id: sub.source_id,
         subscription_id: sub.id,
+        holding_id: isInvestmentSub ? sub.holding_id : null,
+        investment_kind: isInvestmentSub
+          ? (sub.investment_kind ?? INVESTMENT_KIND.BUY)
+          : null,
+        // SIP auto-posts use the user's stored default_units as a placeholder.
+        // Actual units vary with NAV — the user reconciles from the fund
+        // statement by editing the generated tx.
+        units: isInvestmentSub ? sub.default_units : null,
         source_type: "recurring",
         date: billingDate,
         note: SUBSCRIPTION_NOTE,
+      });
+
+      // Keep the holding totals consistent with the new auto-posted buy.
+      // Safe to call inside the outer expo.withTransactionAsync: all statements
+      // share the same connection, so the inserted row is visible to the
+      // recompute's SELECT and the whole batch commits atomically.
+      if (isInvestmentSub && sub.holding_id != null) {
+        await recomputeHoldingFromTransactions(sub.holding_id);
+      }
+
+      // Fires for each auto-posted row so expense-sub vs SIP adoption is
+      // observable in analytics — manual adds still emit TRANSACTION_ADDED
+      // via useInsertTransaction, so the two paths are distinguishable.
+      logEvent(FIREBASE_EVENTS.RECURRING_TRANSACTION_POSTED, {
+        type: isInvestmentSub ? "investment" : "expense",
       });
 
       created.push(sub.name);

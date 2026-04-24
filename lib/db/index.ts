@@ -33,6 +33,7 @@ import {
 import { logFirebaseError, withTrace } from "@/lib/firebase";
 import { transactionInputSchema } from "@/lib/validation";
 import expo, { db, runMigrations } from "./connection";
+import { recomputeHoldingFromTransactions } from "./holdings";
 import {
   bankEmails,
   banks,
@@ -118,6 +119,10 @@ export async function initDB(): Promise<void> {
       billing_day INTEGER NOT NULL,
       category_id INTEGER REFERENCES categories(id),
       source_id INTEGER REFERENCES sources(id),
+      type TEXT NOT NULL DEFAULT 'expense',
+      holding_id INTEGER,
+      investment_kind TEXT,
+      default_units REAL,
       is_active INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now'))
     )
@@ -201,6 +206,23 @@ export async function initDB(): Promise<void> {
         sql`CREATE INDEX IF NOT EXISTS idx_transaction_tags_tag_id ON transaction_tags(tag_id)`,
       );
 
+      await db.run(sql`
+    CREATE TABLE IF NOT EXISTS holdings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      instrument_type TEXT NOT NULL DEFAULT 'mutual_fund',
+      units REAL NOT NULL DEFAULT 0,
+      avg_cost REAL NOT NULL DEFAULT 0,
+      invested REAL NOT NULL DEFAULT 0,
+      current_value REAL,
+      last_price_updated_at TEXT,
+      note TEXT,
+      is_closed INTEGER DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
       // Back-fill columns that existing DBs (including restored backups from
       // older app versions) might be missing. Using PRAGMA `table_info` instead
       // of `try { ALTER } catch {}` so we don't silently swallow real errors
@@ -246,6 +268,46 @@ export async function initDB(): Promise<void> {
         );
       }
 
+      if (!hasColumn("transactions", "holding_id")) {
+        await db.run(
+          sql`ALTER TABLE transactions ADD COLUMN holding_id INTEGER REFERENCES holdings(id)`,
+        );
+      }
+
+      if (!hasColumn("transactions", "investment_kind")) {
+        await db.run(
+          sql`ALTER TABLE transactions ADD COLUMN investment_kind TEXT`,
+        );
+      }
+
+      if (!hasColumn("transactions", "units")) {
+        await db.run(sql`ALTER TABLE transactions ADD COLUMN units REAL`);
+      }
+
+      if (!hasColumn("subscriptions", "type")) {
+        await db.run(
+          sql`ALTER TABLE subscriptions ADD COLUMN type TEXT NOT NULL DEFAULT 'expense'`,
+        );
+      }
+
+      if (!hasColumn("subscriptions", "holding_id")) {
+        await db.run(
+          sql`ALTER TABLE subscriptions ADD COLUMN holding_id INTEGER REFERENCES holdings(id)`,
+        );
+      }
+
+      if (!hasColumn("subscriptions", "investment_kind")) {
+        await db.run(
+          sql`ALTER TABLE subscriptions ADD COLUMN investment_kind TEXT`,
+        );
+      }
+
+      if (!hasColumn("subscriptions", "default_units")) {
+        await db.run(
+          sql`ALTER TABLE subscriptions ADD COLUMN default_units REAL`,
+        );
+      }
+
       await db.run(
         sql`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
       );
@@ -266,6 +328,9 @@ export async function initDB(): Promise<void> {
       );
       await db.run(
         sql`CREATE INDEX IF NOT EXISTS idx_transactions_reimbursement_status ON transactions(reimbursement_status)`,
+      );
+      await db.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_transactions_holding_id ON transactions(holding_id)`,
       );
 
       await db
@@ -1022,6 +1087,7 @@ export async function getMonthlySummary(yearMonth: string) {
         and(
           sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
           sql`${transactions.type} != 'transfer'`,
+          sql`${transactions.type} != 'investment'`,
         ),
       );
     return result[0] as MonthlySummary;
@@ -1038,7 +1104,7 @@ export async function getTransactionsPaginated(
   limit = 10,
   offset = 0,
   filters?: {
-    type?: "income" | "expense" | "transfer" | "all";
+    type?: "income" | "expense" | "transfer" | "investment" | "all";
     categoryId?: number | null;
     sourceId?: number | null;
     sourceType?: SourceType | "all";
@@ -1170,13 +1236,16 @@ export async function getTransactionById(id: number) {
 }
 
 export async function insertTransaction(params: {
-  type: "income" | "expense" | "transfer";
+  type: "income" | "expense" | "transfer" | "investment";
   amount: number;
   merchant: string | null;
   categoryId: number | null;
   sourceId: number | null;
   destinationSourceId?: number | null;
   subscriptionId?: number | null;
+  holdingId?: number | null;
+  investmentKind?: "buy" | "sell" | "dividend" | "interest" | null;
+  units?: number | null;
   sourceType?: SourceType;
   parsedBy?: ParsedByType;
   reimbursementStatus?: "none" | "pending" | "reimbursed";
@@ -1201,6 +1270,9 @@ export async function insertTransaction(params: {
       source_id: validated.sourceId ?? null,
       destination_source_id: validated.destinationSourceId ?? null,
       subscription_id: validated.subscriptionId ?? null,
+      holding_id: validated.holdingId ?? null,
+      investment_kind: validated.investmentKind ?? null,
+      units: validated.units ?? null,
       source_type: validated.sourceType,
       parsed_by: validated.parsedBy ?? null,
       reimbursement_status: validated.reimbursementStatus,
@@ -1233,12 +1305,15 @@ export async function insertTransaction(params: {
 export async function updateTransaction(
   id: number,
   params: {
-    type: "income" | "expense" | "transfer";
+    type: "income" | "expense" | "transfer" | "investment";
     amount: number;
     merchant: string | null;
     categoryId: number | null;
     sourceId: number | null;
     destinationSourceId?: number | null;
+    holdingId?: number | null;
+    investmentKind?: "buy" | "sell" | "dividend" | "interest" | null;
+    units?: number | null;
     sourceType?: SourceType;
     reimbursementStatus?: "none" | "pending" | "reimbursed";
     date: string;
@@ -1257,12 +1332,15 @@ export async function updateTransaction(
     // editing a Gmail-synced or subscription-generated transaction would wipe
     // its provenance marker and re-import on the next Gmail sync.
     const updates: {
-      type: "income" | "expense" | "transfer";
+      type: "income" | "expense" | "transfer" | "investment";
       amount: number;
       merchant: string | null;
       category_id: number | null;
       source_id: number | null;
       destination_source_id: number | null;
+      holding_id: number | null;
+      investment_kind: "buy" | "sell" | "dividend" | "interest" | null;
+      units: number | null;
       date: string;
       note: string | null;
       source_type?: SourceType;
@@ -1275,6 +1353,9 @@ export async function updateTransaction(
       category_id: params.categoryId,
       source_id: params.sourceId,
       destination_source_id: params.destinationSourceId ?? null,
+      holding_id: params.holdingId ?? null,
+      investment_kind: params.investmentKind ?? null,
+      units: params.units ?? null,
       date: params.date,
       note: params.note,
     };
@@ -1330,7 +1411,20 @@ export async function updateTransaction(
 
 export async function deleteTransaction(id: number) {
   try {
-    return await db.delete(transactions).where(eq(transactions.id, id));
+    // Capture the holding link before the row disappears so we can recompute
+    // the holding's units/avg_cost/invested from the remaining transactions.
+    // Without this, deleting an investment tx leaves the parent holding with
+    // stale cached totals.
+    const [existing] = await db
+      .select({ holding_id: transactions.holding_id })
+      .from(transactions)
+      .where(eq(transactions.id, id))
+      .limit(1);
+    const result = await db.delete(transactions).where(eq(transactions.id, id));
+    if (existing?.holding_id) {
+      await recomputeHoldingFromTransactions(existing.holding_id);
+    }
+    return result;
   } catch (error) {
     logFirebaseError(error, {
       error_type: "DB_ERROR",
@@ -1819,6 +1913,22 @@ export {
   setTransactionTags,
   updateTagOrder,
 } from "./tags";
+export {
+  addHolding,
+  closeHolding,
+  deleteHolding,
+  getAllHoldings,
+  getAllHoldingsWithStats,
+  getHolding,
+  getPortfolioSummary,
+  getPortfolioSummaryForMonth,
+  getTransactionsForHolding,
+  recomputeHoldingFromTransactions,
+  reopenHolding,
+  updateHolding,
+  updateHoldingOrder,
+  updateHoldingPrice,
+} from "./holdings";
 
 export async function getTodaySpend(): Promise<number> {
   try {

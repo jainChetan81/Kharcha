@@ -1,4 +1,8 @@
 import { useMemo } from "react";
+import {
+  usePortfolioSummary,
+  usePortfolioSummaryForMonth,
+} from "@/hooks/use-holdings";
 import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
 import {
   useMonthlyInsights,
@@ -45,6 +49,8 @@ export function useHomeData(
   const reimbursement = useReimbursementSummary();
   const totalBudget = useTotalMonthlyBudget();
   const insights = useMonthlyInsights(year, month);
+  const portfolio = usePortfolioSummary();
+  const portfolioMonth = usePortfolioSummaryForMonth(selectedMonth);
 
   return useMemo(() => {
     const income = summary.data?.total_income ?? 0;
@@ -73,6 +79,11 @@ export function useHomeData(
       reimbursementSummary: reimbursement.data,
       totalBudget: totalBudget.data ?? 0,
       insights: insights.data,
+      portfolioInvested: portfolio.data?.invested ?? 0,
+      portfolioValue: portfolio.data?.current_value ?? 0,
+      portfolioGain: portfolio.data?.unrealized_gain ?? 0,
+      portfolioGainPct: portfolio.data?.unrealized_gain_pct ?? 0,
+      portfolioMonthInvested: portfolioMonth.data?.invested ?? 0,
     };
   }, [
     recent.data,
@@ -85,6 +96,8 @@ export function useHomeData(
     reimbursement.data,
     totalBudget.data,
     insights.data,
+    portfolio.data,
+    portfolioMonth.data,
     isCurrentMonth,
   ]);
 }

@@ -80,6 +80,18 @@ export function useInvalidateTransactions() {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.FILTERED_INSIGHTS],
       }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.HOLDINGS],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.HOLDING_TRANSACTIONS],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PORTFOLIO_SUMMARY],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PORTFOLIO_MONTH_SUMMARY],
+      }),
     ]).then((result) => {
       syncWidgetData();
       return result;

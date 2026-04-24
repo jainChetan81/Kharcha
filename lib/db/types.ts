@@ -4,6 +4,7 @@ import type {
   banks,
   categories,
   config,
+  holdings,
   sources,
   subscriptions,
   tags,
@@ -19,6 +20,27 @@ export type Bank = InferSelectModel<typeof banks>;
 export type BankEmail = InferSelectModel<typeof bankEmails>;
 export type BankWithEmails = Bank & { emails: BankEmail[] };
 export type Tag = InferSelectModel<typeof tags>;
+export type Holding = InferSelectModel<typeof holdings>;
+export type InstrumentType = NonNullable<Holding["instrument_type"]>;
+export type InvestmentKind = "buy" | "sell" | "dividend" | "interest";
+
+export type HoldingWithStats = Holding & {
+  unrealized_gain: number;
+  unrealized_gain_pct: number;
+};
+
+export type PortfolioSummary = {
+  invested: number;
+  current_value: number;
+  unrealized_gain: number;
+  unrealized_gain_pct: number;
+};
+
+export type PortfolioMonthSummary = {
+  invested: number;
+  sold: number;
+  dividends: number;
+};
 
 export type TagLite = { id: number; name: string };
 

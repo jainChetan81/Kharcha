@@ -31,6 +31,7 @@ import { TopCategoryCard } from "@/components/top-category-card";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { TransactionSkeleton } from "@/components/transaction-skeleton";
 import { ALERT_TONE_TEXT, AlertBanner } from "@/components/ui/alert-banner";
+import { GainLabel } from "@/components/ui/gain-label";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useConfig } from "@/hooks/use-config";
@@ -45,17 +46,30 @@ import {
   editScreen,
   LABELS,
   MONTH_FORMAT,
+  OTHER_CATEGORY_LABEL,
   RECENT_TRANSACTIONS_LIMIT,
   SCREENS,
   SHADOWS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { buildListData, getInitials, historyHref } from "@/lib/format";
+import {
+  buildListData,
+  getInitials,
+  historyHref,
+  smartCapitalize,
+} from "@/lib/format";
 import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
 
 const FAB_STYLE = { marginTop: -44, marginBottom: 8 } as const;
 
 const TOP_CATEGORIES_ON_RING = 5;
+
+type DonutSlice = {
+  categoryId: number | "other" | null;
+  label: string;
+  amount: number;
+  pct: number;
+};
 
 function CategoryDonut({
   selectedMonth,
@@ -69,12 +83,60 @@ function CategoryDonut({
   fmt: (n: number) => string;
 }) {
   const { data: categories = [] } = useCategoryBreakdown(selectedMonth);
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [prevMonth, setPrevMonth] = useState(selectedMonth);
+  if (prevMonth !== selectedMonth) {
+    setPrevMonth(selectedMonth);
+    setFocusedIndex(null);
+  }
 
   const hasIncome = income > 0;
   const hasExpenses = expenses > 0;
   const hasAny = hasIncome || hasExpenses;
   const net = income - expenses;
   const overspent = net < 0;
+
+  const top = categories.slice(0, TOP_CATEGORIES_ON_RING);
+  const topTotal = top.reduce((s, c) => s + c.total, 0);
+  const categoriesTotal = categories.reduce((s, c) => s + c.total, 0);
+  const otherTotal = Math.max(categoriesTotal - topTotal, 0);
+  const interactive = hasExpenses && top.length > 0;
+
+  const slices: DonutSlice[] = interactive
+    ? [
+        ...top.map(
+          (c): DonutSlice => ({
+            categoryId: c.category_id,
+            label: smartCapitalize(c.category_name),
+            amount: c.total,
+            pct: categoriesTotal > 0 ? (c.total / categoriesTotal) * 100 : 0,
+          }),
+        ),
+        ...(otherTotal > 0
+          ? [
+              {
+                categoryId: "other" as const,
+                label: OTHER_CATEGORY_LABEL,
+                amount: otherTotal,
+                pct:
+                  categoriesTotal > 0
+                    ? (otherTotal / categoriesTotal) * 100
+                    : 0,
+              },
+            ]
+          : []),
+      ]
+    : [];
+
+  const pieData = interactive
+    ? slices.map((s, i) => ({
+        value: s.amount,
+        color:
+          s.categoryId === "other"
+            ? COLORS.BAR_BG
+            : CATEGORY_PALETTE[i % CATEGORY_PALETTE.length],
+      }))
+    : [{ value: 100, color: `${COLORS.POSITIVE}b3` }];
 
   if (!hasAny) {
     return (
@@ -88,23 +150,29 @@ function CategoryDonut({
     );
   }
 
-  const top = categories.slice(0, TOP_CATEGORIES_ON_RING);
-  const topTotal = top.reduce((s, c) => s + c.total, 0);
-  const categoriesTotal = categories.reduce((s, c) => s + c.total, 0);
-  const otherTotal = Math.max(categoriesTotal - topTotal, 0);
+  const focused =
+    focusedIndex != null && focusedIndex < slices.length
+      ? slices[focusedIndex]
+      : null;
 
-  const pieData =
-    hasExpenses && top.length > 0
-      ? [
-          ...top.map((c, i) => ({
-            value: c.total,
-            color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length],
-          })),
-          ...(otherTotal > 0
-            ? [{ value: otherTotal, color: COLORS.BAR_BG }]
-            : []),
-        ]
-      : [{ value: 100, color: `${COLORS.POSITIVE}b3` }];
+  const handleSlicePress = (_item: unknown, index: number) => {
+    if (!interactive) return;
+    const slice = slices[index];
+    if (!slice) return;
+    if (focusedIndex === index) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      router.push(
+        historyHref({
+          type: TRANSACTION_TYPE.EXPENSE,
+          categoryId: slice.categoryId,
+          month: selectedMonth,
+        }),
+      );
+      return;
+    }
+    Haptics.selectionAsync();
+    setFocusedIndex(index);
+  };
 
   return (
     <View className="items-center">
@@ -116,21 +184,42 @@ function CategoryDonut({
         innerCircleColor={COLORS.BACKGROUND}
         strokeColor={COLORS.BACKGROUND}
         strokeWidth={2}
-        centerLabelComponent={() => (
-          <View className="items-center justify-center">
-            <Text
-              className={cn(
-                "text-xl font-bold",
-                overspent ? "text-negative" : "text-foreground",
-              )}
-            >
-              {fmt(Math.abs(net))}
-            </Text>
-            <Text className="mt-0.5 text-[11px] text-muted-foreground">
-              {overspent ? LABELS.SPENT : LABELS.AVAILABLE}
-            </Text>
-          </View>
-        )}
+        focusOnPress={interactive}
+        toggleFocusOnPress={false}
+        focusedPieIndex={focusedIndex ?? undefined}
+        onPress={handleSlicePress}
+        centerLabelComponent={() =>
+          focused ? (
+            <View className="items-center justify-center px-3">
+              <Text
+                numberOfLines={1}
+                className="text-sm font-semibold text-foreground"
+              >
+                {focused.label}
+              </Text>
+              <Text className="mt-0.5 text-base font-bold text-foreground">
+                {fmt(focused.amount)}
+              </Text>
+              <Text className="mt-0.5 text-[10px] text-muted-foreground">
+                {focused.pct.toFixed(0)}% · tap again
+              </Text>
+            </View>
+          ) : (
+            <View className="items-center justify-center">
+              <Text
+                className={cn(
+                  "text-xl font-bold",
+                  overspent ? "text-negative" : "text-foreground",
+                )}
+              >
+                {fmt(Math.abs(net))}
+              </Text>
+              <Text className="mt-0.5 text-[11px] text-muted-foreground">
+                {overspent ? LABELS.SPENT : LABELS.AVAILABLE}
+              </Text>
+            </View>
+          )
+        }
       />
     </View>
   );
@@ -178,6 +267,11 @@ export default function HomeScreen() {
     reimbursementSummary,
     totalBudget,
     insights,
+    portfolioInvested,
+    portfolioValue,
+    portfolioGain,
+    portfolioGainPct,
+    portfolioMonthInvested,
   } = useHomeData(
     selectedMonth,
     prevMonth,
@@ -304,7 +398,7 @@ export default function HomeScreen() {
             >
               <View>
                 <Text className="text-xs text-muted-foreground">Spent</Text>
-                <Text className="mt-0.5 text-base font-bold text-negative">
+                <Text className="mt-0.5 text-base font-bold text-foreground">
                   {fmt(expenses)}
                 </Text>
               </View>
@@ -330,6 +424,36 @@ export default function HomeScreen() {
                 ? "First month tracking"
                 : `${spendingChange > 0 ? "↑" : "↓"} ${Math.abs(spendingChange)}% vs last month`}
             </Text>
+          )}
+
+          {(portfolioInvested > 0 || portfolioMonthInvested > 0) && (
+            <Pressable
+              onPress={() => router.push(SCREENS.PORTFOLIO)}
+              className="mt-3 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
+            >
+              <View className="flex-1">
+                <Text className="text-xs text-muted-foreground">Portfolio</Text>
+                <Text className="mt-0.5 text-base font-bold text-foreground">
+                  {fmt(portfolioValue)}
+                </Text>
+                <View className="mt-0.5">
+                  <GainLabel
+                    amount={portfolioGain}
+                    pct={portfolioGainPct}
+                    variant="right-aligned"
+                    extraText={
+                      portfolioMonthInvested > 0
+                        ? `${fmt(portfolioMonthInvested)} this month`
+                        : undefined
+                    }
+                  />
+                </View>
+              </View>
+              <Icon
+                as={ChevronRight}
+                className="size-4 text-muted-foreground"
+              />
+            </Pressable>
           )}
 
           {subsTotal > 0 && (

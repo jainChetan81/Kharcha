@@ -14,11 +14,15 @@ export function ChipPicker({
   selectedId,
   onSelect,
   allLabel,
+  onAddNew,
+  addLabel,
 }: {
   items: { id: number; name: string }[];
   selectedId: number | null;
   onSelect: (id: number | null) => void;
   allLabel?: string;
+  onAddNew?: () => void;
+  addLabel?: string;
 }) {
   return (
     <View className="relative">
@@ -77,6 +81,16 @@ export function ChipPicker({
             </Pressable>
           );
         })}
+        {onAddNew && (
+          <Pressable
+            onPress={onAddNew}
+            className="rounded-full border border-dashed border-border bg-card px-4 py-2.5"
+          >
+            <Text className="text-sm font-medium text-primary">
+              + {addLabel ?? "New"}
+            </Text>
+          </Pressable>
+        )}
       </ScrollView>
     </View>
   );
