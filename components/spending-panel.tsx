@@ -26,6 +26,12 @@ import { historyHref } from "@/lib/format";
 
 type Lens = "category" | "tag" | "merchant";
 
+const LENS_EMPTY_NOUN: Record<Lens, string> = {
+  category: "categories",
+  tag: "tags",
+  merchant: "merchants",
+};
+
 type Row = {
   key: string;
   label: string;
@@ -64,6 +70,10 @@ export function SpendingPanel({
   const top = rows.slice(0, TOP_BREAKDOWN_LIMIT);
   const monthTotal = rows.reduce((sum, r) => sum + r.total, 0);
 
+  const hasAnyBreakdown =
+    categories.length > 0 || tags.length > 0 || merchants.length > 0;
+  if (!hasAnyBreakdown) return null;
+
   return (
     <View className="px-5 pb-2 pt-4">
       <View className="mb-3 flex-row items-end justify-between">
@@ -88,7 +98,7 @@ export function SpendingPanel({
       {top.length === 0 ? (
         <View className="py-6">
           <Text className="text-center text-sm text-muted-foreground">
-            No spending to show for this month
+            No {LENS_EMPTY_NOUN[lens]} to show for this month
           </Text>
         </View>
       ) : (
@@ -180,14 +190,16 @@ export function SpendingPanel({
           </View>
 
           <Pressable
-            onPress={() =>
+            onPress={() => {
+              logEvent(FIREBASE_EVENTS.SPENDING_VIEW_FULL_BREAKDOWN, { lens });
               router.push(
                 historyHref({
                   type: TRANSACTION_TYPE.EXPENSE,
                   month: selectedMonth,
+                  summary: true,
                 }),
-              )
-            }
+              );
+            }}
             className="items-center pt-4"
           >
             <Text className="text-sm font-medium text-primary">

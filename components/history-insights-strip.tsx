@@ -5,7 +5,7 @@ import {
   type LucideIcon,
   Repeat2,
 } from "lucide-react-native";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   LayoutAnimation,
@@ -33,13 +33,19 @@ export function HistoryInsightsStrip({
   insights,
   fmt,
   onSeeFullInsights,
+  defaultExpanded = false,
 }: {
   insights: FilteredInsights;
   fmt: (n: number) => string;
   onSeeFullInsights?: () => void;
+  defaultExpanded?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const rotation = useRef(new Animated.Value(0)).current;
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const rotation = useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (defaultExpanded) logEvent(FIREBASE_EVENTS.HISTORY_INSIGHTS_EXPANDED);
+  }, [defaultExpanded]);
 
   function toggle() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);

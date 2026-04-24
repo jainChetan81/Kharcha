@@ -83,6 +83,18 @@ function CategoryDonut({
   const net = income - expenses;
   const overspent = net < 0;
 
+  if (!hasAny) {
+    return (
+      <View
+        className="h-[180px] items-center justify-center"
+        accessibilityRole="summary"
+        accessibilityLabel={LABELS.NO_DATA}
+      >
+        <Text className="text-xs text-muted-foreground">{LABELS.NO_DATA}</Text>
+      </View>
+    );
+  }
+
   const top = categories.slice(0, TOP_CATEGORIES_ON_RING);
   const topTotal = top.reduce((s, c) => s + c.total, 0);
   const categoriesTotal = categories.reduce((s, c) => s + c.total, 0);
@@ -99,9 +111,7 @@ function CategoryDonut({
             ? [{ value: otherTotal, color: COLORS.BAR_BG }]
             : []),
         ]
-      : hasIncome
-        ? [{ value: 100, color: `${COLORS.POSITIVE}b3` }]
-        : [{ value: 100, color: COLORS.BAR_BG }];
+      : [{ value: 100, color: `${COLORS.POSITIVE}b3` }];
 
   return (
     <View className="items-center">
@@ -115,25 +125,17 @@ function CategoryDonut({
         strokeWidth={2}
         centerLabelComponent={() => (
           <View className="items-center justify-center">
-            {hasAny ? (
-              <>
-                <Text
-                  className={cn(
-                    "text-xl font-bold",
-                    overspent ? "text-negative" : "text-foreground",
-                  )}
-                >
-                  {fmt(Math.abs(net))}
-                </Text>
-                <Text className="mt-0.5 text-[11px] text-muted-foreground">
-                  {overspent ? LABELS.SPENT : LABELS.AVAILABLE}
-                </Text>
-              </>
-            ) : (
-              <Text className="text-xs text-muted-foreground">
-                {LABELS.NO_DATA}
-              </Text>
-            )}
+            <Text
+              className={cn(
+                "text-xl font-bold",
+                overspent ? "text-negative" : "text-foreground",
+              )}
+            >
+              {fmt(Math.abs(net))}
+            </Text>
+            <Text className="mt-0.5 text-[11px] text-muted-foreground">
+              {overspent ? LABELS.SPENT : LABELS.AVAILABLE}
+            </Text>
           </View>
         )}
       />

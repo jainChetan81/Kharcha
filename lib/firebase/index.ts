@@ -22,6 +22,7 @@ export const FIREBASE_EVENTS = {
   SMS_LISTENER_GRANT_TAPPED: "sms_listener_grant_tapped",
   INSIGHT_CARD_TAPPED: "insight_card_tapped",
   SPENDING_LENS_CHANGED: "spending_lens_changed",
+  SPENDING_VIEW_FULL_BREAKDOWN: "spending_view_full_breakdown",
   HISTORY_INSIGHTS_EXPANDED: "history_insights_expanded",
   FILTER_CHIP_REMOVED: "filter_chip_removed",
   FILTERS_CLEARED_ALL: "filters_cleared_all",
