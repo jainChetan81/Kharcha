@@ -12,7 +12,6 @@ export function useAllCategories() {
   return useQuery({
     queryKey: [QUERY_KEYS.CATEGORIES, "all"],
     queryFn: getAllCategories,
-    staleTime: Number.POSITIVE_INFINITY,
   });
 }
 
@@ -27,7 +26,6 @@ export function useCategoriesByType(
         ? getAllCategories()
         : getCategoriesByType(type as "income" | "expense"),
     enabled,
-    staleTime: Number.POSITIVE_INFINITY,
   });
 }
 

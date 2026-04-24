@@ -9,7 +9,7 @@ import {
   useTotalMonthlyBudget,
 } from "@/hooks/use-transactions";
 
-const RECENT_LIMIT = 5;
+export const RECENT_LIMIT = 5;
 
 /**
  * Composable data hook for the home screen.

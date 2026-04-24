@@ -124,7 +124,10 @@ export default function HistoryScreen() {
       draftType !== TRANSACTION_TYPE.TRANSFER,
   );
 
-  const allTransactions = data?.pages.flat() ?? [];
+  const allTransactions = useMemo(
+    () => data?.pages.flat() ?? [],
+    [data?.pages],
+  );
   const listData = useMemo(
     () => buildListData(allTransactions),
     [allTransactions],
@@ -229,7 +232,6 @@ export default function HistoryScreen() {
       <ComponentErrorBoundary>
         <FlashList
           data={listData}
-          estimatedItemSize={72}
           keyExtractor={(item) =>
             item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
           }

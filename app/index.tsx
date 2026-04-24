@@ -19,6 +19,7 @@ import {
   RefreshControl,
   View,
 } from "react-native";
+import { PieChart } from "react-native-gifted-charts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ComponentErrorBoundary,
@@ -30,13 +31,12 @@ import { TopCategoryCard } from "@/components/top-category-card";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { TransactionSkeleton } from "@/components/transaction-skeleton";
 import { ALERT_TONE_TEXT, AlertBanner } from "@/components/ui/alert-banner";
-import { DonutChart } from "@/components/ui/donut-chart";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useConfig } from "@/hooks/use-config";
 import { useCurrency } from "@/hooks/use-currency";
 import { useGmailSyncActive } from "@/hooks/use-feature-flags";
-import { useHomeData } from "@/hooks/use-home-data";
+import { RECENT_LIMIT, useHomeData } from "@/hooks/use-home-data";
 import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useCategoryBreakdown } from "@/hooks/use-transactions";
 import {
@@ -107,13 +107,15 @@ function CategoryDonut({
 
   return (
     <View className="items-center">
-      <DonutChart
+      <PieChart
         data={pieData}
+        donut
         radius={90}
         innerRadius={62}
-        backgroundColor={COLORS.BACKGROUND}
-        strokeSeparator={COLORS.BACKGROUND}
-        centerLabel={
+        innerCircleColor={COLORS.BACKGROUND}
+        strokeColor={COLORS.BACKGROUND}
+        strokeWidth={2}
+        centerLabelComponent={() => (
           <View className="items-center justify-center">
             <Text
               className={cn(
@@ -127,7 +129,7 @@ function CategoryDonut({
               {overspent ? LABELS.SPENT : LABELS.AVAILABLE}
             </Text>
           </View>
-        }
+        )}
       />
     </View>
   );

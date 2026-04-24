@@ -114,7 +114,6 @@ export default function ReimbursementsScreen() {
       <ComponentErrorBoundary>
         <FlashList
           data={listData}
-          estimatedItemSize={72}
           keyExtractor={(item) =>
             item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
           }

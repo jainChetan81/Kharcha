@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  Animated,
   KeyboardAvoidingView,
   type KeyboardTypeOptions,
   Modal,
@@ -46,30 +45,6 @@ export function BottomSheet(props: BottomSheetProps) {
   const { visible, onClose } = props;
   const { bottom } = useSafeAreaInsets();
   const isFormMode = !!props.onSave;
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const slideY = useRef(new Animated.Value(300)).current;
-
-  useEffect(() => {
-    if (visible) {
-      slideY.setValue(300);
-      Animated.parallel([
-        Animated.timing(backdropOpacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideY, {
-          toValue: 0,
-          friction: 9,
-          tension: 65,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      backdropOpacity.setValue(0);
-      slideY.setValue(300);
-    }
-  }, [visible, backdropOpacity, slideY]);
 
   const [value, setValue] = useState(props.defaultValue ?? "");
 
@@ -158,27 +133,17 @@ export function BottomSheet(props: BottomSheetProps) {
     <Modal
       visible={visible}
       transparent
-      animationType="none"
+      animationType="slide"
       onRequestClose={handleClose}
     >
-      <Animated.View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.5)",
-          opacity: backdropOpacity,
-        }}
-      >
-        <Pressable style={{ flex: 1 }} onPress={handleClose} />
-      </Animated.View>
-      <Animated.View style={{ transform: [{ translateY: slideY }] }}>
-        {isFormMode || ("avoidKeyboard" in props && props.avoidKeyboard) ? (
-          <KeyboardAvoidingView behavior="padding">
-            {content}
-          </KeyboardAvoidingView>
-        ) : (
-          content
-        )}
-      </Animated.View>
+      <Pressable className="flex-1 bg-black/50" onPress={handleClose} />
+      {isFormMode || ("avoidKeyboard" in props && props.avoidKeyboard) ? (
+        <KeyboardAvoidingView behavior="padding">
+          {content}
+        </KeyboardAvoidingView>
+      ) : (
+        content
+      )}
     </Modal>
   );
 }
