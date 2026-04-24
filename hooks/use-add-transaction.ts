@@ -3,7 +3,10 @@ import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SubscriptionFormDefaults } from "@/components/subscription-form";
+import type {
+  SubscriptionFormDefaults,
+  SubscriptionFormSubmitValue,
+} from "@/components/subscription-form";
 import type { TransactionFormValues } from "@/components/transaction-form";
 import { useAllCategories } from "@/hooks/use-categories";
 import { useCurrency } from "@/hooks/use-currency";
@@ -23,12 +26,14 @@ import {
   CONFIG_KEYS,
   DATE_TIME_FORMAT,
   DEFAULT_SOURCE_NAME,
+  INVESTMENT_KIND,
   PARSED_BY,
   type ParsedByType,
   QUERY_KEYS,
   REIMBURSEMENT_STATUS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
+import { safeRecomputeHolding } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import type { Source } from "@/lib/db/types";
 import type { GeminiParsedTransaction } from "@/lib/gemini/client";
@@ -47,13 +52,7 @@ export type UseAddTransactionReturn = {
   dismissHint: () => void;
   openParseSheet: () => void;
   onTransactionSubmit: (value: TransactionFormValues) => Promise<void>;
-  onSubscriptionSubmit: (value: {
-    name: string;
-    amount: number;
-    billingDay: number;
-    categoryId: number | null;
-    sourceId: number | null;
-  }) => Promise<void>;
+  onSubscriptionSubmit: (value: SubscriptionFormSubmitValue) => Promise<void>;
   dupSheetVisible: boolean;
   dupSheetAmountFormatted: string;
   dupSheetMerchant: string;
@@ -158,6 +157,9 @@ export function useAddTransaction(): UseAddTransactionReturn {
     categoryId: null,
     sourceId: upiSourceId,
     destinationSourceId: null,
+    holdingId: null,
+    investmentKind: INVESTMENT_KIND.BUY,
+    units: "",
     date: format(new Date(), DATE_TIME_FORMAT),
     note: "",
     reimbursementStatus: REIMBURSEMENT_STATUS.NONE,
@@ -171,7 +173,9 @@ export function useAddTransaction(): UseAddTransactionReturn {
         ? TRANSACTION_TYPE.INCOME
         : typeParam === TRANSACTION_TYPE.TRANSFER
           ? TRANSACTION_TYPE.TRANSFER
-          : TRANSACTION_TYPE.EXPENSE,
+          : typeParam === TRANSACTION_TYPE.INVESTMENT
+            ? TRANSACTION_TYPE.INVESTMENT
+            : TRANSACTION_TYPE.EXPENSE,
   };
 
   async function handleParsed(
@@ -196,6 +200,9 @@ export function useAddTransaction(): UseAddTransactionReturn {
       categoryId: matchedCategory?.id ?? null,
       sourceId,
       destinationSourceId: null,
+      holdingId: null,
+      investmentKind: INVESTMENT_KIND.BUY,
+      units: "",
       date: `${parsed.date} 12:00`,
       note: originalText.trim(),
       reimbursementStatus: REIMBURSEMENT_STATUS.NONE,
@@ -236,13 +243,17 @@ export function useAddTransaction(): UseAddTransactionReturn {
   async function commitTransaction(value: TransactionFormValues) {
     const isTransfer = value.type === TRANSACTION_TYPE.TRANSFER;
     const isExpense = value.type === TRANSACTION_TYPE.EXPENSE;
+    const isInvestment = value.type === TRANSACTION_TYPE.INVESTMENT;
     await insertMutation.mutateAsync({
       type: value.type,
       amount: Number(value.amount),
       merchant: value.merchant || null,
-      categoryId: isTransfer ? null : value.categoryId,
+      categoryId: isTransfer || isInvestment ? null : value.categoryId,
       sourceId: value.type === TRANSACTION_TYPE.INCOME ? null : value.sourceId,
       destinationSourceId: isTransfer ? value.destinationSourceId : null,
+      holdingId: isInvestment ? value.holdingId : null,
+      investmentKind: isInvestment ? value.investmentKind : null,
+      units: isInvestment && value.units ? Number(value.units) : null,
       sourceType: isTransfer ? "transfer" : undefined,
       // Stamp parsed_by so the AI badge in TransactionItem renders for manual
       // AI-parsed entries — without this it only ever fires for Gmail-synced
@@ -256,8 +267,23 @@ export function useAddTransaction(): UseAddTransactionReturn {
       tagIds: value.tagIds,
     });
 
+    if (isInvestment && value.holdingId) {
+      // Portfolio/holdings queries are invalidated by useInvalidateTransactions
+      // from useInsertTransaction.onSuccess. safeRecomputeHolding swallows
+      // failures and forwards to crashlytics so the toast + navigation below
+      // still fire even if the reducer chokes on a bad row.
+      await safeRecomputeHolding(value.holdingId, {
+        operation: "commitTransaction",
+      });
+    }
+
     if (isTransfer) {
       showSuccessToast("Transfer added", fmt(Number(value.amount)));
+    } else if (isInvestment) {
+      showSuccessToast(
+        `${value.investmentKind} recorded`,
+        fmt(Number(value.amount)),
+      );
     } else {
       showSuccessToast(
         "Transaction added",
@@ -309,13 +335,7 @@ export function useAddTransaction(): UseAddTransactionReturn {
     }
   }
 
-  async function handleSubscriptionSubmit(value: {
-    name: string;
-    amount: number;
-    billingDay: number;
-    categoryId: number | null;
-    sourceId: number | null;
-  }) {
+  async function handleSubscriptionSubmit(value: SubscriptionFormSubmitValue) {
     try {
       await addSubMutation.mutateAsync(value);
       await processSubscriptions();

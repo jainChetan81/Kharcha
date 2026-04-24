@@ -80,6 +80,18 @@ export function useInvalidateTransactions() {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.FILTERED_INSIGHTS],
       }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.HOLDINGS],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.HOLDING_TRANSACTIONS],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PORTFOLIO_SUMMARY],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PORTFOLIO_MONTH_SUMMARY],
+      }),
     ]).then((result) => {
       syncWidgetData();
       return result;
@@ -168,6 +180,11 @@ function computeInsights(txs: TransactionRow[]): FilteredInsights {
   let biggest: { label: string; amount: number } | null = null;
 
   for (const t of txs) {
+    // Investments are portfolio movements, not cash-flow buckets — they must
+    // never land in spent / income / transferred here. Explicit skip so the
+    // intent is visible to anyone adding a fifth type later.
+    if (t.type === TRANSACTION_TYPE.INVESTMENT) continue;
+
     if (t.type === TRANSACTION_TYPE.INCOME) income += t.amount;
     else if (t.type === TRANSACTION_TYPE.EXPENSE) spent += t.amount;
     else if (t.type === TRANSACTION_TYPE.TRANSFER) transferred += t.amount;
@@ -226,7 +243,7 @@ export function useFilteredInsights(filters: InsightsFilters) {
 }
 
 export function useTransactionsPaginated(filters: {
-  type?: "income" | "expense" | "transfer" | "all";
+  type?: "income" | "expense" | "transfer" | "investment" | "all";
   categoryId?: number | null;
   sourceId?: number | null;
   sourceType?: "manual" | "synced" | "recurring" | "transfer" | "all";

@@ -18,7 +18,7 @@ import { getAllCategories } from "@/lib/db/categories";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import expo from "@/lib/db/connection";
 import { subscriptions, transactions } from "@/lib/db/schema";
-import { logFirebaseError, withTrace } from "@/lib/firebase";
+import { ERROR_TYPE, logFirebaseError, withTrace } from "@/lib/firebase";
 import { getValidAccessToken } from "./auth";
 import { type ParseSource, parseEmailWithFallback } from "./parsers";
 
@@ -433,7 +433,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         });
       } catch (err) {
         logFirebaseError(err, {
-          error_type: "SYNC_ERROR",
+          error_type: ERROR_TYPE.SYNC,
           operation: "gmail_sync",
           stage: "process_message",
         });

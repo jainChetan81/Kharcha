@@ -1,3 +1,9 @@
+// Disable React Compiler memoization for this file — react-native-android-widget
+// calls the exported widget components directly as raw render functions (no React
+// runtime inside the widget host), so the compiler's memo wrapper trips the hook
+// invariant with "Invalid Hook Call detected in SmallSpendWidget".
+"use no memo";
+
 import { FlexWidget, TextWidget } from "react-native-android-widget";
 import { CATEGORY_PALETTE, COLORS, TAG_DISPLAY_LIMIT } from "@/lib/constants";
 

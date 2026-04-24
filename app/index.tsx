@@ -1,4 +1,5 @@
 import { addMonths, format, isSameMonth, subMonths } from "date-fns";
+import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import {
   ChevronLeft,
@@ -10,12 +11,12 @@ import {
   Settings,
   User,
 } from "lucide-react-native";
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   RefreshControl,
-  ScrollView,
   View,
 } from "react-native";
 import { PieChart } from "react-native-gifted-charts";
@@ -30,39 +31,45 @@ import { TopCategoryCard } from "@/components/top-category-card";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { TransactionSkeleton } from "@/components/transaction-skeleton";
 import { ALERT_TONE_TEXT, AlertBanner } from "@/components/ui/alert-banner";
+import { GainLabel } from "@/components/ui/gain-label";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useConfig } from "@/hooks/use-config";
 import { useCurrency } from "@/hooks/use-currency";
 import { useGmailSyncActive } from "@/hooks/use-feature-flags";
+import { useHomeData } from "@/hooks/use-home-data";
 import { useSyncRefresh } from "@/hooks/use-refresh";
-import { useSubscriptionsTotal } from "@/hooks/use-subscriptions";
-import {
-  useCategoryBreakdown,
-  useMonthlyInsights,
-  useMonthlySummary,
-  useMonthTransactions,
-  useRecentTransactions,
-  useReimbursementSummary,
-  useTotalMonthlyBudget,
-} from "@/hooks/use-transactions";
+import { useCategoryBreakdown } from "@/hooks/use-transactions";
 import {
   CATEGORY_PALETTE,
   COLORS,
   editScreen,
   LABELS,
   MONTH_FORMAT,
+  OTHER_CATEGORY_LABEL,
+  RECENT_TRANSACTIONS_LIMIT,
   SCREENS,
   SHADOWS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { buildListData, getInitials, historyHref } from "@/lib/format";
+import {
+  buildListData,
+  getInitials,
+  historyHref,
+  smartCapitalize,
+} from "@/lib/format";
 import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
 
 const FAB_STYLE = { marginTop: -44, marginBottom: 8 } as const;
-const RECENT_LIMIT = 5;
 
 const TOP_CATEGORIES_ON_RING = 5;
+
+type DonutSlice = {
+  categoryId: number | "other" | null;
+  label: string;
+  amount: number;
+  pct: number;
+};
 
 function CategoryDonut({
   selectedMonth,
@@ -76,12 +83,60 @@ function CategoryDonut({
   fmt: (n: number) => string;
 }) {
   const { data: categories = [] } = useCategoryBreakdown(selectedMonth);
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [prevMonth, setPrevMonth] = useState(selectedMonth);
+  if (prevMonth !== selectedMonth) {
+    setPrevMonth(selectedMonth);
+    setFocusedIndex(null);
+  }
 
   const hasIncome = income > 0;
   const hasExpenses = expenses > 0;
   const hasAny = hasIncome || hasExpenses;
   const net = income - expenses;
   const overspent = net < 0;
+
+  const top = categories.slice(0, TOP_CATEGORIES_ON_RING);
+  const topTotal = top.reduce((s, c) => s + c.total, 0);
+  const categoriesTotal = categories.reduce((s, c) => s + c.total, 0);
+  const otherTotal = Math.max(categoriesTotal - topTotal, 0);
+  const interactive = hasExpenses && top.length > 0;
+
+  const slices: DonutSlice[] = interactive
+    ? [
+        ...top.map(
+          (c): DonutSlice => ({
+            categoryId: c.category_id,
+            label: smartCapitalize(c.category_name),
+            amount: c.total,
+            pct: categoriesTotal > 0 ? (c.total / categoriesTotal) * 100 : 0,
+          }),
+        ),
+        ...(otherTotal > 0
+          ? [
+              {
+                categoryId: "other" as const,
+                label: OTHER_CATEGORY_LABEL,
+                amount: otherTotal,
+                pct:
+                  categoriesTotal > 0
+                    ? (otherTotal / categoriesTotal) * 100
+                    : 0,
+              },
+            ]
+          : []),
+      ]
+    : [];
+
+  const pieData = interactive
+    ? slices.map((s, i) => ({
+        value: s.amount,
+        color:
+          s.categoryId === "other"
+            ? COLORS.BAR_BG
+            : CATEGORY_PALETTE[i % CATEGORY_PALETTE.length],
+      }))
+    : [{ value: 100, color: `${COLORS.POSITIVE}b3` }];
 
   if (!hasAny) {
     return (
@@ -95,23 +150,29 @@ function CategoryDonut({
     );
   }
 
-  const top = categories.slice(0, TOP_CATEGORIES_ON_RING);
-  const topTotal = top.reduce((s, c) => s + c.total, 0);
-  const categoriesTotal = categories.reduce((s, c) => s + c.total, 0);
-  const otherTotal = Math.max(categoriesTotal - topTotal, 0);
+  const focused =
+    focusedIndex != null && focusedIndex < slices.length
+      ? slices[focusedIndex]
+      : null;
 
-  const pieData =
-    hasExpenses && top.length > 0
-      ? [
-          ...top.map((c, i) => ({
-            value: c.total,
-            color: CATEGORY_PALETTE[i % CATEGORY_PALETTE.length],
-          })),
-          ...(otherTotal > 0
-            ? [{ value: otherTotal, color: COLORS.BAR_BG }]
-            : []),
-        ]
-      : [{ value: 100, color: `${COLORS.POSITIVE}b3` }];
+  const handleSlicePress = (_item: unknown, index: number) => {
+    if (!interactive) return;
+    const slice = slices[index];
+    if (!slice) return;
+    if (focusedIndex === index) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      router.push(
+        historyHref({
+          type: TRANSACTION_TYPE.EXPENSE,
+          categoryId: slice.categoryId,
+          month: selectedMonth,
+        }),
+      );
+      return;
+    }
+    Haptics.selectionAsync();
+    setFocusedIndex(index);
+  };
 
   return (
     <View className="items-center">
@@ -123,21 +184,42 @@ function CategoryDonut({
         innerCircleColor={COLORS.BACKGROUND}
         strokeColor={COLORS.BACKGROUND}
         strokeWidth={2}
-        centerLabelComponent={() => (
-          <View className="items-center justify-center">
-            <Text
-              className={cn(
-                "text-xl font-bold",
-                overspent ? "text-negative" : "text-foreground",
-              )}
-            >
-              {fmt(Math.abs(net))}
-            </Text>
-            <Text className="mt-0.5 text-[11px] text-muted-foreground">
-              {overspent ? LABELS.SPENT : LABELS.AVAILABLE}
-            </Text>
-          </View>
-        )}
+        focusOnPress={interactive}
+        toggleFocusOnPress={false}
+        focusedPieIndex={focusedIndex ?? undefined}
+        onPress={handleSlicePress}
+        centerLabelComponent={() =>
+          focused ? (
+            <View className="items-center justify-center px-3">
+              <Text
+                numberOfLines={1}
+                className="text-sm font-semibold text-foreground"
+              >
+                {focused.label}
+              </Text>
+              <Text className="mt-0.5 text-base font-bold text-foreground">
+                {fmt(focused.amount)}
+              </Text>
+              <Text className="mt-0.5 text-[10px] text-muted-foreground">
+                {focused.pct.toFixed(0)}% · tap again
+              </Text>
+            </View>
+          ) : (
+            <View className="items-center justify-center">
+              <Text
+                className={cn(
+                  "text-xl font-bold",
+                  overspent ? "text-negative" : "text-foreground",
+                )}
+              >
+                {fmt(Math.abs(net))}
+              </Text>
+              <Text className="mt-0.5 text-[11px] text-muted-foreground">
+                {overspent ? LABELS.SPENT : LABELS.AVAILABLE}
+              </Text>
+            </View>
+          )
+        }
       />
     </View>
   );
@@ -155,41 +237,56 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState(now);
   const isCurrentMonth = isSameMonth(selectedDate, now);
 
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+  function navigateMonth(next: Date) {
+    Haptics.selectionAsync();
+    Animated.timing(contentOpacity, {
+      toValue: 0.4,
+      duration: 80,
+      useNativeDriver: true,
+    }).start(() => {
+      setSelectedDate(next);
+      Animated.timing(contentOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+  }
+
   const selectedMonth = format(selectedDate, MONTH_FORMAT);
   const prevMonth = format(subMonths(selectedDate, 1), MONTH_FORMAT);
 
-  const { data: recentTransactions = [], isLoading: recentLoading } =
-    useRecentTransactions(RECENT_LIMIT);
-  const { data: monthTransactions = [], isLoading: monthLoading } =
-    useMonthTransactions(selectedMonth, RECENT_LIMIT);
-  const { data: summary } = useMonthlySummary(selectedMonth);
-  const { data: prevSummary } = useMonthlySummary(prevMonth);
-  const { data: subsTotal = 0 } = useSubscriptionsTotal();
-  const { data: reimbursementSummary } = useReimbursementSummary();
-  const { data: totalBudget = 0 } = useTotalMonthlyBudget();
-  const { data: insights } = useMonthlyInsights(
+  const {
+    transactions,
+    transactionsLoading: recentActivityLoading,
+    income,
+    expenses,
+    spendingChange,
+    subsTotal,
+    reimbursementSummary,
+    totalBudget,
+    insights,
+    portfolioInvested,
+    portfolioValue,
+    portfolioGain,
+    portfolioGainPct,
+    portfolioMonthInvested,
+  } = useHomeData(
+    selectedMonth,
+    prevMonth,
     selectedDate.getFullYear(),
     selectedDate.getMonth() + 1,
+    isCurrentMonth,
   );
-
-  const income = summary?.total_income ?? 0;
-  const expenses = summary?.total_expenses ?? 0;
-  const prevExpenses = prevSummary?.total_expenses ?? 0;
-  const spendingChange =
-    prevExpenses > 0
-      ? Math.round(((expenses - prevExpenses) / prevExpenses) * 100)
-      : expenses > 0
-        ? "new"
-        : null;
-  const transactions = isCurrentMonth ? recentTransactions : monthTransactions;
-  const recentActivityLoading = isCurrentMonth ? recentLoading : monthLoading;
-  const listData = buildListData(transactions);
+  const listData = useMemo(() => buildListData(transactions), [transactions]);
 
   return (
     <View className="flex-1 bg-background">
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
+        style={{ opacity: contentOpacity }}
         refreshControl={
           <RefreshControl {...getRefreshControlProps(refreshing, onRefresh)} />
         }
@@ -226,7 +323,7 @@ export default function HomeScreen() {
 
           <View className="mt-4 flex-row items-center justify-between">
             <Pressable
-              onPress={() => setSelectedDate(subMonths(selectedDate, 1))}
+              onPress={() => navigateMonth(subMonths(selectedDate, 1))}
               hitSlop={12}
               className="rounded-full p-2"
             >
@@ -237,7 +334,7 @@ export default function HomeScreen() {
             </Text>
             <Pressable
               onPress={() =>
-                !isCurrentMonth && setSelectedDate(addMonths(selectedDate, 1))
+                !isCurrentMonth && navigateMonth(addMonths(selectedDate, 1))
               }
               hitSlop={12}
               className="rounded-full p-2"
@@ -329,6 +426,36 @@ export default function HomeScreen() {
             </Text>
           )}
 
+          {(portfolioInvested > 0 || portfolioMonthInvested > 0) && (
+            <Pressable
+              onPress={() => router.push(SCREENS.PORTFOLIO)}
+              className="mt-3 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
+            >
+              <View className="flex-1">
+                <Text className="text-xs text-muted-foreground">Portfolio</Text>
+                <Text className="mt-0.5 text-base font-bold text-foreground">
+                  {fmt(portfolioValue)}
+                </Text>
+                <View className="mt-0.5">
+                  <GainLabel
+                    amount={portfolioGain}
+                    pct={portfolioGainPct}
+                    variant="right-aligned"
+                    extraText={
+                      portfolioMonthInvested > 0
+                        ? `${fmt(portfolioMonthInvested)} this month`
+                        : undefined
+                    }
+                  />
+                </View>
+              </View>
+              <Icon
+                as={ChevronRight}
+                className="size-4 text-muted-foreground"
+              />
+            </Pressable>
+          )}
+
           {subsTotal > 0 && (
             <Pressable
               onPress={() => router.push(SCREENS.SUBSCRIPTIONS)}
@@ -388,7 +515,7 @@ export default function HomeScreen() {
               Recent activity
             </Text>
             {recentActivityLoading ? (
-              <TransactionSkeleton count={RECENT_LIMIT} />
+              <TransactionSkeleton count={RECENT_TRANSACTIONS_LIMIT} />
             ) : (
               listData.map((item) =>
                 item.type === "header" ? (
@@ -404,7 +531,7 @@ export default function HomeScreen() {
             )}
           </View>
         </ComponentErrorBoundary>
-      </ScrollView>
+      </Animated.ScrollView>
 
       <View
         className="border-t border-border bg-card pt-2.5"
@@ -424,7 +551,16 @@ export default function HomeScreen() {
               History
             </Text>
           </Pressable>
-          <Pressable onPress={() => router.push(SCREENS.ADD)} style={FAB_STYLE}>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push(SCREENS.ADD);
+            }}
+            style={({ pressed }) => [
+              FAB_STYLE,
+              { transform: [{ scale: pressed ? 0.92 : 1 }] },
+            ]}
+          >
             <View
               className="h-[52px] w-[52px] items-center justify-center rounded-full bg-primary"
               style={SHADOWS.FAB}

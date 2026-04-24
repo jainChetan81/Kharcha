@@ -30,9 +30,16 @@ import {
   type SourceType,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { logFirebaseError, withTrace } from "@/lib/firebase";
+import {
+  ERROR_TYPE,
+  FIREBASE_EVENTS,
+  logEvent,
+  logFirebaseError,
+  withTrace,
+} from "@/lib/firebase";
 import { transactionInputSchema } from "@/lib/validation";
 import expo, { db, runMigrations } from "./connection";
+import { safeRecomputeHolding } from "./holdings";
 import {
   bankEmails,
   banks,
@@ -118,6 +125,10 @@ export async function initDB(): Promise<void> {
       billing_day INTEGER NOT NULL,
       category_id INTEGER REFERENCES categories(id),
       source_id INTEGER REFERENCES sources(id),
+      type TEXT NOT NULL DEFAULT 'expense',
+      holding_id INTEGER,
+      investment_kind TEXT,
+      default_units REAL,
       is_active INTEGER DEFAULT 1,
       created_at TEXT DEFAULT (datetime('now'))
     )
@@ -201,6 +212,23 @@ export async function initDB(): Promise<void> {
         sql`CREATE INDEX IF NOT EXISTS idx_transaction_tags_tag_id ON transaction_tags(tag_id)`,
       );
 
+      await db.run(sql`
+    CREATE TABLE IF NOT EXISTS holdings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      instrument_type TEXT NOT NULL DEFAULT 'mutual_fund',
+      units REAL NOT NULL DEFAULT 0,
+      avg_cost REAL NOT NULL DEFAULT 0,
+      invested REAL NOT NULL DEFAULT 0,
+      current_value REAL,
+      last_price_updated_at TEXT,
+      note TEXT,
+      is_closed INTEGER DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
       // Back-fill columns that existing DBs (including restored backups from
       // older app versions) might be missing. Using PRAGMA `table_info` instead
       // of `try { ALTER } catch {}` so we don't silently swallow real errors
@@ -246,6 +274,46 @@ export async function initDB(): Promise<void> {
         );
       }
 
+      if (!hasColumn("transactions", "holding_id")) {
+        await db.run(
+          sql`ALTER TABLE transactions ADD COLUMN holding_id INTEGER REFERENCES holdings(id)`,
+        );
+      }
+
+      if (!hasColumn("transactions", "investment_kind")) {
+        await db.run(
+          sql`ALTER TABLE transactions ADD COLUMN investment_kind TEXT`,
+        );
+      }
+
+      if (!hasColumn("transactions", "units")) {
+        await db.run(sql`ALTER TABLE transactions ADD COLUMN units REAL`);
+      }
+
+      if (!hasColumn("subscriptions", "type")) {
+        await db.run(
+          sql`ALTER TABLE subscriptions ADD COLUMN type TEXT NOT NULL DEFAULT 'expense'`,
+        );
+      }
+
+      if (!hasColumn("subscriptions", "holding_id")) {
+        await db.run(
+          sql`ALTER TABLE subscriptions ADD COLUMN holding_id INTEGER REFERENCES holdings(id)`,
+        );
+      }
+
+      if (!hasColumn("subscriptions", "investment_kind")) {
+        await db.run(
+          sql`ALTER TABLE subscriptions ADD COLUMN investment_kind TEXT`,
+        );
+      }
+
+      if (!hasColumn("subscriptions", "default_units")) {
+        await db.run(
+          sql`ALTER TABLE subscriptions ADD COLUMN default_units REAL`,
+        );
+      }
+
       await db.run(
         sql`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
       );
@@ -267,6 +335,9 @@ export async function initDB(): Promise<void> {
       await db.run(
         sql`CREATE INDEX IF NOT EXISTS idx_transactions_reimbursement_status ON transactions(reimbursement_status)`,
       );
+      await db.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_transactions_holding_id ON transactions(holding_id)`,
+      );
 
       await db
         .insert(config)
@@ -278,7 +349,10 @@ export async function initDB(): Promise<void> {
 
       await seedDefaults();
     } catch (error) {
-      logFirebaseError(error, { error_type: "DB_ERROR", operation: "init_db" });
+      logFirebaseError(error, {
+        error_type: ERROR_TYPE.DB,
+        operation: "init_db",
+      });
       throw error;
     }
   });
@@ -987,7 +1061,7 @@ export async function getRecentTransactions(limit = 20) {
     return attachTagsToRows(rows);
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "getRecentTransactions",
     });
     throw error;
@@ -1003,7 +1077,7 @@ export async function getMonthTransactions(yearMonth: string, limit = 10) {
     return attachTagsToRows(rows);
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "getMonthTransactions",
     });
     throw error;
@@ -1022,12 +1096,13 @@ export async function getMonthlySummary(yearMonth: string) {
         and(
           sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
           sql`${transactions.type} != 'transfer'`,
+          sql`${transactions.type} != 'investment'`,
         ),
       );
     return result[0] as MonthlySummary;
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "getMonthlySummary",
     });
     throw error;
@@ -1038,7 +1113,7 @@ export async function getTransactionsPaginated(
   limit = 10,
   offset = 0,
   filters?: {
-    type?: "income" | "expense" | "transfer" | "all";
+    type?: "income" | "expense" | "transfer" | "investment" | "all";
     categoryId?: number | null;
     sourceId?: number | null;
     sourceType?: SourceType | "all";
@@ -1139,7 +1214,7 @@ export async function getTransactionsPaginated(
     return attachTagsToRows(rows);
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "getTransactionsPaginated",
     });
     throw error;
@@ -1162,7 +1237,7 @@ export async function getTransactionById(id: number) {
     return row as TransactionRow;
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "getTransactionById",
     });
     throw error;
@@ -1170,13 +1245,16 @@ export async function getTransactionById(id: number) {
 }
 
 export async function insertTransaction(params: {
-  type: "income" | "expense" | "transfer";
+  type: "income" | "expense" | "transfer" | "investment";
   amount: number;
   merchant: string | null;
   categoryId: number | null;
   sourceId: number | null;
   destinationSourceId?: number | null;
   subscriptionId?: number | null;
+  holdingId?: number | null;
+  investmentKind?: "buy" | "sell" | "dividend" | "interest" | null;
+  units?: number | null;
   sourceType?: SourceType;
   parsedBy?: ParsedByType;
   reimbursementStatus?: "none" | "pending" | "reimbursed";
@@ -1201,6 +1279,9 @@ export async function insertTransaction(params: {
       source_id: validated.sourceId ?? null,
       destination_source_id: validated.destinationSourceId ?? null,
       subscription_id: validated.subscriptionId ?? null,
+      holding_id: validated.holdingId ?? null,
+      investment_kind: validated.investmentKind ?? null,
+      units: validated.units ?? null,
       source_type: validated.sourceType,
       parsed_by: validated.parsedBy ?? null,
       reimbursement_status: validated.reimbursementStatus,
@@ -1223,7 +1304,7 @@ export async function insertTransaction(params: {
     return result;
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "insertTransaction",
     });
     throw error;
@@ -1233,12 +1314,15 @@ export async function insertTransaction(params: {
 export async function updateTransaction(
   id: number,
   params: {
-    type: "income" | "expense" | "transfer";
+    type: "income" | "expense" | "transfer" | "investment";
     amount: number;
     merchant: string | null;
     categoryId: number | null;
     sourceId: number | null;
     destinationSourceId?: number | null;
+    holdingId?: number | null;
+    investmentKind?: "buy" | "sell" | "dividend" | "interest" | null;
+    units?: number | null;
     sourceType?: SourceType;
     reimbursementStatus?: "none" | "pending" | "reimbursed";
     date: string;
@@ -1257,12 +1341,15 @@ export async function updateTransaction(
     // editing a Gmail-synced or subscription-generated transaction would wipe
     // its provenance marker and re-import on the next Gmail sync.
     const updates: {
-      type: "income" | "expense" | "transfer";
+      type: "income" | "expense" | "transfer" | "investment";
       amount: number;
       merchant: string | null;
       category_id: number | null;
       source_id: number | null;
       destination_source_id: number | null;
+      holding_id: number | null;
+      investment_kind: "buy" | "sell" | "dividend" | "interest" | null;
+      units: number | null;
       date: string;
       note: string | null;
       source_type?: SourceType;
@@ -1275,6 +1362,9 @@ export async function updateTransaction(
       category_id: params.categoryId,
       source_id: params.sourceId,
       destination_source_id: params.destinationSourceId ?? null,
+      holding_id: params.holdingId ?? null,
+      investment_kind: params.investmentKind ?? null,
+      units: params.units ?? null,
       date: params.date,
       note: params.note,
     };
@@ -1321,7 +1411,7 @@ export async function updateTransaction(
     return result;
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "updateTransaction",
     });
     throw error;
@@ -1330,10 +1420,25 @@ export async function updateTransaction(
 
 export async function deleteTransaction(id: number) {
   try {
-    return await db.delete(transactions).where(eq(transactions.id, id));
+    // Capture the holding link before the row disappears so we can recompute
+    // the holding's units/avg_cost/invested from the remaining transactions.
+    // Without this, deleting an investment tx leaves the parent holding with
+    // stale cached totals.
+    const [existing] = await db
+      .select({ holding_id: transactions.holding_id })
+      .from(transactions)
+      .where(eq(transactions.id, id))
+      .limit(1);
+    const result = await db.delete(transactions).where(eq(transactions.id, id));
+    if (existing?.holding_id) {
+      await safeRecomputeHolding(existing.holding_id, {
+        operation: "deleteTransaction",
+      });
+    }
+    return result;
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "deleteTransaction",
     });
     throw error;
@@ -1341,12 +1446,15 @@ export async function deleteTransaction(id: number) {
 }
 
 export async function restoreTransaction(row: {
-  type: "income" | "expense" | "transfer";
+  type: "income" | "expense" | "transfer" | "investment";
   amount: number;
   merchant: string | null;
   category_id: number | null;
   source_id: number | null;
   destination_source_id: number | null;
+  holding_id?: number | null;
+  investment_kind?: "buy" | "sell" | "dividend" | "interest" | null;
+  units?: number | null;
   reimbursement_status?: "none" | "pending" | "reimbursed";
   reimbursed_at?: string | null;
   date: string;
@@ -1354,22 +1462,36 @@ export async function restoreTransaction(row: {
   created_at: string | null;
 }) {
   try {
-    return await db.insert(transactions).values({
+    const result = await db.insert(transactions).values({
       type: row.type,
       amount: row.amount,
       merchant: row.merchant,
       category_id: row.category_id,
       source_id: row.source_id,
       destination_source_id: row.destination_source_id,
+      holding_id: row.holding_id ?? null,
+      investment_kind: row.investment_kind ?? null,
+      units: row.units ?? null,
       reimbursement_status: row.reimbursement_status ?? "none",
       reimbursed_at: row.reimbursed_at ?? null,
       date: row.date,
       created_at: row.created_at,
       note: row.note,
     });
+    if (row.holding_id) {
+      await safeRecomputeHolding(row.holding_id, {
+        operation: "restoreTransaction",
+      });
+    }
+    logEvent(FIREBASE_EVENTS.TRANSACTION_RESTORED, {
+      type: row.type,
+      amount: row.amount,
+      ...(row.holding_id ? { holding_id: row.holding_id } : {}),
+    });
+    return result;
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "restoreTransaction",
     });
     throw error;
@@ -1381,7 +1503,7 @@ export async function clearAllTransactions() {
     return await db.delete(transactions);
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "clearAllTransactions",
     });
     throw error;
@@ -1403,7 +1525,7 @@ export async function setReimbursementStatus(
       .where(eq(transactions.id, id));
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "setReimbursementStatus",
     });
     throw error;
@@ -1419,7 +1541,14 @@ export async function getReimbursementSummary() {
         total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
       })
       .from(transactions)
-      .where(sql`${transactions.reimbursement_status} != 'none'`)
+      .where(
+        and(
+          sql`${transactions.reimbursement_status} != 'none'`,
+          // Investments aren't expenses — never let a stray reimbursement
+          // flag on an investment row inflate the reimbursable totals.
+          sql`${transactions.type} != 'investment'`,
+        ),
+      )
       .groupBy(transactions.reimbursement_status);
 
     const pending = rows.find((r) => r.status === "pending");
@@ -1433,7 +1562,7 @@ export async function getReimbursementSummary() {
     };
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "getReimbursementSummary",
     });
     throw error;
@@ -1487,7 +1616,7 @@ export async function getCategoryBreakdown(yearMonth: string) {
     })) as CategoryBreakdownRow[];
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "getCategoryBreakdown",
     });
     throw error;
@@ -1529,7 +1658,7 @@ export async function getMerchantBreakdown(yearMonth: string) {
     })) as MerchantBreakdownRow[];
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "getMerchantBreakdown",
     });
     throw error;
@@ -1562,7 +1691,7 @@ export async function searchMerchants(
     return rows.map((r) => r.merchant ?? "");
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "searchMerchants",
     });
     throw error;
@@ -1577,7 +1706,7 @@ export async function getTotalMonthlyBudget(): Promise<number> {
     return Number(rows[0]?.total ?? 0);
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "getTotalMonthlyBudget",
     });
     throw error;
@@ -1603,7 +1732,7 @@ export async function syncedTransactionExists(
     return rows.length > 0;
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "syncedTransactionExists",
     });
     throw error;
@@ -1635,7 +1764,7 @@ export async function getMostUsedCategoryForMerchant(
     return rows[0]?.category_id ?? null;
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "getMostUsedCategoryForMerchant",
     });
     throw error;
@@ -1667,7 +1796,7 @@ export async function findDuplicateTransaction(
     return rows.length > 0;
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "findDuplicateTransaction",
     });
     throw error;
@@ -1776,7 +1905,7 @@ export async function getMonthlyInsights(
     };
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "getMonthlyInsights",
     });
     throw error;
@@ -1799,6 +1928,22 @@ export {
   getCategoriesByType,
   updateCategoryOrder,
 } from "./categories";
+export {
+  addHolding,
+  closeHolding,
+  deleteHolding,
+  getAllHoldings,
+  getAllHoldingsWithStats,
+  getHolding,
+  getPortfolioSummary,
+  getPortfolioSummaryForMonth,
+  getTransactionsForHolding,
+  reopenHolding,
+  safeRecomputeHolding,
+  updateHolding,
+  updateHoldingOrder,
+  updateHoldingPrice,
+} from "./holdings";
 export {
   addSource,
   deleteSource,
@@ -1837,7 +1982,7 @@ export async function getTodaySpend(): Promise<number> {
     return result[0]?.total ?? 0;
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "getTodaySpend",
     });
     throw error;
@@ -1876,7 +2021,7 @@ export async function getPreviousMonthSpendAtDay(
     return total > 0 ? total : null;
   } catch (error) {
     logFirebaseError(error, {
-      error_type: "DB_ERROR",
+      error_type: ERROR_TYPE.DB,
       operation: "getPreviousMonthSpendAtDay",
     });
     throw error;

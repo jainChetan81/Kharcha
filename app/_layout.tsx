@@ -40,7 +40,7 @@ import { initDB } from "@/lib/db";
 import { getConfig } from "@/lib/db/config";
 import { processSubscriptions } from "@/lib/db/subscriptions";
 import { getOrCreateDeviceId, registerDevice } from "@/lib/device";
-import { logFirebaseError, logScreenView } from "@/lib/firebase";
+import { ERROR_TYPE, logFirebaseError, logScreenView } from "@/lib/firebase";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { isIOS } from "@/lib/utils";
 import { syncWidgetData } from "@/lib/widget";
@@ -73,7 +73,10 @@ async function autoRegisterDevice() {
     );
     queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.FEATURE_FLAGS] });
   } catch (err) {
-    logFirebaseError(err, { operation: "auto_register_device" });
+    logFirebaseError(err, {
+      error_type: ERROR_TYPE.API,
+      operation: "auto_register_device",
+    });
   }
 }
 
@@ -266,7 +269,13 @@ export default function RootLayout() {
                   <>
                     <ScreenViewTracker />
                     <ShareIntentListener />
-                    <Stack screenOptions={{ headerShown: false }} />
+                    <Stack
+                      screenOptions={{
+                        headerShown: false,
+                        animation: "slide_from_right",
+                        animationDuration: 250,
+                      }}
+                    />
                   </>
                 )
               ) : null}

@@ -5,7 +5,7 @@ import { Pressable, View } from "react-native";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { SCREENS } from "@/lib/constants";
-import { logFirebaseError } from "@/lib/firebase";
+import { ERROR_TYPE, logFirebaseError } from "@/lib/firebase";
 
 export function ScreenError({
   error,
@@ -66,7 +66,7 @@ export class ComponentErrorBoundary extends Component<
 
   componentDidCatch(error: Error, _info: ErrorInfo) {
     logFirebaseError(error, {
-      error_type: "UI_ERROR",
+      error_type: ERROR_TYPE.UI,
       boundary: this.props.name ?? "unknown",
     });
   }

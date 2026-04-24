@@ -186,21 +186,22 @@ export default function HistoryFiltersSheet({
             ))}
           </View>
 
-          {draftType !== TRANSACTION_TYPE.TRANSFER && (
-            <>
-              <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Category
-              </Text>
-              <View className="mb-5">
-                <ChipPicker
-                  items={categories}
-                  selectedId={draftCategoryId}
-                  onSelect={onDraftCategoryIdChange}
-                  allLabel="All Categories"
-                />
-              </View>
-            </>
-          )}
+          {draftType !== TRANSACTION_TYPE.TRANSFER &&
+            draftType !== TRANSACTION_TYPE.INVESTMENT && (
+              <>
+                <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Category
+                </Text>
+                <View className="mb-5">
+                  <ChipPicker
+                    items={categories}
+                    selectedId={draftCategoryId}
+                    onSelect={onDraftCategoryIdChange}
+                    allLabel="All Categories"
+                  />
+                </View>
+              </>
+            )}
 
           {draftType !== TRANSACTION_TYPE.INCOME &&
             draftType !== TRANSACTION_TYPE.TRANSFER && (

@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 import { ChevronRight } from "lucide-react-native";
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -14,6 +14,7 @@ import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
 import {
   ANIMATION_DURATION_MS,
+  INVESTMENT_KIND,
   OTHER_CATEGORY_LABEL,
   PARSED_BY,
   REIMBURSEMENT_STATUS,
@@ -53,7 +54,7 @@ function Tag({
   );
 }
 
-export function TransactionItem({
+export const TransactionItem = memo(function TransactionItem({
   item,
   showTime = false,
   onPress,
@@ -114,14 +115,22 @@ export function TransactionItem({
 
   const isIncome = item.type === TRANSACTION_TYPE.INCOME;
   const isTransfer = item.type === TRANSACTION_TYPE.TRANSFER;
+  const isInvestment = item.type === TRANSACTION_TYPE.INVESTMENT;
+  const investmentInflow =
+    isInvestment &&
+    (item.investment_kind === INVESTMENT_KIND.SELL ||
+      item.investment_kind === INVESTMENT_KIND.DIVIDEND ||
+      item.investment_kind === INVESTMENT_KIND.INTEREST);
   const categoryLabel = smartCapitalize(
     item.category_name ?? OTHER_CATEGORY_LABEL,
   );
   const subtitle = isTransfer
     ? `${item.source_name ?? "?"} → ${item.destination_source_name ?? "?"}`
-    : isIncome
-      ? categoryLabel
-      : `${categoryLabel}${item.source_name ? ` · ${smartCapitalize(item.source_name)}` : ""}`;
+    : isInvestment
+      ? `${smartCapitalize(item.investment_kind ?? "")}${item.source_name ? ` · ${smartCapitalize(item.source_name)}` : ""}`
+      : isIncome
+        ? categoryLabel
+        : `${categoryLabel}${item.source_name ? ` · ${smartCapitalize(item.source_name)}` : ""}`;
 
   const content = (
     <Pressable
@@ -143,6 +152,9 @@ export function TransactionItem({
             {item.merchant || item.category_name || OTHER_CATEGORY_LABEL}
           </Text>
           {isTransfer && <Tag label="TRANSFER" variant="muted" />}
+          {isInvestment && item.source_type !== SOURCE_TYPE.RECURRING && (
+            <Tag label="INVEST" variant="primary" />
+          )}
           {item.source_type === SOURCE_TYPE.SYNCED && (
             <Tag label="GMAIL" variant="gmail" />
           )}
@@ -150,7 +162,7 @@ export function TransactionItem({
             <Tag label="AI" variant="ai" />
           )}
           {item.source_type === SOURCE_TYPE.RECURRING && (
-            <Tag label="SUB" variant="primary" />
+            <Tag label={isInvestment ? "SIP" : "SUB"} variant="primary" />
           )}
           {item.reimbursement_status === REIMBURSEMENT_STATUS.PENDING && (
             <Tag label="REIMBURSE" variant="warning" />
@@ -192,12 +204,16 @@ export function TransactionItem({
             "text-sm font-bold",
             isTransfer
               ? "text-muted-foreground"
-              : isIncome
+              : investmentInflow
                 ? "text-positive"
-                : "text-negative",
+                : isInvestment
+                  ? "text-muted-foreground"
+                  : isIncome
+                    ? "text-positive"
+                    : "text-negative",
           )}
         >
-          {isTransfer ? "" : isIncome ? "+" : "-"}
+          {isTransfer ? "" : isIncome || investmentInflow ? "+" : "-"}
           {fmt(item.amount)}
         </Text>
         {showTime && (
@@ -238,7 +254,7 @@ export function TransactionItem({
       </Animated.View>
     </Animated.View>
   );
-}
+});
 
 export function DateHeader({ label }: { label: string }) {
   return (

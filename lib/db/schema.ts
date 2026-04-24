@@ -32,13 +32,52 @@ export const subscriptions = sqliteTable("subscriptions", {
   billing_day: integer("billing_day").notNull(),
   category_id: integer("category_id").references(() => categories.id),
   source_id: integer("source_id").references(() => sources.id),
+  type: text("type", { enum: ["expense", "investment"] })
+    .notNull()
+    .default("expense"),
+  holding_id: integer("holding_id").references(() => holdings.id),
+  investment_kind: text("investment_kind", {
+    enum: ["buy", "sell", "dividend", "interest"],
+  }),
+  default_units: real("default_units"),
   is_active: integer("is_active").default(1),
+  created_at: text("created_at").default("(datetime('now'))"),
+});
+
+export const holdings = sqliteTable("holdings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  instrument_type: text("instrument_type", {
+    enum: [
+      "stock",
+      "mutual_fund",
+      "etf",
+      "fd",
+      "ppf",
+      "gold",
+      "crypto",
+      "bond",
+      "other",
+    ],
+  })
+    .notNull()
+    .default("mutual_fund"),
+  units: real("units").notNull().default(0),
+  avg_cost: real("avg_cost").notNull().default(0),
+  invested: real("invested").notNull().default(0),
+  current_value: real("current_value"),
+  last_price_updated_at: text("last_price_updated_at"),
+  note: text("note"),
+  is_closed: integer("is_closed").default(0),
+  sort_order: integer("sort_order").default(0),
   created_at: text("created_at").default("(datetime('now'))"),
 });
 
 export const transactions = sqliteTable("transactions", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  type: text("type", { enum: ["income", "expense", "transfer"] })
+  type: text("type", {
+    enum: ["income", "expense", "transfer", "investment"],
+  })
     .notNull()
     .default("expense"),
   amount: real("amount").notNull(),
@@ -51,6 +90,11 @@ export const transactions = sqliteTable("transactions", {
   subscription_id: integer("subscription_id").references(
     () => subscriptions.id,
   ),
+  holding_id: integer("holding_id").references(() => holdings.id),
+  investment_kind: text("investment_kind", {
+    enum: ["buy", "sell", "dividend", "interest"],
+  }),
+  units: real("units"),
   source_type: text("source_type", {
     enum: ["manual", "synced", "recurring", "transfer"],
   })

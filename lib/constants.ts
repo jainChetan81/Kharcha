@@ -24,7 +24,13 @@ export const SCREENS = {
   EXPORT: "/export",
   SUBSCRIPTION_AUDIT: "/subscriptions/audit",
   REIMBURSEMENTS: "/reimbursements",
+  PORTFOLIO: "/portfolio",
+  HOLDING: "/holding",
 } as const;
+
+export function holdingScreen(id: number) {
+  return `${SCREENS.HOLDING}/${id}` as const;
+}
 
 export const BUNDLE_ID = "com.chetanjain.kharcha" as const;
 export const OAUTH_REDIRECT_PATH = "oauthredirect" as const;
@@ -55,7 +61,61 @@ export const TRANSACTION_TYPE = {
   EXPENSE: "expense",
   INCOME: "income",
   TRANSFER: "transfer",
+  INVESTMENT: "investment",
 } as const;
+
+export const INVESTMENT_KIND = {
+  BUY: "buy",
+  SELL: "sell",
+  DIVIDEND: "dividend",
+  INTEREST: "interest",
+} as const;
+
+export type InvestmentKindType =
+  (typeof INVESTMENT_KIND)[keyof typeof INVESTMENT_KIND];
+
+export const INSTRUMENT_TYPE = {
+  STOCK: "stock",
+  MUTUAL_FUND: "mutual_fund",
+  ETF: "etf",
+  FD: "fd",
+  PPF: "ppf",
+  GOLD: "gold",
+  CRYPTO: "crypto",
+  BOND: "bond",
+  OTHER: "other",
+} as const;
+
+export type InstrumentTypeType =
+  (typeof INSTRUMENT_TYPE)[keyof typeof INSTRUMENT_TYPE];
+
+export const INSTRUMENT_LABEL: Record<InstrumentTypeType, string> = {
+  stock: "Stock",
+  mutual_fund: "Mutual Fund",
+  etf: "ETF",
+  fd: "FD",
+  ppf: "PPF",
+  gold: "Gold",
+  crypto: "Crypto",
+  bond: "Bond",
+  other: "Other",
+};
+
+/**
+ * Instruments that don't expose a unit count to the user (lump-sum corpus).
+ * The add/edit form hides the Units field and the recompute reducer treats
+ * every Buy as a pure capital contribution, leaving `units` and `avg_cost`
+ * pinned at 0 on the holding row.
+ */
+export const UNITLESS_INSTRUMENTS: readonly InstrumentTypeType[] = [
+  INSTRUMENT_TYPE.FD,
+  INSTRUMENT_TYPE.PPF,
+  INSTRUMENT_TYPE.BOND,
+];
+
+export function isUnitlessInstrument(kind: InstrumentTypeType): boolean {
+  return UNITLESS_INSTRUMENTS.includes(kind);
+}
 
 export type TransactionFilterType =
   (typeof TRANSACTION_TYPE)[keyof typeof TRANSACTION_TYPE];
@@ -108,11 +168,43 @@ export const TOAST_TYPE = {
   UNDO: "undo",
 } as const;
 
+export const TOAST_COPY = {
+  ALREADY_EXISTS: "Already exists — kept existing",
+} as const;
+
+export const INLINE_ADD_COPY = {
+  CATEGORY: {
+    titleExpense: "New Expense Category",
+    titleIncome: "New Income Category",
+    placeholder: "Category name",
+    submitLabel: "Add Category",
+    addedToast: "Category added",
+    existingToast: "Selected existing category",
+    errorTitle: "Failed to add category",
+  },
+  SOURCE: {
+    title: "New Source",
+    placeholder: "e.g. HDFC Credit, Paytm, UPI",
+    submitLabel: "Add Source",
+    addedToast: "Source added",
+    existingToast: "Selected existing source",
+    errorTitle: "Failed to add source",
+  },
+  HOLDING: {
+    title: "New Holding",
+    placeholder: "e.g. Nippon Small Cap, NIFTYBEES",
+    submitLabel: "Add Holding",
+    addedToast: "Holding added",
+    existingToast: "Selected existing holding",
+    errorTitle: "Failed to add holding",
+  },
+} as const;
+
 export const COLORS = {
   PRIMARY: "#7c3aed",
   WARNING: "#f59e0b",
-  DANGER: "#ef4444",
-  POSITIVE: "#22c55e",
+  DANGER: "#cf4e4e",
+  POSITIVE: "#2ea262",
   BAR_BG: "#2a2a2a",
   BACKGROUND: "#0a0a0a",
   CARD: "#141414",
@@ -123,17 +215,17 @@ export const COLORS = {
   SHADOW: "#000000",
 } as const;
 
-// Original multi-hue palette, dampened to 70% alpha so the stacked bar and
-// rank dots read as tinted rather than competing with the semantic red / green
-// / amber used elsewhere.
+// Muted jewel palette: brand purple leads at full strength, remaining hues
+// sit at 70% alpha so they stay distinguishable as categories without
+// shouting against the dark card or fighting semantic red / green / amber.
 export const CATEGORY_PALETTE: readonly `#${string}`[] = [
-  "#7c3aedb3",
-  "#f59e0bb3",
-  "#22c55eb3",
-  "#3b82f6b3",
-  "#ef4444b3",
-  "#ec4899b3",
-  "#06b6d4b3",
+  "#7c3aed",
+  "#0891b2b3",
+  "#d97706b3",
+  "#6366f1b3",
+  "#e11d48b3",
+  "#059669b3",
+  "#64748bb3",
 ];
 
 export const SHADOWS = {
@@ -263,6 +355,11 @@ export const QUERY_KEYS = {
   TAGS: "tags",
   TAG_BREAKDOWN: "tag-breakdown",
   TAG_BREAKDOWN_ALL_TIME: "tag-breakdown-all-time",
+  HOLDINGS: "holdings",
+  HOLDING: "holding",
+  HOLDING_TRANSACTIONS: "holding-transactions",
+  PORTFOLIO_SUMMARY: "portfolio-summary",
+  PORTFOLIO_MONTH_SUMMARY: "portfolio-month-summary",
   CLOUD_BACKUP: "cloud-backup",
   DEVICE_SYNC_CONFIG: "device-sync",
   USER_SYNC_PREFS: "user-sync-prefs",
@@ -292,6 +389,7 @@ export const BUDGET_CRITICAL_THRESHOLD = 0.9;
 // Display limits
 export const TAG_DISPLAY_LIMIT = 3;
 export const TOP_BREAKDOWN_LIMIT = 5;
+export const RECENT_TRANSACTIONS_LIMIT = 5;
 export const MAX_BILLING_DAY = 31;
 export const GMAIL_FETCH_LIMIT = 50;
 export const MAX_EXPORT_TRANSACTIONS = 10_000;

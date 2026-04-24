@@ -26,14 +26,35 @@ export const FIREBASE_EVENTS = {
   HISTORY_INSIGHTS_EXPANDED: "history_insights_expanded",
   FILTER_CHIP_REMOVED: "filter_chip_removed",
   FILTERS_CLEARED_ALL: "filters_cleared_all",
+  HOLDING_ADDED: "holding_added",
+  HOLDING_PRICE_UPDATED: "holding_price_updated",
+  HOLDING_CLOSED: "holding_closed",
+  HOLDING_REOPENED: "holding_reopened",
+  HOLDING_DELETED: "holding_deleted",
+  CATEGORY_ADDED: "category_added",
+  SOURCE_ADDED: "source_added",
+  RECURRING_TRANSACTION_POSTED: "recurring_transaction_posted",
+  SIP_POSTED: "sip_posted",
+  SIP_SKIPPED_NO_HOLDING: "sip_skipped_no_holding",
+  TRANSACTION_RESTORED: "transaction_restored",
 } as const;
 
 export type KharchaEvent =
   (typeof FIREBASE_EVENTS)[keyof typeof FIREBASE_EVENTS];
 
+export const ERROR_TYPE = {
+  DB: "DB_ERROR",
+  API: "API_ERROR",
+  SMS_PARSE: "SMS_PARSE_FAILED",
+  SYNC: "SYNC_ERROR",
+  UI: "UI_ERROR",
+} as const;
+
+export type ErrorType = (typeof ERROR_TYPE)[keyof typeof ERROR_TYPE];
+
 export function logFirebaseError(
   error: unknown,
-  context?: Record<string, string>,
+  context: { error_type: ErrorType } & Record<string, string>,
 ): void {
   if (__DEV__) {
     console.error("[Firebase]", error, context);
@@ -42,10 +63,8 @@ export function logFirebaseError(
   import("@react-native-firebase/crashlytics")
     .then((mod) => {
       const crash = mod.default();
-      if (context) {
-        for (const [key, value] of Object.entries(context)) {
-          crash.setAttribute(key, value);
-        }
+      for (const [key, value] of Object.entries(context)) {
+        crash.setAttribute(key, value);
       }
       const err = error instanceof Error ? error : new Error(String(error));
       crash.recordError(err);

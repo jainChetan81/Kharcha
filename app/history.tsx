@@ -8,12 +8,15 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react-native";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
 import {
   ActivityIndicator,
+  LayoutAnimation,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
+  UIManager,
   View,
 } from "react-native";
 import {
@@ -92,11 +95,34 @@ export default function HistoryScreen() {
     draftHasFilters,
   } = useHistoryFilters();
 
-  const categoryFilterType =
-    draftType === TRANSACTION_TYPE.TRANSFER ? TRANSACTION_TYPE.ALL : draftType;
+  // Animate chip row appearance/disappearance so filter pills slide in
+  // instead of popping.
+  const prevChipCount = useRef(appliedChips.length);
+  useEffect(() => {
+    if (appliedChips.length !== prevChipCount.current) {
+      if (
+        Platform.OS === "android" &&
+        UIManager.setLayoutAnimationEnabledExperimental
+      ) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+      }
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      prevChipCount.current = appliedChips.length;
+    }
+  }, [appliedChips.length]);
+
+  // Transfers and investments don't belong to expense/income category buckets,
+  // so fall back to "all" for the picker query and hide the filter row.
+  const categoryFilterType: "all" | "expense" | "income" =
+    draftType === TRANSACTION_TYPE.EXPENSE ||
+    draftType === TRANSACTION_TYPE.INCOME
+      ? draftType
+      : TRANSACTION_TYPE.ALL;
   const { data: categories = [] } = useCategoriesByType(
     categoryFilterType,
-    showFilters && draftType !== TRANSACTION_TYPE.TRANSFER,
+    showFilters &&
+      draftType !== TRANSACTION_TYPE.TRANSFER &&
+      draftType !== TRANSACTION_TYPE.INVESTMENT,
   );
 
   const { data: sources = [] } = useAllSources(
@@ -105,8 +131,14 @@ export default function HistoryScreen() {
       draftType !== TRANSACTION_TYPE.TRANSFER,
   );
 
-  const allTransactions = data?.pages.flat() ?? [];
-  const listData = buildListData(allTransactions);
+  const allTransactions = useMemo(
+    () => data?.pages.flat() ?? [],
+    [data?.pages],
+  );
+  const listData = useMemo(
+    () => buildListData(allTransactions),
+    [allTransactions],
+  );
 
   return (
     <View className="flex-1 bg-background">

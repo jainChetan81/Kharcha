@@ -37,40 +37,74 @@ export const billingDayStringSchema = z
 
 // ── Transaction ─────────────────────────────────────────────────────
 
-export const transactionInputSchema = z.object({
-  type: z.enum(["income", "expense", "transfer"], {
-    error: "Type must be income, expense, or transfer",
-  }),
-  amount: positiveAmountSchema,
-  merchant: z.string().nullable().optional(),
-  categoryId: z.number().nullable().optional(),
-  sourceId: z.number().nullable().optional(),
-  destinationSourceId: z.number().nullable().optional(),
-  sourceType: z
-    .enum(["manual", "synced", "recurring", "transfer"])
-    .default("manual"),
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}/, "Date must be in YYYY-MM-DD format"),
-  note: z.string().nullable().optional(),
-  tagIds: z.array(z.number()).optional(),
-  subscriptionId: z.number().nullable().optional(),
-  gmailMessageId: z.string().nullable().optional(),
-  parsedBy: z.enum(["regex", "gemini"]).nullable().optional(),
-  reimbursementStatus: z
-    .enum(["none", "pending", "reimbursed"])
-    .default("none"),
-});
+export const transactionInputSchema = z
+  .object({
+    type: z.enum(["income", "expense", "transfer", "investment"], {
+      error: "Type must be income, expense, transfer, or investment",
+    }),
+    amount: positiveAmountSchema,
+    merchant: z.string().nullable().optional(),
+    categoryId: z.number().nullable().optional(),
+    sourceId: z.number().nullable().optional(),
+    destinationSourceId: z.number().nullable().optional(),
+    holdingId: z.number().nullable().optional(),
+    investmentKind: z
+      .enum(["buy", "sell", "dividend", "interest"])
+      .nullable()
+      .optional(),
+    units: z.number().nullable().optional(),
+    sourceType: z
+      .enum(["manual", "synced", "recurring", "transfer"])
+      .default("manual"),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}/, "Date must be in YYYY-MM-DD format"),
+    note: z.string().nullable().optional(),
+    tagIds: z.array(z.number()).optional(),
+    subscriptionId: z.number().nullable().optional(),
+    gmailMessageId: z.string().nullable().optional(),
+    parsedBy: z.enum(["regex", "gemini"]).nullable().optional(),
+    reimbursementStatus: z
+      .enum(["none", "pending", "reimbursed"])
+      .default("none"),
+  })
+  // Guard the DB boundary against orphaned investment rows: any path that
+  // bypasses the UI (Gmail parse, bulk import) still has to carry a holding
+  // link and kind, otherwise the row is invisible to portfolio aggregations.
+  .refine((v) => v.type !== "investment" || v.holdingId != null, {
+    message: "holdingId is required when type is investment",
+    path: ["holdingId"],
+  })
+  .refine((v) => v.type !== "investment" || v.investmentKind != null, {
+    message: "investmentKind is required when type is investment",
+    path: ["investmentKind"],
+  });
 
 // ── Subscription ────────────────────────────────────────────────────
 
-export const subscriptionInputSchema = z.object({
-  name: requiredStringSchema("Name"),
-  amount: positiveAmountSchema,
-  billingDay: billingDaySchema,
-  categoryId: z.number().nullable(),
-  sourceId: z.number().nullable(),
-});
+export const subscriptionInputSchema = z
+  .object({
+    name: requiredStringSchema("Name"),
+    amount: positiveAmountSchema,
+    billingDay: billingDaySchema,
+    categoryId: z.number().nullable(),
+    sourceId: z.number().nullable(),
+    type: z.enum(["expense", "investment"]).default("expense"),
+    holdingId: z.number().nullable().optional(),
+    investmentKind: z
+      .enum(["buy", "sell", "dividend", "interest"])
+      .nullable()
+      .optional(),
+    defaultUnits: z.number().nullable().optional(),
+  })
+  // Prevent orphan SIPs: a subscription flagged as investment but missing the
+  // holding link would silently skip every auto-post (processSubscriptions
+  // guards on sub.holding_id != null), leaving the user wondering why their
+  // recurring investment never shows up.
+  .refine((v) => v.type !== "investment" || v.holdingId != null, {
+    message: "holdingId is required for investment subscriptions",
+    path: ["holdingId"],
+  });
 
 // ── Budget ──────────────────────────────────────────────────────────
 

@@ -13,7 +13,7 @@ import {
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { findDuplicateTransaction, insertTransaction } from "@/lib/db";
-import { logFirebaseError } from "@/lib/firebase";
+import { ERROR_TYPE, logFirebaseError } from "@/lib/firebase";
 import { parseMessage } from "@/lib/parsers";
 import { showSuccessToast } from "@/lib/toast";
 
@@ -70,7 +70,7 @@ export async function drainSmsListenerQueue(): Promise<DrainResult> {
       // regex parsers when a real sender slips through. Silent skipping
       // made the failure invisible.
       logFirebaseError(new Error("SMS regex parser matched no pattern"), {
-        error_type: "SMS_PARSE_FAILED",
+        error_type: ERROR_TYPE.SMS_PARSE,
         operation: "sms_listener_parse",
         sender: entry.sender,
         text_preview: entry.text.slice(0, 80),
@@ -111,6 +111,7 @@ export async function drainSmsListenerQueue(): Promise<DrainResult> {
       inserted++;
     } catch (error) {
       logFirebaseError(error, {
+        error_type: ERROR_TYPE.DB,
         operation: "sms_listener_insert",
         sender: entry.sender,
       });
@@ -149,6 +150,9 @@ export async function runSmsListenerDrain(queryClient: QueryClient) {
       );
     }
   } catch (error) {
-    logFirebaseError(error, { operation: "sms_listener_drain" });
+    logFirebaseError(error, {
+      error_type: ERROR_TYPE.SYNC,
+      operation: "sms_listener_drain",
+    });
   }
 }

@@ -10,6 +10,7 @@ import {
   Switch,
   View,
 } from "react-native";
+import { InvestmentFields } from "@/components/investment-fields";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { ChipPicker, MultiChipPicker } from "@/components/ui/chip-picker";
@@ -19,11 +20,14 @@ import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useAllHoldings } from "@/hooks/use-holdings";
+import { useInlineAdders } from "@/hooks/use-inline-adders";
 import { useAddTag, useAllTags } from "@/hooks/use-tags";
 import {
   COLORS,
   DATE_DISPLAY_FORMAT,
   DATE_TIME_FORMAT,
+  type InvestmentKindType,
   QUERY_KEYS,
   REIMBURSEMENT_STATUS,
   type ReimbursementStatusType,
@@ -35,7 +39,7 @@ import {
   getMostUsedCategoryForMerchant,
   searchMerchants,
 } from "@/lib/db";
-import { parseDate } from "@/lib/format";
+import { parseDate, sanitizeDecimalInput } from "@/lib/format";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { amountStringSchema, validateField } from "@/lib/validation";
@@ -47,12 +51,15 @@ const DateTimePickerModal = lazy(() =>
 );
 
 export type TransactionFormValues = {
-  type: "income" | "expense" | "transfer";
+  type: "income" | "expense" | "transfer" | "investment";
   amount: string;
   merchant: string;
   categoryId: number | null;
   sourceId: number | null;
   destinationSourceId: number | null;
+  holdingId: number | null;
+  investmentKind: InvestmentKindType;
+  units: string;
   date: string;
   note: string;
   reimbursementStatus: ReimbursementStatusType;
@@ -75,7 +82,7 @@ export function TransactionForm({
   const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [datePickerValue, setDatePickerValue] = useState(new Date());
   const [activeType, setActiveType] = useState<
-    "income" | "expense" | "transfer"
+    "income" | "expense" | "transfer" | "investment"
   >(defaultValues.type);
   const [userChangedCategory, setUserChangedCategory] = useState(false);
   const [autoFilledMerchant, setAutoFilledMerchant] = useState<string | null>(
@@ -84,15 +91,22 @@ export function TransactionForm({
   const [merchantSearch, setMerchantSearch] = useState(defaultValues.merchant);
   const debouncedMerchant = useDebounce(merchantSearch, 300);
   const [newTagSheetVisible, setNewTagSheetVisible] = useState(false);
+  const [sourceTarget, setSourceTarget] = useState<
+    "sourceId" | "destinationSourceId"
+  >("sourceId");
   const { data: allTags = [] } = useAllTags();
   const addTagMutation = useAddTag();
+  const { data: allHoldings = [] } = useAllHoldings();
+  const openHoldings = allHoldings.filter((h) => h.is_closed === 0);
 
   const isTransfer = activeType === TRANSACTION_TYPE.TRANSFER;
-  const categoryType = isTransfer ? "expense" : activeType;
+  const isInvestment = activeType === TRANSACTION_TYPE.INVESTMENT;
+  const categoryType = isTransfer || isInvestment ? "expense" : activeType;
 
   async function autoCategoryFromMerchant(merchant: string) {
     const trimmed = merchant.trim();
-    if (trimmed.length < 3 || userChangedCategory || isTransfer) return;
+    if (trimmed.length < 3 || userChangedCategory || isTransfer || isInvestment)
+      return;
     // Don't re-run for the same merchant text that we already auto-filled.
     if (autoFilledMerchant?.toLowerCase() === trimmed.toLowerCase()) return;
     try {
@@ -114,7 +128,7 @@ export function TransactionForm({
   const { data: categories = [] } = useQuery({
     queryKey: [QUERY_KEYS.CATEGORIES, categoryType],
     queryFn: () => getCategoriesByType(categoryType),
-    enabled: !isTransfer,
+    enabled: !isTransfer && !isInvestment,
   });
 
   const { data: sources = [] } = useQuery({
@@ -139,6 +153,19 @@ export function TransactionForm({
     },
   });
 
+  const adders = useInlineAdders({
+    categoryType: categoryType === "income" ? "income" : "expense",
+    onCategoryAdded: (id) => {
+      setUserChangedCategory(true);
+      form.setFieldValue("categoryId", id);
+    },
+    // sourceTarget is stateful: the same sheet handles both the primary
+    // source field and the transfer destination, whichever picker was tapped
+    // most recently. The setter below captures that intent before openSource.
+    onSourceAdded: (id) => form.setFieldValue(sourceTarget, id),
+    onHoldingAdded: (id) => form.setFieldValue("holdingId", id),
+  });
+
   return (
     <ScrollView
       className="flex-1 px-5 pt-4"
@@ -148,7 +175,7 @@ export function TransactionForm({
       <form.Field name="type">
         {(field) => {
           const typeButtons: {
-            key: "expense" | "income" | "transfer";
+            key: "expense" | "income" | "transfer" | "investment";
             label: string;
             activeClass: string;
           }[] = [
@@ -167,9 +194,14 @@ export function TransactionForm({
               label: "Transfer",
               activeClass: "bg-muted-foreground",
             },
+            {
+              key: TRANSACTION_TYPE.INVESTMENT,
+              label: "Invest",
+              activeClass: "bg-primary",
+            },
           ];
           return (
-            <View className="mb-5 flex-row gap-3">
+            <View className="mb-5 flex-row gap-2">
               {typeButtons.map((btn) => (
                 <Pressable
                   key={btn.key}
@@ -184,6 +216,9 @@ export function TransactionForm({
                     }
                     if (btn.key === TRANSACTION_TYPE.EXPENSE) {
                       form.setFieldValue("destinationSourceId", null);
+                    }
+                    if (btn.key !== TRANSACTION_TYPE.INVESTMENT) {
+                      form.setFieldValue("holdingId", null);
                     }
                     if (btn.key !== TRANSACTION_TYPE.EXPENSE) {
                       form.setFieldValue(
@@ -231,7 +266,7 @@ export function TransactionForm({
               autoComplete="off"
               value={field.state.value}
               onChangeText={(v) => {
-                const cleaned = v.replace(/[^0-9.]/g, "");
+                const cleaned = sanitizeDecimalInput(v);
                 field.handleChange(cleaned);
               }}
               className="h-14 text-2xl font-bold"
@@ -306,7 +341,7 @@ export function TransactionForm({
         </form.Field>
       )}
 
-      {!isTransfer && (
+      {!isTransfer && !isInvestment && (
         <form.Field name="categoryId">
           {(field) => (
             <View className="mb-5">
@@ -318,10 +353,20 @@ export function TransactionForm({
                   setUserChangedCategory(true);
                   field.handleChange(id);
                 }}
+                onAddNew={adders.openCategory}
+                addLabel="New category"
               />
             </View>
           )}
         </form.Field>
+      )}
+
+      {isInvestment && (
+        <InvestmentFields
+          form={form}
+          openHoldings={openHoldings}
+          onAddNewHolding={adders.openHolding}
+        />
       )}
 
       {activeType === TRANSACTION_TYPE.INCOME && (
@@ -382,11 +427,18 @@ export function TransactionForm({
         {(field) =>
           activeType !== TRANSACTION_TYPE.INCOME ? (
             <View className="mb-5">
-              <FormLabel>{isTransfer ? "From" : "Source"}</FormLabel>
+              <FormLabel>
+                {isTransfer ? "From" : isInvestment ? "Cash Account" : "Source"}
+              </FormLabel>
               <ChipPicker
                 items={sources}
                 selectedId={field.state.value}
                 onSelect={(id) => field.handleChange(id)}
+                onAddNew={() => {
+                  setSourceTarget("sourceId");
+                  adders.openSource();
+                }}
+                addLabel="New source"
               />
               <FieldError errors={field.state.meta.errors as string[]} />
             </View>
@@ -413,6 +465,11 @@ export function TransactionForm({
                 items={sources}
                 selectedId={field.state.value}
                 onSelect={(id) => field.handleChange(id)}
+                onAddNew={() => {
+                  setSourceTarget("destinationSourceId");
+                  adders.openSource();
+                }}
+                addLabel="New source"
               />
               <FieldError errors={field.state.meta.errors as string[]} />
             </View>
@@ -599,6 +656,8 @@ export function TransactionForm({
           }
         }}
       />
+
+      {adders.sheets}
 
       <form.Subscribe
         selector={(state) => ({

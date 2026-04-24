@@ -15,7 +15,11 @@ import {
   useReorderCategories,
 } from "@/hooks/use-categories";
 import { useConfigItemActions } from "@/hooks/use-config-item-actions";
-import { SCROLL_BOTTOM_PADDING, TRANSACTION_TYPE } from "@/lib/constants";
+import {
+  SCROLL_BOTTOM_PADDING,
+  TOAST_COPY,
+  TRANSACTION_TYPE,
+} from "@/lib/constants";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 const AddCategorySheet = lazy(() => import("@/components/add-category-sheet"));
@@ -74,18 +78,19 @@ export default function ExpenseCategoriesScreen() {
             visible={showAdd}
             onClose={() => setShowAdd(false)}
             categoryType={TRANSACTION_TYPE.EXPENSE}
-            categories={categories}
             onSave={async (name) => {
               try {
-                await addMutation.mutateAsync({
+                const { isNew } = await addMutation.mutateAsync({
                   name,
                   type: TRANSACTION_TYPE.EXPENSE,
                 });
                 setShowAdd(false);
-                showSuccessToast("Category added");
+                showSuccessToast(
+                  isNew ? "Category added" : TOAST_COPY.ALREADY_EXISTS,
+                );
               } catch (err) {
                 if (err instanceof Error) {
-                  showErrorToast("Duplicate", err.message);
+                  showErrorToast("Failed", err.message);
                 } else {
                   showErrorToast("Failed", "Could not add category");
                 }
