@@ -1894,6 +1894,22 @@ export {
   updateCategoryOrder,
 } from "./categories";
 export {
+  addHolding,
+  closeHolding,
+  deleteHolding,
+  getAllHoldings,
+  getAllHoldingsWithStats,
+  getHolding,
+  getPortfolioSummary,
+  getPortfolioSummaryForMonth,
+  getTransactionsForHolding,
+  recomputeHoldingFromTransactions,
+  reopenHolding,
+  updateHolding,
+  updateHoldingOrder,
+  updateHoldingPrice,
+} from "./holdings";
+export {
   addSource,
   deleteSource,
   getAllSources,
@@ -1913,22 +1929,6 @@ export {
   setTransactionTags,
   updateTagOrder,
 } from "./tags";
-export {
-  addHolding,
-  closeHolding,
-  deleteHolding,
-  getAllHoldings,
-  getAllHoldingsWithStats,
-  getHolding,
-  getPortfolioSummary,
-  getPortfolioSummaryForMonth,
-  getTransactionsForHolding,
-  recomputeHoldingFromTransactions,
-  reopenHolding,
-  updateHolding,
-  updateHoldingOrder,
-  updateHoldingPrice,
-} from "./holdings";
 
 export async function getTodaySpend(): Promise<number> {
   try {

@@ -55,9 +55,12 @@ export function GainLabel({
   }
 
   if (variant === "right-aligned") {
+    // When amount is hidden, pct is the only signal — render nothing if the
+    // caller passed neither rather than showing a deceptive "+0.0%".
+    const pctOnlyText = pct != null ? `${sign}${pct.toFixed(1)}%` : "";
     return (
       <Text className={cn("text-xs font-medium", colorClass)}>
-        {showAmount ? amountText : `${sign}${(pct ?? 0).toFixed(1)}%`}
+        {showAmount ? amountText : pctOnlyText}
         {showAmount ? pctText : ""}
         {suffix}
       </Text>

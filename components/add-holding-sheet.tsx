@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,17 @@ export default function AddHoldingSheet({
   const [instrumentType, setInstrumentType] = useState<InstrumentTypeType>(
     defaultInstrumentType,
   );
+
+  // Reset draft each time the sheet opens — otherwise a user who starts
+  // typing, cancels, and reopens sees stale name/instrument from the prior
+  // session. Matches the BottomSheet form-mode reset behavior.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sync on open only
+  useEffect(() => {
+    if (visible) {
+      setName("");
+      setInstrumentType(defaultInstrumentType);
+    }
+  }, [visible]);
 
   async function handleSubmit() {
     const trimmed = name.trim();
