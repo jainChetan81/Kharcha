@@ -47,18 +47,29 @@ export function BottomSheet(props: BottomSheetProps) {
   const { bottom } = useSafeAreaInsets();
   const isFormMode = !!props.onSave;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const slideY = useRef(new Animated.Value(300)).current;
 
   useEffect(() => {
     if (visible) {
-      Animated.timing(backdropOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+      slideY.setValue(300);
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideY, {
+          toValue: 0,
+          friction: 9,
+          tension: 65,
+          useNativeDriver: true,
+        }),
+      ]).start();
     } else {
       backdropOpacity.setValue(0);
+      slideY.setValue(300);
     }
-  }, [visible, backdropOpacity]);
+  }, [visible, backdropOpacity, slideY]);
 
   const [value, setValue] = useState(props.defaultValue ?? "");
 
@@ -147,7 +158,7 @@ export function BottomSheet(props: BottomSheetProps) {
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="none"
       onRequestClose={handleClose}
     >
       <Animated.View
@@ -155,13 +166,15 @@ export function BottomSheet(props: BottomSheetProps) {
       >
         <Pressable style={{ flex: 1 }} onPress={handleClose} />
       </Animated.View>
-      {isFormMode || ("avoidKeyboard" in props && props.avoidKeyboard) ? (
-        <KeyboardAvoidingView behavior="padding">
-          {content}
-        </KeyboardAvoidingView>
-      ) : (
-        content
-      )}
+      <Animated.View style={{ transform: [{ translateY: slideY }] }}>
+        {isFormMode || ("avoidKeyboard" in props && props.avoidKeyboard) ? (
+          <KeyboardAvoidingView behavior="padding">
+            {content}
+          </KeyboardAvoidingView>
+        ) : (
+          content
+        )}
+      </Animated.View>
     </Modal>
   );
 }
