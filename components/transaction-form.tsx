@@ -10,28 +10,24 @@ import {
   Switch,
   View,
 } from "react-native";
+import { InvestmentFields } from "@/components/investment-fields";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { ChipPicker, MultiChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
 import { FormLabel } from "@/components/ui/form-label";
 import { Icon } from "@/components/ui/icon";
-import { InlineAddSheet } from "@/components/ui/inline-add-sheet";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
-import { useAddCategory } from "@/hooks/use-categories";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useAddHolding, useAllHoldings } from "@/hooks/use-holdings";
-import { useAddSource } from "@/hooks/use-sources";
+import { useAllHoldings } from "@/hooks/use-holdings";
+import { useInlineAdders } from "@/hooks/use-inline-adders";
 import { useAddTag, useAllTags } from "@/hooks/use-tags";
 import {
   COLORS,
   DATE_DISPLAY_FORMAT,
   DATE_TIME_FORMAT,
-  INSTRUMENT_TYPE,
-  INVESTMENT_KIND,
   type InvestmentKindType,
-  isUnitlessInstrument,
   QUERY_KEYS,
   REIMBURSEMENT_STATUS,
   type ReimbursementStatusType,
@@ -43,7 +39,7 @@ import {
   getMostUsedCategoryForMerchant,
   searchMerchants,
 } from "@/lib/db";
-import { parseDate } from "@/lib/format";
+import { parseDate, sanitizeDecimalInput } from "@/lib/format";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { amountStringSchema, validateField } from "@/lib/validation";
@@ -95,17 +91,11 @@ export function TransactionForm({
   const [merchantSearch, setMerchantSearch] = useState(defaultValues.merchant);
   const debouncedMerchant = useDebounce(merchantSearch, 300);
   const [newTagSheetVisible, setNewTagSheetVisible] = useState(false);
-  const [newCategorySheetVisible, setNewCategorySheetVisible] = useState(false);
-  const [newSourceSheetVisible, setNewSourceSheetVisible] = useState(false);
-  const [newHoldingSheetVisible, setNewHoldingSheetVisible] = useState(false);
   const [sourceTarget, setSourceTarget] = useState<
     "sourceId" | "destinationSourceId"
   >("sourceId");
   const { data: allTags = [] } = useAllTags();
   const addTagMutation = useAddTag();
-  const addCategoryMutation = useAddCategory();
-  const addSourceMutation = useAddSource();
-  const addHoldingMutation = useAddHolding();
   const { data: allHoldings = [] } = useAllHoldings();
   const openHoldings = allHoldings.filter((h) => h.is_closed === 0);
 
@@ -161,6 +151,19 @@ export function TransactionForm({
     onSubmit: async ({ value }) => {
       await onSubmit(value);
     },
+  });
+
+  const adders = useInlineAdders({
+    categoryType: categoryType === "income" ? "income" : "expense",
+    onCategoryAdded: (id) => {
+      setUserChangedCategory(true);
+      form.setFieldValue("categoryId", id);
+    },
+    // sourceTarget is stateful: the same sheet handles both the primary
+    // source field and the transfer destination, whichever picker was tapped
+    // most recently. The setter below captures that intent before openSource.
+    onSourceAdded: (id) => form.setFieldValue(sourceTarget, id),
+    onHoldingAdded: (id) => form.setFieldValue("holdingId", id),
   });
 
   return (
@@ -263,7 +266,7 @@ export function TransactionForm({
               autoComplete="off"
               value={field.state.value}
               onChangeText={(v) => {
-                const cleaned = v.replace(/[^0-9.]/g, "");
+                const cleaned = sanitizeDecimalInput(v);
                 field.handleChange(cleaned);
               }}
               className="h-14 text-2xl font-bold"
@@ -350,7 +353,7 @@ export function TransactionForm({
                   setUserChangedCategory(true);
                   field.handleChange(id);
                 }}
-                onAddNew={() => setNewCategorySheetVisible(true)}
+                onAddNew={adders.openCategory}
                 addLabel="New category"
               />
             </View>
@@ -359,122 +362,11 @@ export function TransactionForm({
       )}
 
       {isInvestment && (
-        <>
-          <form.Field
-            name="holdingId"
-            validators={{
-              onSubmit: ({ value }) =>
-                value ? undefined : "Holding is required",
-            }}
-          >
-            {(field) => (
-              <View className="mb-5">
-                <FormLabel>Holding</FormLabel>
-                <ChipPicker
-                  items={openHoldings.map((h) => ({ id: h.id, name: h.name }))}
-                  selectedId={field.state.value}
-                  onSelect={(id) => field.handleChange(id)}
-                  onAddNew={() => setNewHoldingSheetVisible(true)}
-                  addLabel="New holding"
-                />
-                <FieldError errors={field.state.meta.errors as string[]} />
-              </View>
-            )}
-          </form.Field>
-
-          <form.Field name="investmentKind">
-            {(field) => {
-              const kinds: { key: InvestmentKindType; label: string }[] = [
-                { key: INVESTMENT_KIND.BUY, label: "Buy" },
-                { key: INVESTMENT_KIND.SELL, label: "Sell" },
-                { key: INVESTMENT_KIND.DIVIDEND, label: "Dividend" },
-                { key: INVESTMENT_KIND.INTEREST, label: "Interest" },
-              ];
-              return (
-                <View className="mb-5">
-                  <FormLabel>Kind</FormLabel>
-                  <View className="flex-row gap-2">
-                    {kinds.map((k) => {
-                      const selected = field.state.value === k.key;
-                      return (
-                        <Pressable
-                          key={k.key}
-                          onPress={() => field.handleChange(k.key)}
-                          className={cn(
-                            "flex-1 items-center rounded-xl py-2.5",
-                            selected ? "bg-primary" : "bg-card",
-                          )}
-                        >
-                          <Text
-                            className={cn(
-                              "text-sm font-medium",
-                              selected
-                                ? "text-primary-foreground"
-                                : "text-muted-foreground",
-                            )}
-                          >
-                            {k.label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-              );
-            }}
-          </form.Field>
-
-          <form.Subscribe
-            selector={(state) => ({
-              kind: state.values.investmentKind,
-              holdingId: state.values.holdingId,
-            })}
-          >
-            {({ kind, holdingId }) => {
-              const selectedHolding = openHoldings.find(
-                (h) => h.id === holdingId,
-              );
-              const unitless = selectedHolding
-                ? isUnitlessInstrument(selectedHolding.instrument_type)
-                : false;
-              const requiresUnits =
-                !unitless &&
-                (kind === INVESTMENT_KIND.BUY || kind === INVESTMENT_KIND.SELL);
-              if (!requiresUnits) return null;
-              return (
-                <form.Field
-                  name="units"
-                  validators={{
-                    onSubmit: ({ value }) => {
-                      const n = Number(value);
-                      if (!value || !Number.isFinite(n) || n <= 0)
-                        return "Units must be greater than 0";
-                      return undefined;
-                    },
-                  }}
-                >
-                  {(field) => (
-                    <View className="mb-5">
-                      <FormLabel>Units</FormLabel>
-                      <Input
-                        placeholder="0"
-                        keyboardType="decimal-pad"
-                        value={field.state.value}
-                        onChangeText={(v) =>
-                          field.handleChange(v.replace(/[^0-9.]/g, ""))
-                        }
-                        placeholderTextColor={COLORS.MUTED}
-                      />
-                      <FieldError
-                        errors={field.state.meta.errors as string[]}
-                      />
-                    </View>
-                  )}
-                </form.Field>
-              );
-            }}
-          </form.Subscribe>
-        </>
+        <InvestmentFields
+          form={form}
+          openHoldings={openHoldings}
+          onAddNewHolding={adders.openHolding}
+        />
       )}
 
       {activeType === TRANSACTION_TYPE.INCOME && (
@@ -544,7 +436,7 @@ export function TransactionForm({
                 onSelect={(id) => field.handleChange(id)}
                 onAddNew={() => {
                   setSourceTarget("sourceId");
-                  setNewSourceSheetVisible(true);
+                  adders.openSource();
                 }}
                 addLabel="New source"
               />
@@ -575,7 +467,7 @@ export function TransactionForm({
                 onSelect={(id) => field.handleChange(id)}
                 onAddNew={() => {
                   setSourceTarget("destinationSourceId");
-                  setNewSourceSheetVisible(true);
+                  adders.openSource();
                 }}
                 addLabel="New source"
               />
@@ -765,54 +657,7 @@ export function TransactionForm({
         }}
       />
 
-      <InlineAddSheet
-        visible={newCategorySheetVisible}
-        onClose={() => setNewCategorySheetVisible(false)}
-        title={`New ${categoryType === "income" ? "Income" : "Expense"} Category`}
-        placeholder="Category name"
-        submitLabel="Add Category"
-        mutateAsync={(name) =>
-          addCategoryMutation.mutateAsync({ name, type: categoryType })
-        }
-        onAdded={(id) => {
-          setUserChangedCategory(true);
-          form.setFieldValue("categoryId", id);
-        }}
-        addedToast="Category added"
-        existingToast="Selected existing category"
-        errorTitle="Failed to add category"
-      />
-
-      <InlineAddSheet
-        visible={newSourceSheetVisible}
-        onClose={() => setNewSourceSheetVisible(false)}
-        title="New Source"
-        placeholder="e.g. HDFC Credit, Paytm, UPI"
-        submitLabel="Add Source"
-        mutateAsync={(name) => addSourceMutation.mutateAsync(name)}
-        onAdded={(id) => form.setFieldValue(sourceTarget, id)}
-        addedToast="Source added"
-        existingToast="Selected existing source"
-        errorTitle="Failed to add source"
-      />
-
-      <InlineAddSheet
-        visible={newHoldingSheetVisible}
-        onClose={() => setNewHoldingSheetVisible(false)}
-        title="New Holding"
-        placeholder="e.g. Nippon Small Cap, NIFTYBEES"
-        submitLabel="Add Holding"
-        mutateAsync={(name) =>
-          addHoldingMutation.mutateAsync({
-            name,
-            instrument_type: INSTRUMENT_TYPE.MUTUAL_FUND,
-          })
-        }
-        onAdded={(id) => form.setFieldValue("holdingId", id)}
-        addedToast="Holding added"
-        existingToast="Selected existing holding"
-        errorTitle="Failed to add holding"
-      />
+      {adders.sheets}
 
       <form.Subscribe
         selector={(state) => ({

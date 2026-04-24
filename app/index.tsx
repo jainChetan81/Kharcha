@@ -398,7 +398,7 @@ export default function HomeScreen() {
             >
               <View>
                 <Text className="text-xs text-muted-foreground">Spent</Text>
-                <Text className="mt-0.5 text-base font-bold text-foreground">
+                <Text className="mt-0.5 text-base font-bold text-negative">
                   {fmt(expenses)}
                 </Text>
               </View>

@@ -168,11 +168,43 @@ export const TOAST_TYPE = {
   UNDO: "undo",
 } as const;
 
+export const TOAST_COPY = {
+  ALREADY_EXISTS: "Already exists — kept existing",
+} as const;
+
+export const INLINE_ADD_COPY = {
+  CATEGORY: {
+    titleExpense: "New Expense Category",
+    titleIncome: "New Income Category",
+    placeholder: "Category name",
+    submitLabel: "Add Category",
+    addedToast: "Category added",
+    existingToast: "Selected existing category",
+    errorTitle: "Failed to add category",
+  },
+  SOURCE: {
+    title: "New Source",
+    placeholder: "e.g. HDFC Credit, Paytm, UPI",
+    submitLabel: "Add Source",
+    addedToast: "Source added",
+    existingToast: "Selected existing source",
+    errorTitle: "Failed to add source",
+  },
+  HOLDING: {
+    title: "New Holding",
+    placeholder: "e.g. Nippon Small Cap, NIFTYBEES",
+    submitLabel: "Add Holding",
+    addedToast: "Holding added",
+    existingToast: "Selected existing holding",
+    errorTitle: "Failed to add holding",
+  },
+} as const;
+
 export const COLORS = {
   PRIMARY: "#7c3aed",
   WARNING: "#f59e0b",
-  DANGER: "#ef4444",
-  POSITIVE: "#22c55e",
+  DANGER: "#cf4e4e",
+  POSITIVE: "#2ea262",
   BAR_BG: "#2a2a2a",
   BACKGROUND: "#0a0a0a",
   CARD: "#141414",

@@ -7,10 +7,15 @@ import {
   SUBSCRIPTION_NOTE,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
+import {
+  ERROR_TYPE,
+  FIREBASE_EVENTS,
+  logEvent,
+  logFirebaseError,
+} from "@/lib/firebase";
 import { subscriptionInputSchema } from "@/lib/validation";
 import expo, { db } from "./connection";
-import { recomputeHoldingFromTransactions } from "./holdings";
+import { safeRecomputeHolding } from "./holdings";
 import { categories, sources, subscriptions, transactions } from "./schema";
 import type { SubscriptionRow } from "./types";
 
@@ -190,6 +195,22 @@ export async function processSubscriptions(): Promise<string[]> {
       if (existing) continue;
 
       const billingDate = `${yearMonth}-${String(effectiveDay).padStart(2, "0")}`;
+      // A SIP whose holding was detached (holding row missing, or a bug
+      // cleared the FK) would otherwise fall through to an expense post with
+      // category_id=null — a mystery ₹X row the user can't explain. Skip and
+      // forward to crashlytics so the drift is visible instead of silently
+      // generating ghost expenses.
+      if (sub.type === TRANSACTION_TYPE.INVESTMENT && sub.holding_id == null) {
+        logFirebaseError(new Error("SIP has no holding_id, skipping"), {
+          error_type: ERROR_TYPE.DB,
+          operation: "processSubscriptions",
+          subscription_id: String(sub.id),
+        });
+        logEvent(FIREBASE_EVENTS.SIP_SKIPPED_NO_HOLDING, {
+          subscription_id: sub.id,
+        });
+        continue;
+      }
       const isInvestmentSub =
         sub.type === TRANSACTION_TYPE.INVESTMENT && sub.holding_id != null;
 
@@ -204,6 +225,10 @@ export async function processSubscriptions(): Promise<string[]> {
         source_id: sub.source_id,
         subscription_id: sub.id,
         holding_id: isInvestmentSub ? sub.holding_id : null,
+        // investment_kind is effectively always BUY for auto-posted SIPs.
+        // The subscription form doesn't collect a kind because dividend /
+        // sell / interest are one-off events the user records manually; the
+        // recurring auto-post assumes a monthly buy contribution.
         investment_kind: isInvestmentSub
           ? (sub.investment_kind ?? INVESTMENT_KIND.BUY)
           : null,
@@ -216,12 +241,20 @@ export async function processSubscriptions(): Promise<string[]> {
         note: SUBSCRIPTION_NOTE,
       });
 
-      // Keep the holding totals consistent with the new auto-posted buy.
-      // Safe to call inside the outer expo.withTransactionAsync: all statements
-      // share the same connection, so the inserted row is visible to the
-      // recompute's SELECT and the whole batch commits atomically.
+      // Recompute via the safe wrapper: if the reducer throws on a bad row,
+      // the other SIPs in this batch still auto-post and the whole
+      // withTransactionAsync isn't rolled back just because holding math
+      // choked.
       if (isInvestmentSub && sub.holding_id != null) {
-        await recomputeHoldingFromTransactions(sub.holding_id);
+        await safeRecomputeHolding(sub.holding_id, {
+          operation: "processSubscriptions",
+        });
+        logEvent(FIREBASE_EVENTS.SIP_POSTED, {
+          subscription_id: sub.id,
+          holding_id: sub.holding_id,
+          kind: sub.investment_kind ?? INVESTMENT_KIND.BUY,
+          amount: sub.amount,
+        });
       }
 
       // Fires for each auto-posted row so expense-sub vs SIP adoption is

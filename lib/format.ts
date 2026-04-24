@@ -51,6 +51,19 @@ export function parseDate(dateStr: string): Date {
   return new Date(dateStr.replace(" ", "T"));
 }
 
+// Strips everything except digits and a single decimal point so amount / units
+// inputs can't accumulate garbage like "1.2.3" — only the first dot is kept,
+// any later ones drop out while typing.
+export function sanitizeDecimalInput(v: string): string {
+  const cleaned = v.replace(/[^0-9.]/g, "");
+  const firstDot = cleaned.indexOf(".");
+  if (firstDot === -1) return cleaned;
+  return (
+    cleaned.slice(0, firstDot + 1) +
+    cleaned.slice(firstDot + 1).replace(/\./g, "")
+  );
+}
+
 // Title-cases each word but preserves all-uppercase tokens (acronyms like UPI, EMI).
 // "credit card" → "Credit Card"; "UPI" → "UPI"; "other" → "Other".
 export function smartCapitalize(s: string): string {

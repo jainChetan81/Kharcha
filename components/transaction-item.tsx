@@ -206,7 +206,7 @@ export const TransactionItem = memo(function TransactionItem({
               ? "text-muted-foreground"
               : isIncome || investmentInflow
                 ? "text-positive"
-                : "text-muted-foreground",
+                : "text-negative",
           )}
         >
           {isTransfer ? "" : isIncome || investmentInflow ? "+" : "-"}

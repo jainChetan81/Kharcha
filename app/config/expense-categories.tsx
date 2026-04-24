@@ -15,7 +15,11 @@ import {
   useReorderCategories,
 } from "@/hooks/use-categories";
 import { useConfigItemActions } from "@/hooks/use-config-item-actions";
-import { SCROLL_BOTTOM_PADDING, TRANSACTION_TYPE } from "@/lib/constants";
+import {
+  SCROLL_BOTTOM_PADDING,
+  TOAST_COPY,
+  TRANSACTION_TYPE,
+} from "@/lib/constants";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 const AddCategorySheet = lazy(() => import("@/components/add-category-sheet"));
@@ -82,7 +86,7 @@ export default function ExpenseCategoriesScreen() {
                 });
                 setShowAdd(false);
                 showSuccessToast(
-                  isNew ? "Category added" : "Already exists — kept existing",
+                  isNew ? "Category added" : TOAST_COPY.ALREADY_EXISTS,
                 );
               } catch (err) {
                 if (err instanceof Error) {

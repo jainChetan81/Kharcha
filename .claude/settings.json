@@ -1,28 +1,37 @@
 {
-	"$schema": "https://json.schemastore.org/claude-code-settings.json",
-	"hooks": {
-		"Stop": [
-			{
-				"matcher": "",
-				"hooks": [
-					{
-						"type": "command",
-						"command": "~/.claude/stop-hook-git-check.sh"
-					}
-				]
-			}
-		]
-	},
-	"permissions": {
-		"allow": [
-			"Bash(pnpm *)",
-			"Bash(git status:*)",
-			"Bash(git diff:*)",
-			"Bash(git add:*)",
-			"Bash(git commit:*)",
-			"Bash(git log:*)",
-			"Bash(git push:*)"
-		],
-		"deny": ["Bash(rm -rf:*)"]
-	}
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm *)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git add:*)",
+      "Bash(git log:*)",
+      "Bash(git -C /Users/hackerearth467/Desktop/code/Kharcha diff -- app/index.tsx components/spending-panel.tsx components/projected-spending-card.tsx components/top-category-card.tsx components/transaction-item.tsx components/ui/alert-banner.tsx components/ui/gain-label.tsx lib/constants.ts)",
+      "Bash(git -C /Users/hackerearth467/Desktop/code/Kharcha diff -- components/history-insights-strip.tsx)",
+      "Bash(git -C /Users/hackerearth467/Desktop/code/Kharcha diff -U0)",
+      "Bash(grep -E \"^\\(diff --git|[+-].*\\(text-|bg-|border-|CATEGORY_PALETTE|COLORS|#[0-9a-fA-F]{3,8}\\)\\)\")",
+      "Bash(git -C /Users/hackerearth467/Desktop/code/Kharcha status -s)",
+      "Bash(git -C /Users/hackerearth467/Desktop/code/Kharcha diff --cached --stat)",
+      "Bash(git -C /Users/hackerearth467/Desktop/code/Kharcha diff HEAD -U0 -- '*.tsx' '*.ts')",
+      "Bash(grep -E \"^\\(diff --git|[+-].*text-\\(negative|positive|foreground|muted|primary|warning|destructive\\)|[+-].*bg-\\(negative|positive|primary|card|background|destructive\\)|[+-].*border-\\(negative|positive|primary|border\\)|[+-].*COLORS\\\\.|[+-].*CATEGORY_PALETTE|[+-].*#[0-9a-fA-F]{6,8}\\)\")",
+      "Bash(awk '/logFirebaseError/,/\\\\\\);/' /Users/hackerearth467/Desktop/code/Kharcha/lib/db/index.ts)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/stop-hook-git-check.sh"
+          }
+        ]
+      }
+    ]
+  }
 }

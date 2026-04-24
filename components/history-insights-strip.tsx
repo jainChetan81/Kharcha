@@ -76,7 +76,7 @@ export function HistoryInsightsStrip({
           {insights.spent > 0 && (
             <>
               {"  ·  "}
-              <Text className="text-xs font-semibold text-foreground">
+              <Text className="text-xs font-semibold text-negative">
                 {fmt(insights.spent)} spent
               </Text>
             </>
@@ -117,7 +117,7 @@ export function HistoryInsightsStrip({
               <Text
                 className={cn(
                   "mt-0.5 text-2xl font-bold",
-                  netPositive ? "text-positive" : "text-foreground",
+                  netPositive ? "text-positive" : "text-negative",
                 )}
               >
                 {netPositive ? "+" : "−"}

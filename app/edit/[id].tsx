@@ -22,7 +22,7 @@ import {
   SOURCE_TYPE,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { recomputeHoldingFromTransactions } from "@/lib/db";
+import { safeRecomputeHolding } from "@/lib/db";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -101,10 +101,16 @@ export default function EditTransactionScreen() {
       });
       const originalHoldingId = transaction?.holding_id ?? null;
       if (originalHoldingId && originalHoldingId !== value.holdingId) {
-        await recomputeHoldingFromTransactions(originalHoldingId);
+        await safeRecomputeHolding(originalHoldingId, {
+          operation: "editTransaction",
+          source: "previous_holding",
+        });
       }
       if (isInvestment && value.holdingId) {
-        await recomputeHoldingFromTransactions(value.holdingId);
+        await safeRecomputeHolding(value.holdingId, {
+          operation: "editTransaction",
+          source: "new_holding",
+        });
       }
       showSuccessToast("Transaction updated");
       router.back();

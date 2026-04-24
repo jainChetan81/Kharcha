@@ -111,11 +111,18 @@ export default function HistoryScreen() {
     }
   }, [appliedChips.length]);
 
-  const categoryFilterType =
-    draftType === TRANSACTION_TYPE.TRANSFER ? TRANSACTION_TYPE.ALL : draftType;
+  // Transfers and investments don't belong to expense/income category buckets,
+  // so fall back to "all" for the picker query and hide the filter row.
+  const categoryFilterType: "all" | "expense" | "income" =
+    draftType === TRANSACTION_TYPE.EXPENSE ||
+    draftType === TRANSACTION_TYPE.INCOME
+      ? draftType
+      : TRANSACTION_TYPE.ALL;
   const { data: categories = [] } = useCategoriesByType(
     categoryFilterType,
-    showFilters && draftType !== TRANSACTION_TYPE.TRANSFER,
+    showFilters &&
+      draftType !== TRANSACTION_TYPE.TRANSFER &&
+      draftType !== TRANSACTION_TYPE.INVESTMENT,
   );
 
   const { data: sources = [] } = useAllSources(

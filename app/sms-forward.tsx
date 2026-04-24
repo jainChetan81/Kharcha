@@ -20,6 +20,7 @@ import {
 import {
   DATE_TIME_FORMAT,
   DEFAULT_SOURCE_NAME,
+  INVESTMENT_KIND,
   PARSED_BY,
   REIMBURSEMENT_STATUS,
   SCREENS,
@@ -74,6 +75,9 @@ export default function SmsForwardScreen() {
     categoryId: null,
     sourceId: parsed?.type === "income" ? null : upiSourceId,
     destinationSourceId: null,
+    holdingId: null,
+    investmentKind: INVESTMENT_KIND.BUY,
+    units: "",
     date: parsed
       ? `${parsed.date} 12:00`
       : format(new Date(), DATE_TIME_FORMAT),

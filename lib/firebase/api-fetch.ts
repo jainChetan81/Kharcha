@@ -1,4 +1,4 @@
-import { logFirebaseError } from "@/lib/firebase";
+import { ERROR_TYPE, logFirebaseError } from "@/lib/firebase";
 
 const EXPECTED_STATUSES = new Set([401, 404]);
 
@@ -9,7 +9,7 @@ export async function apiFetch(
   const res = await fetch(url, options);
   if (!res.ok && !EXPECTED_STATUSES.has(res.status)) {
     logFirebaseError(new Error(`${res.status} ${url}`), {
-      error_type: "API_ERROR",
+      error_type: ERROR_TYPE.API,
       operation: "api_fetch",
       status: res.status.toString(),
     });

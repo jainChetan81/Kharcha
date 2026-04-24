@@ -33,7 +33,7 @@ import {
   REIMBURSEMENT_STATUS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { recomputeHoldingFromTransactions } from "@/lib/db";
+import { safeRecomputeHolding } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import type { Source } from "@/lib/db/types";
 import type { GeminiParsedTransaction } from "@/lib/gemini/client";
@@ -268,10 +268,13 @@ export function useAddTransaction(): UseAddTransactionReturn {
     });
 
     if (isInvestment && value.holdingId) {
-      await recomputeHoldingFromTransactions(value.holdingId);
       // Portfolio/holdings queries are invalidated by useInvalidateTransactions
-      // fired from useInsertTransaction.onSuccess, so no explicit invalidation
-      // is needed here.
+      // from useInsertTransaction.onSuccess. safeRecomputeHolding swallows
+      // failures and forwards to crashlytics so the toast + navigation below
+      // still fire even if the reducer chokes on a bad row.
+      await safeRecomputeHolding(value.holdingId, {
+        operation: "commitTransaction",
+      });
     }
 
     if (isTransfer) {

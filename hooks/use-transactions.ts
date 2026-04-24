@@ -238,7 +238,7 @@ export function useFilteredInsights(filters: InsightsFilters) {
 }
 
 export function useTransactionsPaginated(filters: {
-  type?: "income" | "expense" | "transfer" | "all";
+  type?: "income" | "expense" | "transfer" | "investment" | "all";
   categoryId?: number | null;
   sourceId?: number | null;
   sourceType?: "manual" | "synced" | "recurring" | "transfer" | "all";

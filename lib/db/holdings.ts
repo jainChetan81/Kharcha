@@ -4,7 +4,7 @@ import {
   isUnitlessInstrument,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { logFirebaseError } from "@/lib/firebase";
+import { ERROR_TYPE, logFirebaseError } from "@/lib/firebase";
 import { db } from "./connection";
 import { holdings, transactions } from "./schema";
 import type {
@@ -184,7 +184,7 @@ export async function recomputeHoldingFromTransactions(
     // that field — null coerces to NaN here but is expected.
     if (!Number.isFinite(rawAmt) || (!unitless && !Number.isFinite(rawU))) {
       logFirebaseError(new Error("Investment tx has non-finite amount/units"), {
-        error_type: "DB_ERROR",
+        error_type: ERROR_TYPE.DB,
         operation: "recomputeHoldingFromTransactions",
         holding_id: String(id),
         kind,
@@ -220,6 +220,29 @@ export async function recomputeHoldingFromTransactions(
     .update(holdings)
     .set({ units, avg_cost, invested })
     .where(eq(holdings.id, id));
+}
+
+/**
+ * Best-effort wrapper around recomputeHoldingFromTransactions: any failure is
+ * reported to crashlytics and swallowed so the caller's primary mutation
+ * (insert / edit / delete) still completes. Portfolio totals can drift on
+ * failure, but the user's transaction is never rolled back because the
+ * holding math choked.
+ */
+export async function safeRecomputeHolding(
+  id: number,
+  context: { operation: string; source?: string },
+): Promise<void> {
+  try {
+    await recomputeHoldingFromTransactions(id);
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: ERROR_TYPE.DB,
+      operation: context.operation,
+      holding_id: String(id),
+      ...(context.source ? { source: context.source } : {}),
+    });
+  }
 }
 
 export async function getPortfolioSummary(): Promise<PortfolioSummary> {

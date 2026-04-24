@@ -1,6 +1,5 @@
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -12,20 +11,18 @@ import { Button } from "@/components/ui/button";
 import { ChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
 import { FormLabel } from "@/components/ui/form-label";
-import { InlineAddSheet } from "@/components/ui/inline-add-sheet";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
-import { useAddCategory } from "@/hooks/use-categories";
-import { useAddHolding, useAllHoldings } from "@/hooks/use-holdings";
-import { useAddSource } from "@/hooks/use-sources";
+import { useAllHoldings } from "@/hooks/use-holdings";
+import { useInlineAdders } from "@/hooks/use-inline-adders";
 import {
   COLORS,
-  INSTRUMENT_TYPE,
   isUnitlessInstrument,
   QUERY_KEYS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { getAllSources, getCategoriesByType } from "@/lib/db";
+import { sanitizeDecimalInput } from "@/lib/format";
 import { showErrorToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
@@ -66,12 +63,6 @@ export function SubscriptionForm({
   onSubmit: (value: SubscriptionFormSubmitValue) => Promise<void>;
   defaultValues?: SubscriptionFormDefaults;
 }) {
-  const [newCategorySheetVisible, setNewCategorySheetVisible] = useState(false);
-  const [newSourceSheetVisible, setNewSourceSheetVisible] = useState(false);
-  const [newHoldingSheetVisible, setNewHoldingSheetVisible] = useState(false);
-  const addCategoryMutation = useAddCategory();
-  const addSourceMutation = useAddSource();
-  const addHoldingMutation = useAddHolding();
   const { data: allHoldings = [] } = useAllHoldings();
   const openHoldings = allHoldings.filter((h) => h.is_closed === 0);
 
@@ -92,12 +83,14 @@ export function SubscriptionForm({
       billingDay: defaultValues?.billingDay ?? "",
       categoryId: (defaultValues?.categoryId ?? null) as number | null,
       sourceId: (defaultValues?.sourceId ?? null) as number | null,
-      type: (defaultValues?.type ?? "expense") as "expense" | "investment",
+      type: (defaultValues?.type ?? TRANSACTION_TYPE.EXPENSE) as
+        | "expense"
+        | "investment",
       holdingId: (defaultValues?.holdingId ?? null) as number | null,
       defaultUnits: defaultValues?.defaultUnits ?? "",
     },
     onSubmit: async ({ value }) => {
-      const isInvestment = value.type === "investment";
+      const isInvestment = value.type === TRANSACTION_TYPE.INVESTMENT;
       await onSubmit({
         name: value.name,
         amount: Number(value.amount),
@@ -112,6 +105,13 @@ export function SubscriptionForm({
             : null,
       });
     },
+  });
+
+  const adders = useInlineAdders({
+    categoryType: "expense",
+    onCategoryAdded: (id) => form.setFieldValue("categoryId", id),
+    onSourceAdded: (id) => form.setFieldValue("sourceId", id),
+    onHoldingAdded: (id) => form.setFieldValue("holdingId", id),
   });
 
   return (
@@ -155,7 +155,7 @@ export function SubscriptionForm({
               keyboardType="decimal-pad"
               value={field.state.value}
               onChangeText={(v) => {
-                const cleaned = v.replace(/[^0-9.]/g, "");
+                const cleaned = sanitizeDecimalInput(v);
                 field.handleChange(cleaned);
               }}
               className="h-14 text-2xl font-bold"
@@ -217,7 +217,7 @@ export function SubscriptionForm({
 
       <form.Field name="type">
         {(field) => {
-          const isSip = field.state.value === "investment";
+          const isSip = field.state.value === TRANSACTION_TYPE.INVESTMENT;
           return (
             <View className="mb-5 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
               <View className="flex-1 pr-3">
@@ -232,7 +232,9 @@ export function SubscriptionForm({
               <Switch
                 value={isSip}
                 onValueChange={(v) => {
-                  field.handleChange(v ? "investment" : "expense");
+                  field.handleChange(
+                    v ? TRANSACTION_TYPE.INVESTMENT : TRANSACTION_TYPE.EXPENSE,
+                  );
                   if (v) {
                     form.setFieldValue("categoryId", null);
                   } else {
@@ -250,13 +252,16 @@ export function SubscriptionForm({
 
       <form.Subscribe selector={(state) => state.values.type}>
         {(type) =>
-          type === "investment" ? (
+          type === TRANSACTION_TYPE.INVESTMENT ? (
             <>
               <form.Field
                 name="holdingId"
                 validators={{
                   onSubmit: ({ value, fieldApi }) => {
-                    if (fieldApi.form.getFieldValue("type") !== "investment")
+                    if (
+                      fieldApi.form.getFieldValue("type") !==
+                      TRANSACTION_TYPE.INVESTMENT
+                    )
                       return undefined;
                     return value ? undefined : "Holding is required";
                   },
@@ -272,7 +277,7 @@ export function SubscriptionForm({
                       }))}
                       selectedId={field.state.value}
                       onSelect={(id) => field.handleChange(id)}
-                      onAddNew={() => setNewHoldingSheetVisible(true)}
+                      onAddNew={adders.openHolding}
                       addLabel="New holding"
                     />
                     <FieldError errors={field.state.meta.errors as string[]} />
@@ -305,7 +310,7 @@ export function SubscriptionForm({
                             keyboardType="decimal-pad"
                             value={field.state.value}
                             onChangeText={(v) =>
-                              field.handleChange(v.replace(/[^0-9.]/g, ""))
+                              field.handleChange(sanitizeDecimalInput(v))
                             }
                             placeholderTextColor={COLORS.MUTED}
                           />
@@ -326,7 +331,7 @@ export function SubscriptionForm({
                     selectedId={field.state.value}
                     onSelect={(id) => field.handleChange(id)}
                     allLabel="None"
-                    onAddNew={() => setNewCategorySheetVisible(true)}
+                    onAddNew={adders.openCategory}
                     addLabel="New category"
                   />
                 </View>
@@ -344,61 +349,14 @@ export function SubscriptionForm({
               items={sources}
               selectedId={field.state.value}
               onSelect={(id) => field.handleChange(id)}
-              onAddNew={() => setNewSourceSheetVisible(true)}
+              onAddNew={adders.openSource}
               addLabel="New source"
             />
           </View>
         )}
       </form.Field>
 
-      <InlineAddSheet
-        visible={newCategorySheetVisible}
-        onClose={() => setNewCategorySheetVisible(false)}
-        title="New Expense Category"
-        placeholder="Category name"
-        submitLabel="Add Category"
-        mutateAsync={(name) =>
-          addCategoryMutation.mutateAsync({
-            name,
-            type: TRANSACTION_TYPE.EXPENSE,
-          })
-        }
-        onAdded={(id) => form.setFieldValue("categoryId", id)}
-        addedToast="Category added"
-        existingToast="Selected existing category"
-        errorTitle="Failed to add category"
-      />
-
-      <InlineAddSheet
-        visible={newSourceSheetVisible}
-        onClose={() => setNewSourceSheetVisible(false)}
-        title="New Source"
-        placeholder="e.g. HDFC Credit, Paytm, UPI"
-        submitLabel="Add Source"
-        mutateAsync={(name) => addSourceMutation.mutateAsync(name)}
-        onAdded={(id) => form.setFieldValue("sourceId", id)}
-        addedToast="Source added"
-        existingToast="Selected existing source"
-        errorTitle="Failed to add source"
-      />
-
-      <InlineAddSheet
-        visible={newHoldingSheetVisible}
-        onClose={() => setNewHoldingSheetVisible(false)}
-        title="New Holding"
-        placeholder="e.g. Nippon Small Cap, PPF SBI"
-        submitLabel="Add Holding"
-        mutateAsync={(name) =>
-          addHoldingMutation.mutateAsync({
-            name,
-            instrument_type: INSTRUMENT_TYPE.MUTUAL_FUND,
-          })
-        }
-        onAdded={(id) => form.setFieldValue("holdingId", id)}
-        addedToast="Holding added"
-        existingToast="Selected existing holding"
-        errorTitle="Failed to add holding"
-      />
+      {adders.sheets}
 
       <form.Subscribe
         selector={(state) => ({ isSubmitting: state.isSubmitting })}
