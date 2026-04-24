@@ -292,6 +292,7 @@ export const BUDGET_CRITICAL_THRESHOLD = 0.9;
 // Display limits
 export const TAG_DISPLAY_LIMIT = 3;
 export const TOP_BREAKDOWN_LIMIT = 5;
+export const RECENT_TRANSACTIONS_LIMIT = 5;
 export const MAX_BILLING_DAY = 31;
 export const GMAIL_FETCH_LIMIT = 50;
 export const MAX_EXPORT_TRANSACTIONS = 10_000;

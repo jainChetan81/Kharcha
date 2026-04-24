@@ -36,7 +36,7 @@ import { Text } from "@/components/ui/text";
 import { useConfig } from "@/hooks/use-config";
 import { useCurrency } from "@/hooks/use-currency";
 import { useGmailSyncActive } from "@/hooks/use-feature-flags";
-import { RECENT_LIMIT, useHomeData } from "@/hooks/use-home-data";
+import { useHomeData } from "@/hooks/use-home-data";
 import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useCategoryBreakdown } from "@/hooks/use-transactions";
 import {
@@ -45,6 +45,7 @@ import {
   editScreen,
   LABELS,
   MONTH_FORMAT,
+  RECENT_TRANSACTIONS_LIMIT,
   SCREENS,
   SHADOWS,
   TRANSACTION_TYPE,
@@ -390,7 +391,7 @@ export default function HomeScreen() {
               Recent activity
             </Text>
             {recentActivityLoading ? (
-              <TransactionSkeleton count={RECENT_LIMIT} />
+              <TransactionSkeleton count={RECENT_TRANSACTIONS_LIMIT} />
             ) : (
               listData.map((item) =>
                 item.type === "header" ? (

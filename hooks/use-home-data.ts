@@ -8,8 +8,7 @@ import {
   useReimbursementSummary,
   useTotalMonthlyBudget,
 } from "@/hooks/use-transactions";
-
-export const RECENT_LIMIT = 5;
+import { RECENT_TRANSACTIONS_LIMIT } from "@/lib/constants";
 
 /**
  * Composable data hook for the home screen.
@@ -35,8 +34,11 @@ export function useHomeData(
   month: number,
   isCurrentMonth: boolean,
 ) {
-  const recent = useRecentTransactions(RECENT_LIMIT);
-  const monthTx = useMonthTransactions(selectedMonth, RECENT_LIMIT);
+  const recent = useRecentTransactions(RECENT_TRANSACTIONS_LIMIT);
+  const monthTx = useMonthTransactions(
+    selectedMonth,
+    RECENT_TRANSACTIONS_LIMIT,
+  );
   const summary = useMonthlySummary(selectedMonth);
   const prevSummary = useMonthlySummary(prevMonth);
   const subsTotal = useSubscriptionsTotal();
