@@ -97,6 +97,7 @@
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
+		"babel-plugin-react-compiler": "^19.1.0",
 		"@biomejs/biome": "^2.4.9",
 		"@dev-plugins/react-query": "^0.4.0",
 		"@types/react": "~19.2.2",
