@@ -29,7 +29,6 @@ export const FIREBASE_EVENTS = {
   HOLDING_ADDED: "holding_added",
   HOLDING_CLOSED: "holding_closed",
   HOLDING_REOPENED: "holding_reopened",
-  HOLDING_DELETED: "holding_deleted",
   HOLDING_DELETED_CASCADE: "holding_deleted_cascade",
   CATEGORY_ADDED: "category_added",
   SOURCE_ADDED: "source_added",

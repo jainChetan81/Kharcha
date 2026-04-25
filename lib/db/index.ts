@@ -34,6 +34,7 @@ import { ERROR_TYPE, logFirebaseError, withTrace } from "@/lib/firebase";
 import { transactionInputSchema } from "@/lib/validation";
 import expo, { db, runMigrations } from "./connection";
 import { safeRecomputeHolding } from "./holdings";
+import { APP_ID_VALUE } from "./inspect";
 import {
   bankEmails,
   banks,
@@ -351,6 +352,9 @@ export async function initDB(): Promise<void> {
       await db
         .insert(config)
         .values([
+          // App marker — read by the import preview to reject backups from
+          // other SQLite-using apps before they overwrite the live DB.
+          { key: CONFIG_KEYS.APP_ID, value: APP_ID_VALUE },
           { key: CONFIG_KEYS.CURRENCY, value: "INR" },
           { key: CONFIG_KEYS.USER_NAME, value: "User" },
         ])
@@ -1947,17 +1951,13 @@ export {
 export {
   addHolding,
   closeHolding,
-  deleteHolding,
   deleteHoldingCascade,
   getAllHoldings,
   getHolding,
   getPortfolioSummary,
-  getPortfolioSummaryForMonth,
   getTransactionsForHolding,
   reopenHolding,
   safeRecomputeHolding,
-  updateHolding,
-  updateHoldingOrder,
 } from "./holdings";
 export {
   addSource,
@@ -1972,12 +1972,8 @@ export {
   getAllTags,
   getAllTimeTagBreakdown,
   getTagBreakdown,
-  getTagsForTransaction,
   getTagsForTransactions,
-  getTransactionIdsForTags,
   renameTag,
-  setTransactionTags,
-  updateTagOrder,
 } from "./tags";
 
 export async function getTodaySpend(): Promise<number> {

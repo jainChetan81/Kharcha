@@ -9,7 +9,11 @@ import {
 } from "@/lib/cloud-backup";
 import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
 import { initDB } from "@/lib/db";
-import { exportDatabase, importDatabase } from "@/lib/db/backup";
+import {
+  commitImport,
+  exportDatabase,
+  type PickedBackup,
+} from "@/lib/db/backup";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 
@@ -113,10 +117,20 @@ export function useExportDatabase() {
   });
 }
 
-export function useImportDatabase() {
+// Import is now driven by the preview sheet: caller picks via
+// `pickBackupFile`, inspects via `inspectBackupBytes`, shows the sheet,
+// and calls this mutation only when the user confirms. Keeps this hook's
+// scope limited to the destructive step + cache invalidation.
+export function useCommitImport() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: importDatabase,
+    mutationFn: async (picked: PickedBackup) => {
+      commitImport(picked);
+      // Bring the imported DB up to the current schema before any query
+      // runs against it — backups from older app versions would otherwise
+      // crash queries that expect new columns.
+      await initDB();
+    },
     onSuccess: () => {
       logEvent(FIREBASE_EVENTS.IMPORT_TRIGGERED);
       queryClient.invalidateQueries();

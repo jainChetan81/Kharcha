@@ -377,9 +377,3 @@ export async function getUnusedSubscriptions(): Promise<
 
   return rows as SubscriptionAuditRow[];
 }
-
-export async function getActiveSubscriptions(): Promise<SubscriptionRow[]> {
-  return (await subscriptionSelect().where(
-    eq(subscriptions.is_active, 1),
-  )) as SubscriptionRow[];
-}

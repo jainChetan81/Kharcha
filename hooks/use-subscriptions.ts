@@ -3,7 +3,6 @@ import { QUERY_KEYS } from "@/lib/constants";
 import {
   addSubscription,
   deleteSubscription,
-  getActiveSubscriptions,
   getActiveSubscriptionsTotal,
   getSubscriptionById,
   getSubscriptions,
@@ -118,12 +117,5 @@ export function useUnusedSubscriptions() {
   return useQuery({
     queryKey: [QUERY_KEYS.SUBSCRIPTIONS, "unused"],
     queryFn: getUnusedSubscriptions,
-  });
-}
-
-export function useActiveSubscriptions() {
-  return useQuery({
-    queryKey: [QUERY_KEYS.SUBSCRIPTIONS, "active"],
-    queryFn: getActiveSubscriptions,
   });
 }

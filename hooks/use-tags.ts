@@ -7,7 +7,6 @@ import {
   getAllTimeTagBreakdown,
   getTagBreakdown,
   renameTag,
-  updateTagOrder,
 } from "@/lib/db";
 
 export function useAllTags() {
@@ -69,15 +68,6 @@ export function useDeleteTag() {
   const invalidate = useInvalidateTags();
   return useMutation({
     mutationFn: (id: number) => deleteTag(id),
-    onSuccess: () => invalidate(),
-  });
-}
-
-export function useReorderTags() {
-  const invalidate = useInvalidateTags();
-  return useMutation({
-    mutationFn: (items: { id: number; sort_order: number }[]) =>
-      updateTagOrder(items),
     onSuccess: () => invalidate(),
   });
 }

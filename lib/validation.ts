@@ -109,10 +109,6 @@ export const subscriptionInputSchema = z
     path: ["holdingId"],
   });
 
-// ── Budget ──────────────────────────────────────────────────────────
-
-export const budgetAmountSchema = amountStringSchema;
-
 // ── Config ──────────────────────────────────────────────────────────
 
 export const configSchema = z.object({

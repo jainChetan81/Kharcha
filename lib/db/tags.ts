@@ -36,30 +36,6 @@ export async function deleteTag(id: number) {
   return db.delete(tags).where(eq(tags.id, id));
 }
 
-export async function updateTagOrder(
-  items: { id: number; sort_order: number }[],
-): Promise<void> {
-  await db.transaction(async (tx) => {
-    for (const item of items) {
-      await tx
-        .update(tags)
-        .set({ sort_order: item.sort_order })
-        .where(eq(tags.id, item.id));
-    }
-  });
-}
-
-export async function getTagsForTransaction(
-  transactionId: number,
-): Promise<TagLite[]> {
-  return db
-    .select({ id: tags.id, name: tags.name })
-    .from(transactionTags)
-    .innerJoin(tags, eq(transactionTags.tag_id, tags.id))
-    .where(eq(transactionTags.transaction_id, transactionId))
-    .orderBy(asc(tags.sort_order), asc(tags.name));
-}
-
 export async function getTagsForTransactions(
   transactionIds: number[],
 ): Promise<Map<number, TagLite[]>> {
@@ -83,36 +59,6 @@ export async function getTagsForTransactions(
     else map.set(row.transaction_id, [entry]);
   }
   return map;
-}
-
-export async function setTransactionTags(
-  transactionId: number,
-  tagIds: number[],
-): Promise<void> {
-  await db.transaction(async (tx) => {
-    await tx
-      .delete(transactionTags)
-      .where(eq(transactionTags.transaction_id, transactionId));
-    if (tagIds.length === 0) return;
-    const unique = Array.from(new Set(tagIds));
-    await tx.insert(transactionTags).values(
-      unique.map((tag_id) => ({
-        transaction_id: transactionId,
-        tag_id,
-      })),
-    );
-  });
-}
-
-export async function getTransactionIdsForTags(
-  tagIds: number[],
-): Promise<number[]> {
-  if (tagIds.length === 0) return [];
-  const rows = await db
-    .selectDistinct({ transaction_id: transactionTags.transaction_id })
-    .from(transactionTags)
-    .where(inArray(transactionTags.tag_id, tagIds));
-  return rows.map((r) => r.transaction_id);
 }
 
 export async function getTagBreakdown(
