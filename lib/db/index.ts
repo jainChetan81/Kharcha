@@ -1330,6 +1330,14 @@ export async function insertTransaction(params: {
         })),
       );
     }
+    if (
+      validated.type === TRANSACTION_TYPE.INVESTMENT &&
+      validated.holdingId
+    ) {
+      await safeRecomputeHolding(validated.holdingId, {
+        operation: "insertTransaction",
+      });
+    }
     return result;
   } catch (error) {
     logFirebaseError(error, {

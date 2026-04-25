@@ -194,9 +194,10 @@ export async function recomputeHoldingFromTransactions(
       units += u;
       invested += amt;
     } else if (kind === INVESTMENT_KIND.SELL) {
+      const sellUnits = Math.min(u, units);
       const avgCost = units > 0 ? invested / units : 0;
-      units -= u;
-      invested -= u * avgCost;
+      units -= sellUnits;
+      invested -= sellUnits * avgCost;
       if (units <= 0) {
         units = 0;
         invested = 0;
