@@ -1334,6 +1334,11 @@ export async function insertTransaction(params: {
         })),
       );
     }
+    if (validated.type === TRANSACTION_TYPE.INVESTMENT && validated.holdingId) {
+      await safeRecomputeHolding(validated.holdingId, {
+        operation: "insertTransaction",
+      });
+    }
     return result;
   } catch (error) {
     logFirebaseError(error, {
@@ -1416,13 +1421,16 @@ export async function updateTransaction(
     } else if (params.reimbursableAmount !== undefined) {
       updates.reimbursable_amount = params.reimbursableAmount;
     }
+    const [existingRow] = await db
+      .select({
+        source_type: transactions.source_type,
+        holding_id: transactions.holding_id,
+      })
+      .from(transactions)
+      .where(eq(transactions.id, id))
+      .limit(1);
     if (params.sourceType !== undefined) {
-      const existing = await db
-        .select({ source_type: transactions.source_type })
-        .from(transactions)
-        .where(eq(transactions.id, id))
-        .limit(1);
-      const current = existing[0]?.source_type ?? "manual";
+      const current = existingRow?.source_type ?? "manual";
       const next = params.sourceType;
       const editable = (v: SourceType) => v === "manual" || v === "transfer";
       if (editable(current) && editable(next)) {
@@ -1447,6 +1455,21 @@ export async function updateTransaction(
           })),
         );
       }
+    }
+
+    // Cross-holding moves need both sides recomputed, not just the new one.
+    // Holdings cache units/invested, which drift if either side is missed.
+    const oldHoldingId = existingRow?.holding_id ?? null;
+    const newHoldingId = updates.holding_id;
+    if (oldHoldingId) {
+      await safeRecomputeHolding(oldHoldingId, {
+        operation: "updateTransaction",
+      });
+    }
+    if (newHoldingId && newHoldingId !== oldHoldingId) {
+      await safeRecomputeHolding(newHoldingId, {
+        operation: "updateTransaction",
+      });
     }
 
     return result;

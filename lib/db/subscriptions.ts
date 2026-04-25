@@ -287,7 +287,7 @@ export async function processSubscriptions(): Promise<string[]> {
           logEvent(FIREBASE_EVENTS.SIP_SKIPPED_NO_HOLDING, {
             subscription_id: sub.id,
           });
-          break;
+          continue;
         }
         const isInvestmentSub =
           sub.type === TRANSACTION_TYPE.INVESTMENT && sub.holding_id != null;
