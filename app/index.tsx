@@ -224,6 +224,24 @@ function CategoryDonut({
   );
 }
 
+// Three discrete states for the month-over-month spending banner: first
+// month (no comparison), spending up vs last month, spending down. Each
+// pairs a className with its rendered copy — keeping color and text in
+// lockstep, instead of two parallel ternaries that can drift.
+function getSpendingChangeFlavor(
+  value: number | "new" | null,
+): { color: string; text: string } | null {
+  if (value === null) return null;
+  if (value === "new")
+    return { color: "text-muted-foreground", text: "First month tracking" };
+  if (value > 0)
+    return { color: "text-negative", text: `↑ ${value}% vs last month` };
+  return {
+    color: "text-positive",
+    text: `↓ ${Math.abs(value)}% vs last month`,
+  };
+}
+
 export default function HomeScreen() {
   const { bottom } = useSafeAreaInsets();
   const { format: fmt } = useCurrency();
@@ -276,6 +294,7 @@ export default function HomeScreen() {
     isCurrentMonth,
   );
   const listData = useMemo(() => buildListData(transactions), [transactions]);
+  const spendingChangeFlavor = getSpendingChangeFlavor(spendingChange);
 
   return (
     <View className="flex-1 bg-background">
@@ -405,20 +424,14 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-          {spendingChange !== null && (
+          {spendingChangeFlavor && (
             <Text
               className={cn(
                 "mt-3 text-center text-xs font-medium",
-                spendingChange === "new"
-                  ? "text-muted-foreground"
-                  : spendingChange > 0
-                    ? "text-negative"
-                    : "text-positive",
+                spendingChangeFlavor.color,
               )}
             >
-              {spendingChange === "new"
-                ? "First month tracking"
-                : `${spendingChange > 0 ? "↑" : "↓"} ${Math.abs(spendingChange)}% vs last month`}
+              {spendingChangeFlavor.text}
             </Text>
           )}
 

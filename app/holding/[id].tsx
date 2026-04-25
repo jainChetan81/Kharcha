@@ -8,7 +8,7 @@ import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
 import {
   useCloseHolding,
-  useDeleteHolding,
+  useDeleteHoldingCascade,
   useHolding,
   useHoldingTransactions,
   useReopenHolding,
@@ -32,7 +32,7 @@ export default function HoldingDetailScreen() {
   const { data: txs = [] } = useHoldingTransactions(id);
   const closeMutation = useCloseHolding();
   const reopenMutation = useReopenHolding();
-  const deleteMutation = useDeleteHolding();
+  const deleteMutation = useDeleteHoldingCascade();
 
   if (isLoading || !holding) {
     return (
@@ -41,6 +41,11 @@ export default function HoldingDetailScreen() {
       </View>
     );
   }
+
+  const fullyExited =
+    holding.invested === 0 &&
+    holding.units === 0 &&
+    !isUnitlessInstrument(holding.instrument_type);
 
   return (
     <View className="flex-1 bg-background">
@@ -55,12 +60,23 @@ export default function HoldingDetailScreen() {
             {INSTRUMENT_LABEL[holding.instrument_type]}
             {holding.is_closed === 1 ? " · Closed" : ""}
           </Text>
-          <Text className="mt-1 text-3xl font-bold text-foreground">
-            {format(holding.invested)}
-          </Text>
-          <Text className="mt-0.5 text-[11px] text-muted-foreground">
-            Invested
-          </Text>
+          {fullyExited ? (
+            <>
+              <Text className="mt-1 text-3xl font-bold text-foreground">—</Text>
+              <Text className="mt-0.5 text-[11px] text-muted-foreground">
+                Fully exited
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text className="mt-1 text-3xl font-bold text-foreground">
+                {format(holding.invested)}
+              </Text>
+              <Text className="mt-0.5 text-[11px] text-muted-foreground">
+                Invested
+              </Text>
+            </>
+          )}
 
           {!isUnitlessInstrument(holding.instrument_type) && (
             <View className="mt-4 flex-row flex-wrap gap-4">
@@ -127,33 +143,31 @@ export default function HoldingDetailScreen() {
           ))
         )}
 
-        {holding.is_closed === 1 && txs.length === 0 && (
-          <View className="mx-5 mt-4">
-            <Button
-              variant="outline"
-              className="h-10 rounded-xl border-negative"
-              onPress={() =>
-                showDeleteConfirm(
-                  "Delete holding?",
-                  "This cannot be undone.",
-                  () => {
-                    deleteMutation.mutate(id, {
-                      onSuccess: () => {
-                        showSuccessToast("Holding deleted");
-                        router.back();
-                      },
-                      onError: (err) => showErrorToast("Failed to delete", err),
-                    });
-                  },
-                )
-              }
-            >
-              <Text className="text-sm font-medium text-negative">
-                Delete holding
-              </Text>
-            </Button>
-          </View>
-        )}
+        <View className="mx-5 mt-4">
+          <Button
+            variant="outline"
+            className="h-10 rounded-xl border-negative"
+            onPress={() =>
+              showDeleteConfirm(
+                "Delete holding?",
+                "This will delete the holding, all its transactions, and any SIPs feeding it. Cannot be undone.",
+                () => {
+                  deleteMutation.mutate(id, {
+                    onSuccess: () => {
+                      showSuccessToast("Holding deleted");
+                      router.back();
+                    },
+                    onError: (err) => showErrorToast("Failed to delete", err),
+                  });
+                },
+              )
+            }
+          >
+            <Text className="text-sm font-medium text-negative">
+              Delete holding
+            </Text>
+          </Button>
+        </View>
       </ScrollView>
     </View>
   );

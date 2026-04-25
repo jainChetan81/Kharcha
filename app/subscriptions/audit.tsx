@@ -24,6 +24,7 @@ import {
   SCREENS,
   SCROLL_BOTTOM_PADDING,
 } from "@/lib/constants";
+import { formatBillingDays, parseBillingDays } from "@/lib/db/subscriptions";
 import { parseDate } from "@/lib/format";
 import { getRefreshControlProps } from "@/lib/utils";
 
@@ -128,29 +129,33 @@ export default function SubscriptionAuditScreen() {
           ))}
 
           <SectionHeader title="All Subscriptions" />
-          {activeSubs.map((sub) => (
-            <Pressable
-              key={sub.id}
-              onPress={() => router.push(editSubscriptionScreen(sub.id))}
-              className="mx-5 mb-2 rounded-xl border border-border bg-card px-4 py-3"
-            >
-              <View className="flex-row items-center justify-between">
-                <Text className="text-sm font-semibold text-foreground">
-                  {sub.name}
-                </Text>
-                <Text className="text-sm font-semibold text-foreground">
-                  {fmt(sub.amount)}
-                  <Text className="text-xs font-normal text-muted-foreground">
-                    /mo
+          {activeSubs.map((sub) => {
+            const days = parseBillingDays(sub.billing_days, sub.billing_day);
+            const dayLabel = formatBillingDays(days, { capitalize: true });
+            return (
+              <Pressable
+                key={sub.id}
+                onPress={() => router.push(editSubscriptionScreen(sub.id))}
+                className="mx-5 mb-2 rounded-xl border border-border bg-card px-4 py-3"
+              >
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm font-semibold text-foreground">
+                    {sub.name}
                   </Text>
+                  <Text className="text-sm font-semibold text-foreground">
+                    {fmt(sub.amount)}
+                    <Text className="text-xs font-normal text-muted-foreground">
+                      /mo
+                    </Text>
+                  </Text>
+                </View>
+                <Text className="mt-0.5 text-xs text-muted-foreground">
+                  {dayLabel}
+                  {sub.category_name ? ` · ${sub.category_name}` : ""}
                 </Text>
-              </View>
-              <Text className="mt-0.5 text-xs text-muted-foreground">
-                Day {sub.billing_day}
-                {sub.category_name ? ` · ${sub.category_name}` : ""}
-              </Text>
-            </Pressable>
-          ))}
+              </Pressable>
+            );
+          })}
         </ScrollView>
       )}
     </View>

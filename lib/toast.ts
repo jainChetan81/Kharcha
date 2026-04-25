@@ -19,22 +19,3 @@ export function showSuccessToast(title: string, subtitle?: string) {
     text2: subtitle,
   });
 }
-
-export function showUndoToast(title: string, onUndo: () => Promise<void>) {
-  Toast.show({
-    type: "undo",
-    text1: title,
-    visibilityTime: 5000,
-    props: {
-      onUndo: async () => {
-        Toast.hide();
-        try {
-          await onUndo();
-          showSuccessToast("Restored");
-        } catch {
-          showErrorToast("Failed to undo");
-        }
-      },
-    },
-  });
-}

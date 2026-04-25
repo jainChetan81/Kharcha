@@ -165,7 +165,6 @@ export type PeriodPresetType =
 export const TOAST_TYPE = {
   SUCCESS: "success",
   ERROR: "error",
-  UNDO: "undo",
 } as const;
 
 export const TOAST_COPY = {

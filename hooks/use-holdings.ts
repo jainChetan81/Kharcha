@@ -4,6 +4,7 @@ import {
   addHolding,
   closeHolding,
   deleteHolding,
+  deleteHoldingCascade,
   getAllHoldings,
   getHolding,
   getPortfolioSummary,
@@ -127,6 +128,19 @@ export function useDeleteHolding() {
     onSuccess: () => {
       logEvent(FIREBASE_EVENTS.HOLDING_DELETED);
       invalidatePortfolio(qc);
+    },
+  });
+}
+
+export function useDeleteHoldingCascade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteHoldingCascade(id),
+    onSuccess: () => {
+      logEvent(FIREBASE_EVENTS.HOLDING_DELETED_CASCADE);
+      invalidatePortfolio(qc);
+      qc.invalidateQueries({ queryKey: [QUERY_KEYS.TRANSACTIONS] });
+      qc.invalidateQueries({ queryKey: [QUERY_KEYS.SUBSCRIPTIONS] });
     },
   });
 }

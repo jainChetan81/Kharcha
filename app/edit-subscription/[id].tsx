@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useEditSubscription } from "@/hooks/use-edit-subscription";
 import { COLORS } from "@/lib/constants";
+import { formatBillingDays, parseBillingDays } from "@/lib/db/subscriptions";
 import { cn, isIOS } from "@/lib/utils";
 import {
   amountStringSchema,
@@ -40,6 +41,11 @@ export default function EditSubscriptionScreen() {
       </View>
     );
   }
+
+  const billingDays = parseBillingDays(
+    subscription.billing_days,
+    subscription.billing_day,
+  );
 
   return (
     <KeyboardAvoidingView className="flex-1 bg-background" behavior="padding">
@@ -122,15 +128,16 @@ export default function EditSubscriptionScreen() {
 
         <View className="mb-5">
           <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-            Billing Day
+            Billing {billingDays.length === 1 ? "Day" : "Days"}
           </Text>
           <View className="flex-row items-center rounded-xl border border-border bg-card px-4 py-3">
             <Text className="flex-1 text-sm text-foreground">
-              Day {subscription.billing_day} of every month
+              {formatBillingDays(billingDays, { capitalize: true })} of every
+              month
             </Text>
           </View>
           <Text className="mt-1.5 text-xs text-muted-foreground">
-            To change billing day, delete and recreate the subscription
+            To change billing days, delete and recreate the subscription
           </Text>
         </View>
 

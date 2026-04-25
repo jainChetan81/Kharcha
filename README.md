@@ -123,7 +123,7 @@ lib/export/                   csv export for history
 lib/
   env.ts                      required env validation (alert on missing vars)
   constants.ts                SCREENS, QUERY_KEYS, COLORS, CONFIG_KEYS, TOAST_TYPE, TRANSACTION_TYPE
-  toast.ts                    showErrorToast, showSuccessToast, showUndoToast helpers
+  toast.ts                    showErrorToast, showSuccessToast helpers
   format.ts                   formatCurrency, parseDate, buildListData
   utils.ts                    cn(), isIOS
   version.ts                  compareVersions, isUpgrade, isMajorUpgrade

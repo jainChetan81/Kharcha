@@ -17,7 +17,7 @@ import { router, SplashScreen, Stack, usePathname } from "expo-router";
 import { ShareIntentProvider, useShareIntent } from "expo-share-intent";
 import { StatusBar } from "expo-status-bar";
 import { Suspense, useEffect, useState } from "react";
-import { ActivityIndicator, AppState, Pressable, View } from "react-native";
+import { ActivityIndicator, AppState, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { startNetworkLogging } from "react-native-network-logger";
 import Toast, { type ToastConfig } from "react-native-toast-message";
@@ -113,21 +113,6 @@ const toastConfig: ToastConfig = {
           <Text className="mt-0.5 text-xs text-muted-foreground">{text2}</Text>
         ) : null}
       </View>
-    </View>
-  ),
-  undo: ({ text1, props }) => (
-    <View
-      className="mx-4 mt-2 flex-row items-center rounded-xl bg-card px-4 py-3"
-      style={SHADOWS.TOAST}
-    >
-      <Text className="flex-1 text-sm font-semibold text-foreground">
-        {text1}
-      </Text>
-      {props?.onUndo && (
-        <Pressable onPress={props.onUndo}>
-          <Text className="text-sm font-medium text-primary">Undo</Text>
-        </Pressable>
-      )}
     </View>
   ),
 };

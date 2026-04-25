@@ -406,6 +406,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
                 name: subMerchant,
                 amount: subAmount,
                 billing_day: billingDay,
+                billing_days: JSON.stringify([billingDay]),
                 category_id: matchedCategoryId,
                 source_id: null,
               });

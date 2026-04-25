@@ -11,6 +11,7 @@ import {
 } from "@/hooks/use-subscriptions";
 import { showDeleteConfirm } from "@/lib/alerts";
 import { TRANSACTION_TYPE } from "@/lib/constants";
+import { parseBillingDays } from "@/lib/db/subscriptions";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 export function useEditSubscription() {
@@ -44,7 +45,10 @@ export function useEditSubscription() {
           id: subscriptionId,
           name: value.name.trim(),
           amount,
-          billingDay: subscription.billing_day,
+          billingDays: parseBillingDays(
+            subscription.billing_days,
+            subscription.billing_day,
+          ),
           categoryId: value.categoryId,
           sourceId: value.sourceId,
           // Preserve SIP identity on edit — the UI here doesn't let the user

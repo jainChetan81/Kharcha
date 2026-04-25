@@ -5,8 +5,8 @@ import {
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { ERROR_TYPE, logFirebaseError } from "@/lib/firebase";
-import { db } from "./connection";
-import { holdings, transactions } from "./schema";
+import expo, { db } from "./connection";
+import { holdings, subscriptions, transactions } from "./schema";
 import type {
   Holding,
   InstrumentType,
@@ -88,6 +88,23 @@ export async function deleteHolding(id: number): Promise<void> {
     throw new Error("Close the holding instead — transactions reference it");
   }
   await db.delete(holdings).where(eq(holdings.id, id));
+}
+
+export async function deleteHoldingCascade(id: number): Promise<void> {
+  await expo.withTransactionAsync(async () => {
+    const linkedSubs = await db
+      .select({ id: subscriptions.id })
+      .from(subscriptions)
+      .where(eq(subscriptions.holding_id, id));
+    for (const sub of linkedSubs) {
+      await db
+        .delete(transactions)
+        .where(eq(transactions.subscription_id, sub.id));
+      await db.delete(subscriptions).where(eq(subscriptions.id, sub.id));
+    }
+    await db.delete(transactions).where(eq(transactions.holding_id, id));
+    await db.delete(holdings).where(eq(holdings.id, id));
+  });
 }
 
 export async function updateHoldingOrder(

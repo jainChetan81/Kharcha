@@ -22,12 +22,13 @@ import {
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { getAllSources, getCategoriesByType } from "@/lib/db";
+import { formatBillingDays } from "@/lib/db/subscriptions";
 import { sanitizeDecimalInput } from "@/lib/format";
 import { showErrorToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
   amountStringSchema,
-  billingDayStringSchema,
+  billingDaysSchema,
   requiredStringSchema,
   validateField,
 } from "@/lib/validation";
@@ -37,7 +38,7 @@ const BILLING_DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 export type SubscriptionFormDefaults = {
   name?: string;
   amount?: string;
-  billingDay?: string;
+  billingDays?: number[];
   categoryId?: number | null;
   sourceId?: number | null;
   type?: "expense" | "investment";
@@ -48,7 +49,7 @@ export type SubscriptionFormDefaults = {
 export type SubscriptionFormSubmitValue = {
   name: string;
   amount: number;
-  billingDay: number;
+  billingDays: number[];
   categoryId: number | null;
   sourceId: number | null;
   type: "expense" | "investment";
@@ -80,7 +81,7 @@ export function SubscriptionForm({
     defaultValues: {
       name: defaultValues?.name ?? "",
       amount: defaultValues?.amount ?? "",
-      billingDay: defaultValues?.billingDay ?? "",
+      billingDays: (defaultValues?.billingDays ?? []) as number[],
       categoryId: (defaultValues?.categoryId ?? null) as number | null,
       sourceId: (defaultValues?.sourceId ?? null) as number | null,
       type: (defaultValues?.type ?? TRANSACTION_TYPE.EXPENSE) as
@@ -94,7 +95,7 @@ export function SubscriptionForm({
       await onSubmit({
         name: value.name,
         amount: Number(value.amount),
-        billingDay: Number(value.billingDay),
+        billingDays: value.billingDays,
         categoryId: isInvestment ? null : value.categoryId,
         sourceId: value.sourceId,
         type: value.type,
@@ -167,52 +168,62 @@ export function SubscriptionForm({
       </form.Field>
 
       <form.Field
-        name="billingDay"
+        name="billingDays"
         validators={{
-          onSubmit: ({ value }) => validateField(billingDayStringSchema, value),
+          onSubmit: ({ value }) => validateField(billingDaysSchema, value),
         }}
       >
-        {(field) => (
-          <View className="mb-5">
-            <FormLabel>Billing Day</FormLabel>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 6, paddingRight: 24 }}
-            >
-              {BILLING_DAYS.map((day) => {
-                const selected = field.state.value === String(day);
-                return (
-                  <Pressable
-                    key={day}
-                    onPress={() => field.handleChange(String(day))}
-                    className={cn(
-                      "h-10 w-10 items-center justify-center rounded-full",
-                      selected ? "bg-primary" : "border border-border bg-card",
-                    )}
-                  >
-                    <Text
+        {(field) => {
+          const selectedDays = field.state.value;
+          return (
+            <View className="mb-5">
+              <FormLabel>Billing Days</FormLabel>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 6, paddingRight: 24 }}
+              >
+                {BILLING_DAYS.map((day) => {
+                  const selected = selectedDays.includes(day);
+                  return (
+                    <Pressable
+                      key={day}
+                      onPress={() => {
+                        const next = selected
+                          ? selectedDays.filter((d) => d !== day)
+                          : [...selectedDays, day].sort((a, b) => a - b);
+                        field.handleChange(next);
+                      }}
                       className={cn(
-                        "text-sm font-medium",
+                        "h-10 w-10 items-center justify-center rounded-full",
                         selected
-                          ? "text-primary-foreground"
-                          : "text-muted-foreground",
+                          ? "bg-primary"
+                          : "border border-border bg-card",
                       )}
                     >
-                      {day}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            {field.state.value && Number(field.state.value) >= 1 && (
-              <Text className="mt-2 text-xs text-muted-foreground">
-                Renews on day {field.state.value} of every month
-              </Text>
-            )}
-            <FieldError errors={field.state.meta.errors as string[]} />
-          </View>
-        )}
+                      <Text
+                        className={cn(
+                          "text-sm font-medium",
+                          selected
+                            ? "text-primary-foreground"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        {day}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              {selectedDays.length > 0 && (
+                <Text className="mt-2 text-xs text-muted-foreground">
+                  Renews on {formatBillingDays(selectedDays)} of every month
+                </Text>
+              )}
+              <FieldError errors={field.state.meta.errors as string[]} />
+            </View>
+          );
+        }}
       </form.Field>
 
       <form.Field name="type">

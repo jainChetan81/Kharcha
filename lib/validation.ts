@@ -25,15 +25,10 @@ export const billingDaySchema = z
   .min(1, "Billing day must be between 1 and 31")
   .max(31, "Billing day must be between 1 and 31");
 
-/** String variant for form inputs — coerces to a validated number. */
-export const billingDayStringSchema = z
-  .string()
-  .min(1, "Billing day is required")
-  .transform((v) => Number(v))
-  .refine(
-    (n) => !Number.isNaN(n) && Number.isInteger(n) && n >= 1 && n <= 31,
-    "Billing day must be between 1 and 31",
-  );
+export const billingDaysSchema = z
+  .array(billingDaySchema)
+  .min(1, "Pick at least one billing day")
+  .refine((arr) => new Set(arr).size === arr.length, "Days must be unique");
 
 // ── Transaction ─────────────────────────────────────────────────────
 
@@ -86,7 +81,7 @@ export const subscriptionInputSchema = z
   .object({
     name: requiredStringSchema("Name"),
     amount: positiveAmountSchema,
-    billingDay: billingDaySchema,
+    billingDays: billingDaysSchema,
     categoryId: z.number().nullable(),
     sourceId: z.number().nullable(),
     type: z.enum(["expense", "investment"]).default("expense"),

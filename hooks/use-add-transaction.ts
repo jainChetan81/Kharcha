@@ -214,7 +214,7 @@ export function useAddTransaction(): UseAddTransactionReturn {
       setParsedSubDefaults({
         name: parsed.merchant ?? "",
         amount: String(parsed.amount),
-        billingDay: parsed.billing_day ? String(parsed.billing_day) : "",
+        billingDays: parsed.billing_day ? [parsed.billing_day] : [],
         sourceId,
       });
       setIsSubscription(true);
@@ -342,7 +342,7 @@ export function useAddTransaction(): UseAddTransactionReturn {
       await queryClient.invalidateQueries();
       showSuccessToast(
         "Subscription added",
-        `Renews on day ${value.billingDay} every month`,
+        `Renews on day ${value.billingDays.join(", ")} every month`,
       );
       router.back();
     } catch (err) {

@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { Briefcase } from "lucide-react-native";
 import { lazy, Suspense, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import {
@@ -6,6 +7,7 @@ import {
   ScreenError,
 } from "@/components/error-boundary";
 import { DashedAddButton } from "@/components/ui/dashed-add-button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ScreenDescription } from "@/components/ui/screen-description";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
@@ -43,48 +45,63 @@ export default function PortfolioScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={SCROLL_BOTTOM_PADDING}
       >
-        <View className="mx-5 mb-4 rounded-2xl bg-card p-5">
-          <Text className="text-xs font-medium text-muted-foreground">
-            {LABELS.TOTAL_INVESTED}
-          </Text>
-          <Text className="mt-1 text-3xl font-bold text-foreground">
-            {format(invested)}
-          </Text>
-        </View>
-
-        <ScreenDescription>
-          Track contributions to mutual funds, stocks, FDs, PPF, and more across
-          your accounts.
-        </ScreenDescription>
-
-        {holdings.map((h) => (
-          <Pressable
-            key={h.id}
-            onPress={() => router.push(holdingScreen(h.id))}
-            className="mx-5 mb-2 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
+        {holdings.length === 0 ? (
+          <EmptyState
+            icon={Briefcase}
+            title="No holdings yet"
+            description="Add a mutual fund, stock, FD, or PPF account to start tracking contributions."
           >
-            <View className="flex-1 pr-3">
-              <Text className="text-base font-semibold text-foreground">
-                {h.name}
+            <DashedAddButton
+              label="Add Holding"
+              onPress={() => setShowAdd(true)}
+            />
+          </EmptyState>
+        ) : (
+          <>
+            <View className="mx-5 mb-4 rounded-2xl bg-card p-5">
+              <Text className="text-xs font-medium text-muted-foreground">
+                {LABELS.TOTAL_INVESTED}
               </Text>
-              <Text className="text-xs text-muted-foreground">
-                {INSTRUMENT_LABEL[h.instrument_type]}
-                {h.units > 0 ? ` · ${h.units.toFixed(4)} units` : ""}
-                {h.is_closed === 1 ? " · closed" : ""}
+              <Text className="mt-1 text-3xl font-bold text-foreground">
+                {format(invested)}
               </Text>
             </View>
-            <Text className="text-sm font-semibold text-foreground">
-              {format(h.invested)}
-            </Text>
-          </Pressable>
-        ))}
 
-        <View className="mx-5 mt-2">
-          <DashedAddButton
-            label="Add Holding"
-            onPress={() => setShowAdd(true)}
-          />
-        </View>
+            <ScreenDescription>
+              Track contributions to mutual funds, stocks, FDs, PPF, and more
+              across your accounts.
+            </ScreenDescription>
+
+            {holdings.map((h) => (
+              <Pressable
+                key={h.id}
+                onPress={() => router.push(holdingScreen(h.id))}
+                className="mx-5 mb-2 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
+              >
+                <View className="flex-1 pr-3">
+                  <Text className="text-base font-semibold text-foreground">
+                    {h.name}
+                  </Text>
+                  <Text className="text-xs text-muted-foreground">
+                    {INSTRUMENT_LABEL[h.instrument_type]}
+                    {h.units > 0 ? ` · ${h.units.toFixed(4)} units` : ""}
+                    {h.is_closed === 1 ? " · closed" : ""}
+                  </Text>
+                </View>
+                <Text className="text-sm font-semibold text-foreground">
+                  {format(h.invested)}
+                </Text>
+              </Pressable>
+            ))}
+
+            <View className="mx-5 mt-2">
+              <DashedAddButton
+                label="Add Holding"
+                onPress={() => setShowAdd(true)}
+              />
+            </View>
+          </>
+        )}
       </ScrollView>
 
       <Suspense fallback={null}>

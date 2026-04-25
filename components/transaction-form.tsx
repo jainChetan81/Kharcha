@@ -72,12 +72,14 @@ export function TransactionForm({
   onSubmit,
   onDelete,
   lockType = false,
+  hideTags = false,
 }: {
   defaultValues: TransactionFormValues;
   submitLabel: string;
   onSubmit: (values: TransactionFormValues) => Promise<void>;
   onDelete?: () => void;
   lockType?: boolean;
+  hideTags?: boolean;
 }) {
   const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [datePickerValue, setDatePickerValue] = useState(new Date());
@@ -621,20 +623,22 @@ export function TransactionForm({
         </form.Field>
       )}
 
-      <form.Field name="tagIds">
-        {(field) => (
-          <View className="mb-5">
-            <FormLabel>Tags</FormLabel>
-            <MultiChipPicker
-              items={allTags}
-              selectedIds={field.state.value ?? []}
-              onChange={(ids) => field.handleChange(ids)}
-              onAddNew={() => setNewTagSheetVisible(true)}
-              emptyLabel="No tags yet — create one to group transactions across categories"
-            />
-          </View>
-        )}
-      </form.Field>
+      {!hideTags && !isInvestment && (
+        <form.Field name="tagIds">
+          {(field) => (
+            <View className="mb-5">
+              <FormLabel>Tags</FormLabel>
+              <MultiChipPicker
+                items={allTags}
+                selectedIds={field.state.value ?? []}
+                onChange={(ids) => field.handleChange(ids)}
+                onAddNew={() => setNewTagSheetVisible(true)}
+                emptyLabel="No tags yet — create one to group transactions across categories"
+              />
+            </View>
+          )}
+        </form.Field>
+      )}
 
       <BottomSheet
         visible={newTagSheetVisible}

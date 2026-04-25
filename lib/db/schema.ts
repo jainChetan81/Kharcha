@@ -30,6 +30,7 @@ export const subscriptions = sqliteTable("subscriptions", {
   name: text("name").notNull(),
   amount: real("amount").notNull(),
   billing_day: integer("billing_day").notNull(),
+  billing_days: text("billing_days").notNull().default("[]"),
   category_id: integer("category_id").references(() => categories.id),
   source_id: integer("source_id").references(() => sources.id),
   type: text("type", { enum: ["expense", "investment"] })

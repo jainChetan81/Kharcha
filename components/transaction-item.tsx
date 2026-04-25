@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 import { ChevronRight } from "lucide-react-native";
-import { memo, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -14,6 +14,7 @@ import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
 import {
   ANIMATION_DURATION_MS,
+  COLORS,
   INVESTMENT_KIND,
   OTHER_CATEGORY_LABEL,
   PARSED_BY,
@@ -28,7 +29,15 @@ import { parseDate, smartCapitalize } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.35;
+// iOS Mail-style commit threshold. Below this, the row reads as "preview"
+// (dim red, snaps back). Crossing it flips to bright red, signaling
+// "release to delete".
+const SWIPE_COMMIT_THRESHOLD = SCREEN_WIDTH * 0.7;
+// Desaturated counterpart to COLORS.DANGER for the pre-commit swipe state.
+// Hand-picked to read as "muted red" rather than "transparent red"; an
+// rgba alpha approach also dims the white "Delete" label, which we don't
+// want.
+const DIM_DANGER = "#7a2e2e";
 
 const TAG_VARIANTS = {
   muted: { bg: "bg-muted-foreground", text: "text-white" },
@@ -38,6 +47,32 @@ const TAG_VARIANTS = {
   warning: { bg: "bg-amber-600", text: "text-white" },
   positive: { bg: "bg-positive", text: "text-white" },
 } as const;
+
+// One row's amount can present as five distinct "flavors". Mapping each to
+// its `{ color, sign }` once removes the nested ternary in the JSX and means
+// adding a future flavor (e.g. a new investment kind) is a single entry.
+const AMOUNT_FLAVOR = {
+  income: { color: "text-positive", sign: "+" },
+  expense: { color: "text-negative", sign: "-" },
+  transfer: { color: "text-muted-foreground", sign: "" },
+  "investment-inflow": { color: "text-positive", sign: "+" },
+  "investment-outflow": { color: "text-muted-foreground", sign: "-" },
+} as const;
+
+type AmountFlavor = keyof typeof AMOUNT_FLAVOR;
+
+function getAmountFlavor(item: TransactionRow): AmountFlavor {
+  if (item.type === TRANSACTION_TYPE.TRANSFER) return "transfer";
+  if (item.type === TRANSACTION_TYPE.INVESTMENT) {
+    const inflow =
+      item.investment_kind === INVESTMENT_KIND.SELL ||
+      item.investment_kind === INVESTMENT_KIND.DIVIDEND ||
+      item.investment_kind === INVESTMENT_KIND.INTEREST;
+    return inflow ? "investment-inflow" : "investment-outflow";
+  }
+  if (item.type === TRANSACTION_TYPE.INCOME) return "income";
+  return "expense";
+}
 
 function Tag({
   label,
@@ -68,6 +103,31 @@ export const TransactionItem = memo(function TransactionItem({
   const { format: fmt } = useCurrency();
   const translateX = useRef(new Animated.Value(0)).current;
   const itemHeight = useRef(new Animated.Value(1)).current;
+  const inCommitZone = useRef(false);
+
+  // FlashList recycles row components, so a row that just animated to a
+  // collapsed state can come back rendering a different item.id with stale
+  // 0-height / off-screen translateX — which shows up as a phantom gap at
+  // the top of the list. Reset on every item.id change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: item.id is the trigger — we intentionally re-run when the slot recycles to a different row even though the body doesn't reference it.
+  useEffect(() => {
+    translateX.setValue(0);
+    itemHeight.setValue(1);
+    inCommitZone.current = false;
+  }, [item.id, translateX, itemHeight]);
+
+  // Tick haptic each time the gesture crosses the commit boundary so the
+  // user feels "release to delete" without watching the color change.
+  useEffect(() => {
+    const id = translateX.addListener(({ value }) => {
+      const inZone = value <= -SWIPE_COMMIT_THRESHOLD;
+      if (inZone !== inCommitZone.current) {
+        inCommitZone.current = inZone;
+        Haptics.selectionAsync();
+      }
+    });
+    return () => translateX.removeListener(id);
+  }, [translateX]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -79,7 +139,7 @@ export const TransactionItem = memo(function TransactionItem({
         }
       },
       onPanResponderRelease: (_, gesture) => {
-        if (Math.abs(gesture.dx) > SWIPE_THRESHOLD) {
+        if (Math.abs(gesture.dx) > SWIPE_COMMIT_THRESHOLD) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           Animated.parallel([
             Animated.timing(translateX, {
@@ -93,6 +153,7 @@ export const TransactionItem = memo(function TransactionItem({
               useNativeDriver: false,
             }),
           ]).start(() => {
+            inCommitZone.current = false;
             onSwipeDelete?.(item);
           });
         } else {
@@ -101,6 +162,7 @@ export const TransactionItem = memo(function TransactionItem({
             useNativeDriver: true,
             bounciness: 10,
           }).start();
+          inCommitZone.current = false;
         }
       },
       onPanResponderTerminate: () => {
@@ -109,6 +171,7 @@ export const TransactionItem = memo(function TransactionItem({
           useNativeDriver: true,
           bounciness: 10,
         }).start();
+        inCommitZone.current = false;
       },
     }),
   ).current;
@@ -116,11 +179,8 @@ export const TransactionItem = memo(function TransactionItem({
   const isIncome = item.type === TRANSACTION_TYPE.INCOME;
   const isTransfer = item.type === TRANSACTION_TYPE.TRANSFER;
   const isInvestment = item.type === TRANSACTION_TYPE.INVESTMENT;
-  const investmentInflow =
-    isInvestment &&
-    (item.investment_kind === INVESTMENT_KIND.SELL ||
-      item.investment_kind === INVESTMENT_KIND.DIVIDEND ||
-      item.investment_kind === INVESTMENT_KIND.INTEREST);
+  const { color: amountColor, sign: amountSign } =
+    AMOUNT_FLAVOR[getAmountFlavor(item)];
   const categoryLabel = smartCapitalize(
     item.category_name ?? OTHER_CATEGORY_LABEL,
   );
@@ -200,20 +260,9 @@ export const TransactionItem = memo(function TransactionItem({
       <View className="shrink-0 items-end">
         <Text
           numberOfLines={1}
-          className={cn(
-            "text-sm font-bold",
-            isTransfer
-              ? "text-muted-foreground"
-              : investmentInflow
-                ? "text-positive"
-                : isInvestment
-                  ? "text-muted-foreground"
-                  : isIncome
-                    ? "text-positive"
-                    : "text-negative",
-          )}
+          className={cn("text-sm font-bold", amountColor)}
         >
-          {isTransfer ? "" : isIncome || investmentInflow ? "+" : "-"}
+          {amountSign}
           {fmt(item.amount)}
         </Text>
         {showTime && (
@@ -232,20 +281,45 @@ export const TransactionItem = memo(function TransactionItem({
     return <View className="mb-2">{content}</View>;
   }
 
+  // iOS Mail-style two-stage red: a desaturated dim shade below the commit
+  // threshold, a snap to the bright theme red above. Interpolating the bg
+  // color (instead of opacity) keeps the white "Delete" label fully readable
+  // in both states. The +1 step at the threshold makes the flip read as a
+  // hard snap rather than a fade.
+  const bgColor = translateX.interpolate({
+    inputRange: [
+      -SCREEN_WIDTH,
+      -SWIPE_COMMIT_THRESHOLD,
+      -SWIPE_COMMIT_THRESHOLD + 1,
+      0,
+    ],
+    outputRange: [COLORS.DANGER, COLORS.DANGER, DIM_DANGER, DIM_DANGER],
+    extrapolate: "clamp",
+  });
+
   return (
     <Animated.View
-      className="mb-2 overflow-hidden"
+      className="overflow-hidden"
       style={{
         maxHeight: itemHeight.interpolate({
           inputRange: [0, 1],
           outputRange: [0, 200],
         }),
+        // Animate the gap-to-next-row alongside height so a freshly-deleted
+        // row leaves no stranded margin while the data refresh is in flight.
+        marginBottom: itemHeight.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, 8],
+        }),
         opacity: itemHeight,
       }}
     >
-      <View className="absolute inset-0 items-end justify-center rounded-2xl bg-negative px-6">
+      <Animated.View
+        className="absolute inset-0 items-end justify-center rounded-2xl px-6"
+        style={{ backgroundColor: bgColor }}
+      >
         <Text className="text-sm font-semibold text-white">Delete</Text>
-      </View>
+      </Animated.View>
       <Animated.View
         style={{ transform: [{ translateX }] }}
         {...panResponder.panHandlers}

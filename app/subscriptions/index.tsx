@@ -28,7 +28,9 @@ import {
   editSubscriptionScreen,
   SCREENS,
   SCROLL_BOTTOM_PADDING,
+  TRANSACTION_TYPE,
 } from "@/lib/constants";
+import { formatBillingDays, parseBillingDays } from "@/lib/db/subscriptions";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { getRefreshControlProps } from "@/lib/utils";
 
@@ -40,8 +42,14 @@ export default function SubscriptionsScreen() {
   const deleteMutation = useDeleteSubscription();
 
   const today = new Date().getDate();
-  const thisMonth = subs.filter((s) => s.billing_day <= today);
-  const upcoming = subs.filter((s) => s.billing_day > today);
+  const expenseSubs = subs.filter(
+    (s) => s.type !== TRANSACTION_TYPE.INVESTMENT,
+  );
+  const investmentSubs = subs.filter(
+    (s) => s.type === TRANSACTION_TYPE.INVESTMENT,
+  );
+  const thisMonth = expenseSubs.filter((s) => s.billing_day <= today);
+  const upcoming = expenseSubs.filter((s) => s.billing_day > today);
 
   function handleDelete(sub: SubscriptionRow) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -60,6 +68,8 @@ export default function SubscriptionsScreen() {
   }
 
   function renderSubCard(sub: SubscriptionRow) {
+    const days = parseBillingDays(sub.billing_days, sub.billing_day);
+    const dayLabel = formatBillingDays(days);
     return (
       <Pressable
         key={sub.id}
@@ -73,7 +83,7 @@ export default function SubscriptionsScreen() {
               {sub.name}
             </Text>
             <Text className="mt-0.5 text-xs text-muted-foreground">
-              {fmt(sub.amount)} · day {sub.billing_day}
+              {fmt(sub.amount)} · {dayLabel}
               {sub.category_name ? ` · ${sub.category_name}` : ""}
               {sub.source_name ? ` · ${sub.source_name}` : ""}
             </Text>
@@ -151,6 +161,14 @@ export default function SubscriptionsScreen() {
                 Upcoming
               </Text>
               {upcoming.map(renderSubCard)}
+            </>
+          )}
+          {investmentSubs.length > 0 && (
+            <>
+              <Text className="mb-2 mt-4 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Recurring Investments
+              </Text>
+              {investmentSubs.map(renderSubCard)}
             </>
           )}
         </ScrollView>

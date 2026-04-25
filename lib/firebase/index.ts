@@ -30,12 +30,12 @@ export const FIREBASE_EVENTS = {
   HOLDING_CLOSED: "holding_closed",
   HOLDING_REOPENED: "holding_reopened",
   HOLDING_DELETED: "holding_deleted",
+  HOLDING_DELETED_CASCADE: "holding_deleted_cascade",
   CATEGORY_ADDED: "category_added",
   SOURCE_ADDED: "source_added",
   RECURRING_TRANSACTION_POSTED: "recurring_transaction_posted",
   SIP_POSTED: "sip_posted",
   SIP_SKIPPED_NO_HOLDING: "sip_skipped_no_holding",
-  TRANSACTION_RESTORED: "transaction_restored",
 } as const;
 
 export type KharchaEvent =

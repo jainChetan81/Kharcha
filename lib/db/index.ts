@@ -30,13 +30,7 @@ import {
   type SourceType,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import {
-  ERROR_TYPE,
-  FIREBASE_EVENTS,
-  logEvent,
-  logFirebaseError,
-  withTrace,
-} from "@/lib/firebase";
+import { ERROR_TYPE, logFirebaseError, withTrace } from "@/lib/firebase";
 import { transactionInputSchema } from "@/lib/validation";
 import expo, { db, runMigrations } from "./connection";
 import { safeRecomputeHolding } from "./holdings";
@@ -123,6 +117,7 @@ export async function initDB(): Promise<void> {
       name TEXT NOT NULL,
       amount REAL NOT NULL,
       billing_day INTEGER NOT NULL,
+      billing_days TEXT NOT NULL DEFAULT '[]',
       category_id INTEGER REFERENCES categories(id),
       source_id INTEGER REFERENCES sources(id),
       type TEXT NOT NULL DEFAULT 'expense',
@@ -309,6 +304,15 @@ export async function initDB(): Promise<void> {
       if (!hasColumn("subscriptions", "default_units")) {
         await db.run(
           sql`ALTER TABLE subscriptions ADD COLUMN default_units REAL`,
+        );
+      }
+
+      if (!hasColumn("subscriptions", "billing_days")) {
+        await db.run(
+          sql`ALTER TABLE subscriptions ADD COLUMN billing_days TEXT NOT NULL DEFAULT '[]'`,
+        );
+        await db.run(
+          sql`UPDATE subscriptions SET billing_days = '[' || billing_day || ']' WHERE billing_days = '[]'`,
         );
       }
 
@@ -1443,59 +1447,6 @@ export async function deleteTransaction(id: number) {
   }
 }
 
-export async function restoreTransaction(row: {
-  type: "income" | "expense" | "transfer" | "investment";
-  amount: number;
-  merchant: string | null;
-  category_id: number | null;
-  source_id: number | null;
-  destination_source_id: number | null;
-  holding_id?: number | null;
-  investment_kind?: "buy" | "sell" | "dividend" | "interest" | null;
-  units?: number | null;
-  reimbursement_status?: "none" | "pending" | "reimbursed";
-  reimbursed_at?: string | null;
-  date: string;
-  note: string | null;
-  created_at: string | null;
-}) {
-  try {
-    const result = await db.insert(transactions).values({
-      type: row.type,
-      amount: row.amount,
-      merchant: row.merchant,
-      category_id: row.category_id,
-      source_id: row.source_id,
-      destination_source_id: row.destination_source_id,
-      holding_id: row.holding_id ?? null,
-      investment_kind: row.investment_kind ?? null,
-      units: row.units ?? null,
-      reimbursement_status: row.reimbursement_status ?? "none",
-      reimbursed_at: row.reimbursed_at ?? null,
-      date: row.date,
-      created_at: row.created_at,
-      note: row.note,
-    });
-    if (row.holding_id) {
-      await safeRecomputeHolding(row.holding_id, {
-        operation: "restoreTransaction",
-      });
-    }
-    logEvent(FIREBASE_EVENTS.TRANSACTION_RESTORED, {
-      type: row.type,
-      amount: row.amount,
-      ...(row.holding_id ? { holding_id: row.holding_id } : {}),
-    });
-    return result;
-  } catch (error) {
-    logFirebaseError(error, {
-      error_type: ERROR_TYPE.DB,
-      operation: "restoreTransaction",
-    });
-    throw error;
-  }
-}
-
 export async function clearAllTransactions() {
   try {
     return await db.delete(transactions);
@@ -1930,6 +1881,7 @@ export {
   addHolding,
   closeHolding,
   deleteHolding,
+  deleteHoldingCascade,
   getAllHoldings,
   getHolding,
   getPortfolioSummary,

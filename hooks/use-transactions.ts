@@ -28,7 +28,6 @@ import {
   getTransactionById,
   getTransactionsPaginated,
   insertTransaction,
-  restoreTransaction,
   seedSampleData,
   setReimbursementStatus,
   type TransactionRow,
@@ -37,7 +36,7 @@ import {
 import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
 import { deleteConfig } from "@/lib/db/config";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
-import { showErrorToast, showSuccessToast, showUndoToast } from "@/lib/toast";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { syncWidgetData } from "@/lib/widget";
 
 // Re-export imperative db functions used in forms
@@ -84,6 +83,9 @@ export function useInvalidateTransactions() {
         queryKey: [QUERY_KEYS.HOLDINGS],
       }),
       queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.HOLDING],
+      }),
+      queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.HOLDING_TRANSACTIONS],
       }),
       queryClient.invalidateQueries({
@@ -91,6 +93,9 @@ export function useInvalidateTransactions() {
       }),
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.PORTFOLIO_MONTH_SUMMARY],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TRANSACTION],
       }),
     ]).then((result) => {
       syncWidgetData();
@@ -314,17 +319,6 @@ export function useDeleteTransaction() {
   });
 }
 
-export function useRestoreTransaction() {
-  const invalidate = useInvalidateTransactions();
-  return useMutation({
-    mutationFn: restoreTransaction,
-    onSuccess: () => invalidate(),
-    onError: (err) => {
-      console.error("Transaction mutation failed:", err);
-    },
-  });
-}
-
 export function useClearAllTransactions() {
   const invalidate = useInvalidateTransactions();
   return useMutation({
@@ -391,14 +385,11 @@ export function useSetReimbursementStatus() {
 
 export function useSwipeDelete() {
   const deleteMutation = useDeleteTransaction();
-  const restoreMutation = useRestoreTransaction();
 
   return async (item: TransactionRow) => {
     try {
       await deleteMutation.mutateAsync(item.id);
-      showUndoToast("Transaction deleted", async () => {
-        await restoreMutation.mutateAsync(item);
-      });
+      showSuccessToast("Transaction deleted");
     } catch {
       showErrorToast("Failed to delete");
     }

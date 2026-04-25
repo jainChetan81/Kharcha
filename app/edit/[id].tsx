@@ -171,7 +171,8 @@ export default function EditTransactionScreen() {
               },
             );
           }}
-          lockType={!!transaction.subscription_id}
+          lockType
+          hideTags={transaction.source_type === SOURCE_TYPE.RECURRING}
         />
       </Suspense>
     </KeyboardAvoidingView>
