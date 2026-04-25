@@ -49,7 +49,6 @@ function invalidatePortfolio(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: [QUERY_KEYS.HOLDING] });
   qc.invalidateQueries({ queryKey: [QUERY_KEYS.HOLDING_TRANSACTIONS] });
   qc.invalidateQueries({ queryKey: [QUERY_KEYS.PORTFOLIO_SUMMARY] });
-  qc.invalidateQueries({ queryKey: [QUERY_KEYS.PORTFOLIO_MONTH_SUMMARY] });
 }
 
 export function useAddHolding() {
