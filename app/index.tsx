@@ -59,7 +59,11 @@ import {
 } from "@/lib/format";
 import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
 
-const FAB_STYLE = { marginTop: -44, marginBottom: 8 } as const;
+// FAB sits half-out of the bar's top edge. Rendered absolutely (not via
+// transform) so the lifted half still receives taps on Android, where
+// transform-based hit testing has historically been unreliable.
+const FAB_SIZE = 52;
+const FAB_HALF = FAB_SIZE / 2;
 
 const TOP_CATEGORIES_ON_RING = 5;
 
@@ -284,8 +288,6 @@ export default function HomeScreen() {
     reimbursementSummary,
     totalBudget,
     insights,
-    portfolioInvested,
-    portfolioMonthInvested,
   } = useHomeData(
     selectedMonth,
     prevMonth,
@@ -435,31 +437,6 @@ export default function HomeScreen() {
             </Text>
           )}
 
-          {(portfolioInvested > 0 || portfolioMonthInvested > 0) && (
-            <Pressable
-              onPress={() => router.push(SCREENS.PORTFOLIO)}
-              className="mt-3 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
-            >
-              <View className="flex-1">
-                <Text className="text-xs text-muted-foreground">
-                  {LABELS.TOTAL_INVESTED}
-                </Text>
-                <Text className="mt-0.5 text-base font-bold text-foreground">
-                  {fmt(portfolioInvested)}
-                </Text>
-                {portfolioMonthInvested > 0 && (
-                  <Text className="mt-0.5 text-xs text-muted-foreground">
-                    {fmt(portfolioMonthInvested)} this month
-                  </Text>
-                )}
-              </View>
-              <Icon
-                as={ChevronRight}
-                className="size-4 text-muted-foreground"
-              />
-            </Pressable>
-          )}
-
           {subsTotal > 0 && (
             <Pressable
               onPress={() => router.push(SCREENS.SUBSCRIPTIONS)}
@@ -538,8 +515,8 @@ export default function HomeScreen() {
       </Animated.ScrollView>
 
       <View
-        className="border-t border-border bg-card pt-2.5"
-        style={{ paddingBottom: Math.max(bottom, 24) }}
+        className="border-t border-border bg-card pt-1.5"
+        style={{ paddingBottom: isIOS ? 12 : Math.max(bottom, 24) }}
       >
         <View className="flex-row items-center justify-around">
           <View className="items-center gap-1">
@@ -555,23 +532,11 @@ export default function HomeScreen() {
               History
             </Text>
           </Pressable>
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              router.push(SCREENS.ADD);
-            }}
-            style={({ pressed }) => [
-              FAB_STYLE,
-              { transform: [{ scale: pressed ? 0.92 : 1 }] },
-            ]}
-          >
-            <View
-              className="h-[52px] w-[52px] items-center justify-center rounded-full bg-primary"
-              style={SHADOWS.FAB}
-            >
-              <Icon as={Plus} className="size-6 text-primary-foreground" />
-            </View>
-          </Pressable>
+          {/* Layout placeholder — keeps the 5-item `justify-around` spacing
+              exactly the same as before. The actual + button is rendered
+              absolutely below so the lifted half doesn't lose its tap area
+              on Android (transform-based hit-testing has known edge cases). */}
+          <View className="h-[52px] w-[52px]" />
           <Pressable
             onPress={() => router.push(SCREENS.CONFIG)}
             className="items-center gap-1"
@@ -589,6 +554,33 @@ export default function HomeScreen() {
             <Text className="text-xs font-medium text-muted-foreground">
               Profile
             </Text>
+          </Pressable>
+        </View>
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            top: -FAB_HALF,
+            left: 0,
+            right: 0,
+            alignItems: "center",
+          }}
+        >
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              router.push(SCREENS.ADD);
+            }}
+            style={({ pressed }) => ({
+              transform: [{ scale: pressed ? 0.92 : 1 }],
+            })}
+          >
+            <View
+              className="items-center justify-center rounded-full bg-primary"
+              style={[{ height: FAB_SIZE, width: FAB_SIZE }, SHADOWS.FAB]}
+            >
+              <Icon as={Plus} className="size-6 text-primary-foreground" />
+            </View>
           </Pressable>
         </View>
       </View>

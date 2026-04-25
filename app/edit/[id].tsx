@@ -62,6 +62,10 @@ export default function EditTransactionScreen() {
     note: transaction.note ?? "",
     reimbursementStatus:
       transaction.reimbursement_status ?? REIMBURSEMENT_STATUS.NONE,
+    reimbursableAmount:
+      transaction.reimbursable_amount != null
+        ? String(transaction.reimbursable_amount)
+        : "",
     tagIds: (transaction.tags ?? []).map((t) => t.id),
   };
 
@@ -80,6 +84,9 @@ export default function EditTransactionScreen() {
         sourceType = SOURCE_TYPE.MANUAL;
       }
       const isExpense = value.type === TRANSACTION_TYPE.EXPENSE;
+      const reimbursementStatus = isExpense
+        ? value.reimbursementStatus
+        : REIMBURSEMENT_STATUS.NONE;
       await updateMutation.mutateAsync({
         type: value.type,
         amount: Number(value.amount),
@@ -92,9 +99,13 @@ export default function EditTransactionScreen() {
         investmentKind: isInvestment ? value.investmentKind : null,
         units: isInvestment && value.units ? Number(value.units) : null,
         sourceType,
-        reimbursementStatus: isExpense
-          ? value.reimbursementStatus
-          : REIMBURSEMENT_STATUS.NONE,
+        reimbursementStatus,
+        reimbursableAmount:
+          reimbursementStatus === REIMBURSEMENT_STATUS.NONE
+            ? null
+            : value.reimbursableAmount
+              ? Number(value.reimbursableAmount)
+              : null,
         date: value.date,
         note: value.note || null,
         tagIds: value.tagIds,

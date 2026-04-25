@@ -63,6 +63,7 @@ export type TransactionFormValues = {
   date: string;
   note: string;
   reimbursementStatus: ReimbursementStatusType;
+  reimbursableAmount: string;
   tagIds: number[];
 };
 
@@ -227,6 +228,7 @@ export function TransactionForm({
                         "reimbursementStatus",
                         REIMBURSEMENT_STATUS.NONE,
                       );
+                      form.setFieldValue("reimbursableAmount", "");
                     }
                   }}
                   className={cn(
@@ -564,58 +566,114 @@ export function TransactionForm({
                   </View>
                   <Switch
                     value={isReimbursable}
-                    onValueChange={(val) =>
+                    onValueChange={(val) => {
                       field.handleChange(
                         val
                           ? REIMBURSEMENT_STATUS.PENDING
                           : REIMBURSEMENT_STATUS.NONE,
-                      )
-                    }
+                      );
+                      if (val) {
+                        const current =
+                          form.getFieldValue("reimbursableAmount");
+                        if (!current) {
+                          form.setFieldValue(
+                            "reimbursableAmount",
+                            form.getFieldValue("amount"),
+                          );
+                        }
+                      } else {
+                        form.setFieldValue("reimbursableAmount", "");
+                      }
+                    }}
                     trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
                     thumbColor={COLORS.FOREGROUND}
                   />
                 </View>
                 {isReimbursable && (
-                  <View className="mt-3 flex-row gap-2">
-                    <Pressable
-                      onPress={() =>
-                        field.handleChange(REIMBURSEMENT_STATUS.PENDING)
-                      }
-                      className={cn(
-                        "flex-1 items-center rounded-xl py-2.5",
-                        !isReimbursed ? "bg-primary" : "bg-muted",
-                      )}
-                    >
-                      <Text
+                  <>
+                    <View className="mt-3 flex-row gap-2">
+                      <Pressable
+                        onPress={() =>
+                          field.handleChange(REIMBURSEMENT_STATUS.PENDING)
+                        }
                         className={cn(
-                          "text-sm font-medium",
-                          !isReimbursed
-                            ? "text-primary-foreground"
-                            : "text-muted-foreground",
+                          "flex-1 items-center rounded-xl py-2.5",
+                          !isReimbursed ? "bg-primary" : "bg-muted",
                         )}
                       >
-                        Pending
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() =>
-                        field.handleChange(REIMBURSEMENT_STATUS.REIMBURSED)
-                      }
-                      className={cn(
-                        "flex-1 items-center rounded-xl py-2.5",
-                        isReimbursed ? "bg-positive" : "bg-muted",
-                      )}
-                    >
-                      <Text
+                        <Text
+                          className={cn(
+                            "text-sm font-medium",
+                            !isReimbursed
+                              ? "text-primary-foreground"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          Pending
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() =>
+                          field.handleChange(REIMBURSEMENT_STATUS.REIMBURSED)
+                        }
                         className={cn(
-                          "text-sm font-medium",
-                          isReimbursed ? "text-white" : "text-muted-foreground",
+                          "flex-1 items-center rounded-xl py-2.5",
+                          isReimbursed ? "bg-positive" : "bg-muted",
                         )}
                       >
-                        Reimbursed
-                      </Text>
-                    </Pressable>
-                  </View>
+                        <Text
+                          className={cn(
+                            "text-sm font-medium",
+                            isReimbursed
+                              ? "text-white"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          Reimbursed
+                        </Text>
+                      </Pressable>
+                    </View>
+                    <form.Field
+                      name="reimbursableAmount"
+                      validators={{
+                        onSubmit: ({ value, fieldApi }) => {
+                          const num = Number(value);
+                          if (!value || Number.isNaN(num) || num <= 0)
+                            return "Reimbursable amount must be greater than 0";
+                          const txAmount = Number(
+                            fieldApi.form.getFieldValue("amount"),
+                          );
+                          if (Number.isFinite(txAmount) && num > txAmount)
+                            return "Can't exceed the transaction amount";
+                          return undefined;
+                        },
+                      }}
+                    >
+                      {(amountField) => (
+                        <View className="mt-3">
+                          <FormLabel>Reimbursable amount</FormLabel>
+                          <Input
+                            placeholder="0"
+                            keyboardType="decimal-pad"
+                            autoCorrect={false}
+                            autoComplete="off"
+                            value={amountField.state.value}
+                            onChangeText={(v) =>
+                              amountField.handleChange(sanitizeDecimalInput(v))
+                            }
+                            placeholderTextColor={COLORS.MUTED}
+                          />
+                          <FieldError
+                            errors={amountField.state.meta.errors as string[]}
+                          />
+                          <Text className="mt-1 text-xs text-muted-foreground">
+                            Defaults to the full amount. Edit if only part will
+                            be reimbursed.
+                          </Text>
+                        </View>
+                      )}
+                    </form.Field>
+                  </>
                 )}
               </View>
             );

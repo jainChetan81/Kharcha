@@ -40,6 +40,7 @@ import {
   budgets,
   categories,
   config,
+  holdings,
   sources,
   tags,
   transactions,
@@ -264,6 +265,12 @@ export async function initDB(): Promise<void> {
       if (!hasColumn("transactions", "reimbursed_at")) {
         await db.run(
           sql`ALTER TABLE transactions ADD COLUMN reimbursed_at TEXT`,
+        );
+      }
+
+      if (!hasColumn("transactions", "reimbursable_amount")) {
+        await db.run(
+          sql`ALTER TABLE transactions ADD COLUMN reimbursable_amount REAL`,
         );
       }
 
@@ -1023,9 +1030,17 @@ function transactionSelect() {
       source_id: transactions.source_id,
       destination_source_id: transactions.destination_source_id,
       subscription_id: transactions.subscription_id,
+      // Investment fields: history list / edit screen / TransactionItem all
+      // need these to render an investment row meaningfully (title, kind tag,
+      // colour/sign branch). Without them the row falls through to "Other"
+      // and gets coloured as a generic outflow.
+      holding_id: transactions.holding_id,
+      investment_kind: transactions.investment_kind,
+      units: transactions.units,
       source_type: transactions.source_type,
       parsed_by: transactions.parsed_by,
       reimbursement_status: transactions.reimbursement_status,
+      reimbursable_amount: transactions.reimbursable_amount,
       reimbursed_at: transactions.reimbursed_at,
       date: transactions.date,
       note: transactions.note,
@@ -1033,6 +1048,7 @@ function transactionSelect() {
       category_name: categories.name,
       source_name: sources.name,
       destination_source_name: destinationSources.name,
+      holding_name: holdings.name,
     })
     .from(transactions)
     .leftJoin(categories, eq(transactions.category_id, categories.id))
@@ -1040,7 +1056,8 @@ function transactionSelect() {
     .leftJoin(
       destinationSources,
       eq(transactions.destination_source_id, destinationSources.id),
-    );
+    )
+    .leftJoin(holdings, eq(transactions.holding_id, holdings.id));
 }
 
 async function attachTagsToRows(
@@ -1260,6 +1277,7 @@ export async function insertTransaction(params: {
   sourceType?: SourceType;
   parsedBy?: ParsedByType;
   reimbursementStatus?: "none" | "pending" | "reimbursed";
+  reimbursableAmount?: number | null;
   date: string;
   note: string | null;
   tagIds?: number[];
@@ -1272,6 +1290,14 @@ export async function insertTransaction(params: {
       );
     }
     const validated = validation.data;
+
+    // Snap reimbursable_amount to the txn amount when the user opts into
+    // reimbursement tracking without specifying a partial value — gives the
+    // "100% by default" behaviour callers expect.
+    const reimbursableAmount =
+      validated.reimbursementStatus === "none"
+        ? null
+        : (validated.reimbursableAmount ?? validated.amount);
 
     const result = await db.insert(transactions).values({
       type: validated.type,
@@ -1287,6 +1313,7 @@ export async function insertTransaction(params: {
       source_type: validated.sourceType,
       parsed_by: validated.parsedBy ?? null,
       reimbursement_status: validated.reimbursementStatus,
+      reimbursable_amount: reimbursableAmount,
       date: validated.date,
       note: validated.note ?? null,
     });
@@ -1327,6 +1354,7 @@ export async function updateTransaction(
     units?: number | null;
     sourceType?: SourceType;
     reimbursementStatus?: "none" | "pending" | "reimbursed";
+    reimbursableAmount?: number | null;
     date: string;
     note: string | null;
     tagIds?: number[];
@@ -1356,6 +1384,7 @@ export async function updateTransaction(
       note: string | null;
       source_type?: SourceType;
       reimbursement_status?: "none" | "pending" | "reimbursed";
+      reimbursable_amount?: number | null;
       reimbursed_at?: string | null;
     } = {
       type: params.type,
@@ -1376,6 +1405,12 @@ export async function updateTransaction(
         params.reimbursementStatus === "reimbursed"
           ? new Date().toISOString()
           : null;
+      updates.reimbursable_amount =
+        params.reimbursementStatus === "none"
+          ? null
+          : (params.reimbursableAmount ?? params.amount);
+    } else if (params.reimbursableAmount !== undefined) {
+      updates.reimbursable_amount = params.reimbursableAmount;
     }
     if (params.sourceType !== undefined) {
       const existing = await db
@@ -1464,13 +1499,37 @@ export async function setReimbursementStatus(
   status: "none" | "pending" | "reimbursed",
 ) {
   try {
+    const updates: {
+      reimbursement_status: "none" | "pending" | "reimbursed";
+      reimbursed_at: string | null;
+      reimbursable_amount?: number | null;
+    } = {
+      reimbursement_status: status,
+      reimbursed_at: status === "reimbursed" ? new Date().toISOString() : null,
+    };
+    if (status === "none") {
+      updates.reimbursable_amount = null;
+    } else {
+      // Seed reimbursable_amount to the full transaction amount when the
+      // row is opting into reimbursement tracking for the first time. The
+      // form path does this too — keeping both in sync so the partial
+      // badge in the UI keys off the same data regardless of which path
+      // flipped the status.
+      const existing = await db
+        .select({
+          amount: transactions.amount,
+          reimbursable_amount: transactions.reimbursable_amount,
+        })
+        .from(transactions)
+        .where(eq(transactions.id, id))
+        .limit(1);
+      if (existing[0] && existing[0].reimbursable_amount == null) {
+        updates.reimbursable_amount = existing[0].amount;
+      }
+    }
     return await db
       .update(transactions)
-      .set({
-        reimbursement_status: status,
-        reimbursed_at:
-          status === "reimbursed" ? new Date().toISOString() : null,
-      })
+      .set(updates)
       .where(eq(transactions.id, id));
   } catch (error) {
     logFirebaseError(error, {
@@ -1487,7 +1546,7 @@ export async function getReimbursementSummary() {
       .select({
         status: transactions.reimbursement_status,
         count: sql<number>`COUNT(*)`,
-        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+        total: sql<number>`COALESCE(SUM(COALESCE(${transactions.reimbursable_amount}, ${transactions.amount})), 0)`,
       })
       .from(transactions)
       .where(

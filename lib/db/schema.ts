@@ -106,6 +106,7 @@ export const transactions = sqliteTable("transactions", {
   })
     .notNull()
     .default("none"),
+  reimbursable_amount: real("reimbursable_amount"),
   reimbursed_at: text("reimbursed_at"),
   date: text("date").notNull(),
   note: text("note"),

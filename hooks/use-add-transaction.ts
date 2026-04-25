@@ -163,6 +163,7 @@ export function useAddTransaction(): UseAddTransactionReturn {
     date: format(new Date(), DATE_TIME_FORMAT),
     note: "",
     reimbursementStatus: REIMBURSEMENT_STATUS.NONE,
+    reimbursableAmount: "",
     tagIds: [],
   };
 
@@ -206,6 +207,7 @@ export function useAddTransaction(): UseAddTransactionReturn {
       date: `${parsed.date} 12:00`,
       note: originalText.trim(),
       reimbursementStatus: REIMBURSEMENT_STATUS.NONE,
+      reimbursableAmount: "",
       tagIds: [],
     };
     setParsedTxDefaults(txDefaults);
@@ -262,6 +264,12 @@ export function useAddTransaction(): UseAddTransactionReturn {
       reimbursementStatus: isExpense
         ? value.reimbursementStatus
         : REIMBURSEMENT_STATUS.NONE,
+      reimbursableAmount:
+        isExpense &&
+        value.reimbursementStatus !== REIMBURSEMENT_STATUS.NONE &&
+        value.reimbursableAmount
+          ? Number(value.reimbursableAmount)
+          : null,
       date: value.date,
       note: value.note || null,
       tagIds: value.tagIds,

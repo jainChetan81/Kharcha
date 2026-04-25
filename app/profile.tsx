@@ -140,6 +140,16 @@ export default function ProfileScreen() {
           description="Track recurring charges and when they renew."
           onPress={() => router.push(SCREENS.SUBSCRIPTIONS)}
         />
+        <NavRow
+          title="Portfolio"
+          description="Investments, holdings, and contributions."
+          onPress={() => router.push(SCREENS.PORTFOLIO)}
+        />
+        <NavRow
+          title="Reimbursements"
+          description="Expenses you're owed back, fully or in part."
+          onPress={() => router.push(SCREENS.REIMBURSEMENTS)}
+        />
         {anySyncEnabled && (
           <>
             <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

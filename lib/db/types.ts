@@ -40,9 +40,11 @@ export type TransactionRow = Transaction & {
   category_name: string | null;
   source_name: string | null;
   destination_source_name: string | null;
+  holding_name: string | null;
   source_type: "manual" | "synced" | "recurring" | "transfer";
   parsed_by: "regex" | "gemini" | null;
   reimbursement_status: "none" | "pending" | "reimbursed";
+  reimbursable_amount: number | null;
   reimbursed_at: string | null;
   tags: TagLite[];
 };

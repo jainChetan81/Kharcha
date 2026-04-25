@@ -184,13 +184,34 @@ export const TransactionItem = memo(function TransactionItem({
   const categoryLabel = smartCapitalize(
     item.category_name ?? OTHER_CATEGORY_LABEL,
   );
+  // Investment rows have no merchant or category — the holding is the
+  // identity. Title falls back to holding_name; subtitle leads with the kind
+  // (Buy / Sell / Dividend / Interest), then units (when present), then the
+  // funding source.
+  const investmentSubtitleParts = isInvestment
+    ? [
+        smartCapitalize(item.investment_kind ?? ""),
+        item.units ? `${item.units.toFixed(4)} units` : null,
+        item.source_name ? smartCapitalize(item.source_name) : null,
+      ].filter((p): p is string => Boolean(p))
+    : [];
+
   const subtitle = isTransfer
     ? `${item.source_name ?? "?"} → ${item.destination_source_name ?? "?"}`
     : isInvestment
-      ? `${smartCapitalize(item.investment_kind ?? "")}${item.source_name ? ` · ${smartCapitalize(item.source_name)}` : ""}`
+      ? investmentSubtitleParts.join(" · ")
       : isIncome
         ? categoryLabel
         : `${categoryLabel}${item.source_name ? ` · ${smartCapitalize(item.source_name)}` : ""}`;
+
+  const titleText = isInvestment
+    ? (item.holding_name ?? OTHER_CATEGORY_LABEL)
+    : item.merchant || item.category_name || OTHER_CATEGORY_LABEL;
+  const avatarLetter = (
+    isInvestment
+      ? (item.holding_name ?? "?")
+      : (item.merchant ?? item.category_name ?? "?")
+  )[0].toUpperCase();
 
   const content = (
     <Pressable
@@ -200,7 +221,7 @@ export const TransactionItem = memo(function TransactionItem({
     >
       <View className="h-10 w-10 items-center justify-center rounded-xl bg-muted">
         <Text className="text-sm font-semibold text-muted-foreground">
-          {(item.merchant ?? item.category_name ?? "?")[0].toUpperCase()}
+          {avatarLetter}
         </Text>
       </View>
       <View className="ml-3 flex-1">
@@ -209,7 +230,7 @@ export const TransactionItem = memo(function TransactionItem({
             numberOfLines={1}
             className="shrink text-sm font-semibold text-foreground"
           >
-            {item.merchant || item.category_name || OTHER_CATEGORY_LABEL}
+            {titleText}
           </Text>
           {isTransfer && <Tag label="TRANSFER" variant="muted" />}
           {isInvestment && item.source_type !== SOURCE_TYPE.RECURRING && (

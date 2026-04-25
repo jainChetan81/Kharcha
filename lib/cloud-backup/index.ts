@@ -4,11 +4,11 @@
 // providers encrypt at rest by default (Apple/Google managed keys), and
 // adding a passphrase-derived key would break "just works" auto-restore on
 // a fresh install. We may add an optional passphrase later.
-import { File, Paths } from "expo-file-system";
 import { Platform } from "react-native";
-import { CONFIG_KEYS, DB_NAME } from "@/lib/constants";
+import { CONFIG_KEYS } from "@/lib/constants";
 import { getConfig, updateConfig } from "@/lib/db/config";
-import expo from "@/lib/db/connection";
+import { checkpointWal } from "@/lib/db/connection";
+import { deleteDbSidecars, getDbFile, isSqliteBytes } from "@/lib/db/files";
 import { withTrace } from "@/lib/firebase";
 import {
   type DriveBackupFile,
@@ -26,8 +26,6 @@ import {
 export { DriveScopeMissingError } from "./gdrive";
 export { ICloudSyncingError } from "./icloud";
 
-const SQLITE_SUBDIR = "SQLite";
-
 export type Provider = "icloud" | "gdrive" | "unsupported";
 
 export function getProvider(): Provider {
@@ -42,21 +40,6 @@ export type BackupSummary = {
   provider: Provider;
 };
 
-function getDbFile(): File {
-  return new File(Paths.document, SQLITE_SUBDIR, DB_NAME);
-}
-
-// Checkpoint WAL into the main file so the snapshot includes every
-// committed write. Without this a naive copy of the .db file can miss
-// pages still sitting in the -wal sidecar, which restores a partial DB.
-function checkpointWal(): void {
-  try {
-    expo.execSync("PRAGMA wal_checkpoint(TRUNCATE);");
-  } catch {
-    // Best-effort; a missed checkpoint degrades to the prior behaviour.
-  }
-}
-
 async function readDbBytes(): Promise<ArrayBuffer> {
   checkpointWal();
   const src = getDbFile();
@@ -66,10 +49,19 @@ async function readDbBytes(): Promise<ArrayBuffer> {
 }
 
 function writeDbBytes(bytes: ArrayBuffer): void {
+  // Reject anything that isn't a SQLite database before we touch the
+  // live file. Cloud blobs can be truncated downloads, manually replaced
+  // files in Drive, or wrong-revision payloads — without this guard those
+  // brick the app on next open the same way a bad picker file would.
+  const view = new Uint8Array(bytes);
+  if (!isSqliteBytes(view)) {
+    throw new Error("Cloud backup is not a valid Kharcha database file.");
+  }
   const dest = getDbFile();
   if (dest.exists) dest.delete();
+  deleteDbSidecars();
   dest.create();
-  dest.write(new Uint8Array(bytes));
+  dest.write(view);
 }
 
 export async function backupNow(): Promise<BackupSummary> {

@@ -62,6 +62,7 @@ export const transactionInputSchema = z
     reimbursementStatus: z
       .enum(["none", "pending", "reimbursed"])
       .default("none"),
+    reimbursableAmount: z.number().positive().nullable().optional(),
   })
   // Guard the DB boundary against orphaned investment rows: any path that
   // bypasses the UI (Gmail parse, bulk import) still has to carry a holding
@@ -73,7 +74,14 @@ export const transactionInputSchema = z
   .refine((v) => v.type !== "investment" || v.investmentKind != null, {
     message: "investmentKind is required when type is investment",
     path: ["investmentKind"],
-  });
+  })
+  .refine(
+    (v) => v.reimbursableAmount == null || v.reimbursableAmount <= v.amount,
+    {
+      message: "Reimbursable amount can't exceed the transaction amount",
+      path: ["reimbursableAmount"],
+    },
+  );
 
 // ── Subscription ────────────────────────────────────────────────────
 

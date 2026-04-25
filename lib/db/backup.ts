@@ -2,21 +2,22 @@ import { format } from "date-fns";
 import { getDocumentAsync } from "expo-document-picker";
 import { File, Paths } from "expo-file-system";
 import { shareAsync } from "expo-sharing";
-import { DATE_ISO_FORMAT, DB_NAME } from "@/lib/constants";
+import { DATE_ISO_FORMAT } from "@/lib/constants";
+import { checkpointWal } from "./connection";
+import { deleteDbSidecars, getDbFile, isSqliteBytes } from "./files";
 
-const SQLITE_SUBDIR = "SQLite";
 const DB_MIMETYPE = "application/x-sqlite3";
 const DB_UTI = "public.database";
-
-function getDbFile(): File {
-  return new File(Paths.document, SQLITE_SUBDIR, DB_NAME);
-}
 
 export async function exportDatabase(): Promise<void> {
   const src = getDbFile();
   if (!src.exists) {
     throw new Error("Database file not found");
   }
+  // Flush in-memory WAL pages into the main file so the exported snapshot
+  // includes the user's most recent writes, not just whatever was
+  // checkpointed last.
+  checkpointWal();
   const timestamp = format(new Date(), DATE_ISO_FORMAT);
   const dest = new File(Paths.cache, `kharcha-backup-${timestamp}.db`);
   if (dest.exists) dest.delete();
@@ -44,8 +45,16 @@ export async function importDatabase(): Promise<ImportResult> {
   if (!src.exists) {
     return { imported: false, reason: "picked file not found" };
   }
+  // Verify the picked file is actually a SQLite database before we touch
+  // the live DB. Without this, picking a JPG or PDF by accident would
+  // brick the app on next boot.
+  const bytes = await src.bytes();
+  if (!isSqliteBytes(bytes)) {
+    throw new Error("Selected file is not a valid Kharcha database backup.");
+  }
   const dest = getDbFile();
   if (dest.exists) dest.delete();
+  deleteDbSidecars();
   src.copy(dest);
   return { imported: true };
 }

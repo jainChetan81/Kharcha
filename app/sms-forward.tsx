@@ -83,6 +83,7 @@ export default function SmsForwardScreen() {
       : format(new Date(), DATE_TIME_FORMAT),
     note: `${SMS_SYNC_NOTE}\n\n${rawText}`,
     reimbursementStatus: REIMBURSEMENT_STATUS.NONE,
+    reimbursableAmount: "",
     tagIds: [],
   };
 
@@ -101,6 +102,12 @@ export default function SmsForwardScreen() {
       reimbursementStatus: isExpense
         ? value.reimbursementStatus
         : REIMBURSEMENT_STATUS.NONE,
+      reimbursableAmount:
+        isExpense &&
+        value.reimbursementStatus !== REIMBURSEMENT_STATUS.NONE &&
+        value.reimbursableAmount
+          ? Number(value.reimbursableAmount)
+          : null,
       date: value.date,
       note: value.note || null,
       tagIds: value.tagIds,

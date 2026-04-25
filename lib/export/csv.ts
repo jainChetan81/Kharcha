@@ -9,7 +9,7 @@ const csvEscape = (val: string) => `"${val.replace(/"/g, '""')}"`;
 
 function buildCSV(transactions: TransactionRow[]): string {
   return [
-    "Date,Time,Merchant,Amount,Type,Category,Source,Destination Source,Source Type,Note",
+    "Date,Time,Merchant,Amount,Type,Category,Source,Destination Source,Holding,Investment Kind,Units,Source Type,Reimbursement,Reimbursable Amount,Tags,Note",
     ...transactions.map((t) => {
       const parsed = parseDate(t.date);
       return [
@@ -18,10 +18,22 @@ function buildCSV(transactions: TransactionRow[]): string {
         csvEscape(t.merchant ?? ""),
         t.amount,
         csvEscape(t.type),
-        csvEscape(t.type === "transfer" ? "" : (t.category_name ?? "Other")),
+        csvEscape(
+          t.type === "transfer" || t.type === "investment"
+            ? ""
+            : (t.category_name ?? "Other"),
+        ),
         csvEscape(t.source_name ?? ""),
         csvEscape(t.destination_source_name ?? ""),
+        csvEscape(t.holding_name ?? ""),
+        csvEscape(t.investment_kind ?? ""),
+        t.units ?? "",
         csvEscape(t.source_type),
+        csvEscape(
+          t.reimbursement_status === "none" ? "" : t.reimbursement_status,
+        ),
+        t.reimbursable_amount ?? "",
+        csvEscape(t.tags.map((tag) => tag.name).join("; ")),
         csvEscape(t.note ?? ""),
       ].join(",");
     }),

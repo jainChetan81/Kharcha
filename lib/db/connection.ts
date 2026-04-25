@@ -36,5 +36,16 @@ export async function runMigrations(): Promise<void> {
   await migrate(db, migrations);
 }
 
+// Flush the WAL into the main file before a copy/upload. Without this a
+// raw .db copy can miss pages still in `<DB_NAME>-wal`, producing a
+// snapshot that's missing the user's most recent writes.
+export function checkpointWal(): void {
+  try {
+    expo.execSync("PRAGMA wal_checkpoint(TRUNCATE);");
+  } catch {
+    // Best-effort; a missed checkpoint degrades to the prior behaviour.
+  }
+}
+
 export { db };
 export default expo;

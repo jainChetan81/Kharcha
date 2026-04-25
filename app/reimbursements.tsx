@@ -118,16 +118,24 @@ export default function ReimbursementsScreen() {
             item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
           }
           getItemType={(item) => item.type}
-          renderItem={({ item }: { item: ListItem }) =>
-            item.type === "header" ? (
-              <DateHeader label={item.label} />
-            ) : (
+          renderItem={({ item }: { item: ListItem }) => {
+            if (item.type === "header")
+              return <DateHeader label={item.label} />;
+            const partial =
+              item.data.reimbursable_amount != null &&
+              item.data.reimbursable_amount !== item.data.amount;
+            return (
               <>
                 <TransactionItem
                   item={item.data}
                   showTime
                   onPress={(id) => router.push(editScreen(id))}
                 />
+                {partial && (
+                  <Text className="-mt-1 mb-1 text-right text-xs text-muted-foreground">
+                    {fmt(item.data.reimbursable_amount ?? 0)} recoverable
+                  </Text>
+                )}
                 <View className="-mt-1 mb-2 flex-row gap-2">
                   {isPendingTab ? (
                     <Pressable
@@ -158,8 +166,8 @@ export default function ReimbursementsScreen() {
                   )}
                 </View>
               </>
-            )
-          }
+            );
+          }}
           onEndReached={() => {
             if (hasNextPage) fetchNextPage();
           }}
