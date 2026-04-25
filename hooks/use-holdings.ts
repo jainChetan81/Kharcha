@@ -3,15 +3,12 @@ import { QUERY_KEYS } from "@/lib/constants";
 import {
   addHolding,
   closeHolding,
-  deleteHolding,
   deleteHoldingCascade,
   getAllHoldings,
   getHolding,
   getPortfolioSummary,
-  getPortfolioSummaryForMonth,
   getTransactionsForHolding,
   reopenHolding,
-  updateHolding,
 } from "@/lib/db";
 import type { InstrumentType } from "@/lib/db/types";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
@@ -47,13 +44,6 @@ export function usePortfolioSummary() {
   });
 }
 
-export function usePortfolioSummaryForMonth(yearMonth: string) {
-  return useQuery({
-    queryKey: [QUERY_KEYS.PORTFOLIO_MONTH_SUMMARY, yearMonth],
-    queryFn: () => getPortfolioSummaryForMonth(yearMonth),
-  });
-}
-
 function invalidatePortfolio(qc: ReturnType<typeof useQueryClient>) {
   qc.invalidateQueries({ queryKey: [QUERY_KEYS.HOLDINGS] });
   qc.invalidateQueries({ queryKey: [QUERY_KEYS.HOLDING] });
@@ -81,24 +71,6 @@ export function useAddHolding() {
   });
 }
 
-export function useUpdateHolding() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      id,
-      patch,
-    }: {
-      id: number;
-      patch: {
-        name?: string;
-        instrument_type?: InstrumentType;
-        note?: string | null;
-      };
-    }) => updateHolding(id, patch),
-    onSuccess: () => invalidatePortfolio(qc),
-  });
-}
-
 export function useCloseHolding() {
   const qc = useQueryClient();
   return useMutation({
@@ -116,17 +88,6 @@ export function useReopenHolding() {
     mutationFn: (id: number) => reopenHolding(id),
     onSuccess: () => {
       logEvent(FIREBASE_EVENTS.HOLDING_REOPENED);
-      invalidatePortfolio(qc);
-    },
-  });
-}
-
-export function useDeleteHolding() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => deleteHolding(id),
-    onSuccess: () => {
-      logEvent(FIREBASE_EVENTS.HOLDING_DELETED);
       invalidatePortfolio(qc);
     },
   });

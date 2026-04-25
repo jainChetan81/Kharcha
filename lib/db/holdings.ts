@@ -11,7 +11,6 @@ import type {
   Holding,
   InstrumentType,
   InvestmentKind,
-  PortfolioMonthSummary,
   PortfolioSummary,
 } from "./types";
 
@@ -54,40 +53,12 @@ export async function addHolding(input: {
   return { id: Number(result.lastInsertRowId), isNew: true };
 }
 
-export async function updateHolding(
-  id: number,
-  patch: {
-    name?: string;
-    instrument_type?: InstrumentType;
-    note?: string | null;
-  },
-): Promise<void> {
-  const values: Partial<typeof holdings.$inferInsert> = {};
-  if (patch.name !== undefined) values.name = patch.name.trim();
-  if (patch.instrument_type !== undefined)
-    values.instrument_type = patch.instrument_type;
-  if (patch.note !== undefined) values.note = patch.note;
-  if (Object.keys(values).length === 0) return;
-  await db.update(holdings).set(values).where(eq(holdings.id, id));
-}
-
 export async function closeHolding(id: number): Promise<void> {
   await db.update(holdings).set({ is_closed: 1 }).where(eq(holdings.id, id));
 }
 
 export async function reopenHolding(id: number): Promise<void> {
   await db.update(holdings).set({ is_closed: 0 }).where(eq(holdings.id, id));
-}
-
-export async function deleteHolding(id: number): Promise<void> {
-  const [linked] = await db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(transactions)
-    .where(eq(transactions.holding_id, id));
-  if (Number(linked?.count ?? 0) > 0) {
-    throw new Error("Close the holding instead — transactions reference it");
-  }
-  await db.delete(holdings).where(eq(holdings.id, id));
 }
 
 export async function deleteHoldingCascade(id: number): Promise<void> {
@@ -104,19 +75,6 @@ export async function deleteHoldingCascade(id: number): Promise<void> {
     }
     await db.delete(transactions).where(eq(transactions.holding_id, id));
     await db.delete(holdings).where(eq(holdings.id, id));
-  });
-}
-
-export async function updateHoldingOrder(
-  items: { id: number; sort_order: number }[],
-): Promise<void> {
-  await db.transaction(async (tx) => {
-    for (const item of items) {
-      await tx
-        .update(holdings)
-        .set({ sort_order: item.sort_order })
-        .where(eq(holdings.id, item.id));
-    }
   });
 }
 
@@ -244,38 +202,6 @@ export async function getPortfolioSummary(): Promise<PortfolioSummary> {
     invested += h.invested ?? 0;
   }
   return { invested };
-}
-
-export async function getPortfolioSummaryForMonth(
-  yearMonth: string,
-): Promise<PortfolioMonthSummary> {
-  const rows = await db
-    .select({
-      kind: transactions.investment_kind,
-      amount: transactions.amount,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.type, TRANSACTION_TYPE.INVESTMENT),
-        sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
-      ),
-    );
-  let invested = 0;
-  let sold = 0;
-  let dividends = 0;
-  for (const row of rows) {
-    const kind = row.kind as InvestmentKind | null;
-    const amt = Number(row.amount) || 0;
-    if (kind === INVESTMENT_KIND.BUY) invested += amt;
-    else if (kind === INVESTMENT_KIND.SELL) sold += amt;
-    else if (
-      kind === INVESTMENT_KIND.DIVIDEND ||
-      kind === INVESTMENT_KIND.INTEREST
-    )
-      dividends += amt;
-  }
-  return { invested, sold, dividends };
 }
 
 export async function getTransactionsForHolding(id: number) {

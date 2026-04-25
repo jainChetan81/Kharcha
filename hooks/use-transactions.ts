@@ -92,9 +92,6 @@ export function useInvalidateTransactions() {
         queryKey: [QUERY_KEYS.PORTFOLIO_SUMMARY],
       }),
       queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PORTFOLIO_MONTH_SUMMARY],
-      }),
-      queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.TRANSACTION],
       }),
     ]).then((result) => {

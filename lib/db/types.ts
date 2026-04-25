@@ -28,12 +28,6 @@ export type PortfolioSummary = {
   invested: number;
 };
 
-export type PortfolioMonthSummary = {
-  invested: number;
-  sold: number;
-  dividends: number;
-};
-
 export type TagLite = { id: number; name: string };
 
 export type TransactionRow = Transaction & {

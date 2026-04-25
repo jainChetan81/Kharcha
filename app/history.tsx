@@ -236,71 +236,75 @@ export default function HistoryScreen() {
         )}
       </View>
 
-      <ComponentErrorBoundary>
-        <FlashList
-          data={listData}
-          keyExtractor={(item) =>
-            item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
-          }
-          getItemType={(item) => item.type}
-          renderItem={({ item }: { item: ListItem }) =>
-            item.type === "header" ? (
-              <DateHeader label={item.label} />
-            ) : (
-              <TransactionItem
-                item={item.data}
-                showTime
-                onPress={(id) => router.push(editScreen(id))}
-                onSwipeDelete={handleSwipeDelete}
+      <View className="flex-1">
+        <ComponentErrorBoundary>
+          <FlashList
+            data={listData}
+            keyExtractor={(item) =>
+              item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
+            }
+            getItemType={(item) => item.type}
+            renderItem={({ item }: { item: ListItem }) =>
+              item.type === "header" ? (
+                <DateHeader label={item.label} />
+              ) : (
+                <TransactionItem
+                  item={item.data}
+                  showTime
+                  onPress={(id) => router.push(editScreen(id))}
+                  onSwipeDelete={handleSwipeDelete}
+                />
+              )
+            }
+            onEndReached={() => {
+              if (hasNextPage) fetchNextPage();
+            }}
+            onEndReachedThreshold={0.5}
+            refreshControl={
+              <RefreshControl
+                {...getRefreshControlProps(refreshing, onRefresh)}
               />
-            )
-          }
-          onEndReached={() => {
-            if (hasNextPage) fetchNextPage();
-          }}
-          onEndReachedThreshold={0.5}
-          refreshControl={
-            <RefreshControl
-              {...getRefreshControlProps(refreshing, onRefresh)}
-            />
-          }
-          ListFooterComponent={
-            isFetchingNextPage ? (
-              <View className="items-center py-6">
-                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-              </View>
-            ) : null
-          }
-          ListEmptyComponent={
-            isLoading ? (
-              <TransactionSkeleton count={10} />
-            ) : (
-              <EmptyState
-                icon={debouncedSearch ? Search : Receipt}
-                title={
-                  debouncedSearch
-                    ? `no results for '${debouncedSearch}'`
-                    : "No transactions found"
-                }
-                description={
-                  debouncedSearch && hasActiveFilters
-                    ? "try clearing filters or changing your search"
-                    : undefined
-                }
-                inList
-              >
-                {!debouncedSearch && hasActiveFilters ? (
-                  <Pressable onPress={resetAllFilters}>
-                    <Text className="text-xs text-primary">Clear filters</Text>
-                  </Pressable>
-                ) : null}
-              </EmptyState>
-            )
-          }
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 20 }}
-        />
-      </ComponentErrorBoundary>
+            }
+            ListFooterComponent={
+              isFetchingNextPage ? (
+                <View className="items-center py-6">
+                  <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+                </View>
+              ) : null
+            }
+            ListEmptyComponent={
+              isLoading ? (
+                <TransactionSkeleton count={10} />
+              ) : (
+                <EmptyState
+                  icon={debouncedSearch ? Search : Receipt}
+                  title={
+                    debouncedSearch
+                      ? `no results for '${debouncedSearch}'`
+                      : "No transactions found"
+                  }
+                  description={
+                    debouncedSearch && hasActiveFilters
+                      ? "try clearing filters or changing your search"
+                      : undefined
+                  }
+                  inList
+                >
+                  {!debouncedSearch && hasActiveFilters ? (
+                    <Pressable onPress={resetAllFilters}>
+                      <Text className="text-xs text-primary">
+                        Clear filters
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </EmptyState>
+              )
+            }
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 20 }}
+          />
+        </ComponentErrorBoundary>
+      </View>
 
       <Suspense fallback={null}>
         <ComponentErrorBoundary>

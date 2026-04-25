@@ -22,7 +22,6 @@ export const SCREENS = {
   CONFIG_CURRENCY: "/config/currency",
   NETWORK_LOGS: "/network-logs",
   EXPORT: "/export",
-  SUBSCRIPTION_AUDIT: "/subscriptions/audit",
   REIMBURSEMENTS: "/reimbursements",
   PORTFOLIO: "/portfolio",
   HOLDING: "/holding",
@@ -257,6 +256,7 @@ export const GMAIL_API = {
 } as const;
 
 export const CONFIG_KEYS = {
+  APP_ID: "app_id",
   CURRENCY: "currency",
   USER_NAME: "userName",
   APP_VERSION: "app_version",
@@ -359,7 +359,6 @@ export const QUERY_KEYS = {
   HOLDING: "holding",
   HOLDING_TRANSACTIONS: "holding-transactions",
   PORTFOLIO_SUMMARY: "portfolio-summary",
-  PORTFOLIO_MONTH_SUMMARY: "portfolio-month-summary",
   CLOUD_BACKUP: "cloud-backup",
   DEVICE_SYNC_CONFIG: "device-sync",
   USER_SYNC_PREFS: "user-sync-prefs",
@@ -383,26 +382,16 @@ export const SHEET_MAX_HEIGHT_FRACTION = 0.65;
 export const GMAIL_SYNC_MAX_MONTHS_BACK = 1;
 
 // Thresholds
-export const BUDGET_WARN_THRESHOLD = 0.75;
 export const BUDGET_CRITICAL_THRESHOLD = 0.9;
 
 // Display limits
 export const TAG_DISPLAY_LIMIT = 3;
 export const TOP_BREAKDOWN_LIMIT = 5;
 export const RECENT_TRANSACTIONS_LIMIT = 5;
-export const MAX_BILLING_DAY = 31;
-export const GMAIL_FETCH_LIMIT = 50;
 export const MAX_EXPORT_TRANSACTIONS = 10_000;
 
 // Animation
 export const ANIMATION_DURATION_MS = 200;
-
-// Query timing
-export const QUERY_STALE_TIME_MS = 1000 * 10;
-export const QUERY_GC_TIME_MS = 1000 * 60 * 30;
-
-// Merchant
-export const MERCHANT_NAME_MIN_LENGTH = 3;
 
 // Category slugs
 export const CATEGORY_SLUG = {

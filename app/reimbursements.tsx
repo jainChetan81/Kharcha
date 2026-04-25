@@ -111,98 +111,100 @@ export default function ReimbursementsScreen() {
         </Pressable>
       </View>
 
-      <ComponentErrorBoundary>
-        <FlashList
-          data={listData}
-          keyExtractor={(item) =>
-            item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
-          }
-          getItemType={(item) => item.type}
-          renderItem={({ item }: { item: ListItem }) => {
-            if (item.type === "header")
-              return <DateHeader label={item.label} />;
-            const partial =
-              item.data.reimbursable_amount != null &&
-              item.data.reimbursable_amount !== item.data.amount;
-            return (
-              <>
-                <TransactionItem
-                  item={item.data}
-                  showTime
-                  onPress={(id) => router.push(editScreen(id))}
-                />
-                {partial && (
-                  <Text className="-mt-1 mb-1 text-right text-xs text-muted-foreground">
-                    {fmt(item.data.reimbursable_amount ?? 0)} recoverable
-                  </Text>
-                )}
-                <View className="-mt-1 mb-2 flex-row gap-2">
-                  {isPendingTab ? (
-                    <Pressable
-                      onPress={() => markReimbursed(item.data.id)}
-                      className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-positive bg-positive/10 py-2"
-                    >
-                      <Icon
-                        as={CheckCircle2}
-                        className="size-4 text-positive"
-                      />
-                      <Text className="text-sm font-medium text-positive">
-                        Mark reimbursed
-                      </Text>
-                    </Pressable>
-                  ) : (
-                    <Pressable
-                      onPress={() => markPending(item.data.id)}
-                      className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-border bg-card py-2"
-                    >
-                      <Icon
-                        as={RotateCcw}
-                        className="size-4 text-muted-foreground"
-                      />
-                      <Text className="text-sm font-medium text-muted-foreground">
-                        Move back to pending
-                      </Text>
-                    </Pressable>
+      <View className="flex-1">
+        <ComponentErrorBoundary>
+          <FlashList
+            data={listData}
+            keyExtractor={(item) =>
+              item.type === "header" ? `h-${item.label}` : `t-${item.data.id}`
+            }
+            getItemType={(item) => item.type}
+            renderItem={({ item }: { item: ListItem }) => {
+              if (item.type === "header")
+                return <DateHeader label={item.label} />;
+              const partial =
+                item.data.reimbursable_amount != null &&
+                item.data.reimbursable_amount !== item.data.amount;
+              return (
+                <>
+                  <TransactionItem
+                    item={item.data}
+                    showTime
+                    onPress={(id) => router.push(editScreen(id))}
+                  />
+                  {partial && (
+                    <Text className="-mt-1 mb-1 text-right text-xs text-muted-foreground">
+                      {fmt(item.data.reimbursable_amount ?? 0)} recoverable
+                    </Text>
                   )}
-                </View>
-              </>
-            );
-          }}
-          onEndReached={() => {
-            if (hasNextPage) fetchNextPage();
-          }}
-          onEndReachedThreshold={0.5}
-          refreshControl={
-            <RefreshControl
-              {...getRefreshControlProps(refreshing, onRefresh)}
-            />
-          }
-          ListFooterComponent={
-            isFetchingNextPage ? (
-              <View className="items-center py-6">
-                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-              </View>
-            ) : null
-          }
-          ListEmptyComponent={
-            isLoading ? (
-              <TransactionSkeleton count={10} />
-            ) : (
-              <EmptyState
-                icon={Receipt}
-                title={
-                  isPendingTab
-                    ? "No pending reimbursements"
-                    : "Nothing reimbursed yet"
-                }
-                description='Toggle "Reimbursable" on any expense to track it here.'
-                inList
+                  <View className="-mt-1 mb-2 flex-row gap-2">
+                    {isPendingTab ? (
+                      <Pressable
+                        onPress={() => markReimbursed(item.data.id)}
+                        className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-positive bg-positive/10 py-2"
+                      >
+                        <Icon
+                          as={CheckCircle2}
+                          className="size-4 text-positive"
+                        />
+                        <Text className="text-sm font-medium text-positive">
+                          Mark reimbursed
+                        </Text>
+                      </Pressable>
+                    ) : (
+                      <Pressable
+                        onPress={() => markPending(item.data.id)}
+                        className="flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-border bg-card py-2"
+                      >
+                        <Icon
+                          as={RotateCcw}
+                          className="size-4 text-muted-foreground"
+                        />
+                        <Text className="text-sm font-medium text-muted-foreground">
+                          Move back to pending
+                        </Text>
+                      </Pressable>
+                    )}
+                  </View>
+                </>
+              );
+            }}
+            onEndReached={() => {
+              if (hasNextPage) fetchNextPage();
+            }}
+            onEndReachedThreshold={0.5}
+            refreshControl={
+              <RefreshControl
+                {...getRefreshControlProps(refreshing, onRefresh)}
               />
-            )
-          }
-          contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 20 }}
-        />
-      </ComponentErrorBoundary>
+            }
+            ListFooterComponent={
+              isFetchingNextPage ? (
+                <View className="items-center py-6">
+                  <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+                </View>
+              ) : null
+            }
+            ListEmptyComponent={
+              isLoading ? (
+                <TransactionSkeleton count={10} />
+              ) : (
+                <EmptyState
+                  icon={Receipt}
+                  title={
+                    isPendingTab
+                      ? "No pending reimbursements"
+                      : "Nothing reimbursed yet"
+                  }
+                  description='Toggle "Reimbursable" on any expense to track it here.'
+                  inList
+                />
+              )
+            }
+            contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 20 }}
+          />
+        </ComponentErrorBoundary>
+      </View>
     </View>
   );
 }

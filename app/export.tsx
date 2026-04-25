@@ -10,7 +10,6 @@ import {
 import { lazy, Suspense, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   Switch,
@@ -21,10 +20,11 @@ import { Icon } from "@/components/ui/icon";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Text } from "@/components/ui/text";
-import { useExportDatabase, useImportDatabase } from "@/hooks/use-cloud-backup";
+import { useCommitImport, useExportDatabase } from "@/hooks/use-cloud-backup";
 import { useCloudBackupUi } from "@/hooks/use-cloud-backup-ui";
 import { COLORS, SCROLL_BOTTOM_PADDING } from "@/lib/constants";
-import { initDB } from "@/lib/db";
+import { type PickedBackup, pickBackupFile } from "@/lib/db/backup";
+import { type BackupStats, inspectBackupBytes } from "@/lib/db/inspect";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 const ExportSheet = lazy(() =>
@@ -33,10 +33,22 @@ const ExportSheet = lazy(() =>
   })),
 );
 
+const ImportPreviewSheet = lazy(() =>
+  import("@/components/import-preview-sheet").then((m) => ({
+    default: m.ImportPreviewSheet,
+  })),
+);
+
 export default function ExportScreen() {
   const [showExport, setShowExport] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [picked, setPicked] = useState<PickedBackup | null>(null);
+  const [stats, setStats] = useState<BackupStats | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+
   const exportMutation = useExportDatabase();
-  const importMutation = useImportDatabase();
+  const commitMutation = useCommitImport();
 
   async function handleDbExport() {
     try {
@@ -47,31 +59,48 @@ export default function ExportScreen() {
     }
   }
 
-  function handleDbImport() {
-    Alert.alert(
-      "Import Database",
-      "This will replace all current data with the selected backup. Continue?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Import",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const result = await importMutation.mutateAsync();
-              if (!result.imported) return;
-              // Bring the imported DB up to the current schema before any
-              // query runs against it — otherwise a backup from an older
-              // app version would crash queries that expect new columns.
-              await initDB();
-              showSuccessToast("Database imported");
-            } catch (err) {
-              showErrorToast("Import failed", err);
-            }
-          },
-        },
-      ],
-    );
+  async function handleDbImport() {
+    let pickedFile: PickedBackup | null;
+    try {
+      pickedFile = await pickBackupFile();
+    } catch (err) {
+      showErrorToast("Couldn't read file", err);
+      return;
+    }
+    if (!pickedFile) return; // user cancelled the picker
+
+    setPicked(pickedFile);
+    setStats(null);
+    setImportError(null);
+    setShowImport(true);
+    setImportLoading(true);
+
+    const result = await inspectBackupBytes(pickedFile.bytes);
+    setImportLoading(false);
+    if (result.ok) {
+      setStats(result.stats);
+    } else {
+      setImportError(result.reason);
+    }
+  }
+
+  async function handleConfirmImport() {
+    if (!picked) return;
+    try {
+      await commitMutation.mutateAsync(picked);
+      closeImportSheet();
+      showSuccessToast("Database imported");
+    } catch (err) {
+      showErrorToast("Import failed", err);
+    }
+  }
+
+  function closeImportSheet() {
+    setShowImport(false);
+    setPicked(null);
+    setStats(null);
+    setImportError(null);
+    setImportLoading(false);
   }
 
   return (
@@ -95,7 +124,7 @@ export default function ExportScreen() {
           icon={FileText}
           label="Export as CSV"
           description="One row per transaction. Opens in Excel, Numbers, Google Sheets."
-          disabled={exportMutation.isPending || importMutation.isPending}
+          disabled={exportMutation.isPending || commitMutation.isPending}
           onPress={() => setShowExport(true)}
         />
 
@@ -108,15 +137,19 @@ export default function ExportScreen() {
           label="Export Database"
           description="Save a complete backup file you can re-import later."
           loading={exportMutation.isPending}
-          disabled={exportMutation.isPending || importMutation.isPending}
+          disabled={exportMutation.isPending || commitMutation.isPending}
           onPress={handleDbExport}
         />
         <Row
           icon={Upload}
           label="Import Database"
           description="Replace all current data with a backup file. Destructive."
-          loading={importMutation.isPending}
-          disabled={exportMutation.isPending || importMutation.isPending}
+          loading={commitMutation.isPending || importLoading}
+          disabled={
+            exportMutation.isPending ||
+            commitMutation.isPending ||
+            importLoading
+          }
           onPress={handleDbImport}
         />
 
@@ -127,6 +160,15 @@ export default function ExportScreen() {
         <ExportSheet
           visible={showExport}
           onClose={() => setShowExport(false)}
+        />
+        <ImportPreviewSheet
+          visible={showImport}
+          loading={importLoading}
+          importing={commitMutation.isPending}
+          stats={stats}
+          error={importError}
+          onClose={closeImportSheet}
+          onConfirm={handleConfirmImport}
         />
       </Suspense>
     </View>
