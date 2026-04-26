@@ -17,7 +17,8 @@
       "Bash(grep -E \"^\\(diff --git|[+-].*text-\\(negative|positive|foreground|muted|primary|warning|destructive\\)|[+-].*bg-\\(negative|positive|primary|card|background|destructive\\)|[+-].*border-\\(negative|positive|primary|border\\)|[+-].*COLORS\\\\.|[+-].*CATEGORY_PALETTE|[+-].*#[0-9a-fA-F]{6,8}\\)\")",
       "Bash(awk '/logFirebaseError/,/\\\\\\);/' /Users/hackerearth467/Desktop/code/Kharcha/lib/db/index.ts)",
       "Bash(node -e \"const c = require\\('fs'\\).readFileSync\\('/Users/hackerearth467/Desktop/code/Kharcha/app/reimbursements.tsx','utf8'\\); const o=\\(c.match\\(/<View/g\\)||[]\\).length; const cl=\\(c.match\\(/<\\\\\\\\/View>/g\\)||[]\\).length; console.log\\('open:',o,'close:',cl\\);\")",
-      "Bash(node -e \"const c = require\\('fs'\\).readFileSync\\('/Users/hackerearth467/Desktop/code/Kharcha/app/history.tsx','utf8'\\); const o=\\(c.match\\(/<View/g\\)||[]\\).length; const cl=\\(c.match\\(/<\\\\\\\\/View>/g\\)||[]\\).length; console.log\\('View open:',o,'close:',cl\\);\")"
+      "Bash(node -e \"const c = require\\('fs'\\).readFileSync\\('/Users/hackerearth467/Desktop/code/Kharcha/app/history.tsx','utf8'\\); const o=\\(c.match\\(/<View/g\\)||[]\\).length; const cl=\\(c.match\\(/<\\\\\\\\/View>/g\\)||[]\\).length; console.log\\('View open:',o,'close:',cl\\);\")",
+      "Bash(git -C /Users/hackerearth467/Desktop/code/Kharcha diff -- .claude/settings.json)"
     ],
     "deny": [
       "Bash(rm -rf:*)"

@@ -5,7 +5,7 @@ kharcha ships via two mechanisms:
 1. **EAS Build** — produces a native binary (`.aab` / `.ipa`). Required when native code, plugins, or `app.json` native config changes.
 2. **EAS Update (OTA)** — ships JS + asset changes to already-installed builds. No store review, instant rollout.
 
-Runtime version policy is `appVersion` ([app.json](app.json)), so OTA updates only reach builds with the matching `version` in `app.json`. Bump `version` whenever you ship a native build.
+Runtime version policy is `appVersion` ([app.json](app.json)), so OTA updates only reach builds with the matching `version` in `app.json`. Whenever you ship a native build, follow the [version bump checklist](#version-bump-checklist) at the bottom of this doc.
 
 ---
 
@@ -82,11 +82,28 @@ Rule of thumb: if `ios/` or `android/` would regenerate differently, rebuild.
 
 ---
 
-## version bumping checklist
+## version bump checklist
 
-Before a native release:
+When bumping versions (e.g. `0.6.0` → `0.6.1`), update **all five** in the same commit:
 
-1. Bump `"version"` in [app.json](app.json)
-2. Bump `"version"` in [package.json](package.json) to match
-3. Android `versionCode` auto-increments via EAS; iOS `buildNumber` likewise
-4. Commit, then build
+| File | Field | Example |
+| --- | --- | --- |
+| `package.json` | `version` | `"0.6.1"` |
+| `app.json` | `expo.version` | `"0.6.1"` |
+| `app.json` | `expo.ios.buildNumber` | `"7"` (increment) |
+| `app.json` | `expo.android.versionCode` | `7` (increment) |
+| `lib/version.ts` | `APP_VERSION` | `"0.6.1"` |
+
+### Why each matters
+
+- **`version` (three places)** — user-facing semver. Must match across `package.json`, `app.json`, and `lib/version.ts` (the last drives in-app migration comparisons via `compareVersions()`).
+- **`buildNumber` (iOS)** — App Store Connect rejects a submission where both `version` and `buildNumber` match a prior upload. Increment on every submission, even if `version` didn't change.
+- **`versionCode` (Android)** — Google Play requires this to strictly increase with each release. Increment by 1 each time.
+
+EAS does **not** auto-increment these in this project ([eas.json](eas.json) has no remote `appVersionSource`) — bump them yourself before each build.
+
+`buildNumber` and `versionCode` should stay aligned when practical — makes cross-platform triage easier.
+
+### Prerelease tags
+
+`package.json` may carry a prerelease tag (`0.6.1-beta.1`). `app.json` and `lib/version.ts` must not — Expo rejects the suffix, and `compareVersions()` only handles `major.minor.patch`.

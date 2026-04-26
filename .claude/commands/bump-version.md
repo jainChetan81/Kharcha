@@ -9,12 +9,25 @@ description: bump app version across package.json, app.json, lib/version.ts and 
 - current app.json: !`grep -E '"version"|"buildNumber"|"versionCode"' app.json`
 - current package.json version: !`grep -E '"version"' package.json | head -1`
 - current lib/version.ts: !`grep -E 'APP_VERSION' lib/version.ts`
-- releasing checklist: @RELEASING.md
 - argument: $ARGUMENTS
+
+## checklist
+
+Five fields must change together (full reasoning in `docs/RELEASE.md` → "version bump checklist"):
+
+| File | Field | Update |
+| --- | --- | --- |
+| `package.json` | `version` | full target (may include prerelease tag, e.g. `0.6.1-beta.1`) |
+| `app.json` | `expo.version` | stripped target (no prerelease suffix — Expo rejects it) |
+| `app.json` | `expo.ios.buildNumber` | current + 1, string-quoted |
+| `app.json` | `expo.android.versionCode` | current + 1, unquoted integer |
+| `lib/version.ts` | `APP_VERSION` | stripped target (drives `compareVersions()`) |
+
+EAS does not auto-increment build numbers in this project — bump them yourself.
 
 ## task
 
-Bump the app version across all five fields listed in `RELEASING.md`. Do NOT commit.
+Bump the app version across all five fields above. Do NOT commit.
 
 ### step 1 — determine target version
 
