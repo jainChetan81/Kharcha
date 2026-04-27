@@ -49,6 +49,7 @@ import {
 } from "./schema";
 import { getTagsForTransactions } from "./tags";
 import type {
+  BiggestTransaction,
   CategoryBreakdownRow,
   MerchantBreakdownRow,
   MonthlyInsights,
@@ -58,12 +59,12 @@ import type {
 
 export { db } from "./connection";
 export type {
+  BiggestTransaction,
   Category,
   CategoryBreakdownRow,
   MerchantBreakdownRow,
   MonthlyInsights,
   MonthlySummary,
-  ReimbursementSummary,
   Source,
   Tag,
   TagBreakdownRow,
@@ -1127,6 +1128,87 @@ export async function getMonthlySummary(yearMonth: string) {
     logFirebaseError(error, {
       error_type: ERROR_TYPE.DB,
       operation: "getMonthlySummary",
+    });
+    throw error;
+  }
+}
+
+export async function getBiggestTransaction(
+  yearMonth: string,
+): Promise<BiggestTransaction | null> {
+  try {
+    const rows = await db
+      .select({
+        merchant: transactions.merchant,
+        amount: transactions.amount,
+        date: transactions.date,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+          sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+        ),
+      )
+      .orderBy(desc(transactions.amount))
+      .limit(1);
+    return rows[0] ?? null;
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: ERROR_TYPE.DB,
+      operation: "getBiggestTransaction",
+    });
+    throw error;
+  }
+}
+
+export async function getTransactionCount(yearMonth: string): Promise<number> {
+  try {
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(transactions)
+      .where(
+        and(
+          sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+          sql`${transactions.type} != 'investment'`,
+        ),
+      );
+    return result[0]?.count ?? 0;
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: ERROR_TYPE.DB,
+      operation: "getTransactionCount",
+    });
+    throw error;
+  }
+}
+
+// Walks distinct transaction days backward from `asOf` (or today), counting
+// consecutive days. Stops at the first gap. Grants a one-day grace on the
+// anchor — an in-progress today with nothing logged yet still surfaces the
+// streak built up through yesterday, matching how habit-tracker UIs behave.
+export async function getTrackingStreak(asOf?: string): Promise<number> {
+  try {
+    const rows = (await db
+      .selectDistinct({
+        day: sql<string>`substr(${transactions.date}, 1, 10)`,
+      })
+      .from(transactions)) as { day: string }[];
+    const days = new Set(rows.map((r) => r.day));
+    const cursor = asOf ? new Date(`${asOf}T00:00:00`) : new Date();
+    if (!days.has(format(cursor, DATE_ISO_FORMAT))) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    let streak = 0;
+    while (days.has(format(cursor, DATE_ISO_FORMAT))) {
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: ERROR_TYPE.DB,
+      operation: "getTrackingStreak",
     });
     throw error;
   }

@@ -2,6 +2,7 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": ["app/**/*.{ts,tsx}"],
   "project": ["app/**/*.{ts,tsx}", "components/**/*.{ts,tsx}", "hooks/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}"],
-  "ignoreDependencies": ["react-native-worklets"],
+  "ignoreDependencies": ["expo-font", "babel-plugin-react-compiler"],
+  "ignoreBinaries": ["pod", "eas"],
   "ignoreExportsUsedInFile": true
 }

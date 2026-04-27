@@ -74,9 +74,3 @@ export function useSmsSyncActive(): boolean {
   const { data } = useAutoRefreshPrefs();
   return flag && !!data?.sms;
 }
-
-export function useSmsListenerActive(): boolean {
-  const flag = useSmsListenerEnabled();
-  const { data } = useAutoRefreshPrefs();
-  return flag && !!data?.sms_listener;
-}

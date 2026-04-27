@@ -25,6 +25,7 @@ export const SCREENS = {
   REIMBURSEMENTS: "/reimbursements",
   PORTFOLIO: "/portfolio",
   HOLDING: "/holding",
+  INSIGHTS: "/insights",
 } as const;
 
 export function holdingScreen(id: number) {
@@ -275,6 +276,7 @@ export const CONFIG_KEYS = {
   DEVICE_SYNC_USER_ENABLED: "device_sync_user_enabled",
   SMS_SYNC_USER_ENABLED: "sms_sync_user_enabled",
   SMS_LISTENER_USER_ENABLED: "sms_listener_user_enabled",
+  LAST_WRAP_SHOWN_MONTH: "last_wrap_shown_month",
 } as const;
 
 export const SUBSCRIPTION_NOTE = "Auto-created from subscription";
@@ -363,6 +365,9 @@ export const QUERY_KEYS = {
   DEVICE_SYNC_CONFIG: "device-sync",
   USER_SYNC_PREFS: "user-sync-prefs",
   SMS_LISTENER_STATUS: "sms-listener-status",
+  BIGGEST_TRANSACTION: "biggest-transaction",
+  TRANSACTION_COUNT: "transaction-count",
+  TRACKING_STREAK: "tracking-streak",
 } as const;
 
 export const BOOL_FLAG = {

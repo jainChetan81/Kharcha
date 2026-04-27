@@ -30,7 +30,7 @@ import { SpendingPanel } from "@/components/spending-panel";
 import { TopCategoryCard } from "@/components/top-category-card";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { TransactionSkeleton } from "@/components/transaction-skeleton";
-import { ALERT_TONE_TEXT, AlertBanner } from "@/components/ui/alert-banner";
+import { ALERT_TONE_TEXT } from "@/components/ui/alert-banner";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useConfig } from "@/hooks/use-config";
@@ -379,98 +379,60 @@ export default function HomeScreen() {
             </ComponentErrorBoundary>
           </View>
 
-          <View className="mt-3 flex-row gap-3">
-            <Pressable
-              onPress={() =>
-                router.push(
-                  historyHref({
-                    type: TRANSACTION_TYPE.INCOME,
-                    month: selectedMonth,
-                  }),
-                )
-              }
-              className="flex-1 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
-            >
-              <View>
-                <Text className="text-xs text-muted-foreground">Income</Text>
-                <Text className="mt-0.5 text-base font-bold text-positive">
-                  {fmt(income)}
+          {(spendingChangeFlavor || subsTotal > 0) && (
+            <View className="mt-3 flex-row items-center justify-center gap-2">
+              {spendingChangeFlavor && (
+                <Text
+                  className={cn(
+                    "text-xs font-medium",
+                    spendingChangeFlavor.color,
+                  )}
+                >
+                  {spendingChangeFlavor.text}
                 </Text>
-              </View>
-              <Icon
-                as={ChevronRight}
-                className="size-4 text-muted-foreground"
-              />
-            </Pressable>
-            <Pressable
-              onPress={() =>
-                router.push(
-                  historyHref({
-                    type: TRANSACTION_TYPE.EXPENSE,
-                    month: selectedMonth,
-                  }),
-                )
-              }
-              className="flex-1 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
-            >
-              <View>
-                <Text className="text-xs text-muted-foreground">Spent</Text>
-                <Text className="mt-0.5 text-base font-bold text-negative">
-                  {fmt(expenses)}
-                </Text>
-              </View>
-              <Icon
-                as={ChevronRight}
-                className="size-4 text-muted-foreground"
-              />
-            </Pressable>
-          </View>
-
-          {spendingChangeFlavor && (
-            <Text
-              className={cn(
-                "mt-3 text-center text-xs font-medium",
-                spendingChangeFlavor.color,
               )}
-            >
-              {spendingChangeFlavor.text}
-            </Text>
+              {spendingChangeFlavor && subsTotal > 0 && (
+                <Text className="text-xs text-muted-foreground">·</Text>
+              )}
+              {subsTotal > 0 && (
+                <Pressable
+                  onPress={() => router.push(SCREENS.SUBSCRIPTIONS)}
+                  hitSlop={8}
+                >
+                  <Text className="text-xs text-muted-foreground">
+                    ↻ {fmt(subsTotal)} in subs
+                  </Text>
+                </Pressable>
+              )}
+            </View>
           )}
 
-          {subsTotal > 0 && (
+          {insights?.topCategoryChange && (
+            <TopCategoryCard
+              change={insights.topCategoryChange}
+              selectedMonth={selectedMonth}
+            />
+          )}
+
+          {reimbursementSummary && reimbursementSummary.pending_count > 0 && (
             <Pressable
-              onPress={() => router.push(SCREENS.SUBSCRIPTIONS)}
-              className="mt-3"
+              onPress={() => router.push(SCREENS.REIMBURSEMENTS)}
+              hitSlop={8}
+              className="mt-2 flex-row items-center justify-center gap-1"
             >
-              <Text className="text-center text-xs text-muted-foreground">
-                ↻ {fmt(subsTotal)} in subscriptions this month
+              <Text className={cn("text-xs", ALERT_TONE_TEXT.warn)}>
+                {fmt(reimbursementSummary.pending_total)} in{" "}
+                {reimbursementSummary.pending_count} pending reimbursement
+                {reimbursementSummary.pending_count === 1 ? "" : "s"}
               </Text>
+              <Icon
+                as={ChevronRight}
+                className={cn("size-3", ALERT_TONE_TEXT.warn)}
+              />
             </Pressable>
           )}
 
           <View className="mt-4 gap-3">
-            {reimbursementSummary && reimbursementSummary.pending_count > 0 && (
-              <AlertBanner
-                tone="warn"
-                onPress={() => router.push(SCREENS.REIMBURSEMENTS)}
-              >
-                <Text
-                  className={cn("text-sm font-medium", ALERT_TONE_TEXT.warn)}
-                >
-                  {fmt(reimbursementSummary.pending_total)} in{" "}
-                  {reimbursementSummary.pending_count} pending reimbursement
-                  {reimbursementSummary.pending_count === 1 ? "" : "s"}
-                </Text>
-              </AlertBanner>
-            )}
-
-            {insights?.topCategoryChange && (
-              <TopCategoryCard
-                change={insights.topCategoryChange}
-                selectedMonth={selectedMonth}
-              />
-            )}
-
             {insights?.projectedLow != null &&
               insights?.projectedHigh != null && (
                 <ProjectedSpendingCard

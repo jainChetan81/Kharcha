@@ -116,12 +116,6 @@ export const configSchema = z.object({
   value: z.string(),
 });
 
-// ── Inferred types (single source of truth) ─────────────────────────
-
-export type TransactionInput = z.infer<typeof transactionInputSchema>;
-export type SubscriptionInput = z.infer<typeof subscriptionInputSchema>;
-export type ConfigInput = z.infer<typeof configSchema>;
-
 // ── Helpers ─────────────────────────────────────────────────────────
 
 /** Extract the first human-readable error from a ZodError. */

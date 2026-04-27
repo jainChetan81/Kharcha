@@ -43,13 +43,6 @@ export type TransactionRow = Transaction & {
   tags: TagLite[];
 };
 
-export type ReimbursementSummary = {
-  pending_count: number;
-  pending_total: number;
-  reimbursed_count: number;
-  reimbursed_total: number;
-};
-
 export type TagBreakdownRow = {
   tag_id: number;
   tag_name: string;
@@ -76,6 +69,12 @@ export type MerchantBreakdownRow = {
   total: number;
   count: number;
   percentage: number;
+};
+
+export type BiggestTransaction = {
+  merchant: string | null;
+  amount: number;
+  date: string;
 };
 
 export type SubscriptionRow = Subscription & {

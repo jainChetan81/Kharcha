@@ -17,6 +17,7 @@ import {
   deleteTransaction,
   findDuplicateTransaction,
   getAllTransactionsFiltered,
+  getBiggestTransaction,
   getCategoryBreakdown,
   getMerchantBreakdown,
   getMonthlyInsights,
@@ -25,7 +26,9 @@ import {
   getRecentTransactions,
   getReimbursementSummary,
   getTotalMonthlyBudget,
+  getTrackingStreak,
   getTransactionById,
+  getTransactionCount,
   getTransactionsPaginated,
   insertTransaction,
   seedSampleData,
@@ -94,6 +97,15 @@ export function useInvalidateTransactions() {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.TRANSACTION],
       }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.BIGGEST_TRANSACTION],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TRANSACTION_COUNT],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TRACKING_STREAK],
+      }),
     ]).then((result) => {
       syncWidgetData();
       return result;
@@ -139,6 +151,27 @@ export function useMerchantBreakdown(yearMonth: string) {
   return useQuery({
     queryKey: [QUERY_KEYS.MERCHANT_BREAKDOWN, yearMonth],
     queryFn: () => getMerchantBreakdown(yearMonth),
+  });
+}
+
+export function useBiggestTransaction(yearMonth: string) {
+  return useQuery({
+    queryKey: [QUERY_KEYS.BIGGEST_TRANSACTION, yearMonth],
+    queryFn: () => getBiggestTransaction(yearMonth),
+  });
+}
+
+export function useTransactionCount(yearMonth: string) {
+  return useQuery({
+    queryKey: [QUERY_KEYS.TRANSACTION_COUNT, yearMonth],
+    queryFn: () => getTransactionCount(yearMonth),
+  });
+}
+
+export function useTrackingStreak(asOf?: string) {
+  return useQuery({
+    queryKey: [QUERY_KEYS.TRACKING_STREAK, asOf ?? "today"],
+    queryFn: () => getTrackingStreak(asOf),
   });
 }
 

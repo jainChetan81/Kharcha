@@ -35,6 +35,9 @@ export const FIREBASE_EVENTS = {
   RECURRING_TRANSACTION_POSTED: "recurring_transaction_posted",
   SIP_POSTED: "sip_posted",
   SIP_SKIPPED_NO_HOLDING: "sip_skipped_no_holding",
+  MONTHLY_WRAP_SHOWN: "monthly_wrap_shown",
+  MONTHLY_WRAP_DISMISSED: "monthly_wrap_dismissed",
+  INSIGHTS_VIEWED: "insights_viewed",
 } as const;
 
 export type KharchaEvent =

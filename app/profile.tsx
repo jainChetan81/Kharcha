@@ -1,15 +1,21 @@
 import { router } from "expo-router";
 import {
+  BarChart3,
   BellRing,
   ChevronRight,
   Database,
   Download,
   FileText,
+  HandCoins,
+  Info,
   Lock,
   Mail,
   MessageSquare,
   RefreshCw,
+  Repeat,
   Trash2,
+  TrendingUp,
+  Wallet,
 } from "lucide-react-native";
 import { lazy, Suspense, useState } from "react";
 import {
@@ -131,21 +137,31 @@ export default function ProfileScreen() {
           Manage
         </Text>
         <NavRow
+          icon={Wallet}
           title="Monthly Budgets"
           description="Set per-category monthly spend limits."
           onPress={() => router.push(SCREENS.BUDGETS)}
         />
         <NavRow
+          icon={Repeat}
           title="Subscriptions"
           description="Track recurring charges and when they renew."
           onPress={() => router.push(SCREENS.SUBSCRIPTIONS)}
         />
         <NavRow
+          icon={BarChart3}
+          title="Insights"
+          description="Monthly summaries and spending trends."
+          onPress={() => router.push(SCREENS.INSIGHTS)}
+        />
+        <NavRow
+          icon={TrendingUp}
           title="Portfolio"
           description="Investments, holdings, and contributions."
           onPress={() => router.push(SCREENS.PORTFOLIO)}
         />
         <NavRow
+          icon={HandCoins}
           title="Reimbursements"
           description="Expenses you're owed back, fully or in part."
           onPress={() => router.push(SCREENS.REIMBURSEMENTS)}
@@ -250,6 +266,7 @@ export default function ProfileScreen() {
           </Pressable>
         )}
         <NavRow
+          icon={Info}
           title="About"
           description="App version, device, and data stats."
           onPress={() => router.push(SCREENS.ABOUT)}

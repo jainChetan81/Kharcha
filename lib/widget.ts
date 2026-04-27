@@ -95,7 +95,9 @@ async function syncAndroid(payload: WidgetData): Promise<void> {
 const DEBOUNCE_MS = 1500;
 let pendingTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingResolvers: Array<() => void> = [];
-let inFlight: Promise<void> | null = null;
+// Serialize syncs so a slow earlier run's native write can't overwrite
+// a fresher later read's output (last-write-wins on the bridge).
+let runningSync: Promise<void> | null = null;
 
 async function runSync(): Promise<void> {
   try {
@@ -114,8 +116,10 @@ function fireDebouncedSync() {
   const resolvers = pendingResolvers;
   pendingResolvers = [];
   pendingTimer = null;
-  inFlight = runSync().finally(() => {
-    inFlight = null;
+  const next = (runningSync ?? Promise.resolve()).then(runSync);
+  runningSync = next;
+  next.finally(() => {
+    if (runningSync === next) runningSync = null;
     for (const resolve of resolvers) resolve();
   });
 }
@@ -129,15 +133,4 @@ export function syncWidgetData(): Promise<void> {
     if (pendingTimer) clearTimeout(pendingTimer);
     pendingTimer = setTimeout(fireDebouncedSync, DEBOUNCE_MS);
   });
-}
-
-// Escape hatch for callers that need to flush immediately (e.g. unit tests or
-// a manual "refresh widgets" action). Normal callers should use syncWidgetData.
-export async function flushWidgetSync(): Promise<void> {
-  if (pendingTimer) {
-    clearTimeout(pendingTimer);
-    fireDebouncedSync();
-  }
-  if (inFlight) await inFlight;
-  else await runSync();
 }

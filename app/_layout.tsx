@@ -23,6 +23,7 @@ import { startNetworkLogging } from "react-native-network-logger";
 import Toast, { type ToastConfig } from "react-native-toast-message";
 import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { LockedScreen } from "@/components/locked-screen";
+import { MonthlyWrapGate } from "@/components/monthly-wrap-gate";
 import { Text } from "@/components/ui/text";
 import { useAppLock } from "@/hooks/use-app-lock";
 import { readAutoRefreshPrefs } from "@/hooks/use-auto-refresh-prefs";
@@ -261,6 +262,7 @@ export default function RootLayout() {
                         animationDuration: 250,
                       }}
                     />
+                    <MonthlyWrapGate />
                   </>
                 )
               ) : null}
