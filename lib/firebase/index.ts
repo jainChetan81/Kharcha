@@ -38,6 +38,7 @@ export const FIREBASE_EVENTS = {
   MONTHLY_WRAP_SHOWN: "monthly_wrap_shown",
   MONTHLY_WRAP_DISMISSED: "monthly_wrap_dismissed",
   INSIGHTS_VIEWED: "insights_viewed",
+  SUBSCRIPTION_TAPPED: "subscription_tapped",
 } as const;
 
 export type KharchaEvent =

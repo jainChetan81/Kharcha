@@ -1133,6 +1133,9 @@ export async function getMonthlySummary(yearMonth: string) {
   }
 }
 
+// "Biggest purchase" means biggest discretionary spend, not biggest fixed
+// cost — rent/subs auto-posted from a subscription would otherwise dominate
+// every month. Excluding subscription-linked rows keeps the stat meaningful.
 export async function getBiggestTransaction(
   yearMonth: string,
 ): Promise<BiggestTransaction | null> {
@@ -1148,6 +1151,7 @@ export async function getBiggestTransaction(
         and(
           eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
           sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`,
+          isNull(transactions.subscription_id),
         ),
       )
       .orderBy(desc(transactions.amount))

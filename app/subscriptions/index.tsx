@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { AlertTriangle, Plus, Receipt } from "lucide-react-native";
+import { AlertTriangle, Pencil, Plus, Receipt } from "lucide-react-native";
 import {
   Pressable,
   RefreshControl,
@@ -37,7 +37,8 @@ import {
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import { formatBillingDays, parseBillingDays } from "@/lib/db/subscriptions";
-import { parseDate } from "@/lib/format";
+import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
+import { historyHref, parseDate } from "@/lib/format";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { getRefreshControlProps } from "@/lib/utils";
 
@@ -85,7 +86,10 @@ export default function SubscriptionsScreen() {
     return (
       <Pressable
         key={sub.id}
-        onPress={() => router.push(editSubscriptionScreen(sub.id))}
+        onPress={() => {
+          logEvent(FIREBASE_EVENTS.SUBSCRIPTION_TAPPED);
+          router.push(historyHref({ merchant: sub.name }));
+        }}
         onLongPress={() => handleDelete(sub)}
         className="mx-5 mb-2 rounded-xl border border-border bg-card px-4 py-3"
       >
@@ -100,6 +104,14 @@ export default function SubscriptionsScreen() {
               {sub.source_name ? ` · ${sub.source_name}` : ""}
             </Text>
           </View>
+          <Pressable
+            onPress={() => router.push(editSubscriptionScreen(sub.id))}
+            onLongPress={() => {}}
+            hitSlop={12}
+            className="mr-3"
+          >
+            <Icon as={Pencil} className="size-5 text-muted-foreground" />
+          </Pressable>
           <Switch
             value={sub.is_active === 1}
             onValueChange={(val) => {
