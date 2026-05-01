@@ -89,7 +89,7 @@ export default function InsightsScreen() {
               className={cn(
                 "size-6",
                 isCurrentMonth
-                  ? "text-muted-foreground/20"
+                  ? "text-muted-foreground/40"
                   : "text-muted-foreground",
               )}
             />
@@ -122,7 +122,7 @@ export default function InsightsScreen() {
             Spending heatmap
           </Text>
           <Text className="mb-3 text-xs text-muted-foreground">
-            Daily spend across {monthLabel}. Darker = heavier spend day.
+            Daily spend across {monthLabel}.
           </Text>
           <ComponentErrorBoundary name="insights.heatmap">
             <SpendingHeatmap

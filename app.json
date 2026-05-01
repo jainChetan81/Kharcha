@@ -79,9 +79,8 @@
       "@react-native-firebase/perf",
       "./plugins/firebase-ios-fix",
       ["expo-share-intent", {
-        "iosActivationRules": { "NSExtensionActivationSupportsText": false },
-        "androidIntentFilters": ["text/*"],
-        "disableIOS": true
+        "iosActivationRules": { "NSExtensionActivationSupportsText": true },
+        "androidIntentFilters": ["text/*"]
       }],
       ["react-native-android-widget", {
         "widgets": [

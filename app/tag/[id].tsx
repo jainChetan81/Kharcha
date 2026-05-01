@@ -80,7 +80,7 @@ export default function TagDetailScreen() {
         <ScreenHeader title="Tag" />
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-center text-sm text-muted-foreground">
-            This scope no longer exists. Pull back and pick another.
+            Scope not found. Go back and pick another.
           </Text>
         </View>
       </View>
@@ -186,7 +186,7 @@ function TagDetailLoaded({
           <View className="px-5 pb-3 pt-2">
             <View className="rounded-2xl border border-border bg-card p-5">
               <View className="flex-row items-center justify-between">
-                <Text className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <Text className="text-xs font-semibold uppercase tracking-wider text-foreground/80">
                   {format(start, DATE_DISPLAY_FORMAT)}
                   {"\n"}→ {format(end, DATE_DISPLAY_FORMAT)}
                 </Text>
@@ -248,7 +248,7 @@ function TagDetailLoaded({
             <EmptyState
               icon={Receipt}
               title="No transactions tagged yet"
-              description={`Tag transactions with #${stats.tag.name} during the scope to see them here.`}
+              description={`Tag a transaction with #${stats.tag.name} and it'll show up here.`}
               inList
             />
           )

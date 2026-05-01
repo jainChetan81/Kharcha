@@ -3,12 +3,14 @@ import { QUERY_KEYS } from "@/lib/constants";
 import {
   addSubscription,
   deleteSubscription,
+  detectRecurringMerchants,
   getActiveSubscriptionsTotal,
   getSubscriptionById,
   getSubscriptions,
   getUnusedSubscriptions,
   processSubscriptions,
   type SubscriptionAuditRow,
+  type SubscriptionCandidate,
   type SubscriptionMutationInput,
   type SubscriptionRow,
   toggleSubscription,
@@ -17,7 +19,7 @@ import {
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 import { useInvalidateTransactions } from "./use-transactions";
 
-export type { SubscriptionAuditRow, SubscriptionRow };
+export type { SubscriptionAuditRow, SubscriptionCandidate, SubscriptionRow };
 // Re-export for imperative calls
 export { processSubscriptions };
 
@@ -117,5 +119,12 @@ export function useUnusedSubscriptions() {
   return useQuery({
     queryKey: [QUERY_KEYS.SUBSCRIPTIONS, "unused"],
     queryFn: getUnusedSubscriptions,
+  });
+}
+
+export function useSubscriptionCandidates() {
+  return useQuery({
+    queryKey: [QUERY_KEYS.SUBSCRIPTIONS, "candidates"],
+    queryFn: detectRecurringMerchants,
   });
 }

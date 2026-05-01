@@ -28,7 +28,12 @@ export type PortfolioSummary = {
   invested: number;
 };
 
-export type TagLite = { id: number; name: string };
+export type TagLite = {
+  id: number;
+  name: string;
+  color: string | null;
+  emoji: string | null;
+};
 
 export type TransactionRow = Transaction & {
   category_name: string | null;

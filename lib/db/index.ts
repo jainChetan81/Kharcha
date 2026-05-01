@@ -333,6 +333,14 @@ export async function initDB(): Promise<void> {
         await db.run(sql`ALTER TABLE tags ADD COLUMN end_date TEXT`);
       }
 
+      if (!hasColumn("tags", "color")) {
+        await db.run(sql`ALTER TABLE tags ADD COLUMN color TEXT`);
+      }
+
+      if (!hasColumn("tags", "emoji")) {
+        await db.run(sql`ALTER TABLE tags ADD COLUMN emoji TEXT`);
+      }
+
       // Tag schedules used to be date-only (`YYYY-MM-DD`); now they're full
       // datetimes so the start/end window can be anchored to specific times
       // of day (e.g. "office 9–17"). Coerce any legacy date-only rows: pin
@@ -2083,14 +2091,17 @@ export {
   getActiveTag,
   getAllTags,
   getAllTimeTagBreakdown,
+  getMostUsedTagsForMerchant,
   getTagBreakdown,
   getTagStats,
   getTagsForTransactions,
   renameTag,
   scheduleTag,
+  type TagAppearance,
   type TagScheduleInput,
   type TagStats,
   updateSchedule,
+  updateTagAppearance,
 } from "./tags";
 
 export type DailySpendRow = { date: string; total: number };

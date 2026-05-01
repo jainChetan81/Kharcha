@@ -241,6 +241,20 @@ export const CATEGORY_PALETTE: readonly `#${string}`[] = [
   "#64748bb3",
 ];
 
+// Tag tint palette — each picker swatch maps to a hex stored in tags.color
+// and used to tint the tag chip in lists and transaction items. Kept in
+// sync conceptually with CATEGORY_PALETTE but at full alpha so chip text
+// stays legible on dark cards.
+export const TAG_COLOR_PALETTE: readonly `#${string}`[] = [
+  "#7c3aed",
+  "#0891b2",
+  "#d97706",
+  "#6366f1",
+  "#e11d48",
+  "#059669",
+  "#64748b",
+] as const;
+
 export const SHADOWS = {
   TOAST: {
     elevation: 6,
@@ -373,7 +387,9 @@ export const QUERY_KEYS = {
   TAG_BREAKDOWN: "tag-breakdown",
   TAG_BREAKDOWN_ALL_TIME: "tag-breakdown-all-time",
   TAG_STATS: "tag-stats",
+  TAG_SUGGESTIONS: "tag-suggestions",
   ACTIVE_TAG: "active-tag",
+  MERCHANT_SUGGESTIONS: "merchant-suggestions",
   HOLDINGS: "holdings",
   HOLDING: "holding",
   HOLDING_TRANSACTIONS: "holding-transactions",
@@ -415,6 +431,17 @@ export const MAX_EXPORT_TRANSACTIONS = 10_000;
 
 // Animation
 export const ANIMATION_DURATION_MS = 200;
+
+// Auto-detect subscriptions
+// Window we look back for repeat charges, the minimum count of charges to
+// flag as recurring, the minimum distinct calendar months they must span
+// (filters out a flurry of same-day duplicates), and the ± price tolerance
+// (15% covers tiny tax/exchange-rate jitter without grouping unrelated
+// charges).
+export const RECURRING_DETECTION_DAYS = 90;
+export const RECURRING_DETECTION_MIN_HITS = 2;
+export const RECURRING_DETECTION_MIN_MONTHS = 2;
+export const RECURRING_DETECTION_PRICE_TOLERANCE = 0.15;
 
 // Category slugs
 export const CATEGORY_SLUG = {

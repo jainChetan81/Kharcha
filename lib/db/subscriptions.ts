@@ -4,6 +4,10 @@ import {
   DATE_ISO_FORMAT,
   INVESTMENT_KIND,
   MONTH_FORMAT,
+  RECURRING_DETECTION_DAYS,
+  RECURRING_DETECTION_MIN_HITS,
+  RECURRING_DETECTION_MIN_MONTHS,
+  RECURRING_DETECTION_PRICE_TOLERANCE,
   SUBSCRIPTION_NOTE,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
@@ -339,6 +343,192 @@ export async function processSubscriptions(): Promise<string[]> {
   });
 
   return created;
+}
+
+export type SubscriptionCandidate = {
+  /** Display merchant — the most-recent casing seen in the data. */
+  merchant: string;
+  /** Median amount across hits — robust to one outlier vs mean. */
+  amount: number;
+  /** Number of qualifying charges seen in the window. */
+  hits: number;
+  /** Distinct calendar months the charges span. */
+  months: number;
+  /** Most recent charge date (YYYY-MM-DD). */
+  last_seen: string;
+  /** Most-common day-of-month across hits — seed for billing_day. */
+  suggested_day: number;
+  /** Most-common source_id across hits, or null if undecided. */
+  source_id: number | null;
+  /** Most-common category_id across expense hits, or null if undecided. */
+  category_id: number | null;
+};
+
+/**
+ * Scans the last 90 days of expense transactions for merchants that look
+ * like recurring charges: same-ish amount, multiple hits across distinct
+ * months. Excludes merchants already linked to a subscription (matched
+ * case-insensitively against subscription.name) so the suggestions list
+ * doesn't re-surface what the user already wired up.
+ *
+ * Aggregation lives in JS instead of SQL — drizzle's expression builder
+ * can't easily express the "median amount + most-common day + multi-month
+ * gate" combo, and the row count is bounded by 90 days of personal
+ * spending which is trivially small.
+ */
+export async function detectRecurringMerchants(): Promise<
+  SubscriptionCandidate[]
+> {
+  const cutoff = format(
+    subDays(new Date(), RECURRING_DETECTION_DAYS),
+    DATE_ISO_FORMAT,
+  );
+
+  const [rows, existingSubs] = await Promise.all([
+    db
+      .select({
+        merchant: transactions.merchant,
+        amount: transactions.amount,
+        date: transactions.date,
+        source_id: transactions.source_id,
+        category_id: transactions.category_id,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+          sql`${transactions.subscription_id} IS NULL`,
+          sql`${transactions.merchant} IS NOT NULL`,
+          sql`${transactions.merchant} != ''`,
+          sql`${transactions.date} >= ${cutoff}`,
+        ),
+      ),
+    db.select({ name: subscriptions.name }).from(subscriptions),
+  ]);
+
+  const blockedNames = new Set(
+    existingSubs.map((s) => s.name.trim().toLowerCase()),
+  );
+
+  type Bucket = {
+    displayName: string;
+    /** Date of the row that set `displayName`. Lets us compare against the
+     *  bucket's max date (the query has no ORDER BY, so insertion order
+     *  isn't sorted). */
+    displayDate: string;
+    items: {
+      amount: number;
+      date: string;
+      source_id: number | null;
+      category_id: number | null;
+    }[];
+  };
+  const buckets = new Map<string, Bucket>();
+  for (const row of rows) {
+    const name = (row.merchant ?? "").trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (blockedNames.has(key)) continue;
+    let bucket = buckets.get(key);
+    if (!bucket) {
+      bucket = { displayName: name, displayDate: row.date, items: [] };
+      buckets.set(key, bucket);
+    } else if (row.date > bucket.displayDate) {
+      // Keep the most-recent casing as the display name so a merchant that
+      // gets cleaned up over time (`SWIGGY*BANGALORE` → `Swiggy`) shows the
+      // newer label.
+      bucket.displayName = name;
+      bucket.displayDate = row.date;
+    }
+    bucket.items.push({
+      amount: row.amount,
+      date: row.date,
+      source_id: row.source_id ?? null,
+      category_id: row.category_id ?? null,
+    });
+  }
+
+  const candidates: SubscriptionCandidate[] = [];
+  for (const bucket of buckets.values()) {
+    if (bucket.items.length < RECURRING_DETECTION_MIN_HITS) continue;
+
+    const months = new Set(bucket.items.map((i) => i.date.slice(0, 7)));
+    if (months.size < RECURRING_DETECTION_MIN_MONTHS) continue;
+
+    const sortedAmounts = [...bucket.items.map((i) => i.amount)].sort(
+      (a, b) => a - b,
+    );
+    const median = sortedAmounts[Math.floor(sortedAmounts.length / 2)];
+    if (median <= 0) continue;
+
+    // Tolerance gate: every hit must land within ±15% of median, otherwise
+    // the merchant is a variable-spend regular (Swiggy, fuel) not a fixed
+    // subscription.
+    const allWithinTolerance = bucket.items.every(
+      (i) =>
+        Math.abs(i.amount - median) / median <=
+        RECURRING_DETECTION_PRICE_TOLERANCE,
+    );
+    if (!allWithinTolerance) continue;
+
+    const dayCounts = new Map<number, number>();
+    const sourceCounts = new Map<number, number>();
+    const categoryCounts = new Map<number, number>();
+    let lastSeen = "";
+    for (const item of bucket.items) {
+      const day = Number(item.date.slice(8, 10));
+      if (Number.isFinite(day)) {
+        dayCounts.set(day, (dayCounts.get(day) ?? 0) + 1);
+      }
+      if (item.source_id != null) {
+        sourceCounts.set(
+          item.source_id,
+          (sourceCounts.get(item.source_id) ?? 0) + 1,
+        );
+      }
+      if (item.category_id != null) {
+        categoryCounts.set(
+          item.category_id,
+          (categoryCounts.get(item.category_id) ?? 0) + 1,
+        );
+      }
+      if (item.date > lastSeen) lastSeen = item.date;
+    }
+
+    candidates.push({
+      merchant: bucket.displayName,
+      amount: Math.round(median * 100) / 100,
+      hits: bucket.items.length,
+      months: months.size,
+      last_seen: lastSeen.slice(0, 10),
+      suggested_day: topKey(dayCounts) ?? 1,
+      source_id: topKey(sourceCounts),
+      category_id: topKey(categoryCounts),
+    });
+  }
+
+  // Sort by signal strength: most months, then most hits, then most-recent.
+  // `last_seen` is YYYY-MM-DD so lexicographic compare equals chronological.
+  candidates.sort(
+    (a, b) =>
+      b.months - a.months ||
+      b.hits - a.hits ||
+      b.last_seen.localeCompare(a.last_seen),
+  );
+
+  return candidates;
+}
+
+function topKey(map: Map<number, number>): number | null {
+  let best: number | null = null;
+  let bestCount = 0;
+  for (const [k, v] of map) {
+    if (v > bestCount) {
+      best = k;
+      bestCount = v;
+    }
+  }
+  return best;
 }
 
 export type SubscriptionAuditRow = SubscriptionRow & {

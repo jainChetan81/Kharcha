@@ -36,6 +36,7 @@ import {
 import { safeRecomputeHolding } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import type { Source } from "@/lib/db/types";
+import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 import type { GeminiParsedTransaction } from "@/lib/gemini/client";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
@@ -66,6 +67,8 @@ export type UseAddTransactionReturn = {
     originalText: string,
   ) => Promise<void>;
   categoryNames: string[];
+  /** Pre-filled message text from an iOS Share Sheet handoff. */
+  sharedParseText: string | undefined;
 };
 
 function matchSourceId(name: string | null, sources: Source[]): number | null {
@@ -84,9 +87,24 @@ function matchSourceId(name: string | null, sources: Source[]): number | null {
 }
 
 export function useAddTransaction(): UseAddTransactionReturn {
-  const { type: typeParam, mode: modeParam } = useLocalSearchParams<{
+  const {
+    type: typeParam,
+    mode: modeParam,
+    name: nameParam,
+    amount: amountParam,
+    day: dayParam,
+    sourceId: sourceIdParam,
+    categoryId: categoryIdParam,
+    text: sharedText,
+  } = useLocalSearchParams<{
     type?: string;
     mode?: string;
+    name?: string;
+    amount?: string;
+    day?: string;
+    sourceId?: string;
+    categoryId?: string;
+    text?: string;
   }>();
   const queryClient = useQueryClient();
   const { format: fmt } = useCurrency();
@@ -133,6 +151,22 @@ export function useAddTransaction(): UseAddTransactionReturn {
       alive = false;
     };
   }, []);
+
+  // Share-sheet handoff: if /add was opened with a `text` param (iOS Share
+  // Sheet via _layout's ShareIntentListener), pop the AI Parse sheet open
+  // pre-filled. The sheet itself reads `defaultText` and seeds the textarea.
+  // One-shot per text payload — without the ref guard, dismissing the sheet
+  // would re-open it on the next render since the ?text= param stays on the
+  // URL.
+  const handledShareTextRef = useRef<string | null>(null);
+  useEffect(() => {
+    const trimmed = sharedText?.trim() ?? "";
+    if (!trimmed) return;
+    if (handledShareTextRef.current === trimmed) return;
+    handledShareTextRef.current = trimmed;
+    setParseSheetVisible(true);
+    logEvent(FIREBASE_EVENTS.SHARE_SHEET_TEXT_RECEIVED);
+  }, [sharedText]);
 
   function dismissHint() {
     setHintDismissed(true);
@@ -376,13 +410,29 @@ export function useAddTransaction(): UseAddTransactionReturn {
     }
   }
 
+  // Defaults seeded from a "candidate" tap on the Subscriptions screen —
+  // pre-fills the subscription form so the user just confirms. Falls back to
+  // AI-parsed defaults when both are present (parse takes priority since
+  // it's a more recent intent).
+  const candidateSubDefaults: SubscriptionFormDefaults | undefined =
+    modeParam === "subscription" && (nameParam || amountParam)
+      ? {
+          name: nameParam ?? "",
+          amount: amountParam ?? "",
+          billingDays: dayParam ? [Number(dayParam)] : [],
+          sourceId: sourceIdParam ? Number(sourceIdParam) : null,
+          categoryId: categoryIdParam ? Number(categoryIdParam) : null,
+        }
+      : undefined;
+
   return {
     isSubscription,
     toggleSubscription,
     formKey,
     upiSourceId,
     transactionDefaults: parsedTxDefaults ?? oneTimeDefaults,
-    subscriptionDefaults: parsedSubDefaults ?? undefined,
+    subscriptionDefaults:
+      parsedSubDefaults ?? candidateSubDefaults ?? undefined,
     hintDismissed,
     dismissHint,
     openParseSheet,
@@ -398,5 +448,6 @@ export function useAddTransaction(): UseAddTransactionReturn {
     closeParseSheet: () => setParseSheetVisible(false),
     onParsed: handleParsed,
     categoryNames,
+    sharedParseText: sharedText,
   };
 }

@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { router } from "expo-router";
 import {
   Calendar,
+  Palette,
   Pencil,
   Plus,
   Square,
@@ -19,6 +20,7 @@ import {
   durationEnd,
   QuickDurationSheet,
 } from "@/components/quick-duration-sheet";
+import { TagAppearanceSheet } from "@/components/tag-appearance-sheet";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
@@ -26,6 +28,7 @@ import { IconButton } from "@/components/ui/icon-button";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { SectionHeader } from "@/components/ui/section-header";
 import { StepCard } from "@/components/ui/step-card";
+import { TagChip } from "@/components/ui/tag-chip";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
 import { useTagSheets } from "@/hooks/use-tag-sheets";
@@ -38,6 +41,7 @@ import {
   useEndScheduleNow,
   useRenameTag,
   useScheduleTag,
+  useUpdateTagAppearance,
 } from "@/hooks/use-tags";
 import { showDeleteConfirm } from "@/lib/alerts";
 import {
@@ -46,6 +50,7 @@ import {
   TAG_SCOPE_COPY,
   tagScreen,
 } from "@/lib/constants";
+import type { Tag } from "@/lib/db/types";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +66,7 @@ export default function TagsScreen() {
   const deleteMutation = useDeleteTag();
   const endNowMutation = useEndScheduleNow();
   const scheduleMutation = useScheduleTag();
+  const appearanceMutation = useUpdateTagAppearance();
   const { openQuickStart, openSchedule, sheets: tagSheets } = useTagSheets();
 
   const [addSheetVisible, setAddSheetVisible] = useState(false);
@@ -68,6 +74,7 @@ export default function TagsScreen() {
   const [quickDurationTarget, setQuickDurationTarget] = useState<string | null>(
     null,
   );
+  const [appearanceTarget, setAppearanceTarget] = useState<Tag | null>(null);
 
   const statsByTag = new Map(breakdown.map((b) => [b.tag_id, b]));
   const hasTags = tags.length > 0;
@@ -114,7 +121,7 @@ export default function TagsScreen() {
         {activeTag ? (
           <Pressable
             onPress={() => router.push(tagScreen(activeTag.id))}
-            className="mx-5 mb-2 rounded-2xl border border-primary/30 bg-primary/10 p-4"
+            className="mx-5 mb-2 rounded-2xl border border-primary/40 bg-primary/10 p-4"
           >
             <Text className="text-[10px] font-semibold uppercase tracking-wider text-primary">
               Currently active
@@ -154,7 +161,7 @@ export default function TagsScreen() {
                 Start a scope now
               </Text>
               <Text className="mt-0.5 text-xs text-primary-foreground/80">
-                Pick a name and a duration. Auto-tag begins immediately.
+                Pick a name and duration. Auto-tagging starts now.
               </Text>
             </View>
           </Pressable>
@@ -162,7 +169,7 @@ export default function TagsScreen() {
 
         <SectionHeader
           title="How scopes work"
-          description="Two ways to scope a tag with a window — start one now, or schedule it ahead of time."
+          description="Start one now, or schedule it ahead."
         />
         <View className="mx-5 mb-2 flex-row gap-3">
           <StepCard
@@ -173,7 +180,7 @@ export default function TagsScreen() {
           <StepCard
             step="2"
             title="Auto-tag"
-            body="Every transaction during the window picks up the tag."
+            body="Every transaction in the window gets the tag."
           />
         </View>
         <View className="mx-5 mb-2 flex-row gap-3">
@@ -185,7 +192,7 @@ export default function TagsScreen() {
           <StepCard
             step="4"
             title="End anytime"
-            body="Tap End now to close an active scope. History stays intact."
+            body="Tap End now to close it. History stays."
           />
         </View>
 
@@ -215,17 +222,20 @@ export default function TagsScreen() {
                 className={cn(
                   "mx-5 mb-2 flex-row items-center rounded-xl border px-4 py-3",
                   isActive
-                    ? "border-primary/30 bg-primary/10"
+                    ? "border-primary/40 bg-primary/10"
                     : "border-border bg-card",
                 )}
               >
                 <View className="flex-1">
                   <View className="flex-row items-center gap-2">
-                    <Text className="text-sm font-medium text-foreground">
-                      #{tag.name}
-                    </Text>
+                    <TagChip
+                      name={tag.name}
+                      color={tag.color}
+                      emoji={tag.emoji}
+                      size="md"
+                    />
                     {isActive ? (
-                      <Text className="rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
+                      <Text className="rounded-full bg-primary/35 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary-foreground">
                         Active
                       </Text>
                     ) : null}
@@ -275,6 +285,12 @@ export default function TagsScreen() {
                       endAt: tag.end_date ?? undefined,
                     })
                   }
+                />
+                <IconButton
+                  icon={Palette}
+                  tone="muted"
+                  className="ml-1"
+                  onPress={() => setAppearanceTarget(tag)}
                 />
                 <IconButton
                   icon={Pencil}
@@ -332,6 +348,28 @@ export default function TagsScreen() {
         />
 
         {tagSheets}
+
+        <TagAppearanceSheet
+          visible={!!appearanceTarget}
+          onClose={() => setAppearanceTarget(null)}
+          tagName={appearanceTarget?.name ?? ""}
+          initialColor={appearanceTarget?.color ?? null}
+          initialEmoji={appearanceTarget?.emoji ?? null}
+          onSave={async (color, emoji) => {
+            if (!appearanceTarget) return;
+            try {
+              await appearanceMutation.mutateAsync({
+                id: appearanceTarget.id,
+                color,
+                emoji,
+              });
+              setAppearanceTarget(null);
+              showSuccessToast("Tag style updated");
+            } catch (err) {
+              showErrorToast("Failed to update style", err);
+            }
+          }}
+        />
 
         <QuickDurationSheet
           visible={!!quickDurationTarget}

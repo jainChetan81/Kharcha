@@ -19,6 +19,7 @@ import { FieldError } from "@/components/ui/field-error";
 import { FormLabel } from "@/components/ui/form-label";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { TagChip } from "@/components/ui/tag-chip";
 import { Text } from "@/components/ui/text";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAllHoldings } from "@/hooks/use-holdings";
@@ -38,7 +39,9 @@ import {
   getAllSources,
   getCategoriesByType,
   getMostUsedCategoryForMerchant,
+  getMostUsedTagsForMerchant,
   searchMerchants,
+  type TagLite,
 } from "@/lib/db";
 import { parseDate, sanitizeDecimalInput } from "@/lib/format";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
@@ -150,9 +153,19 @@ export function TransactionForm({
   });
 
   const { data: suggestedMerchants = [] } = useQuery({
-    queryKey: ["merchant-suggestions", debouncedMerchant],
+    queryKey: [QUERY_KEYS.MERCHANT_SUGGESTIONS, debouncedMerchant],
     queryFn: () => searchMerchants(debouncedMerchant),
     enabled: !isTransfer && debouncedMerchant.length > 1,
+  });
+
+  // Smart-suggest: pull tags this user has applied to the same merchant
+  // before. Hidden when the merchant field is empty or the form already
+  // has every suggested tag selected — the strip would otherwise be a
+  // dead-zone offering no useful action.
+  const { data: suggestedTags = [] } = useQuery<TagLite[]>({
+    queryKey: [QUERY_KEYS.TAG_SUGGESTIONS, debouncedMerchant],
+    queryFn: () => getMostUsedTagsForMerchant(debouncedMerchant, 4),
+    enabled: !isTransfer && !isInvestment && debouncedMerchant.length > 1,
   });
 
   const filteredSuggestions = suggestedMerchants.filter(
@@ -723,18 +736,48 @@ export function TransactionForm({
 
         {!hideTags && !isInvestment && (
           <form.Field name="tagIds">
-            {(field) => (
-              <View className="mb-5">
-                <FormLabel>Tags</FormLabel>
-                <MultiChipPicker
-                  items={allTags}
-                  selectedIds={field.state.value ?? []}
-                  onChange={(ids) => field.handleChange(ids)}
-                  onAddNew={() => setNewTagSheetVisible(true)}
-                  emptyLabel="No tags yet — create one to group transactions across categories"
-                />
-              </View>
-            )}
+            {(field) => {
+              const selected = field.state.value ?? [];
+              const unselectedSuggestions = suggestedTags.filter(
+                (t) => !selected.includes(t.id),
+              );
+              return (
+                <View className="mb-5">
+                  <FormLabel>Tags</FormLabel>
+                  {unselectedSuggestions.length > 0 ? (
+                    <View className="mb-2">
+                      <Text className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Often used with this merchant
+                      </Text>
+                      <View className="flex-row flex-wrap gap-1.5">
+                        {unselectedSuggestions.map((tag) => (
+                          <Pressable
+                            key={tag.id}
+                            onPress={() =>
+                              field.handleChange([...selected, tag.id])
+                            }
+                          >
+                            <TagChip
+                              name={tag.name}
+                              color={tag.color}
+                              emoji={tag.emoji}
+                              size="md"
+                            />
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null}
+                  <MultiChipPicker
+                    items={allTags}
+                    selectedIds={selected}
+                    onChange={(ids) => field.handleChange(ids)}
+                    onAddNew={() => setNewTagSheetVisible(true)}
+                    emptyLabel="No tags yet — create one to group transactions across categories"
+                  />
+                </View>
+              );
+            }}
           </form.Field>
         )}
 

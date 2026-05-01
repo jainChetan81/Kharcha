@@ -132,7 +132,9 @@ function ShareIntentListener() {
     if (!hasShareIntent || !shareIntent) return;
     const text = shareIntent.text ?? shareIntent.webUrl;
     if (text) {
-      router.push(`${SCREENS.SMS_FORWARD}?text=${encodeURIComponent(text)}`);
+      // Route to /add with the shared text — the add screen auto-opens the
+      // AI Parse sheet with the text pre-filled.
+      router.push(`${SCREENS.ADD}?text=${encodeURIComponent(text)}`);
     }
     resetShareIntent();
   }, [hasShareIntent, shareIntent, resetShareIntent]);

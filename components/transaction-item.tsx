@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { Icon } from "@/components/ui/icon";
+import { TagChip } from "@/components/ui/tag-chip";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
 import {
@@ -261,14 +262,12 @@ export const TransactionItem = memo(function TransactionItem({
         {item.tags && item.tags.length > 0 && (
           <View className="mt-1 flex-row flex-wrap gap-1">
             {item.tags.slice(0, TAG_DISPLAY_LIMIT).map((tag) => (
-              <View
+              <TagChip
                 key={tag.id}
-                className="rounded-md bg-primary/15 px-1.5 py-0.5"
-              >
-                <Text className="text-[10px] font-medium text-primary">
-                  #{tag.name}
-                </Text>
-              </View>
+                name={tag.name}
+                color={tag.color}
+                emoji={tag.emoji}
+              />
             ))}
             {item.tags.length > 3 && (
               <Text className="text-[10px] text-muted-foreground">

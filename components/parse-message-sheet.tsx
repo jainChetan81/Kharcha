@@ -22,22 +22,28 @@ export function ParseMessageSheet({
   onClose,
   onParsed,
   categoryNames,
+  defaultText,
 }: {
   visible: boolean;
   onClose: () => void;
   onParsed: (parsed: GeminiParsedTransaction, originalText: string) => void;
   categoryNames: string[];
+  /** Pre-fills the textarea on open — used by iOS Share Sheet handoff. */
+  defaultText?: string;
 }) {
-  const [messageText, setMessageText] = useState("");
+  const [messageText, setMessageText] = useState(defaultText ?? "");
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!visible) {
+    if (visible) {
+      setMessageText(defaultText ?? "");
+      setParseError(null);
+    } else {
       setMessageText("");
       setParseError(null);
     }
-  }, [visible]);
+  }, [visible, defaultText]);
 
   async function handleParse() {
     if (!messageText.trim() || parsing) return;

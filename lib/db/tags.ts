@@ -38,10 +38,79 @@ export async function addTag(name: string) {
   return { id: Number(result.lastInsertRowId), isNew: true };
 }
 
+export type TagAppearance = {
+  color?: string | null;
+  emoji?: string | null;
+};
+
 export async function renameTag(id: number, name: string) {
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Tag name is required");
   return db.update(tags).set({ name: trimmed }).where(eq(tags.id, id));
+}
+
+/**
+ * Update only the visual fields (color, emoji). Kept separate from rename
+ * so the appearance editor doesn't have to know the current name to
+ * change a color, and vice-versa.
+ */
+export async function updateTagAppearance(
+  id: number,
+  appearance: TagAppearance,
+) {
+  return db
+    .update(tags)
+    .set({
+      color: appearance.color ?? null,
+      emoji: appearance.emoji ?? null,
+    })
+    .where(eq(tags.id, id));
+}
+
+/**
+ * Suggest tags for a merchant based on past usage on that same merchant
+ * (case-insensitive). Returns the most-frequently-used tags first, capped
+ * at `limit`. Used by the transaction form to surface a one-tap "add this
+ * tag" affordance after the user types/selects a merchant.
+ */
+export async function getMostUsedTagsForMerchant(
+  merchant: string,
+  limit = 3,
+): Promise<TagLite[]> {
+  try {
+    const trimmed = merchant.trim();
+    if (!trimmed) return [];
+    const rows = await db
+      .select({
+        id: tags.id,
+        name: tags.name,
+        color: tags.color,
+        emoji: tags.emoji,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(transactionTags)
+      .innerJoin(tags, eq(transactionTags.tag_id, tags.id))
+      .innerJoin(
+        transactions,
+        eq(transactionTags.transaction_id, transactions.id),
+      )
+      .where(sql`LOWER(${transactions.merchant}) = LOWER(${trimmed})`)
+      .groupBy(tags.id)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(limit);
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      color: r.color,
+      emoji: r.emoji,
+    }));
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: ERROR_TYPE.DB,
+      operation: "getMostUsedTagsForMerchant",
+    });
+    return [];
+  }
 }
 
 export type TagScheduleInput = {
@@ -132,6 +201,8 @@ export async function getTagsForTransactions(
       id: tags.id,
       name: tags.name,
       sort_order: tags.sort_order,
+      color: tags.color,
+      emoji: tags.emoji,
     })
     .from(transactionTags)
     .innerJoin(tags, eq(transactionTags.tag_id, tags.id))
@@ -139,7 +210,12 @@ export async function getTagsForTransactions(
     .orderBy(asc(tags.sort_order), asc(tags.name));
   for (const row of rows) {
     const list = map.get(row.transaction_id);
-    const entry = { id: row.id, name: row.name };
+    const entry = {
+      id: row.id,
+      name: row.name,
+      color: row.color,
+      emoji: row.emoji,
+    };
     if (list) list.push(entry);
     else map.set(row.transaction_id, [entry]);
   }

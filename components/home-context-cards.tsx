@@ -44,7 +44,7 @@ export function HomeContextCards() {
 
   return (
     <View className="mt-2 gap-2 px-5">
-      <View className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3">
+      <View className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-3">
         <View className="flex-row items-center">
           <Icon as={Layers} className="mr-3 size-4 text-primary" />
           <Pressable
@@ -71,7 +71,7 @@ export function HomeContextCards() {
               });
             }}
             disabled={endNowMutation.isPending}
-            className="ml-2 rounded-lg border border-primary/40 bg-primary/15 px-2.5 py-1.5"
+            className="ml-2 rounded-lg border border-primary/50 bg-primary/20 px-2.5 py-1.5"
             hitSlop={6}
           >
             <Text className="text-[11px] font-semibold text-primary">

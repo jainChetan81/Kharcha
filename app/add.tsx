@@ -46,6 +46,7 @@ export default function AddTransaction() {
     closeParseSheet,
     onParsed,
     categoryNames,
+    sharedParseText,
   } = useAddTransaction();
 
   return (
@@ -139,6 +140,7 @@ export default function AddTransaction() {
           onClose={closeParseSheet}
           onParsed={onParsed}
           categoryNames={categoryNames}
+          defaultText={sharedParseText}
         />
       </Suspense>
     </KeyboardAvoidingView>

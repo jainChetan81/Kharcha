@@ -65,7 +65,7 @@ export function QuickStartTagSheet({
         Start a scope now
       </Text>
       <Text className="mb-4 text-xs text-muted-foreground">
-        New transactions will auto-tag with this tag until it ends.
+        New transactions auto-tag with this until it ends.
       </Text>
 
       <form.Field

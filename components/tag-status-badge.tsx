@@ -9,7 +9,7 @@ export function TagStatusBadge({ status }: { status: TagStatus }) {
     <View
       className={cn(
         "rounded-full px-2 py-0.5",
-        isActive ? "bg-primary/15" : "bg-card",
+        isActive ? "bg-primary/20" : "bg-muted",
       )}
     >
       <Text

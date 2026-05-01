@@ -1,7 +1,13 @@
 import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { AlertTriangle, Pencil, Plus, Receipt } from "lucide-react-native";
+import {
+  AlertTriangle,
+  Pencil,
+  Plus,
+  Receipt,
+  Sparkles,
+} from "lucide-react-native";
 import {
   Pressable,
   RefreshControl,
@@ -20,8 +26,10 @@ import { useCurrency } from "@/hooks/use-currency";
 import { useRefresh } from "@/hooks/use-refresh";
 import {
   type SubscriptionAuditRow,
+  type SubscriptionCandidate,
   type SubscriptionRow,
   useDeleteSubscription,
+  useSubscriptionCandidates,
   useSubscriptions,
   useSubscriptionsTotal,
   useToggleSubscription,
@@ -48,6 +56,7 @@ export default function SubscriptionsScreen() {
   const { data: subs = [] } = useSubscriptions();
   const { data: totalCost = 0 } = useSubscriptionsTotal();
   const { data: unusedSubs = [] } = useUnusedSubscriptions();
+  const { data: candidates = [] } = useSubscriptionCandidates();
   const toggleMutation = useToggleSubscription();
   const deleteMutation = useDeleteSubscription();
 
@@ -178,6 +187,15 @@ export default function SubscriptionsScreen() {
             </View>
           )}
 
+          {candidates.length > 0 && (
+            <>
+              <SectionHeader title="Suggested" />
+              {candidates.map((c) => (
+                <CandidateSubCard key={c.merchant} candidate={c} fmt={fmt} />
+              ))}
+            </>
+          )}
+
           {unusedSubs.length > 0 && (
             <>
               <SectionHeader title="Possibly Unused" />
@@ -244,6 +262,58 @@ function UnusedSubCard({
         </View>
         <Text className="text-sm font-semibold text-foreground">
           {fmt(sub.amount)}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function CandidateSubCard({
+  candidate,
+  fmt,
+}: {
+  candidate: SubscriptionCandidate;
+  fmt: (n: number) => string;
+}) {
+  function handleAdd() {
+    Haptics.selectionAsync();
+    logEvent(FIREBASE_EVENTS.SUBSCRIPTION_CANDIDATE_TAPPED);
+    const parts = [
+      "mode=subscription",
+      `name=${encodeURIComponent(candidate.merchant)}`,
+      `amount=${candidate.amount}`,
+      `day=${candidate.suggested_day}`,
+    ];
+    if (candidate.source_id != null)
+      parts.push(`sourceId=${candidate.source_id}`);
+    if (candidate.category_id != null)
+      parts.push(`categoryId=${candidate.category_id}`);
+    router.push(`${SCREENS.ADD}?${parts.join("&")}`);
+  }
+
+  return (
+    <Pressable
+      onPress={handleAdd}
+      className="mx-5 mb-2 rounded-xl border border-primary/50 bg-card px-4 py-3"
+    >
+      <View className="flex-row items-center justify-between">
+        <View className="flex-1">
+          <View className="flex-row items-center gap-2">
+            <Icon as={Sparkles} className="size-4 text-primary" />
+            <Text className="text-sm font-semibold text-foreground">
+              {candidate.merchant}
+            </Text>
+          </View>
+          <Text className="mt-0.5 text-xs text-muted-foreground">
+            {candidate.hits} charges across {candidate.months} months · day{" "}
+            {candidate.suggested_day}
+          </Text>
+          <Text className="mt-0.5 text-xs text-primary">
+            Add as subscription
+          </Text>
+        </View>
+        <Text className="text-sm font-semibold text-foreground">
+          {fmt(candidate.amount)}
         </Text>
       </View>
     </Pressable>

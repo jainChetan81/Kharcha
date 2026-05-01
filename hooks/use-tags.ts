@@ -11,8 +11,10 @@ import {
   getTagStats,
   renameTag,
   scheduleTag,
+  type TagAppearance,
   type TagScheduleInput,
   updateSchedule,
+  updateTagAppearance,
 } from "@/lib/db";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
@@ -147,6 +149,18 @@ export function useRenameTag() {
     mutationFn: ({ id, name }: { id: number; name: string }) =>
       renameTag(id, name),
     onSuccess: () => invalidate(),
+  });
+}
+
+export function useUpdateTagAppearance() {
+  const invalidate = useInvalidateTags();
+  return useMutation({
+    mutationFn: ({ id, ...appearance }: { id: number } & TagAppearance) =>
+      updateTagAppearance(id, appearance),
+    onSuccess: () => {
+      logEvent(FIREBASE_EVENTS.TAG_APPEARANCE_UPDATED);
+      invalidate();
+    },
   });
 }
 

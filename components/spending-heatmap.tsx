@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 // card and would make zero-spend days disappear into the background.
 const BUCKET_BG = [
   "bg-muted",
-  "bg-primary/25",
+  "bg-primary/35",
   "bg-primary/45",
   "bg-primary/70",
   "bg-primary",
@@ -140,9 +140,7 @@ export function SpendingHeatmap({
               className={cn(
                 "rounded-sm",
                 slot.type === "pad" ? "bg-transparent" : BUCKET_BG[slot.bucket],
-                slot.type === "day" &&
-                  slot.isToday &&
-                  "border border-primary-foreground",
+                slot.type === "day" && slot.isToday && "border border-primary",
               )}
             />
           ))}

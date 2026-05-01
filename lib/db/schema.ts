@@ -149,6 +149,10 @@ export const tags = sqliteTable("tags", {
   sort_order: integer("sort_order").default(0),
   start_date: text("start_date"),
   end_date: text("end_date"),
+  /** Hex with leading `#`, picked from TAG_COLOR_PALETTE. Null = no tint. */
+  color: text("color"),
+  /** Single grapheme — e.g. "✈️", "🍔". Null = no emoji prefix. */
+  emoji: text("emoji"),
   created_at: text("created_at").default("(datetime('now'))"),
 });
 

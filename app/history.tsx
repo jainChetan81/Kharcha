@@ -280,8 +280,7 @@ export default function HistoryScreen() {
               ) : atSearchCap ? (
                 <View className="items-center py-6">
                   <Text className="text-xs text-muted-foreground">
-                    showing top {SEARCH_RESULT_CAP} matches — refine your search
-                    for more
+                    Showing top {SEARCH_RESULT_CAP} matches. Refine to see more.
                   </Text>
                 </View>
               ) : null
