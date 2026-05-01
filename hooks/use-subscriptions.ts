@@ -17,6 +17,7 @@ import {
   updateSubscription,
 } from "@/lib/db/subscriptions";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
+import { showErrorToast } from "@/lib/toast";
 import { useInvalidateTransactions } from "./use-transactions";
 
 export type { SubscriptionAuditRow, SubscriptionCandidate, SubscriptionRow };
@@ -67,7 +68,7 @@ export function useAddSubscription() {
       invalidate();
     },
     onError: (err) => {
-      console.error("Subscription mutation failed:", err);
+      showErrorToast("Subscription update failed", err);
     },
   });
 }
@@ -82,7 +83,7 @@ export function useUpdateSubscription() {
       updateSubscription(id, params),
     onSuccess: () => invalidate(),
     onError: (err) => {
-      console.error("Subscription mutation failed:", err);
+      showErrorToast("Subscription update failed", err);
     },
   });
 }
@@ -93,7 +94,7 @@ export function useDeleteSubscription() {
     mutationFn: (id: number) => deleteSubscription(id),
     onSuccess: () => invalidate(),
     onError: (err) => {
-      console.error("Subscription mutation failed:", err);
+      showErrorToast("Subscription update failed", err);
     },
   });
 }
@@ -110,7 +111,7 @@ export function useToggleSubscription() {
       invalidate();
     },
     onError: (err) => {
-      console.error("Subscription mutation failed:", err);
+      showErrorToast("Subscription update failed", err);
     },
   });
 }
