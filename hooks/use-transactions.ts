@@ -4,6 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import Fuse from "fuse.js";
 import { Alert } from "react-native";
 import {
   CONFIG_KEYS,
@@ -105,6 +106,9 @@ export function useInvalidateTransactions() {
       }),
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.TRACKING_STREAK],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DAILY_SPEND],
       }),
     ]).then((result) => {
       syncWidgetData();
@@ -267,15 +271,45 @@ function computeInsights(txs: TransactionRow[]): FilteredInsights {
   };
 }
 
+function buildTransactionFuse(rows: TransactionRow[]): Fuse<TransactionRow> {
+  return new Fuse<TransactionRow>(rows, {
+    keys: [
+      { name: "merchant", weight: 0.5 },
+      { name: "note", weight: 0.25 },
+      {
+        name: "tags",
+        weight: 0.15,
+        getFn: (t) => t.tags?.map((tag) => tag.name) ?? [],
+      },
+      {
+        name: "amount",
+        weight: 0.1,
+        getFn: (t) => String(t.amount ?? ""),
+      },
+    ],
+    threshold: 0.4,
+    ignoreLocation: true,
+    minMatchCharLength: 1,
+  });
+}
+
 export function useFilteredInsights(filters: InsightsFilters) {
   return useQuery({
     queryKey: [QUERY_KEYS.FILTERED_INSIGHTS, filters],
     queryFn: async () => {
-      const rows = await getAllTransactionsFiltered(filters);
-      return computeInsights(rows);
+      const trimmedSearch = filters?.search?.trim() ?? "";
+      const { search: _search, ...rest } = filters ?? {};
+      const rows = await getAllTransactionsFiltered(rest);
+      if (trimmedSearch.length === 0) return computeInsights(rows);
+      const filtered = buildTransactionFuse(rows)
+        .search(trimmedSearch)
+        .map((r) => r.item);
+      return computeInsights(filtered);
     },
   });
 }
+
+export const SEARCH_RESULT_CAP = 200;
 
 export function useTransactionsPaginated(filters: {
   type?: "income" | "expense" | "transfer" | "investment" | "all";
@@ -291,16 +325,51 @@ export function useTransactionsPaginated(filters: {
   tagIds?: number[] | null;
   merchant?: string | null;
 }) {
-  return useInfiniteQuery({
-    queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED, filters],
+  const trimmedSearch = filters.search?.trim() ?? "";
+  const isSearching = trimmedSearch.length > 0;
+  const { search: _search, ...filtersWithoutSearch } = filters;
+
+  const infiniteQuery = useInfiniteQuery({
+    queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED, filtersWithoutSearch],
     queryFn: ({ pageParam = 0 }) =>
-      getTransactionsPaginated(PAGE_SIZE, pageParam, filters),
+      getTransactionsPaginated(PAGE_SIZE, pageParam, filtersWithoutSearch),
     initialPageParam: 0,
+    enabled: !isSearching,
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage.length < PAGE_SIZE) return undefined;
       return allPages.flat().length;
     },
   });
+
+  const searchQuery = useQuery({
+    queryKey: [QUERY_KEYS.TRANSACTIONS_SEARCH, filters],
+    queryFn: async () => {
+      const rows = await getAllTransactionsFiltered(filtersWithoutSearch);
+      return buildTransactionFuse(rows)
+        .search(trimmedSearch)
+        .slice(0, SEARCH_RESULT_CAP)
+        .map((r) => r.item);
+    },
+    enabled: isSearching,
+  });
+
+  const data = isSearching
+    ? searchQuery.data
+      ? { pages: [searchQuery.data], pageParams: [0] }
+      : undefined
+    : infiniteQuery.data;
+
+  return {
+    data,
+    fetchNextPage: isSearching
+      ? () => Promise.resolve()
+      : infiniteQuery.fetchNextPage,
+    hasNextPage: isSearching ? false : (infiniteQuery.hasNextPage ?? false),
+    isFetchingNextPage: isSearching ? false : infiniteQuery.isFetchingNextPage,
+    isLoading: isSearching ? searchQuery.isLoading : infiniteQuery.isLoading,
+    isFetching: isSearching ? searchQuery.isFetching : infiniteQuery.isFetching,
+    refetch: isSearching ? searchQuery.refetch : infiniteQuery.refetch,
+  };
 }
 
 export function useInsertTransaction() {

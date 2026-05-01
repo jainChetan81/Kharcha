@@ -27,6 +27,7 @@ export type AndroidWidgetData = {
   todaySpend: number;
   totalBudget: number | null;
   previousMonthSpendAtThisPoint: number | null;
+  activeTagName: string | null;
 };
 
 function formatAmount(amount: number, symbol: string): string {
@@ -103,6 +104,14 @@ export function SmallSpendWidget(props: { data: AndroidWidgetData | null }) {
         text={formatAmount(data.totalExpenses, data.currencySymbol)}
         style={{ fontSize: 28, fontWeight: "bold", color: FG, marginTop: 2 }}
       />
+
+      {data.activeTagName ? (
+        <TextWidget
+          text={`in #${data.activeTagName}`}
+          style={{ fontSize: 11, color: PRIMARY, marginTop: 2 }}
+          maxLines={1}
+        />
+      ) : null}
 
       {/* Days progress bar */}
       <FlexWidget
@@ -279,10 +288,25 @@ export function MediumSpendWidget(props: { data: AndroidWidgetData | null }) {
             flexGap: 4,
           }}
         >
-          <TextWidget
-            text={data.monthLabel}
-            style={{ fontSize: 15, color: MUTED }}
-          />
+          <FlexWidget
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              flexGap: 6,
+            }}
+          >
+            <TextWidget
+              text={data.monthLabel}
+              style={{ fontSize: 15, color: MUTED }}
+            />
+            {data.activeTagName ? (
+              <TextWidget
+                text={`· #${data.activeTagName}`}
+                style={{ fontSize: 11, color: PRIMARY }}
+                maxLines={1}
+              />
+            ) : null}
+          </FlexWidget>
 
           <FlexWidget
             style={{

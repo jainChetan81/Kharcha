@@ -109,6 +109,24 @@ export const subscriptionInputSchema = z
     path: ["holdingId"],
   });
 
+// ── Tag schedule ────────────────────────────────────────────────────
+
+const datetimeStringSchema = z
+  .string()
+  .min(1, "Pick date & time")
+  .regex(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/, "Date must be YYYY-MM-DD HH:mm");
+
+export const tagScheduleSchema = z
+  .object({
+    name: requiredStringSchema("Name"),
+    startAt: datetimeStringSchema,
+    endAt: datetimeStringSchema,
+  })
+  .refine((v) => v.endAt >= v.startAt, {
+    message: "End must be on or after start",
+    path: ["endAt"],
+  });
+
 // ── Config ──────────────────────────────────────────────────────────
 
 export const configSchema = z.object({

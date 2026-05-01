@@ -25,7 +25,9 @@ import {
   ComponentErrorBoundary,
   ScreenError,
 } from "@/components/error-boundary";
+import { HomeContextCards } from "@/components/home-context-cards";
 import { ProjectedSpendingCard } from "@/components/projected-spending-card";
+import { SpendingHeatmap } from "@/components/spending-heatmap";
 import { SpendingPanel } from "@/components/spending-panel";
 import { TopCategoryCard } from "@/components/top-category-card";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
@@ -42,6 +44,7 @@ import { useCategoryBreakdown } from "@/hooks/use-transactions";
 import {
   CATEGORY_PALETTE,
   COLORS,
+  DATE_ISO_FORMAT,
   editScreen,
   LABELS,
   MONTH_FORMAT,
@@ -446,6 +449,27 @@ export default function HomeScreen() {
                 />
               )}
           </View>
+        </View>
+
+        <ComponentErrorBoundary name="home.context-cards">
+          <HomeContextCards />
+        </ComponentErrorBoundary>
+
+        <View className="px-5 pt-2">
+          <Pressable
+            onPress={() => router.push(SCREENS.INSIGHTS)}
+            className="rounded-2xl border border-border bg-card p-4"
+          >
+            <Text className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {format(selectedDate, "MMMM yyyy")}
+            </Text>
+            <ComponentErrorBoundary name="home.heatmap">
+              <SpendingHeatmap
+                yearMonth={selectedMonth}
+                today={format(now, DATE_ISO_FORMAT)}
+              />
+            </ComponentErrorBoundary>
+          </Pressable>
         </View>
 
         <ComponentErrorBoundary name="home.spending-panel">

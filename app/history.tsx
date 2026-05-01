@@ -23,7 +23,6 @@ import {
   ComponentErrorBoundary,
   ScreenError,
 } from "@/components/error-boundary";
-import { HistoryInsightsStrip } from "@/components/history-insights-strip";
 import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { TransactionSkeleton } from "@/components/transaction-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -35,13 +34,16 @@ import { useCurrency } from "@/hooks/use-currency";
 import { useHistoryFilters } from "@/hooks/use-history-filters";
 import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useAllSources } from "@/hooks/use-sources";
-import { useSwipeDelete } from "@/hooks/use-transactions";
+import { SEARCH_RESULT_CAP, useSwipeDelete } from "@/hooks/use-transactions";
 import { COLORS, editScreen, TRANSACTION_TYPE } from "@/lib/constants";
 import { buildListData, type ListItem } from "@/lib/format";
 import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
 
 const HistoryFiltersSheet = lazy(
   () => import("@/components/history-filters-sheet"),
+);
+const HistoryInsightsStrip = lazy(
+  () => import("@/components/history-insights-strip"),
 );
 
 export default function HistoryScreen() {
@@ -135,10 +137,13 @@ export default function HistoryScreen() {
     () => data?.pages.flat() ?? [],
     [data?.pages],
   );
+  const isSearching = debouncedSearch.trim().length > 0;
   const listData = useMemo(
-    () => buildListData(allTransactions),
-    [allTransactions],
+    () => buildListData(allTransactions, { groupByDate: !isSearching }),
+    [allTransactions, isSearching],
   );
+  const atSearchCap =
+    isSearching && allTransactions.length >= SEARCH_RESULT_CAP;
 
   return (
     <View className="flex-1 bg-background">
@@ -185,11 +190,13 @@ export default function HistoryScreen() {
       </View>
 
       {insights && insights.count > 0 && (
-        <HistoryInsightsStrip
-          insights={insights}
-          fmt={fmt}
-          defaultExpanded={summary === "1"}
-        />
+        <Suspense fallback={null}>
+          <HistoryInsightsStrip
+            insights={insights}
+            fmt={fmt}
+            defaultExpanded={summary === "1"}
+          />
+        </Suspense>
       )}
 
       {appliedChips.length > 0 && (
@@ -269,6 +276,13 @@ export default function HistoryScreen() {
               isFetchingNextPage ? (
                 <View className="items-center py-6">
                   <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+                </View>
+              ) : atSearchCap ? (
+                <View className="items-center py-6">
+                  <Text className="text-xs text-muted-foreground">
+                    showing top {SEARCH_RESULT_CAP} matches — refine your search
+                    for more
+                  </Text>
                 </View>
               ) : null
             }

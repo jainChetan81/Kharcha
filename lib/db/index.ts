@@ -325,6 +325,26 @@ export async function initDB(): Promise<void> {
         );
       }
 
+      if (!hasColumn("tags", "start_date")) {
+        await db.run(sql`ALTER TABLE tags ADD COLUMN start_date TEXT`);
+      }
+
+      if (!hasColumn("tags", "end_date")) {
+        await db.run(sql`ALTER TABLE tags ADD COLUMN end_date TEXT`);
+      }
+
+      // Tag schedules used to be date-only (`YYYY-MM-DD`); now they're full
+      // datetimes so the start/end window can be anchored to specific times
+      // of day (e.g. "office 9–17"). Coerce any legacy date-only rows: pin
+      // start to 00:00 and end to 23:59 so existing schedules still cover
+      // the whole day under the new datetime comparisons.
+      await db.run(
+        sql`UPDATE tags SET start_date = start_date || ' 00:00' WHERE start_date IS NOT NULL AND length(start_date) = 10`,
+      );
+      await db.run(
+        sql`UPDATE tags SET end_date = end_date || ' 23:59' WHERE end_date IS NOT NULL AND length(end_date) = 10`,
+      );
+
       await db.run(
         sql`CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
       );
@@ -1276,16 +1296,6 @@ export async function getTransactionsPaginated(
     if (filters?.amountMax != null) {
       conditions.push(lte(transactions.amount, filters.amountMax));
     }
-    if (filters?.search) {
-      const term = `%${filters.search}%`;
-      conditions.push(
-        or(
-          like(transactions.merchant, term),
-          like(transactions.note, term),
-          like(sql`CAST(${transactions.amount} AS TEXT)`, term),
-        ),
-      );
-    }
     if (filters?.reimbursement && filters.reimbursement !== "all") {
       conditions.push(
         eq(transactions.reimbursement_status, filters.reimbursement),
@@ -2070,12 +2080,49 @@ export { getDataStats } from "./stats";
 export {
   addTag,
   deleteTag,
+  getActiveTag,
   getAllTags,
   getAllTimeTagBreakdown,
   getTagBreakdown,
+  getTagStats,
   getTagsForTransactions,
   renameTag,
+  scheduleTag,
+  type TagScheduleInput,
+  type TagStats,
+  updateSchedule,
 } from "./tags";
+
+export type DailySpendRow = { date: string; total: number };
+
+export async function getDailySpend(
+  dateFrom: string,
+  dateTo: string,
+): Promise<DailySpendRow[]> {
+  try {
+    const rows = await db
+      .select({
+        date: sql<string>`strftime('%Y-%m-%d', ${transactions.date})`,
+        total: sql<number>`COALESCE(SUM(${transactions.amount}), 0)`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.type, TRANSACTION_TYPE.EXPENSE),
+          gte(transactions.date, dateFrom),
+          lte(transactions.date, `${dateTo} 23:59`),
+        ),
+      )
+      .groupBy(sql`strftime('%Y-%m-%d', ${transactions.date})`);
+    return rows.map((r) => ({ date: r.date, total: Number(r.total) }));
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: ERROR_TYPE.DB,
+      operation: "getDailySpend",
+    });
+    throw error;
+  }
+}
 
 export async function getTodaySpend(): Promise<number> {
   try {

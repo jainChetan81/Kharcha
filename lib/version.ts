@@ -9,7 +9,7 @@
  */
 
 // Keep in sync with app.json
-const APP_VERSION = "0.7.0";
+const APP_VERSION = "0.7.1";
 export function compareVersions(v1: string, v2: string): -1 | 0 | 1 {
   const [major1, minor1, patch1] = v1.split(".").map(Number);
   const [major2, minor2, patch2] = v2.split(".").map(Number);

@@ -39,6 +39,10 @@ export const FIREBASE_EVENTS = {
   MONTHLY_WRAP_DISMISSED: "monthly_wrap_dismissed",
   INSIGHTS_VIEWED: "insights_viewed",
   SUBSCRIPTION_TAPPED: "subscription_tapped",
+  TAG_SCHEDULED: "tag_scheduled",
+  TAG_SCHEDULE_UPDATED: "tag_schedule_updated",
+  TAG_SCHEDULE_ENDED: "tag_schedule_ended",
+  TAG_DETAIL_VIEWED: "tag_detail_viewed",
 } as const;
 
 export type KharchaEvent =

@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { Platform } from "react-native";
 import { CONFIG_KEYS, MONTH_FORMAT } from "@/lib/constants";
 import {
+  getActiveTag,
   getCategoryBreakdown,
   getMonthlyInsights,
   getMonthlySummary,
@@ -24,6 +25,8 @@ type WidgetData = {
   todaySpend: number;
   totalBudget: number | null;
   previousMonthSpendAtThisPoint: number | null;
+  /** Currently-active scope (tag with a window covering "now"), or null. */
+  activeTagName: string | null;
   lastUpdated: string;
 };
 
@@ -33,15 +36,23 @@ export async function buildWidgetPayload(): Promise<WidgetData> {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
-  const [summary, breakdown, insights, todaySpend, currencyCode, budgets] =
-    await Promise.all([
-      getMonthlySummary(yearMonth),
-      getCategoryBreakdown(yearMonth),
-      getMonthlyInsights(year, month),
-      getTodaySpend(),
-      getConfig(CONFIG_KEYS.CURRENCY),
-      getBudgets(),
-    ]);
+  const [
+    summary,
+    breakdown,
+    insights,
+    todaySpend,
+    currencyCode,
+    budgets,
+    activeTag,
+  ] = await Promise.all([
+    getMonthlySummary(yearMonth),
+    getCategoryBreakdown(yearMonth),
+    getMonthlyInsights(year, month),
+    getTodaySpend(),
+    getConfig(CONFIG_KEYS.CURRENCY),
+    getBudgets(),
+    getActiveTag(),
+  ]);
 
   const prevSpend = await getPreviousMonthSpendAtDay(insights.daysElapsed);
 
@@ -67,6 +78,7 @@ export async function buildWidgetPayload(): Promise<WidgetData> {
         ? budgets.reduce((sum, b) => sum + b.amount, 0)
         : null,
     previousMonthSpendAtThisPoint: prevSpend,
+    activeTagName: activeTag?.name ?? null,
     lastUpdated: new Date().toISOString(),
   };
 }

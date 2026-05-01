@@ -14,6 +14,10 @@ import {
   ComponentErrorBoundary,
   ScreenError,
 } from "@/components/error-boundary";
+import {
+  SpendingHeatmap,
+  SpendingHeatmapLegend,
+} from "@/components/spending-heatmap";
 import { SpendingPanel } from "@/components/spending-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
@@ -112,6 +116,22 @@ export default function InsightsScreen() {
             />
           </View>
         )}
+
+        <View className="mx-5 mt-4 rounded-2xl border border-border bg-card p-5">
+          <Text className="mb-1 text-sm font-semibold text-foreground">
+            Spending heatmap
+          </Text>
+          <Text className="mb-3 text-xs text-muted-foreground">
+            Daily spend across {monthLabel}. Darker = heavier spend day.
+          </Text>
+          <ComponentErrorBoundary name="insights.heatmap">
+            <SpendingHeatmap
+              yearMonth={selectedMonth}
+              today={format(now, DATE_ISO_FORMAT)}
+            />
+          </ComponentErrorBoundary>
+          <SpendingHeatmapLegend />
+        </View>
 
         {data.hasData ? (
           <>

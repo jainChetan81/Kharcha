@@ -55,6 +55,7 @@ struct WidgetData: Codable {
     let todaySpend: Double
     let totalBudget: Double?
     let previousMonthSpendAtThisPoint: Double?
+    let activeTagName: String?
     let lastUpdated: String
 }
 
@@ -144,9 +145,16 @@ struct SmallWidgetView: View {
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
 
-                Text("this month")
-                    .font(.system(size: 11))
-                    .foregroundColor(mutedColor)
+                if let mode = data.activeTagName {
+                    Text("in #\(mode)")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(primaryColor)
+                        .lineLimit(1)
+                } else {
+                    Text("this month")
+                        .font(.system(size: 11))
+                        .foregroundColor(mutedColor)
+                }
             }
 
             Spacer()
@@ -231,9 +239,17 @@ struct MediumWidgetView: View {
             HStack(spacing: 16) {
                 // Left: totals
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(data.monthLabel)
-                        .font(.system(size: 13))
-                        .foregroundColor(mutedColor)
+                    HStack(spacing: 6) {
+                        Text(data.monthLabel)
+                            .font(.system(size: 13))
+                            .foregroundColor(mutedColor)
+                        if let mode = data.activeTagName {
+                            Text("· #\(mode)")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(primaryColor)
+                                .lineLimit(1)
+                        }
+                    }
 
                     Spacer()
 

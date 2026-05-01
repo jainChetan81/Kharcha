@@ -26,10 +26,15 @@ export const SCREENS = {
   PORTFOLIO: "/portfolio",
   HOLDING: "/holding",
   INSIGHTS: "/insights",
+  TAG: "/tag",
 } as const;
 
 export function holdingScreen(id: number) {
   return `${SCREENS.HOLDING}/${id}` as const;
+}
+
+export function tagScreen(id: number) {
+  return `${SCREENS.TAG}/${id}` as const;
 }
 
 export const BUNDLE_ID = "com.chetanjain.kharcha" as const;
@@ -169,6 +174,15 @@ export const TOAST_TYPE = {
 
 export const TOAST_COPY = {
   ALREADY_EXISTS: "Already exists — kept existing",
+} as const;
+
+export const TAG_SCOPE_COPY = {
+  scopeStarted: (name: string) => `#${name} scope started`,
+  scopeEnded: (name: string) => `#${name} scope ended`,
+  failedToStart: "Failed to start scope",
+  failedToSchedule: "Failed to schedule scope",
+  failedToUpdate: "Failed to update schedule",
+  failedToEnd: "Couldn't end scope",
 } as const;
 
 export const INLINE_ADD_COPY = {
@@ -339,6 +353,7 @@ export const QUERY_KEYS = {
   TRANSACTION: "transaction",
   TRANSACTIONS: "transactions",
   TRANSACTIONS_PAGINATED: "transactions-paginated",
+  TRANSACTIONS_SEARCH: "transactions-search",
   MONTHLY_SUMMARY: "monthly-summary",
   CATEGORY_BREAKDOWN: "category-breakdown",
   MERCHANT_BREAKDOWN: "merchant-breakdown",
@@ -357,6 +372,8 @@ export const QUERY_KEYS = {
   TAGS: "tags",
   TAG_BREAKDOWN: "tag-breakdown",
   TAG_BREAKDOWN_ALL_TIME: "tag-breakdown-all-time",
+  TAG_STATS: "tag-stats",
+  ACTIVE_TAG: "active-tag",
   HOLDINGS: "holdings",
   HOLDING: "holding",
   HOLDING_TRANSACTIONS: "holding-transactions",
@@ -368,6 +385,7 @@ export const QUERY_KEYS = {
   BIGGEST_TRANSACTION: "biggest-transaction",
   TRANSACTION_COUNT: "transaction-count",
   TRACKING_STREAK: "tracking-streak",
+  DAILY_SPEND: "daily-spend",
 } as const;
 
 export const BOOL_FLAG = {

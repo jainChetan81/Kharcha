@@ -8,6 +8,7 @@ import {
   FileText,
   HandCoins,
   Info,
+  Layers,
   Lock,
   Mail,
   MessageSquare,
@@ -166,6 +167,12 @@ export default function ProfileScreen() {
           description="Expenses you're owed back, fully or in part."
           onPress={() => router.push(SCREENS.REIMBURSEMENTS)}
         />
+        <NavRow
+          icon={Layers}
+          title="Tags"
+          description="Group spend by tag; scope a tag to a time window for auto-tagging."
+          onPress={() => router.push(SCREENS.TAGS)}
+        />
         {anySyncEnabled && (
           <>
             <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -236,7 +243,6 @@ export default function ProfileScreen() {
             thumbColor={COLORS.WHITE}
           />
         </View>
-
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           App
         </Text>

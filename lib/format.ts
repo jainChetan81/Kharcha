@@ -97,7 +97,14 @@ export function getInitials(name: string, maxLen = 2): string {
     .slice(0, maxLen);
 }
 
-export function buildListData(transactions: TransactionRow[]): ListItem[] {
+export function buildListData(
+  transactions: TransactionRow[],
+  options: { groupByDate?: boolean } = {},
+): ListItem[] {
+  const groupByDate = options.groupByDate ?? true;
+  if (!groupByDate) {
+    return transactions.map((data) => ({ type: "transaction", data }));
+  }
   const items: ListItem[] = [];
   let lastLabel = "";
   for (const t of transactions) {

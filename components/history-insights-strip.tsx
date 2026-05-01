@@ -29,7 +29,7 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-export function HistoryInsightsStrip({
+export default function HistoryInsightsStrip({
   insights,
   fmt,
   onSeeFullInsights,

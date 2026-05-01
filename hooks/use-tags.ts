@@ -1,13 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { QUERY_KEYS } from "@/lib/constants";
+import { format } from "date-fns";
+import { DATE_TIME_FORMAT, QUERY_KEYS, TAG_SCOPE_COPY } from "@/lib/constants";
 import {
   addTag,
   deleteTag,
+  getActiveTag,
   getAllTags,
   getAllTimeTagBreakdown,
   getTagBreakdown,
+  getTagStats,
   renameTag,
+  scheduleTag,
+  type TagScheduleInput,
+  updateSchedule,
 } from "@/lib/db";
+import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
 export function useAllTags() {
   return useQuery({
@@ -39,12 +47,90 @@ function useInvalidateTags() {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.TAG_BREAKDOWN_ALL_TIME],
       }),
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TAG_STATS] }),
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.ACTIVE_TAG] }),
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TRANSACTIONS] }),
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
       }),
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TRANSACTION] }),
     ]);
+}
+
+export function useTagStats(id: number) {
+  return useQuery({
+    queryKey: [QUERY_KEYS.TAG_STATS, id],
+    queryFn: () => getTagStats(id),
+    enabled: !!id,
+  });
+}
+
+/**
+ * The tag (if any) whose start..end window contains "now". Polls every 60s
+ * so the UI flips automatically when a tag begins or ends without requiring
+ * a manual refresh.
+ */
+export function useActiveTag() {
+  return useQuery({
+    queryKey: [QUERY_KEYS.ACTIVE_TAG],
+    queryFn: getActiveTag,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useScheduleTag() {
+  const invalidate = useInvalidateTags();
+  return useMutation({
+    mutationFn: (input: TagScheduleInput) => scheduleTag(input),
+    onSuccess: () => {
+      logEvent(FIREBASE_EVENTS.TAG_SCHEDULED);
+      invalidate();
+    },
+  });
+}
+
+export function useUpdateSchedule() {
+  const invalidate = useInvalidateTags();
+  return useMutation({
+    mutationFn: ({ id, ...input }: { id: number } & TagScheduleInput) =>
+      updateSchedule(id, input),
+    onSuccess: () => {
+      logEvent(FIREBASE_EVENTS.TAG_SCHEDULE_UPDATED);
+      invalidate();
+    },
+  });
+}
+
+/**
+ * Cuts an active scope short — sets its end_at to "now". The tag keeps its
+ * name and start, so historical stats stay intact; only the active window
+ * closes. Used by the "End now" affordance on the home card and tags
+ * screen.
+ *
+ * Toasts and analytics are owned by this hook so call sites just pass the
+ * tag and don't have to wire success/error copy themselves — keeps the
+ * call sites consistent and avoids copy drift.
+ */
+export function useEndScheduleNow() {
+  const invalidate = useInvalidateTags();
+  return useMutation({
+    mutationFn: (tag: { id: number; name: string; startAt: string }) => {
+      const endAt = format(new Date(), DATE_TIME_FORMAT);
+      return updateSchedule(tag.id, {
+        name: tag.name,
+        startAt: tag.startAt,
+        endAt: endAt < tag.startAt ? tag.startAt : endAt,
+      });
+    },
+    onSuccess: (_data, tag) => {
+      logEvent(FIREBASE_EVENTS.TAG_SCHEDULE_ENDED);
+      showSuccessToast(TAG_SCOPE_COPY.scopeEnded(tag.name));
+      invalidate();
+    },
+    onError: (err) => {
+      showErrorToast(TAG_SCOPE_COPY.failedToEnd, err);
+    },
+  });
 }
 
 export function useAddTag() {

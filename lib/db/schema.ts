@@ -147,6 +147,8 @@ export const tags = sqliteTable("tags", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull().unique(),
   sort_order: integer("sort_order").default(0),
+  start_date: text("start_date"),
+  end_date: text("end_date"),
   created_at: text("created_at").default("(datetime('now'))"),
 });
 

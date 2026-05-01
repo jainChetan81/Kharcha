@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { COLORS } from "@/lib/constants";
+import { isIOS } from "@/lib/utils";
 
 type BottomSheetBaseProps = {
   visible: boolean;
@@ -129,6 +130,9 @@ export function BottomSheet(props: BottomSheetProps) {
     </View>
   );
 
+  const useKav =
+    isFormMode || ("avoidKeyboard" in props && props.avoidKeyboard);
+
   return (
     <Modal
       visible={visible}
@@ -136,13 +140,22 @@ export function BottomSheet(props: BottomSheetProps) {
       animationType="slide"
       onRequestClose={handleClose}
     >
-      <Pressable className="flex-1 bg-black/50" onPress={handleClose} />
-      {isFormMode || ("avoidKeyboard" in props && props.avoidKeyboard) ? (
-        <KeyboardAvoidingView behavior="padding">
+      {useKav ? (
+        <KeyboardAvoidingView
+          behavior={isIOS ? "padding" : undefined}
+          className="flex-1 justify-end"
+        >
+          <Pressable
+            className="absolute inset-0 bg-black/50"
+            onPress={handleClose}
+          />
           {content}
         </KeyboardAvoidingView>
       ) : (
-        content
+        <>
+          <Pressable className="flex-1 bg-black/50" onPress={handleClose} />
+          {content}
+        </>
       )}
     </Modal>
   );

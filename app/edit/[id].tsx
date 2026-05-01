@@ -184,6 +184,7 @@ export default function EditTransactionScreen() {
           }}
           lockType
           hideTags={transaction.source_type === SOURCE_TYPE.RECURRING}
+          isEditing
         />
       </Suspense>
     </KeyboardAvoidingView>
