@@ -13,7 +13,13 @@ import {
 import { DATE_TIME_FORMAT, TRANSACTION_TYPE } from "@/lib/constants";
 import { ERROR_TYPE, logFirebaseError } from "@/lib/firebase";
 import expo, { db } from "./connection";
-import { categories, tags, transactions, transactionTags } from "./schema";
+import {
+  categories,
+  categoryRuleTags,
+  tags,
+  transactions,
+  transactionTags,
+} from "./schema";
 import type { Tag, TagBreakdownRow, TagLite } from "./types";
 
 export async function getAllTags(): Promise<Tag[]> {
@@ -187,6 +193,9 @@ export async function updateSchedule(id: number, input: TagScheduleInput) {
 export async function deleteTag(id: number) {
   await expo.withTransactionAsync(async () => {
     await db.delete(transactionTags).where(eq(transactionTags.tag_id, id));
+    // Drop any rule→tag links so deleting a tag doesn't leave rules
+    // referencing a missing tag id (expo-sqlite has FK enforcement off).
+    await db.delete(categoryRuleTags).where(eq(categoryRuleTags.tag_id, id));
     await db.delete(tags).where(eq(tags.id, id));
   });
 }

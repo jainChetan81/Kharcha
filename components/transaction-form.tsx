@@ -25,6 +25,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useAllHoldings } from "@/hooks/use-holdings";
 import { useInlineAdders } from "@/hooks/use-inline-adders";
 import { useActiveTag, useAddTag, useAllTags } from "@/hooks/use-tags";
+import { resolveCategoryAndTags } from "@/lib/category-rules";
 import {
   COLORS,
   DATE_DISPLAY_FORMAT,
@@ -38,7 +39,6 @@ import {
 import {
   getAllSources,
   getCategoriesByType,
-  getMostUsedCategoryForMerchant,
   getMostUsedTagsForMerchant,
   searchMerchants,
   type TagLite,
@@ -126,14 +126,21 @@ export function TransactionForm({
     // Don't re-run for the same merchant text that we already auto-filled.
     if (autoFilledMerchant?.toLowerCase() === trimmed.toLowerCase()) return;
     try {
-      const categoryId = await getMostUsedCategoryForMerchant(
-        trimmed,
-        categoryType,
-      );
-      if (categoryId && !userChangedCategory) {
-        form.setFieldValue("categoryId", categoryId);
+      const resolved = await resolveCategoryAndTags(trimmed, categoryType);
+      if (resolved.categoryId && !userChangedCategory) {
+        form.setFieldValue("categoryId", resolved.categoryId);
         setAutoFilledMerchant(trimmed);
-        showSuccessToast("category set from history ✨");
+        if (resolved.source === "rule") {
+          // Rule tags are part of the user's explicit intent — auto-apply
+          // them, unioning with whatever the form already had so the active
+          // scope (and any manual picks) survive.
+          const current = form.getFieldValue("tagIds") ?? [];
+          const merged = Array.from(new Set([...current, ...resolved.tagIds]));
+          form.setFieldValue("tagIds", merged);
+          showSuccessToast("category set from rule ✨");
+        } else {
+          showSuccessToast("category set from history ✨");
+        }
       }
     } catch (err) {
       // Best-effort feature — swallow DB errors so the form stays usable.

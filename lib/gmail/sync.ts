@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { and, eq, sql } from "drizzle-orm";
+import { resolveCategoryAndTags } from "@/lib/category-rules";
 import {
   CONFIG_KEYS,
   EMAIL_LOG_REASON,
@@ -17,7 +18,7 @@ import { getActiveBanksWithEmails } from "@/lib/db/banks";
 import { getAllCategories } from "@/lib/db/categories";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import expo from "@/lib/db/connection";
-import { subscriptions, transactions } from "@/lib/db/schema";
+import { subscriptions, transactions, transactionTags } from "@/lib/db/schema";
 import { ERROR_TYPE, logFirebaseError, withTrace } from "@/lib/firebase";
 import { getValidAccessToken } from "./auth";
 import { type ParseSource, parseEmailWithFallback } from "./parsers";
@@ -348,6 +349,19 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
           outcome.parsed.type,
         );
 
+        // Smart Category Rules win over Gmail's parsed category. Tags only
+        // apply when a rule fired (history-tier inference doesn't auto-tag).
+        const ruleResolved = outcome.parsed.merchant
+          ? await resolveCategoryAndTags(
+              outcome.parsed.merchant,
+              outcome.parsed.type,
+            )
+          : null;
+        const finalCategoryId =
+          ruleResolved?.source === "rule"
+            ? ruleResolved.categoryId
+            : matchedCategoryId;
+
         // If the parsed date is null, use the email's internalDate as fallback
         const fallbackDate = outcome.parsed.date
           ? outcome.parsed.date
@@ -355,10 +369,10 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             ? format(new Date(Number(msgData.internalDate)), "yyyy-MM-dd")
             : format(new Date(), "yyyy-MM-dd");
 
-        await db.insert(transactions).values({
+        const insertedTxn = await db.insert(transactions).values({
           amount: outcome.parsed.amount,
           merchant: outcome.parsed.merchant,
-          category_id: matchedCategoryId,
+          category_id: finalCategoryId,
           source_id: null,
           gmail_message_id: message.id,
           parsed_by:
@@ -371,6 +385,19 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
           type: outcome.parsed.type,
           source_type: "synced",
         });
+
+        if (ruleResolved?.source === "rule" && ruleResolved.tagIds.length > 0) {
+          const txnId = Number(insertedTxn.lastInsertRowId);
+          await db
+            .insert(transactionTags)
+            .values(
+              ruleResolved.tagIds.map((tagId) => ({
+                transaction_id: txnId,
+                tag_id: tagId,
+              })),
+            )
+            .onConflictDoNothing();
+        }
 
         // Auto-create a subscription row when Gemini flags the email as
         // recurring — skip if one already exists for the same merchant + cycle
@@ -407,7 +434,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
                 amount: subAmount,
                 billing_day: billingDay,
                 billing_days: JSON.stringify([billingDay]),
-                category_id: matchedCategoryId,
+                category_id: finalCategoryId,
                 source_id: null,
               });
             }
