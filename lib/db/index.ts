@@ -1407,43 +1407,49 @@ export async function insertTransaction(params: {
         ? null
         : (validated.reimbursableAmount ?? validated.amount);
 
-    const result = await db.insert(transactions).values({
-      type: validated.type,
-      amount: validated.amount,
-      merchant: validated.merchant ?? null,
-      category_id: validated.categoryId ?? null,
-      source_id: validated.sourceId ?? null,
-      destination_source_id: validated.destinationSourceId ?? null,
-      subscription_id: validated.subscriptionId ?? null,
-      holding_id: validated.holdingId ?? null,
-      investment_kind: validated.investmentKind ?? null,
-      units: validated.units ?? null,
-      source_type: validated.sourceType,
-      parsed_by: validated.parsedBy ?? null,
-      reimbursement_status: validated.reimbursementStatus,
-      reimbursable_amount: reimbursableAmount,
-      date: validated.date,
-      note: validated.note ?? null,
-    });
-    const insertedId = Number(result.lastInsertRowId);
-    if (!Number.isFinite(insertedId) || insertedId <= 0) {
-      throw new Error("Failed to insert transaction: invalid insertedId");
-    }
-    if (validated.tagIds && validated.tagIds.length > 0) {
-      const unique = Array.from(new Set(validated.tagIds));
-      await db.insert(transactionTags).values(
-        unique.map((tag_id) => ({
-          transaction_id: insertedId,
-          tag_id,
-        })),
-      );
-    }
-    if (validated.type === TRANSACTION_TYPE.INVESTMENT && validated.holdingId) {
-      await safeRecomputeHolding(validated.holdingId, {
-        operation: "insertTransaction",
+    let insertedId = 0;
+    await expo.withTransactionAsync(async () => {
+      const result = await db.insert(transactions).values({
+        type: validated.type,
+        amount: validated.amount,
+        merchant: validated.merchant ?? null,
+        category_id: validated.categoryId ?? null,
+        source_id: validated.sourceId ?? null,
+        destination_source_id: validated.destinationSourceId ?? null,
+        subscription_id: validated.subscriptionId ?? null,
+        holding_id: validated.holdingId ?? null,
+        investment_kind: validated.investmentKind ?? null,
+        units: validated.units ?? null,
+        source_type: validated.sourceType,
+        parsed_by: validated.parsedBy ?? null,
+        reimbursement_status: validated.reimbursementStatus,
+        reimbursable_amount: reimbursableAmount,
+        date: validated.date,
+        note: validated.note ?? null,
       });
-    }
-    return result;
+      insertedId = Number(result.lastInsertRowId);
+      if (!Number.isFinite(insertedId) || insertedId <= 0) {
+        throw new Error("Failed to insert transaction: invalid insertedId");
+      }
+      if (validated.tagIds && validated.tagIds.length > 0) {
+        const unique = Array.from(new Set(validated.tagIds));
+        await db.insert(transactionTags).values(
+          unique.map((tag_id) => ({
+            transaction_id: insertedId,
+            tag_id,
+          })),
+        );
+      }
+      if (
+        validated.type === TRANSACTION_TYPE.INVESTMENT &&
+        validated.holdingId
+      ) {
+        await safeRecomputeHolding(validated.holdingId, {
+          operation: "insertTransaction",
+        });
+      }
+    });
+    return insertedId;
   } catch (error) {
     logFirebaseError(error, {
       error_type: ERROR_TYPE.DB,
@@ -1541,42 +1547,37 @@ export async function updateTransaction(
         updates.source_type = next;
       }
     }
-    const result = await db
-      .update(transactions)
-      .set(updates)
-      .where(eq(transactions.id, id));
+    await expo.withTransactionAsync(async () => {
+      await db.update(transactions).set(updates).where(eq(transactions.id, id));
 
-    if (params.tagIds !== undefined) {
-      await db
-        .delete(transactionTags)
-        .where(eq(transactionTags.transaction_id, id));
-      if (params.tagIds.length > 0) {
-        const unique = Array.from(new Set(params.tagIds));
-        await db.insert(transactionTags).values(
-          unique.map((tag_id) => ({
-            transaction_id: id,
-            tag_id,
-          })),
-        );
+      if (params.tagIds !== undefined) {
+        await db
+          .delete(transactionTags)
+          .where(eq(transactionTags.transaction_id, id));
+        if (params.tagIds.length > 0) {
+          const unique = Array.from(new Set(params.tagIds));
+          await db.insert(transactionTags).values(
+            unique.map((tag_id) => ({
+              transaction_id: id,
+              tag_id,
+            })),
+          );
+        }
       }
-    }
 
-    // Cross-holding moves need both sides recomputed, not just the new one.
-    // Holdings cache units/invested, which drift if either side is missed.
-    const oldHoldingId = existingRow?.holding_id ?? null;
-    const newHoldingId = updates.holding_id;
-    if (oldHoldingId) {
-      await safeRecomputeHolding(oldHoldingId, {
-        operation: "updateTransaction",
-      });
-    }
-    if (newHoldingId && newHoldingId !== oldHoldingId) {
-      await safeRecomputeHolding(newHoldingId, {
-        operation: "updateTransaction",
-      });
-    }
-
-    return result;
+      const oldHoldingId = existingRow?.holding_id ?? null;
+      const newHoldingId = updates.holding_id;
+      if (oldHoldingId) {
+        await safeRecomputeHolding(oldHoldingId, {
+          operation: "updateTransaction",
+        });
+      }
+      if (newHoldingId && newHoldingId !== oldHoldingId) {
+        await safeRecomputeHolding(newHoldingId, {
+          operation: "updateTransaction",
+        });
+      }
+    });
   } catch (error) {
     logFirebaseError(error, {
       error_type: ERROR_TYPE.DB,

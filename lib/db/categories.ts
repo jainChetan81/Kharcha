@@ -1,5 +1,5 @@
 import { and, asc, eq, sql } from "drizzle-orm";
-import { db } from "./connection";
+import expo, { db } from "./connection";
 import { budgets, categories, subscriptions, transactions } from "./schema";
 import type { Category } from "./types";
 
@@ -60,16 +60,18 @@ export async function deleteCategory(id: number) {
     .where(eq(categories.id, id));
   if (!existing || existing.is_default === 1) return;
 
-  await db
-    .update(transactions)
-    .set({ category_id: null })
-    .where(eq(transactions.category_id, id));
-  await db
-    .update(subscriptions)
-    .set({ category_id: null })
-    .where(eq(subscriptions.category_id, id));
-  await db.delete(budgets).where(eq(budgets.category_id, id));
-  return db
-    .delete(categories)
-    .where(and(eq(categories.id, id), eq(categories.is_default, 0)));
+  await expo.withTransactionAsync(async () => {
+    await db
+      .update(transactions)
+      .set({ category_id: null })
+      .where(eq(transactions.category_id, id));
+    await db
+      .update(subscriptions)
+      .set({ category_id: null })
+      .where(eq(subscriptions.category_id, id));
+    await db.delete(budgets).where(eq(budgets.category_id, id));
+    await db
+      .delete(categories)
+      .where(and(eq(categories.id, id), eq(categories.is_default, 0)));
+  });
 }

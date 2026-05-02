@@ -384,7 +384,7 @@ export function useInsertTransaction() {
       invalidate();
     },
     onError: (err) => {
-      console.error("Transaction mutation failed:", err);
+      showErrorToast("Transaction failed", err);
     },
   });
 }
@@ -399,7 +399,7 @@ export function useUpdateTransaction(id: number) {
       invalidate();
     },
     onError: (err) => {
-      console.error("Transaction mutation failed:", err);
+      showErrorToast("Transaction failed", err);
     },
   });
 }
@@ -413,7 +413,7 @@ export function useDeleteTransaction() {
       invalidate();
     },
     onError: (err) => {
-      console.error("Transaction mutation failed:", err);
+      showErrorToast("Transaction failed", err);
     },
   });
 }
@@ -428,7 +428,7 @@ export function useClearAllTransactions() {
     },
     onSuccess: () => invalidate(),
     onError: (err) => {
-      console.error("Transaction mutation failed:", err);
+      showErrorToast("Transaction failed", err);
     },
   });
 }
@@ -477,7 +477,7 @@ export function useSetReimbursementStatus() {
     }) => setReimbursementStatus(id, status),
     onSuccess: () => invalidate(),
     onError: (err) => {
-      console.error("Transaction mutation failed:", err);
+      showErrorToast("Transaction failed", err);
     },
   });
 }

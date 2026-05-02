@@ -4,7 +4,6 @@ import {
   asc,
   desc,
   eq,
-  gt,
   gte,
   inArray,
   isNotNull,
@@ -13,7 +12,7 @@ import {
 } from "drizzle-orm";
 import { DATE_TIME_FORMAT, TRANSACTION_TYPE } from "@/lib/constants";
 import { ERROR_TYPE, logFirebaseError } from "@/lib/firebase";
-import { db } from "./connection";
+import expo, { db } from "./connection";
 import { categories, tags, transactions, transactionTags } from "./schema";
 import type { Tag, TagBreakdownRow, TagLite } from "./types";
 
@@ -186,8 +185,10 @@ export async function updateSchedule(id: number, input: TagScheduleInput) {
 }
 
 export async function deleteTag(id: number) {
-  await db.delete(transactionTags).where(eq(transactionTags.tag_id, id));
-  return db.delete(tags).where(eq(tags.id, id));
+  await expo.withTransactionAsync(async () => {
+    await db.delete(transactionTags).where(eq(transactionTags.tag_id, id));
+    await db.delete(tags).where(eq(tags.id, id));
+  });
 }
 
 export async function getTagsForTransactions(
@@ -272,7 +273,7 @@ export async function getActiveTag(): Promise<Tag | null> {
           isNotNull(tags.start_date),
           isNotNull(tags.end_date),
           lte(tags.start_date, nowIso),
-          gt(tags.end_date, nowIso),
+          gte(tags.end_date, nowIso),
         ),
       )
       .orderBy(desc(tags.start_date))
