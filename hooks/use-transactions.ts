@@ -500,9 +500,12 @@ export function useSeedSampleData() {
   const invalidate = useInvalidateTransactions();
   return useMutation({
     mutationFn: seedSampleData,
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      invalidate();
+      showSuccessToast("Sample data seeded");
+    },
     onError: (err) => {
-      console.error("Sample data mutation failed:", err);
+      showErrorToast("Sample data failed", err);
     },
   });
 }

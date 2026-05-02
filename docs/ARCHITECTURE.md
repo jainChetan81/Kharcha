@@ -186,4 +186,4 @@ see [GMAIL_SYNC.md](GMAIL_SYNC.md) for backend endpoints and sync flow.
 
 ## version tracking
 
-`lib/version.ts` provides `compareVersions()`, `isUpgrade()`, `isMajorUpgrade()`. app version and schema version stored in config table. on startup, `initDB()` detects upgrades and runs version-specific migration logic if needed. see [DRIZZLE.md](DRIZZLE.md) for details.
+schema migrations are handled by Drizzle. on startup, `initDB()` runs generated migrations and falls back to `CREATE TABLE IF NOT EXISTS` for fresh installs. see [DRIZZLE.md](DRIZZLE.md) for details.

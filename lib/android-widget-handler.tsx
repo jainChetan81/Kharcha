@@ -76,6 +76,12 @@ async function updateAllWidgets(data: AndroidWidgetData): Promise<void> {
   ]);
 }
 
+/**
+ * Loaded via dynamic `require` from lib/widget.ts to avoid bundling
+ * Android widget code on iOS — knip can't see the call site, so the
+ * `@public` tag suppresses the false positive.
+ * @public
+ */
 export async function updateAndroidWidgets(
   data: AndroidWidgetData,
 ): Promise<void> {
