@@ -28,6 +28,7 @@ import { TransactionSkeleton } from "@/components/transaction-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { QueryErrorState } from "@/components/ui/query-error-state";
 import { Text } from "@/components/ui/text";
 import { useCategoriesByType } from "@/hooks/use-categories";
 import { useCurrency } from "@/hooks/use-currency";
@@ -58,6 +59,7 @@ export default function HistoryScreen() {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    error,
     insights,
     searchText,
     setSearchText,
@@ -288,6 +290,12 @@ export default function HistoryScreen() {
             ListEmptyComponent={
               isLoading ? (
                 <TransactionSkeleton count={10} />
+              ) : error ? (
+                <QueryErrorState
+                  title="Couldn't load transactions"
+                  error={error}
+                  inList
+                />
               ) : (
                 <EmptyState
                   icon={debouncedSearch ? Search : Receipt}

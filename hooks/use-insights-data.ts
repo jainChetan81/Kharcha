@@ -48,6 +48,12 @@ export function useInsightsData(
           : null;
 
     const transactionCount = txCount.data ?? 0;
+    const error =
+      summary.error ??
+      breakdown.error ??
+      txCount.error ??
+      biggest.error ??
+      null;
     return {
       expenses,
       income,
@@ -59,16 +65,21 @@ export function useInsightsData(
       streak: streak.data ?? 0,
       hasData: transactionCount > 0,
       isLoading: summary.isLoading || breakdown.isLoading || txCount.isLoading,
+      error,
     };
   }, [
     summary.data,
     summary.isLoading,
+    summary.error,
     prevSummary.data,
     breakdown.data,
     breakdown.isLoading,
+    breakdown.error,
     biggest.data,
+    biggest.error,
     txCount.data,
     txCount.isLoading,
+    txCount.error,
     streak.data,
   ]);
 }

@@ -88,6 +88,9 @@ export function useScheduleTag() {
       logEvent(FIREBASE_EVENTS.TAG_SCHEDULED);
       invalidate();
     },
+    onError: (err) => {
+      showErrorToast(TAG_SCOPE_COPY.failedToUpdate, err);
+    },
   });
 }
 
@@ -99,6 +102,9 @@ export function useUpdateSchedule() {
     onSuccess: () => {
       logEvent(FIREBASE_EVENTS.TAG_SCHEDULE_UPDATED);
       invalidate();
+    },
+    onError: (err) => {
+      showErrorToast(TAG_SCOPE_COPY.failedToUpdate, err);
     },
   });
 }
@@ -140,6 +146,9 @@ export function useAddTag() {
   return useMutation({
     mutationFn: (name: string) => addTag(name),
     onSuccess: () => invalidate(),
+    onError: (err) => {
+      showErrorToast(TAG_SCOPE_COPY.failedToUpdateTag, err);
+    },
   });
 }
 
@@ -149,6 +158,9 @@ export function useRenameTag() {
     mutationFn: ({ id, name }: { id: number; name: string }) =>
       renameTag(id, name),
     onSuccess: () => invalidate(),
+    onError: (err) => {
+      showErrorToast(TAG_SCOPE_COPY.failedToUpdateTag, err);
+    },
   });
 }
 
@@ -169,5 +181,8 @@ export function useDeleteTag() {
   return useMutation({
     mutationFn: (id: number) => deleteTag(id),
     onSuccess: () => invalidate(),
+    onError: (err) => {
+      showErrorToast(TAG_SCOPE_COPY.failedToUpdateTag, err);
+    },
   });
 }

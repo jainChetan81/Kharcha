@@ -362,8 +362,14 @@ export function useHistoryFilters() {
     merchant,
   };
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useTransactionsPaginated(filters);
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    error,
+  } = useTransactionsPaginated(filters);
   const { data: insights } = useFilteredInsights(filters);
 
   function handleDraftTypeChange(next: TransactionFilterType) {
@@ -469,6 +475,7 @@ export function useHistoryFilters() {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    error,
     insights,
     searchText,
     setSearchText,

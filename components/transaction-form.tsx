@@ -694,7 +694,10 @@ export function TransactionForm({
                             const txAmount = Number(
                               fieldApi.form.getFieldValue("amount"),
                             );
-                            if (Number.isFinite(txAmount) && num > txAmount)
+                            if (
+                              Number.isFinite(txAmount) &&
+                              Math.round(num * 100) > Math.round(txAmount * 100)
+                            )
                               return "Can't exceed the transaction amount";
                             return undefined;
                           },

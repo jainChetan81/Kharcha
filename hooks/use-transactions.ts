@@ -369,6 +369,7 @@ export function useTransactionsPaginated(filters: {
     isLoading: isSearching ? searchQuery.isLoading : infiniteQuery.isLoading,
     isFetching: isSearching ? searchQuery.isFetching : infiniteQuery.isFetching,
     refetch: isSearching ? searchQuery.refetch : infiniteQuery.refetch,
+    error: isSearching ? searchQuery.error : infiniteQuery.error,
   };
 }
 

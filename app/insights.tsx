@@ -21,6 +21,7 @@ import {
 import { SpendingPanel } from "@/components/spending-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { QueryErrorState } from "@/components/ui/query-error-state";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { WrapStats } from "@/components/wrap-stats";
@@ -96,7 +97,14 @@ export default function InsightsScreen() {
           </Pressable>
         </View>
 
-        {data.hasData ? (
+        {data.error && !data.isLoading ? (
+          <View className="mt-12">
+            <QueryErrorState
+              title="Couldn't load insights"
+              error={data.error}
+            />
+          </View>
+        ) : data.hasData ? (
           <View className="mx-5 mt-4 rounded-2xl border border-border bg-card p-5">
             <ComponentErrorBoundary name="insights.stats">
               <WrapStats

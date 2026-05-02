@@ -182,6 +182,7 @@ export const TAG_SCOPE_COPY = {
   failedToStart: "Failed to start scope",
   failedToSchedule: "Failed to schedule scope",
   failedToUpdate: "Failed to update schedule",
+  failedToUpdateTag: "Failed to update tag",
   failedToEnd: "Couldn't end scope",
 } as const;
 

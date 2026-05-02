@@ -1593,18 +1593,19 @@ export async function deleteTransaction(id: number) {
     // the holding's units/avg_cost/invested from the remaining transactions.
     // Without this, deleting an investment tx leaves the parent holding with
     // stale cached totals.
-    const [existing] = await db
-      .select({ holding_id: transactions.holding_id })
-      .from(transactions)
-      .where(eq(transactions.id, id))
-      .limit(1);
-    const result = await db.delete(transactions).where(eq(transactions.id, id));
-    if (existing?.holding_id) {
-      await safeRecomputeHolding(existing.holding_id, {
-        operation: "deleteTransaction",
-      });
-    }
-    return result;
+    await expo.withTransactionAsync(async () => {
+      const [existing] = await db
+        .select({ holding_id: transactions.holding_id })
+        .from(transactions)
+        .where(eq(transactions.id, id))
+        .limit(1);
+      await db.delete(transactions).where(eq(transactions.id, id));
+      if (existing?.holding_id) {
+        await safeRecomputeHolding(existing.holding_id, {
+          operation: "deleteTransaction",
+        });
+      }
+    });
   } catch (error) {
     logFirebaseError(error, {
       error_type: ERROR_TYPE.DB,
