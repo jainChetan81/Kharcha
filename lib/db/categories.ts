@@ -1,13 +1,6 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import expo, { db } from "./connection";
-import {
-  budgets,
-  categories,
-  categoryRules,
-  categoryRuleTags,
-  subscriptions,
-  transactions,
-} from "./schema";
+import { budgets, categories, subscriptions, transactions } from "./schema";
 import type { Category } from "./types";
 
 export async function getAllCategories(): Promise<Category[]> {
@@ -77,22 +70,6 @@ export async function deleteCategory(id: number) {
       .set({ category_id: null })
       .where(eq(subscriptions.category_id, id));
     await db.delete(budgets).where(eq(budgets.category_id, id));
-    // Smart Category Rules are tied to one category by design — when that
-    // category goes away, drop the rules and their tag links rather than
-    // leaving orphaned rows. FK cascade in the schema is decorative
-    // because expo-sqlite doesn't enable PRAGMA foreign_keys, so this is
-    // the actual enforcement.
-    const rulesToDelete = await db
-      .select({ id: categoryRules.id })
-      .from(categoryRules)
-      .where(eq(categoryRules.category_id, id));
-    const ruleIds = rulesToDelete.map((r) => r.id);
-    if (ruleIds.length > 0) {
-      await db
-        .delete(categoryRuleTags)
-        .where(inArray(categoryRuleTags.rule_id, ruleIds));
-      await db.delete(categoryRules).where(inArray(categoryRules.id, ruleIds));
-    }
     await db
       .delete(categories)
       .where(and(eq(categories.id, id), eq(categories.is_default, 0)));

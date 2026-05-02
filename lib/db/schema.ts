@@ -171,30 +171,4 @@ export const transactionTags = sqliteTable(
   }),
 );
 
-export const categoryRules = sqliteTable("category_rules", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  /** Substring matched case-insensitively against transaction.merchant. */
-  merchant_pattern: text("merchant_pattern").notNull(),
-  category_id: integer("category_id")
-    .notNull()
-    .references(() => categories.id, { onDelete: "cascade" }),
-  created_at: text("created_at").default("(datetime('now'))"),
-  updated_at: text("updated_at").default("(datetime('now'))"),
-});
-
-export const categoryRuleTags = sqliteTable(
-  "category_rule_tags",
-  {
-    rule_id: integer("rule_id")
-      .notNull()
-      .references(() => categoryRules.id, { onDelete: "cascade" }),
-    tag_id: integer("tag_id")
-      .notNull()
-      .references(() => tags.id, { onDelete: "cascade" }),
-  },
-  (table) => ({
-    pk: primaryKey({ columns: [table.rule_id, table.tag_id] }),
-  }),
-);
-
 // Inferred types are exported from ./types.ts

@@ -18,7 +18,6 @@ import {
   logFirebaseError,
 } from "@/lib/firebase";
 import { subscriptionInputSchema } from "@/lib/validation";
-import { findRuleForMerchant } from "./categoryRules";
 import expo, { db } from "./connection";
 import { safeRecomputeHolding } from "./holdings";
 import { categories, sources, subscriptions, transactions } from "./schema";
@@ -496,10 +495,6 @@ export async function detectRecurringMerchants(): Promise<
       if (item.date > lastSeen) lastSeen = item.date;
     }
 
-    // Smart Category Rules win over the per-candidate history vote so the
-    // suggestion respects the user's explicit merchant→category mapping.
-    const rule = await findRuleForMerchant(bucket.displayName, "expense");
-
     candidates.push({
       merchant: bucket.displayName,
       amount: Math.round(median * 100) / 100,
@@ -508,7 +503,7 @@ export async function detectRecurringMerchants(): Promise<
       last_seen: lastSeen.slice(0, 10),
       suggested_day: topKey(dayCounts) ?? 1,
       source_id: topKey(sourceCounts),
-      category_id: rule?.categoryId ?? topKey(categoryCounts),
+      category_id: topKey(categoryCounts),
     });
   }
 

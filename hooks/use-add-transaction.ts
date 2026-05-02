@@ -21,7 +21,6 @@ import {
   getCategorySpent,
   useInsertTransaction,
 } from "@/hooks/use-transactions";
-import { resolveCategoryAndTags } from "@/lib/category-rules";
 import {
   BUDGET_CRITICAL_THRESHOLD,
   CONFIG_KEYS,
@@ -229,22 +228,11 @@ export function useAddTransaction(): UseAddTransactionReturn {
         c.type === parsed.type,
     );
 
-    // Smart Category Rules win over the parser's category guess.
-    const ruleResolved = parsed.merchant
-      ? await resolveCategoryAndTags(parsed.merchant, parsed.type)
-      : null;
-    const finalCategoryId =
-      ruleResolved?.source === "rule"
-        ? ruleResolved.categoryId
-        : (matchedCategory?.id ?? null);
-    const ruleTagIds =
-      ruleResolved?.source === "rule" ? ruleResolved.tagIds : [];
-
     const txDefaults: TransactionFormValues = {
       type: parsed.type,
       amount: String(parsed.amount),
       merchant: parsed.merchant ?? "",
-      categoryId: finalCategoryId,
+      categoryId: matchedCategory?.id ?? null,
       sourceId,
       destinationSourceId: null,
       holdingId: null,
@@ -254,7 +242,7 @@ export function useAddTransaction(): UseAddTransactionReturn {
       note: originalText.trim(),
       reimbursementStatus: REIMBURSEMENT_STATUS.NONE,
       reimbursableAmount: "",
-      tagIds: ruleTagIds,
+      tagIds: [],
     };
     setParsedTxDefaults(txDefaults);
 
@@ -264,7 +252,6 @@ export function useAddTransaction(): UseAddTransactionReturn {
         amount: String(parsed.amount),
         billingDays: parsed.billing_day ? [parsed.billing_day] : [],
         sourceId,
-        categoryId: finalCategoryId,
       });
       setIsSubscription(true);
     } else {

@@ -211,28 +211,6 @@ export async function initDB(): Promise<void> {
       );
 
       await db.run(sql`
-    CREATE TABLE IF NOT EXISTS category_rules (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      merchant_pattern TEXT NOT NULL,
-      category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    )
-  `);
-
-      await db.run(sql`
-    CREATE TABLE IF NOT EXISTS category_rule_tags (
-      rule_id INTEGER NOT NULL REFERENCES category_rules(id) ON DELETE CASCADE,
-      tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-      PRIMARY KEY (rule_id, tag_id)
-    )
-  `);
-
-      await db.run(
-        sql`CREATE INDEX IF NOT EXISTS idx_category_rule_tags_tag_id ON category_rule_tags(tag_id)`,
-      );
-
-      await db.run(sql`
     CREATE TABLE IF NOT EXISTS holdings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
