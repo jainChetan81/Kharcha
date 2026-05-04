@@ -39,6 +39,7 @@ import {
   getAllSources,
   getCategoriesByType,
   getMostUsedCategoryForMerchant,
+  getMostUsedSourceForMerchant,
   getMostUsedTagsForMerchant,
   searchMerchants,
   type TagLite,
@@ -98,7 +99,14 @@ export function TransactionForm({
   const [activeType, setActiveType] = useState<
     "income" | "expense" | "transfer" | "investment"
   >(defaultValues.type);
-  const [userChangedCategory, setUserChangedCategory] = useState(false);
+  // In edit mode, treat existing values as user-chosen so typing the
+  // merchant doesn't silently overwrite them with a history match.
+  const [userChangedCategory, setUserChangedCategory] = useState(
+    isEditing && defaultValues.categoryId !== null,
+  );
+  const [userChangedSource, setUserChangedSource] = useState(
+    isEditing && defaultValues.sourceId !== null,
+  );
   const [autoFilledMerchant, setAutoFilledMerchant] = useState<string | null>(
     null,
   );
@@ -119,25 +127,39 @@ export function TransactionForm({
   const isInvestment = activeType === TRANSACTION_TYPE.INVESTMENT;
   const categoryType = isTransfer || isInvestment ? "expense" : activeType;
 
-  async function autoCategoryFromMerchant(merchant: string) {
+  async function autoFillFromMerchant(merchant: string) {
     const trimmed = merchant.trim();
-    if (trimmed.length < 3 || userChangedCategory || isTransfer || isInvestment)
-      return;
+    if (trimmed.length < 3 || isTransfer || isInvestment) return;
+    if (userChangedCategory && userChangedSource) return;
     // Don't re-run for the same merchant text that we already auto-filled.
     if (autoFilledMerchant?.toLowerCase() === trimmed.toLowerCase()) return;
     try {
-      const categoryId = await getMostUsedCategoryForMerchant(
-        trimmed,
-        categoryType,
-      );
-      if (categoryId && !userChangedCategory) {
+      const [categoryId, sourceId] = await Promise.all([
+        userChangedCategory
+          ? Promise.resolve(null)
+          : getMostUsedCategoryForMerchant(trimmed, categoryType),
+        userChangedSource || activeType === TRANSACTION_TYPE.INCOME
+          ? Promise.resolve(null)
+          : getMostUsedSourceForMerchant(trimmed, categoryType),
+      ]);
+      const filled: string[] = [];
+      if (categoryId) {
         form.setFieldValue("categoryId", categoryId);
-        setAutoFilledMerchant(trimmed);
-        showSuccessToast("category set from history ✨");
+        filled.push("category");
+      }
+      if (sourceId) {
+        form.setFieldValue("sourceId", sourceId);
+        filled.push("source");
+      }
+      // Mark this merchant as checked even when nothing was filled, so
+      // we don't re-query on every blur for the same merchant text.
+      setAutoFilledMerchant(trimmed);
+      if (filled.length > 0) {
+        showSuccessToast(`${filled.join(" & ")} set from history ✨`);
       }
     } catch (err) {
       // Best-effort feature — swallow DB errors so the form stays usable.
-      console.warn("autoCategoryFromMerchant failed:", err);
+      console.warn("autoFillFromMerchant failed:", err);
     }
   }
 
@@ -188,7 +210,10 @@ export function TransactionForm({
     // sourceTarget is stateful: the same sheet handles both the primary
     // source field and the transfer destination, whichever picker was tapped
     // most recently. The setter below captures that intent before openSource.
-    onSourceAdded: (id) => form.setFieldValue(sourceTarget, id),
+    onSourceAdded: (id) => {
+      if (sourceTarget === "sourceId") setUserChangedSource(true);
+      form.setFieldValue(sourceTarget, id);
+    },
     onHoldingAdded: (id) => form.setFieldValue("holdingId", id),
   });
 
@@ -334,7 +359,7 @@ export function TransactionForm({
                     field.handleChange(v);
                     setMerchantSearch(v);
                   }}
-                  onBlur={() => autoCategoryFromMerchant(field.state.value)}
+                  onBlur={() => autoFillFromMerchant(field.state.value)}
                   placeholderTextColor={COLORS.MUTED}
                 />
                 {filteredSuggestions.length > 0 && (
@@ -351,7 +376,7 @@ export function TransactionForm({
                         onPress={() => {
                           field.handleChange(suggestion);
                           setMerchantSearch(suggestion);
-                          autoCategoryFromMerchant(suggestion);
+                          autoFillFromMerchant(suggestion);
                         }}
                         className="rounded-lg border border-border bg-card px-3 py-1.5"
                       >
@@ -426,7 +451,7 @@ export function TransactionForm({
                     field.handleChange(v);
                     setMerchantSearch(v);
                   }}
-                  onBlur={() => autoCategoryFromMerchant(field.state.value)}
+                  onBlur={() => autoFillFromMerchant(field.state.value)}
                   placeholderTextColor={COLORS.MUTED}
                 />
                 {filteredSuggestions.length > 0 && (
@@ -443,7 +468,7 @@ export function TransactionForm({
                         onPress={() => {
                           field.handleChange(suggestion);
                           setMerchantSearch(suggestion);
-                          autoCategoryFromMerchant(suggestion);
+                          autoFillFromMerchant(suggestion);
                         }}
                         className="rounded-lg border border-border bg-card px-3 py-1.5"
                       >
@@ -482,7 +507,10 @@ export function TransactionForm({
                 <ChipPicker
                   items={sources}
                   selectedId={field.state.value}
-                  onSelect={(id) => field.handleChange(id)}
+                  onSelect={(id) => {
+                    setUserChangedSource(true);
+                    field.handleChange(id);
+                  }}
                   onAddNew={() => {
                     setSourceTarget("sourceId");
                     adders.openSource();

@@ -1912,6 +1912,38 @@ export async function getMostUsedCategoryForMerchant(
   }
 }
 
+export async function getMostUsedSourceForMerchant(
+  merchant: string,
+  type: "expense" | "income",
+): Promise<number | null> {
+  try {
+    const rows = await db
+      .select({
+        source_id: transactions.source_id,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          sql`LOWER(${transactions.merchant}) = LOWER(${merchant})`,
+          eq(transactions.type, type),
+          sql`${transactions.source_id} IS NOT NULL`,
+        ),
+      )
+      .groupBy(transactions.source_id)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(1);
+
+    return rows[0]?.source_id ?? null;
+  } catch (error) {
+    logFirebaseError(error, {
+      error_type: ERROR_TYPE.DB,
+      operation: "getMostUsedSourceForMerchant",
+    });
+    throw error;
+  }
+}
+
 export async function findDuplicateTransaction(
   date: string,
   amount: number,
