@@ -41,13 +41,13 @@ export function today(): string {
 
 export function decodeHtmlEntities(str: string): string {
   return str
-    .replace(/&amp;/g, "&")
     .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
     .replace(/&quot;/g, '"')
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
-    .replace(/&#x27;/g, "'")
-    .replace(/&nbsp;/g, " ");
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&");
 }
 
 export function stripHtml(html: string): string {
