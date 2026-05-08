@@ -17,7 +17,8 @@ import { getActiveBanksWithEmails } from "@/lib/db/banks";
 import { getAllCategories } from "@/lib/db/categories";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import expo from "@/lib/db/connection";
-import { subscriptions, transactions } from "@/lib/db/schema";
+import { subscriptions, transactions, transactionTags } from "@/lib/db/schema";
+import { getActiveTag } from "@/lib/db/tags";
 import { ERROR_TYPE, logFirebaseError, withTrace } from "@/lib/firebase";
 import { getValidAccessToken } from "./auth";
 import { type ParseSource, parseEmailWithFallback } from "./parsers";
@@ -206,6 +207,8 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     const allCategories = await getAllCategories();
     const categoryNames = allCategories.map((c) => c.name);
 
+    const activeTag = await getActiveTag();
+
     function matchCategoryId(
       name: string | undefined,
       type: "expense" | "income",
@@ -355,7 +358,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             ? format(new Date(Number(msgData.internalDate)), "yyyy-MM-dd")
             : format(new Date(), "yyyy-MM-dd");
 
-        await db.insert(transactions).values({
+        const insertResult = await db.insert(transactions).values({
           amount: outcome.parsed.amount,
           merchant: outcome.parsed.merchant,
           category_id: matchedCategoryId,
@@ -371,6 +374,16 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
           type: outcome.parsed.type,
           source_type: "synced",
         });
+
+        if (activeTag) {
+          const insertedId = Number(insertResult.lastInsertRowId);
+          if (Number.isFinite(insertedId) && insertedId > 0) {
+            await db.insert(transactionTags).values({
+              transaction_id: insertedId,
+              tag_id: activeTag.id,
+            });
+          }
+        }
 
         // Auto-create a subscription row when Gemini flags the email as
         // recurring — skip if one already exists for the same merchant + cycle
