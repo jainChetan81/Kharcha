@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // devices/{uid} — owner reads and updates their own device doc.
+    // Initial create on first sign-in is allowed (no `resource` to compare against).
+    match /devices/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.device_uid == uid;
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.device_uid == uid;
+      allow delete: if false;
+    }
+
+    // transactions/{id} — written ONLY by the postmarkWebhook function via
+    // the Admin SDK (which bypasses these rules). Clients read their own
+    // and may set fetched_at; cannot create or delete.
+    match /transactions/{txId} {
+      allow read: if request.auth != null
+                  && resource.data.device_uid == request.auth.uid;
+      allow update: if request.auth != null
+                    && resource.data.device_uid == request.auth.uid
+                    && request.resource.data.device_uid == resource.data.device_uid;
+      allow create, delete: if false;
+    }
+  }
+}

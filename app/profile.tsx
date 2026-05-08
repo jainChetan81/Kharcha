@@ -43,7 +43,6 @@ import { isAppUpdateSupported, useAppUpdate } from "@/hooks/use-app-update";
 import { useConfig } from "@/hooks/use-config";
 import {
   useDeviceSyncEnabled,
-  useGmailSyncEnabled,
   useSmsListenerEnabled,
   useSmsSyncEnabled,
 } from "@/hooks/use-feature-flags";
@@ -66,15 +65,9 @@ export default function ProfileScreen() {
     useAppLockSetting();
   const { checking: checkingUpdate, checkForUpdate } = useAppUpdate();
 
-  const gmailSyncEnabled = useGmailSyncEnabled();
   const deviceSyncEnabled = useDeviceSyncEnabled();
   const smsSyncEnabled = useSmsSyncEnabled();
   const smsListenerEnabled = useSmsListenerEnabled();
-  const anySyncEnabled =
-    gmailSyncEnabled ||
-    deviceSyncEnabled ||
-    smsSyncEnabled ||
-    smsListenerEnabled;
   const updateDeviceNameMutation = useUpdateDeviceName();
 
   const initials = getInitials(userName);
@@ -173,44 +166,38 @@ export default function ProfileScreen() {
           description="Group spend by tag; scope a tag to a time window for auto-tagging."
           onPress={() => router.push(SCREENS.TAGS)}
         />
-        {anySyncEnabled && (
-          <>
-            <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Sync
-            </Text>
-            {gmailSyncEnabled && (
-              <NavRow
-                icon={Mail}
-                title="Gmail Sync"
-                description="Parse bank emails to auto-import transactions."
-                onPress={() => router.push(SCREENS.GMAIL_SYNC)}
-              />
-            )}
-            {smsSyncEnabled && (
-              <NavRow
-                icon={MessageSquare}
-                title="SMS Sync"
-                description="Share bank SMS into Kharcha to turn them into transactions."
-                onPress={() => router.push(SCREENS.SMS_SYNC)}
-              />
-            )}
-            {smsListenerEnabled && (
-              <NavRow
-                icon={BellRing}
-                title="SMS Listener"
-                description="Auto-capture bank SMS as they arrive — no sharing needed."
-                onPress={() => router.push(SCREENS.SMS_LISTENER)}
-              />
-            )}
-            {deviceSyncEnabled && (
-              <NavRow
-                icon={RefreshCw}
-                title="Device Sync"
-                description="Mirror your data across your other devices."
-                onPress={() => router.push(SCREENS.DEVICE_SYNC)}
-              />
-            )}
-          </>
+        <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Sync
+        </Text>
+        <NavRow
+          icon={Mail}
+          title="Gmail Sync"
+          description="Parse bank emails to auto-import transactions."
+          onPress={() => router.push(SCREENS.GMAIL_SYNC)}
+        />
+        {smsSyncEnabled && (
+          <NavRow
+            icon={MessageSquare}
+            title="SMS Sync"
+            description="Share bank SMS into Kharcha to turn them into transactions."
+            onPress={() => router.push(SCREENS.SMS_SYNC)}
+          />
+        )}
+        {smsListenerEnabled && (
+          <NavRow
+            icon={BellRing}
+            title="SMS Listener"
+            description="Auto-capture bank SMS as they arrive — no sharing needed."
+            onPress={() => router.push(SCREENS.SMS_LISTENER)}
+          />
+        )}
+        {deviceSyncEnabled && (
+          <NavRow
+            icon={RefreshCw}
+            title="Device Sync"
+            description="Mirror your data across your other devices."
+            onPress={() => router.push(SCREENS.DEVICE_SYNC)}
+          />
         )}
 
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

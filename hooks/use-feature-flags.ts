@@ -6,7 +6,6 @@ import { env } from "@/lib/env";
 import { isAndroid } from "@/lib/utils";
 
 type FeatureFlags = {
-  gmail_sync_enabled: boolean;
   device_sync_enabled: boolean;
   sms_sync_enabled: boolean;
   sms_listener_enabled: boolean;
@@ -14,7 +13,6 @@ type FeatureFlags = {
 };
 
 const DEFAULT_FLAGS: FeatureFlags = {
-  gmail_sync_enabled: false,
   device_sync_enabled: false,
   // Default ON — the SMS share-target is low-risk (zero permissions, user
   // initiates the share) so we don't gate it behind server enablement.
@@ -41,10 +39,6 @@ export function useFlag<K extends keyof FeatureFlags>(key: K): FeatureFlags[K] {
   return data?.[key] ?? DEFAULT_FLAGS[key];
 }
 
-export function useGmailSyncEnabled(): boolean {
-  return useFlag("gmail_sync_enabled");
-}
-
 export function useDeviceSyncEnabled(): boolean {
   return useFlag("device_sync_enabled");
 }
@@ -58,9 +52,8 @@ export function useSmsListenerEnabled(): boolean {
 }
 
 export function useGmailSyncActive(): boolean {
-  const flag = useGmailSyncEnabled();
   const { data } = useAutoRefreshPrefs();
-  return flag && !!data?.gmail;
+  return !!data?.gmail;
 }
 
 export function useDeviceSyncActive(): boolean {

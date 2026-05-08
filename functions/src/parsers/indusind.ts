@@ -1,0 +1,72 @@
+import { TRANSACTION_TYPE } from "../constants";
+import { type Parser, parseAmount, parseAxisDate, today } from "./utils";
+
+const indusindUpiDebit: Parser = (body) => {
+  const amountMatch = body.match(/Debited for INR ([\d,]+\.?\d*)/i);
+  const upiMatch = body.match(/towards\s+UPI\/[\d]+\/DR\/([^/]+)/i);
+
+  if (!amountMatch) return null;
+
+  return {
+    amount: parseAmount(amountMatch[1]),
+    merchant: upiMatch ? upiMatch[1].trim() : "UPI Payment",
+    date: today(),
+    type: TRANSACTION_TYPE.EXPENSE,
+  };
+};
+
+const indusindUpiCredit: Parser = (body) => {
+  const amountMatch = body.match(/Credited for INR ([\d,]+\.?\d*)/i);
+  const upiMatch = body.match(/towards\s+UPI\/[\d]+\/CR\/([^/]+)/i);
+
+  if (!amountMatch) return null;
+
+  return {
+    amount: parseAmount(amountMatch[1]),
+    merchant: upiMatch ? upiMatch[1].trim() : "Credit",
+    date: today(),
+    type: TRANSACTION_TYPE.INCOME,
+  };
+};
+
+const indusindImpsCredit: Parser = (body) => {
+  const amountMatch = body.match(/credited by Rs\.?([\d,]+\.?\d*)/i);
+  const dateMatch = body.match(/on (\d{2}-\d{2}-\d{2})/i);
+  const fromMatch = body.match(
+    /received from account\s+[\dX]+\/([\w\s]+?)(?:\s*\(|$)/i,
+  );
+
+  if (!amountMatch) return null;
+
+  return {
+    amount: parseAmount(amountMatch[1]),
+    merchant: fromMatch ? fromMatch[1].trim() : "IMPS Credit",
+    date: dateMatch ? parseAxisDate(dateMatch[1]) : today(),
+    type: TRANSACTION_TYPE.INCOME,
+  };
+};
+
+const indusindGenericDebit: Parser = (body) => {
+  const amountMatch = body.match(/Debited for INR ([\d,]+\.?\d*)/i);
+  const towardsMatch = body.match(/towards\s+(.+?)(?:\s*\.|$)/i);
+
+  if (!amountMatch) return null;
+
+  const rawMerchant = towardsMatch ? towardsMatch[1].trim() : "Payment";
+  const merchant =
+    rawMerchant.length > 40 ? rawMerchant.slice(0, 40) : rawMerchant;
+
+  return {
+    amount: parseAmount(amountMatch[1]),
+    merchant,
+    date: today(),
+    type: TRANSACTION_TYPE.EXPENSE,
+  };
+};
+
+export const INDUSIND_PARSERS: Parser[] = [
+  indusindUpiDebit,
+  indusindUpiCredit,
+  indusindImpsCredit,
+  indusindGenericDebit,
+];
