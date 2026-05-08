@@ -26,14 +26,21 @@ const PROMPT = `Extract a financial transaction from an Indian bank SMS, push no
 - category: pick the BEST match from the provided Categories list based on the merchant name and transaction context. Use "Other" only when no category fits.
 - confidence: "high" if amount/type/date/(merchant or source) all unambiguous. "medium" if 1-2 inferred. "low" if vague.`;
 
+const INJECTION_TRIGGER =
+  /\b(ignore|disregard|forget|override|bypass)\b/i;
+const INJECTION_TARGET =
+  /\b(above|previous|prior|system|instruction|prompt)\b/i;
+
 function sanitizeForPrompt(text: string): string {
-  return text
-    .replace(/\n{3,}/g, "\n\n")
-    .replace(
-      /^.*(ignore|disregard|forget|override|bypass).*(above|previous|prior|system|instruction|prompt).*/gim,
-      "",
+  const collapsed = text.replace(/\n{3,}/g, "\n\n");
+  const cleaned = collapsed
+    .split("\n")
+    .filter(
+      (line) =>
+        !(INJECTION_TRIGGER.test(line) && INJECTION_TARGET.test(line)),
     )
-    .trim();
+    .join("\n");
+  return cleaned.trim();
 }
 
 function safeCategoryEnum(names: string[]): string[] {
