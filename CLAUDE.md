@@ -21,6 +21,8 @@ personal expense tracking app for ios.
 - `pnpm typecheck` — tsc --noEmit
 - `pnpm quality` — lint + typecheck
 - `pnpm dead-code` — knip dead code check
+- `pnpm react-doctor` — full repo react/rn anti-pattern scan (offline)
+- `pnpm react-doctor:diff` — scan only files changed vs main (used by pre-push)
 
 ## structure
 

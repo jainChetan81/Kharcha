@@ -455,9 +455,9 @@ export async function detectRecurringMerchants(): Promise<
     const months = new Set(bucket.items.map((i) => i.date.slice(0, 7)));
     if (months.size < RECURRING_DETECTION_MIN_MONTHS) continue;
 
-    const sortedAmounts = [...bucket.items.map((i) => i.amount)].sort(
-      (a, b) => a - b,
-    );
+    const sortedAmounts = bucket.items
+      .map((i) => i.amount)
+      .toSorted((a, b) => a - b);
     const median = sortedAmounts[Math.floor(sortedAmounts.length / 2)];
     if (median <= 0) continue;
 

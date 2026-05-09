@@ -40,7 +40,7 @@ export function DateTimePickerField({
       <FormLabel>{label}</FormLabel>
       <Pressable
         onPress={() => setVisible(true)}
-        className="flex-row items-center rounded-xl border border-border bg-background px-3 py-3"
+        className="flex-row items-center rounded-xl border border-border bg-background p-3"
       >
         <Icon as={Calendar} className="mr-2 size-4 text-muted-foreground" />
         <Text

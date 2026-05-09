@@ -12,3 +12,5 @@ pre-push:
   commands:
     typecheck:
       run: pnpm typecheck
+    react-doctor:
+      run: pnpm react-doctor:diff

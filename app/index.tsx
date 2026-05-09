@@ -321,7 +321,7 @@ export default function HomeScreen() {
                 <Pressable
                   onPress={onRefresh}
                   disabled={refreshing}
-                  className="h-10 w-10 items-center justify-center rounded-full border border-border bg-card"
+                  className="size-10 items-center justify-center rounded-full border border-border bg-card"
                 >
                   {refreshing ? (
                     <ActivityIndicator size="small" color={COLORS.PRIMARY} />
@@ -332,7 +332,7 @@ export default function HomeScreen() {
               )}
               <Pressable
                 onPress={() => router.push(SCREENS.PROFILE)}
-                className="h-10 w-10 items-center justify-center rounded-full bg-primary"
+                className="size-10 items-center justify-center rounded-full bg-primary"
               >
                 <Text className="text-sm font-bold text-primary-foreground">
                   {getInitials(userName)}
@@ -522,7 +522,7 @@ export default function HomeScreen() {
               exactly the same as before. The actual + button is rendered
               absolutely below so the lifted half doesn't lose its tap area
               on Android (transform-based hit-testing has known edge cases). */}
-          <View className="h-[52px] w-[52px]" />
+          <View className="size-[52px]" />
           <Pressable
             onPress={() => router.push(SCREENS.CONFIG)}
             className="items-center gap-1"

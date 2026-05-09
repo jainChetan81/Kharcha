@@ -35,3 +35,6 @@
 - Lists use `@shopify/flash-list` with `estimatedItemSize`
 - `getDataStats()` uses `Promise.all` for parallel queries — follow this pattern
 - Subscription processing batch-fetches to avoid N+1 queries
+
+## Quality
+- `react-doctor` enforces React/RN anti-patterns (state & effects, perf, a11y); config in `react-doctor.config.json`. Pre-push runs `react-doctor:diff` against `main` and blocks on errors.

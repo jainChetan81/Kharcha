@@ -181,7 +181,7 @@ export default function HistoryScreen() {
               Filter
             </Text>
             {activeFilterCount > 0 && (
-              <View className="absolute -right-1.5 -top-1.5 h-4 w-4 items-center justify-center rounded-full bg-primary">
+              <View className="absolute -right-1.5 -top-1.5 size-4 items-center justify-center rounded-full bg-primary">
                 <Text className="text-[10px] font-bold text-primary-foreground">
                   {activeFilterCount}
                 </Text>

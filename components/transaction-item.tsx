@@ -220,7 +220,7 @@ export const TransactionItem = memo(function TransactionItem({
       className="flex-row items-center rounded-2xl border border-border bg-card p-4"
       disabled={!onPress}
     >
-      <View className="h-10 w-10 items-center justify-center rounded-xl bg-muted">
+      <View className="size-10 items-center justify-center rounded-xl bg-muted">
         <Text className="text-sm font-semibold text-muted-foreground">
           {avatarLetter}
         </Text>

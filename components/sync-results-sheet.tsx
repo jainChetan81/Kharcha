@@ -69,7 +69,7 @@ export function SyncResultsSheet({
                       className="mb-2 flex-row items-center gap-2 rounded-xl bg-background px-4 py-3"
                     >
                       <View
-                        className="h-2 w-2 rounded-full"
+                        className="size-2 rounded-full"
                         style={{ backgroundColor: stat.color }}
                       />
                       <Text className="flex-1 text-sm font-semibold text-foreground">

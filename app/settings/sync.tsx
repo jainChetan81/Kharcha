@@ -121,7 +121,7 @@ export default function DeviceSyncScreen() {
               if (settings?.deviceId)
                 copyToClipboard(settings.deviceId, "User ID");
             }}
-            className="mx-5 mb-2 items-center rounded-xl border border-border bg-card px-4 py-4"
+            className="mx-5 mb-2 items-center rounded-xl border border-border bg-card p-4"
           >
             <Text className="text-center font-mono text-sm text-muted-foreground">
               {settings?.deviceId ?? "—"}
@@ -149,7 +149,7 @@ export default function DeviceSyncScreen() {
                   "Forwarding email",
                 )
               }
-              className="mx-5 mb-2 items-center rounded-xl border border-border bg-card px-4 py-4"
+              className="mx-5 mb-2 items-center rounded-xl border border-border bg-card p-4"
             >
               <Text className="text-center font-mono text-sm text-muted-foreground">
                 {settings.forwardingEmail}

@@ -95,7 +95,7 @@ export default function ProfileScreen() {
         contentContainerStyle={SCROLL_BOTTOM_PADDING}
       >
         <View className="items-center py-6">
-          <View className="h-20 w-20 items-center justify-center rounded-full bg-primary">
+          <View className="size-20 items-center justify-center rounded-full bg-primary">
             <Text className="text-2xl font-bold text-primary-foreground">
               {initials}
             </Text>

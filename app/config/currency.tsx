@@ -46,7 +46,7 @@ export default function CurrencyScreen() {
               onPress={() => handleSelect(code)}
               className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
             >
-              <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-muted">
+              <View className="mr-3 size-9 items-center justify-center rounded-full bg-muted">
                 <Text className="text-base font-bold text-foreground">
                   {CURRENCIES[code].symbol}
                 </Text>

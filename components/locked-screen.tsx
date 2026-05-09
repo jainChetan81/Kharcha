@@ -10,7 +10,7 @@ type LockedScreenProps = {
 export function LockedScreen({ onUnlock }: LockedScreenProps) {
   return (
     <View className="flex-1 items-center justify-center bg-background">
-      <View className="mb-8 h-24 w-24 items-center justify-center rounded-full bg-card">
+      <View className="mb-8 size-24 items-center justify-center rounded-full bg-card">
         <Icon as={Lock} className="size-10 text-primary" />
       </View>
 

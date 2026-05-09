@@ -30,7 +30,7 @@ export function TransactionSkeleton({ count = 10 }: { count?: number }) {
           // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows are static
           key={i}
           style={{ opacity }}
-          className="mb-2 flex-row items-center rounded-xl bg-card px-3 py-3"
+          className="mb-2 flex-row items-center rounded-xl bg-card p-3"
         >
           <View className="mr-3 size-10 rounded-full bg-muted" />
           <View className="flex-1">

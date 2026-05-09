@@ -37,9 +37,9 @@ Strings must be inside `<Text>`. A string as a direct child of `<View>` crashes.
 
 ## 2. List Performance — HIGH
 
-### 2.1 Use a List Virtualizer
+### 2.1 Use a List Virtualizer for Unbounded Lists
 
-Use FlashList instead of ScrollView with `.map()` — even for short lists.
+Use FlashList instead of ScrollView with `.map()` for any list that can grow with user data (transactions, search results, history).
 
 ```tsx
 // Bad: renders all items at once
@@ -54,6 +54,8 @@ Use FlashList instead of ScrollView with `.map()` — even for short lists.
   estimatedItemSize={80}
 />
 ```
+
+ScrollView with `.map()` is fine for bounded UI controls — horizontal chip pickers, fixed-set period presets, applied filter chips, autocomplete suggestion rows. Don't virtualize a list of <20 items that can never grow.
 
 ### 2.2 Avoid Inline Objects in renderItem
 

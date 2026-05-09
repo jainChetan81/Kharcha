@@ -1,0 +1,16 @@
+{
+	"share": false,
+	"deadCode": false,
+	"ignore": {
+		"rules": [
+			"react-doctor/effect-needs-cleanup",
+			"react-doctor/rendering-hydration-mismatch-time",
+			"react-doctor/query-mutation-missing-invalidation",
+			"react-doctor/no-derived-useState",
+			"react-doctor/rn-no-scrollview-mapped-list",
+			"react-doctor/design-no-em-dash-in-jsx-text",
+			"react-hooks/rules-of-hooks"
+		],
+		"files": []
+	}
+}

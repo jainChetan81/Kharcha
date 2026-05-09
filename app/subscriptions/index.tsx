@@ -173,7 +173,7 @@ export default function SubscriptionsScreen() {
           </ScreenDescription>
 
           {activeExpenseCount > 0 && (
-            <View className="mx-5 mt-2 rounded-xl border border-border bg-card px-4 py-4">
+            <View className="mx-5 mt-2 rounded-xl border border-border bg-card p-4">
               <Text className="text-2xl font-bold text-foreground">
                 {fmt(totalCost)}
                 <Text className="text-sm font-normal text-muted-foreground">

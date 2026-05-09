@@ -12,7 +12,7 @@ export function StepCard({
 }) {
   return (
     <View className="flex-1 rounded-xl border border-border bg-card p-3">
-      <View className="mb-2 h-6 w-6 items-center justify-center rounded-full bg-primary">
+      <View className="mb-2 size-6 items-center justify-center rounded-full bg-primary">
         <Text className="text-xs font-bold text-primary-foreground">
           {step}
         </Text>
