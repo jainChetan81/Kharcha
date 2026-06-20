@@ -46,6 +46,7 @@ export const FIREBASE_EVENTS = {
   TAG_DETAIL_VIEWED: "tag_detail_viewed",
   TAG_APPEARANCE_UPDATED: "tag_appearance_updated",
   SHARE_SHEET_TEXT_RECEIVED: "share_sheet_text_received",
+  AI_PARSE_RATE_LIMITED: "ai_parse_rate_limited",
 } as const;
 
 export type KharchaEvent =

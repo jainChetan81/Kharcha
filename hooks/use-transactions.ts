@@ -244,14 +244,12 @@ function computeInsights(txs: TransactionRow[]): FilteredInsights {
     }
   }
 
-  const topCategories = Array.from(byCategory.entries())
-    .toSorted((a, b) => b[1] - a[1])
+  const topCategories = [...byCategory.entries()]
+    .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([name, total]) => ({ name, total }));
 
-  const topMerchant = Array.from(byMerchant.entries()).toSorted(
-    (a, b) => b[1] - a[1],
-  )[0];
+  const topMerchant = [...byMerchant.entries()].sort((a, b) => b[1] - a[1])[0];
   const mostFrequentMerchant = topMerchant
     ? { merchant: topMerchant[0], count: topMerchant[1] }
     : null;

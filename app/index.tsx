@@ -37,7 +37,6 @@ import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useConfig } from "@/hooks/use-config";
 import { useCurrency } from "@/hooks/use-currency";
-import { useGmailSyncActive } from "@/hooks/use-feature-flags";
 import { useHomeData } from "@/hooks/use-home-data";
 import { useSyncRefresh } from "@/hooks/use-refresh";
 import { useCategoryBreakdown } from "@/hooks/use-transactions";
@@ -254,8 +253,7 @@ export default function HomeScreen() {
   const { format: fmt } = useCurrency();
   const { userName } = useConfig();
   const { refreshing, onRefresh, gmailConnected } = useSyncRefresh();
-  const gmailSyncActive = useGmailSyncActive();
-  const showSyncButton = gmailSyncActive && gmailConnected;
+  const showSyncButton = gmailConnected;
 
   const now = new Date();
   const [selectedDate, setSelectedDate] = useState(now);

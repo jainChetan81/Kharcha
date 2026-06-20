@@ -345,6 +345,8 @@ export const EMAIL_LOG_REASON = {
 export type EmailLogReasonType =
   (typeof EMAIL_LOG_REASON)[keyof typeof EMAIL_LOG_REASON];
 
+export const GEMINI_MAX_CHARS = 4000;
+
 export const GEMINI_ERROR = {
   SERVICE_UNAVAILABLE: "service_unavailable",
   RATE_LIMITED: "rate_limited",

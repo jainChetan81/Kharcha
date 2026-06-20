@@ -1880,11 +1880,22 @@ export async function syncedTransactionExists(
   }
 }
 
+// Escape LIKE wildcards so merchants containing `%` or `_` (or `\`) don't
+// silently widen the match. Caller appends `%` for a prefix match.
+function escapeLikeWildcards(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+// Prefix match (LIKE merchant%) so "swiggy" hits stored variants like "Swiggy
+// India" or "Swiggy*BLR" without mid-string over-matches (e.g. "car" must not
+// silently auto-fill from "Oscar"). Anchored tighter than the autocomplete chip
+// because this category/source fill is applied without user confirmation.
 export async function getMostUsedCategoryForMerchant(
   merchant: string,
   type: "expense" | "income",
 ): Promise<number | null> {
   try {
+    const pattern = `${escapeLikeWildcards(merchant.toLowerCase())}%`;
     const rows = await db
       .select({
         category_id: transactions.category_id,
@@ -1893,7 +1904,7 @@ export async function getMostUsedCategoryForMerchant(
       .from(transactions)
       .where(
         and(
-          sql`LOWER(${transactions.merchant}) = LOWER(${merchant})`,
+          sql`LOWER(${transactions.merchant}) LIKE ${pattern} ESCAPE '\\'`,
           eq(transactions.type, type),
           sql`${transactions.category_id} IS NOT NULL`,
         ),
@@ -1917,6 +1928,7 @@ export async function getMostUsedSourceForMerchant(
   type: "expense" | "income",
 ): Promise<number | null> {
   try {
+    const pattern = `${escapeLikeWildcards(merchant.toLowerCase())}%`;
     const rows = await db
       .select({
         source_id: transactions.source_id,
@@ -1925,7 +1937,7 @@ export async function getMostUsedSourceForMerchant(
       .from(transactions)
       .where(
         and(
-          sql`LOWER(${transactions.merchant}) = LOWER(${merchant})`,
+          sql`LOWER(${transactions.merchant}) LIKE ${pattern} ESCAPE '\\'`,
           eq(transactions.type, type),
           sql`${transactions.source_id} IS NOT NULL`,
         ),

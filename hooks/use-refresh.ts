@@ -1,9 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  useDeviceSyncActive,
-  useGmailSyncActive,
-} from "@/hooks/use-feature-flags";
+import { useDeviceSyncActive } from "@/hooks/use-feature-flags";
 import { useDeviceSync, useDeviceSyncConfig } from "@/hooks/use-sync";
 import { useGoogleAuth } from "@/lib/gmail/auth";
 import { syncGmailTransactions } from "@/lib/gmail/sync";
@@ -27,7 +24,6 @@ export function useSyncRefresh() {
   const { isConnected } = useGoogleAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [gmailConnected, setGmailConnected] = useState(false);
-  const gmailSyncActive = useGmailSyncActive();
   const deviceSyncActive = useDeviceSyncActive();
   const { data: syncConfig } = useDeviceSyncConfig();
   const deviceSyncMutation = useDeviceSync();
@@ -36,7 +32,6 @@ export function useSyncRefresh() {
     isConnected().then(setGmailConnected);
   }, [isConnected]);
 
-  const gmailSyncable = gmailConnected && gmailSyncActive;
   const deviceSyncable = deviceSyncActive && !!syncConfig?.forwardingEmail;
   const lastSyncedAt = syncConfig?.lastSyncedAt;
 
@@ -48,7 +43,7 @@ export function useSyncRefresh() {
     try {
       const tasks: Promise<void>[] = [];
 
-      if (gmailSyncable) {
+      if (gmailConnected) {
         tasks.push(
           (async () => {
             try {
@@ -98,7 +93,7 @@ export function useSyncRefresh() {
     }
   }, [
     queryClient,
-    gmailSyncable,
+    gmailConnected,
     deviceSyncable,
     lastSyncedAt,
     deviceSyncMutation,
