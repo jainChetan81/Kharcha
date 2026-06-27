@@ -221,7 +221,7 @@ export const COLORS = {
   POSITIVE: "#2ea262",
   BAR_BG: "#2a2a2a",
   BACKGROUND: "#0a0a0a",
-  CARD: "#141414",
+  CARD: "#1a1a1a",
   MUTED: "#888888",
   FOREGROUND: "#f0f0f0",
   WHITE: "#ffffff",

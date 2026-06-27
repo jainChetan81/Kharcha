@@ -15,7 +15,7 @@ export function TagStatusBadge({ status }: { status: TagStatus }) {
       <Text
         className={cn(
           "text-[10px] font-semibold uppercase tracking-wider",
-          isActive ? "text-primary" : "text-muted-foreground",
+          isActive ? "text-primary-text" : "text-muted-foreground",
         )}
       >
         {status.label}

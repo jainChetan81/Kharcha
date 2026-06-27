@@ -72,6 +72,8 @@ export default function InsightsScreen() {
             onPress={() => navigateMonth(subMonths(selectedDate, 1))}
             hitSlop={12}
             className="rounded-full p-2"
+            accessibilityRole="button"
+            accessibilityLabel="Previous month"
           >
             <Icon as={ChevronLeft} className="size-6 text-muted-foreground" />
           </Pressable>
@@ -84,6 +86,8 @@ export default function InsightsScreen() {
             }
             hitSlop={12}
             className="rounded-full p-2"
+            accessibilityRole="button"
+            accessibilityLabel="Next month"
           >
             <Icon
               as={ChevronRight}
@@ -150,8 +154,9 @@ export default function InsightsScreen() {
             <Pressable
               onPress={() => router.push(historyHref({ month: selectedMonth }))}
               className="items-center pt-2"
+              accessibilityRole="button"
             >
-              <Text className="text-sm font-medium text-primary">
+              <Text className="text-sm font-medium text-primary-text">
                 View all transactions →
               </Text>
             </Pressable>

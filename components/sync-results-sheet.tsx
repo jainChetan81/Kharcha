@@ -40,7 +40,12 @@ export function SyncResultsSheet({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <Pressable className="flex-1 bg-black/50" onPress={onClose} />
+      <Pressable
+        className="flex-1 bg-black/50"
+        onPress={onClose}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
       <View className="rounded-t-2xl bg-card px-5 pb-6 pt-5">
         <ComponentErrorBoundary onDismiss={onClose}>
           <View className="mb-4 flex-row items-center justify-between">

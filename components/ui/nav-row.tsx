@@ -22,6 +22,7 @@ export function NavRow({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
       className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
     >
       {icon ? (

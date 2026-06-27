@@ -84,6 +84,8 @@ async function autoRegisterDevice() {
 const toastConfig: ToastConfig = {
   success: ({ text1, text2, props }) => (
     <View
+      accessible
+      accessibilityLiveRegion="polite"
       className="mx-4 mt-2 flex-row items-center rounded-xl border-l-4 border-positive bg-card px-4 py-3"
       style={SHADOWS.TOAST}
     >
@@ -95,7 +97,7 @@ const toastConfig: ToastConfig = {
       </View>
       {props?.formattedAmount ? (
         <Text
-          className={`text-sm font-bold ${props.type === TRANSACTION_TYPE.INCOME ? "text-positive" : "text-negative"}`}
+          className={`text-sm font-bold ${props.type === TRANSACTION_TYPE.INCOME ? "text-positive" : "text-negative-text"}`}
         >
           {props.type === TRANSACTION_TYPE.INCOME ? "+" : "-"}
           {props.formattedAmount}
@@ -105,6 +107,9 @@ const toastConfig: ToastConfig = {
   ),
   error: ({ text1, text2 }) => (
     <View
+      accessible
+      accessibilityRole="alert"
+      accessibilityLiveRegion="assertive"
       className="mx-4 mt-2 flex-row items-center rounded-xl border-l-4 border-negative bg-card px-4 py-3"
       style={SHADOWS.TOAST}
     >
@@ -245,7 +250,12 @@ export default function RootLayout() {
           <ComponentErrorBoundary name="root">
             <Suspense
               fallback={
-                <View className="flex-1 items-center justify-center bg-background">
+                <View
+                  accessible
+                  accessibilityRole="progressbar"
+                  accessibilityLabel="Loading"
+                  className="flex-1 items-center justify-center bg-background"
+                >
                   <ActivityIndicator size="small" color={COLORS.PRIMARY} />
                 </View>
               }

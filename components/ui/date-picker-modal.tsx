@@ -48,10 +48,15 @@ export function DatePickerModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <Pressable className="flex-1 bg-black/50" onPress={onCancel} />
+      <Pressable
+        className="flex-1 bg-black/50"
+        onPress={onCancel}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
       <View className="rounded-t-2xl bg-card">
         <View className="flex-row items-center justify-between border-b border-border px-5 py-3">
-          <Pressable onPress={onCancel}>
+          <Pressable onPress={onCancel} accessibilityRole="button" hitSlop={8}>
             <Text className="text-base font-medium text-muted-foreground">
               Cancel
             </Text>
@@ -61,14 +66,24 @@ export function DatePickerModal({
           </Text>
           <View className="flex-row items-center gap-4">
             {onClear && (
-              <Pressable onPress={onClear}>
-                <Text className="text-base font-medium text-negative">
+              <Pressable
+                onPress={onClear}
+                accessibilityRole="button"
+                hitSlop={8}
+              >
+                <Text className="text-base font-medium text-negative-text">
                   Clear
                 </Text>
               </Pressable>
             )}
-            <Pressable onPress={() => onConfirm(tempDate)}>
-              <Text className="text-base font-semibold text-primary">Done</Text>
+            <Pressable
+              onPress={() => onConfirm(tempDate)}
+              accessibilityRole="button"
+              hitSlop={8}
+            >
+              <Text className="text-base font-semibold text-primary-text">
+                Done
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -117,10 +132,15 @@ export function TimePickerModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <Pressable className="flex-1 bg-black/50" onPress={onCancel} />
+      <Pressable
+        className="flex-1 bg-black/50"
+        onPress={onCancel}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
       <View className="rounded-t-2xl bg-card">
         <View className="flex-row items-center justify-between border-b border-border px-5 py-3">
-          <Pressable onPress={onCancel}>
+          <Pressable onPress={onCancel} accessibilityRole="button" hitSlop={8}>
             <Text className="text-base font-medium text-muted-foreground">
               Cancel
             </Text>
@@ -128,8 +148,14 @@ export function TimePickerModal({
           <Text className="text-base font-semibold text-foreground">
             {title}
           </Text>
-          <Pressable onPress={() => onConfirm(tempDate)}>
-            <Text className="text-base font-semibold text-primary">Done</Text>
+          <Pressable
+            onPress={() => onConfirm(tempDate)}
+            accessibilityRole="button"
+            hitSlop={8}
+          >
+            <Text className="text-base font-semibold text-primary-text">
+              Done
+            </Text>
           </Pressable>
         </View>
         <ComponentErrorBoundary onDismiss={onCancel}>
@@ -194,10 +220,15 @@ export function DateTimePickerModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <Pressable className="flex-1 bg-black/50" onPress={onCancel} />
+      <Pressable
+        className="flex-1 bg-black/50"
+        onPress={onCancel}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
       <View className="rounded-t-2xl bg-card">
         <View className="flex-row items-center justify-between border-b border-border px-5 py-3">
-          <Pressable onPress={onCancel}>
+          <Pressable onPress={onCancel} accessibilityRole="button" hitSlop={8}>
             <Text className="text-base font-medium text-muted-foreground">
               Cancel
             </Text>
@@ -207,14 +238,22 @@ export function DateTimePickerModal({
           </Text>
           <View className="flex-row items-center gap-4">
             {onClear && (
-              <Pressable onPress={onClear}>
-                <Text className="text-base font-medium text-negative">
+              <Pressable
+                onPress={onClear}
+                accessibilityRole="button"
+                hitSlop={8}
+              >
+                <Text className="text-base font-medium text-negative-text">
                   Clear
                 </Text>
               </Pressable>
             )}
-            <Pressable onPress={handleNext}>
-              <Text className="text-base font-semibold text-primary">
+            <Pressable
+              onPress={handleNext}
+              accessibilityRole="button"
+              hitSlop={8}
+            >
+              <Text className="text-base font-semibold text-primary-text">
                 {step === "date" ? "Next" : "Done"}
               </Text>
             </Pressable>

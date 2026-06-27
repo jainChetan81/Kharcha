@@ -66,6 +66,7 @@ export default function BudgetsScreen() {
               key={c.id}
               onPress={() => openEditor(c.id, c.name)}
               className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
+              accessibilityRole="button"
             >
               <Text className="flex-1 text-sm font-medium text-foreground">
                 {c.name}
@@ -88,8 +89,11 @@ export default function BudgetsScreen() {
                     )
                   }
                   className="ml-3"
+                  hitSlop={14}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove budget for ${c.name}`}
                 >
-                  <Icon as={Trash2} className="size-4 text-negative" />
+                  <Icon as={Trash2} className="size-4 text-negative-text" />
                 </Pressable>
               )}
             </Pressable>

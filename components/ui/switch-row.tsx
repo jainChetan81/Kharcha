@@ -33,6 +33,8 @@ export function SwitchRow({
           onValueChange(next);
         }}
         disabled={disabled}
+        accessibilityLabel={label}
+        accessibilityHint={description}
         trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
         thumbColor={COLORS.WHITE}
       />

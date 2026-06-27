@@ -158,6 +158,7 @@ export default function HistoryScreen() {
         <Pressable
           onPress={() => router.back()}
           className="flex-row items-center py-1"
+          accessibilityRole="button"
         >
           <Icon as={ChevronLeft} className="mr-1 size-6 text-foreground" />
           <Text className="text-lg font-bold text-foreground">History</Text>
@@ -166,12 +167,16 @@ export default function HistoryScreen() {
           <Pressable
             onPress={() => router.push("/export")}
             className="items-center justify-center rounded-xl border border-border bg-card px-3 py-2"
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Export transactions"
           >
             <Icon as={FileDown} className="size-4 text-muted-foreground" />
           </Pressable>
           <Pressable
             onPress={openFilters}
             className="relative flex-row items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2"
+            accessibilityRole="button"
           >
             <Icon
               as={SlidersHorizontal}
@@ -213,6 +218,7 @@ export default function HistoryScreen() {
               key={chip.id}
               onPress={chip.onRemove}
               className="flex-row items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5"
+              accessibilityRole="button"
             >
               <Text className="text-xs text-foreground" numberOfLines={1}>
                 {chip.label}
@@ -223,8 +229,11 @@ export default function HistoryScreen() {
           <Pressable
             onPress={resetAllFilters}
             className="items-center justify-center rounded-full px-3 py-1.5"
+            accessibilityRole="button"
           >
-            <Text className="text-xs font-medium text-primary">Clear all</Text>
+            <Text className="text-xs font-medium text-primary-text">
+              Clear all
+            </Text>
           </Pressable>
         </ScrollView>
       )}
@@ -237,9 +246,16 @@ export default function HistoryScreen() {
           onChangeText={setSearchText}
           placeholderTextColor={COLORS.MUTED}
           className="flex-1 border-0 bg-transparent px-0 shadow-none dark:bg-transparent"
+          accessibilityLabel="Search transactions"
         />
         {searchText.length > 0 && (
-          <Pressable onPress={() => setSearchText("")} className="p-1">
+          <Pressable
+            onPress={() => setSearchText("")}
+            className="p-1"
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+          >
             <Icon as={X} className="size-4 text-muted-foreground" />
           </Pressable>
         )}
@@ -312,8 +328,11 @@ export default function HistoryScreen() {
                   inList
                 >
                   {!debouncedSearch && hasActiveFilters ? (
-                    <Pressable onPress={resetAllFilters}>
-                      <Text className="text-xs text-primary">
+                    <Pressable
+                      onPress={resetAllFilters}
+                      accessibilityRole="button"
+                    >
+                      <Text className="text-xs text-primary-text">
                         Clear filters
                       </Text>
                     </Pressable>

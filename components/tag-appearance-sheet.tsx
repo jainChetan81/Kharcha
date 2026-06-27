@@ -72,6 +72,10 @@ export function TagAppearanceSheet({
       </Text>
       <View className="mb-4 flex-row flex-wrap gap-2">
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="No color"
+          accessibilityState={{ selected: color === null }}
+          hitSlop={8}
           onPress={() => setColor(null)}
           className={cn(
             "h-9 w-9 items-center justify-center rounded-full border",
@@ -80,9 +84,13 @@ export function TagAppearanceSheet({
         >
           <Text className="text-[10px] text-muted-foreground">None</Text>
         </Pressable>
-        {TAG_COLOR_PALETTE.map((swatch) => (
+        {TAG_COLOR_PALETTE.map((swatch, index) => (
           <Pressable
             key={swatch}
+            accessibilityRole="button"
+            accessibilityLabel={`Color ${index + 1}`}
+            accessibilityState={{ selected: color === swatch }}
+            hitSlop={8}
             onPress={() => setColor(swatch)}
             style={{ backgroundColor: swatch }}
             className={cn(
@@ -97,6 +105,7 @@ export function TagAppearanceSheet({
         Emoji
       </Text>
       <Input
+        accessibilityLabel="Emoji"
         value={emoji}
         onChangeText={setEmoji}
         placeholder="✈️"

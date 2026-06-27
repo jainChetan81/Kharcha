@@ -76,6 +76,8 @@ export function PeriodPicker({
         {Object.values(PERIOD_PRESET).map((p) => (
           <Pressable
             key={p}
+            accessibilityRole="button"
+            accessibilityState={{ selected: preset === p }}
             onPress={() => handlePresetSelect(p)}
             className={cn(
               "rounded-full px-4 py-2.5",
@@ -98,6 +100,7 @@ export function PeriodPicker({
       {preset === PERIOD_PRESET.CUSTOM && (
         <View className="mb-3 flex-row gap-3">
           <Pressable
+            accessibilityRole="button"
             onPress={() => setShowFromPicker(true)}
             className="flex-1 rounded-xl bg-muted px-4 py-3"
           >
@@ -112,6 +115,7 @@ export function PeriodPicker({
             </Text>
           </Pressable>
           <Pressable
+            accessibilityRole="button"
             onPress={() => setShowToPicker(true)}
             className="flex-1 rounded-xl bg-muted px-4 py-3"
           >

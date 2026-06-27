@@ -9,8 +9,8 @@ type IconButtonVariant = "ghost" | "card";
 const TONE_CLASS: Record<IconButtonTone, string> = {
   default: "text-foreground",
   muted: "text-muted-foreground",
-  primary: "text-primary",
-  negative: "text-negative",
+  primary: "text-primary-text",
+  negative: "text-negative-text",
 };
 
 type IconButtonProps = {
@@ -34,7 +34,7 @@ export function IconButton({
   tone = "default",
   variant = "ghost",
   disabled,
-  hitSlop = 6,
+  hitSlop = 8,
   className,
   accessibilityLabel,
 }: IconButtonProps) {
@@ -43,7 +43,9 @@ export function IconButton({
       onPress={onPress}
       disabled={disabled}
       hitSlop={hitSlop}
+      accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: !!disabled }}
       className={cn(
         variant === "ghost"
           ? "p-1.5"

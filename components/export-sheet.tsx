@@ -70,6 +70,8 @@ export function ExportSheet({ visible, onClose }: ExportSheetProps) {
           className="h-14 rounded-2xl bg-primary"
           onPress={handleExport}
           disabled={exporting}
+          accessibilityLabel="Export"
+          accessibilityState={{ busy: exporting, disabled: exporting }}
         >
           {exporting ? (
             <ActivityIndicator size="small" color={COLORS.WHITE} />

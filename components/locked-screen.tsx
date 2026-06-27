@@ -11,7 +11,7 @@ export function LockedScreen({ onUnlock }: LockedScreenProps) {
   return (
     <View className="flex-1 items-center justify-center bg-background">
       <View className="mb-8 size-24 items-center justify-center rounded-full bg-card">
-        <Icon as={Lock} className="size-10 text-primary" />
+        <Icon as={Lock} className="size-10 text-primary-text" />
       </View>
 
       <Text className="mb-2 text-2xl font-bold text-foreground">Kharcha</Text>

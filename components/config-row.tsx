@@ -26,7 +26,10 @@ export function ConfigRow({
       <Pressable
         onPress={onMoveUp}
         disabled={isFirst}
-        hitSlop={6}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Move ${name} up`}
+        accessibilityState={{ disabled: isFirst }}
         className={cn("p-1.5", isFirst && "opacity-30")}
       >
         <Icon as={ChevronUp} className="size-4 text-muted-foreground" />
@@ -34,7 +37,10 @@ export function ConfigRow({
       <Pressable
         onPress={onMoveDown}
         disabled={isLast}
-        hitSlop={6}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Move ${name} down`}
+        accessibilityState={{ disabled: isLast }}
         className={cn("p-1.5", isLast && "opacity-30")}
       >
         <Icon as={ChevronDown} className="size-4 text-muted-foreground" />
@@ -45,8 +51,14 @@ export function ConfigRow({
       {isDefault ? (
         <Icon as={Lock} className="size-4 text-muted-foreground" />
       ) : (
-        <Pressable onPress={onDelete} hitSlop={8} className="p-1">
-          <Icon as={Trash2} className="size-4 text-negative" />
+        <Pressable
+          onPress={onDelete}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={`Delete ${name}`}
+          className="p-1"
+        >
+          <Icon as={Trash2} className="size-4 text-negative-text" />
         </Pressable>
       )}
     </View>

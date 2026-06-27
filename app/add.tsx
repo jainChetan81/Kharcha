@@ -57,8 +57,14 @@ export default function AddTransaction() {
           isIOS ? "pt-[60px]" : "pt-12",
         )}
       >
-        <Pressable onPress={() => router.back()} className="py-1 pr-4">
-          <Text className="text-base font-semibold text-primary">Cancel</Text>
+        <Pressable
+          onPress={() => router.back()}
+          className="py-1 pr-4"
+          accessibilityRole="button"
+        >
+          <Text className="text-base font-semibold text-primary-text">
+            Cancel
+          </Text>
         </Pressable>
         <Text className="text-lg font-bold text-foreground">
           {isSubscription ? "Add Subscription" : "Add Transaction"}
@@ -67,9 +73,12 @@ export default function AddTransaction() {
           onPress={openParseSheet}
           className="flex-row items-center gap-1 rounded-full bg-primary/15 px-3 py-1.5"
           hitSlop={8}
+          accessibilityRole="button"
         >
-          <Icon as={Sparkles} className="size-4 text-primary" />
-          <Text className="text-xs font-semibold text-primary">AI Parse</Text>
+          <Icon as={Sparkles} className="size-4 text-primary-text" />
+          <Text className="text-xs font-semibold text-primary-text">
+            AI Parse
+          </Text>
         </Pressable>
       </View>
 
@@ -78,10 +87,10 @@ export default function AddTransaction() {
           onPress={openParseSheet}
           className="mx-5 mb-3 flex-row items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3"
         >
-          <Icon as={Sparkles} className="size-4 text-primary" />
+          <Icon as={Sparkles} className="size-4 text-primary-text" />
           <Text className="flex-1 text-xs font-medium text-foreground">
             Got a bank SMS or email? Tap{" "}
-            <Text className="font-bold text-primary">AI Parse</Text> to
+            <Text className="font-bold text-primary-text">AI Parse</Text> to
             auto-fill this form.
           </Text>
           <Pressable
@@ -89,7 +98,9 @@ export default function AddTransaction() {
               e.stopPropagation();
               dismissHint();
             }}
-            hitSlop={10}
+            hitSlop={14}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss hint"
           >
             <Icon as={X} className="size-4 text-muted-foreground" />
           </Pressable>
@@ -105,6 +116,7 @@ export default function AddTransaction() {
           onValueChange={toggleSubscription}
           trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
           thumbColor={COLORS.FOREGROUND}
+          accessibilityLabel="Subscription"
         />
       </View>
 

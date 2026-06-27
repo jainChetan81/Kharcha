@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
+  findNodeHandle,
   KeyboardAvoidingView,
   type KeyboardTypeOptions,
   Modal,
@@ -48,6 +50,18 @@ export function BottomSheet(props: BottomSheetProps) {
   const isFormMode = !!props.onSave;
 
   const [value, setValue] = useState(props.defaultValue ?? "");
+  const contentRef = useRef<View>(null);
+
+  // Move VoiceOver focus into the sheet when it opens so the user isn't left
+  // on now-obscured background content. Delay until the slide-in settles.
+  useEffect(() => {
+    if (!visible) return;
+    const timer = setTimeout(() => {
+      const node = contentRef.current && findNodeHandle(contentRef.current);
+      if (node) AccessibilityInfo.setAccessibilityFocus(node);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [visible]);
 
   // Re-sync internal state to the latest defaultValue each time the sheet
   // opens — without this, reopening the sheet (e.g. renaming a second tag
@@ -73,6 +87,8 @@ export function BottomSheet(props: BottomSheetProps) {
 
   const content = (
     <View
+      ref={contentRef}
+      accessibilityViewIsModal
       className="rounded-t-2xl bg-card p-6"
       style={{ paddingBottom: Math.max(bottom, 24) }}
     >
@@ -83,6 +99,7 @@ export function BottomSheet(props: BottomSheetProps) {
               {props.title}
             </Text>
             <Input
+              accessibilityLabel={props.title}
               placeholder={props.placeholder}
               value={value}
               onChangeText={(v) => {
@@ -148,12 +165,19 @@ export function BottomSheet(props: BottomSheetProps) {
           <Pressable
             className="absolute inset-0 bg-black/50"
             onPress={handleClose}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
           />
           {content}
         </KeyboardAvoidingView>
       ) : (
         <>
-          <Pressable className="flex-1 bg-black/50" onPress={handleClose} />
+          <Pressable
+            className="flex-1 bg-black/50"
+            onPress={handleClose}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
           {content}
         </>
       )}

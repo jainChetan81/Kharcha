@@ -40,19 +40,27 @@ export function DateTimePickerRow({
         <View className="flex-row gap-2">
           <Pressable
             onPress={() => setShowDatePicker(true)}
-            className="flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-background px-3 py-2"
+            accessibilityRole="button"
+            accessibilityLabel={`Date: ${format(value, DATE_FORMAT)}`}
+            accessibilityHint="Opens the date picker"
+            hitSlop={8}
+            className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-background px-3 py-2"
           >
-            <Icon as={Calendar} className="size-4 text-primary" />
-            <Text className="text-sm text-primary">
+            <Icon as={Calendar} className="size-4 text-primary-text" />
+            <Text className="text-sm text-primary-text">
               {format(value, DATE_FORMAT)}
             </Text>
           </Pressable>
           <Pressable
             onPress={() => setShowTimePicker(true)}
-            className="flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-background px-3 py-2"
+            accessibilityRole="button"
+            accessibilityLabel={`Time: ${format(value, TIME_FORMAT)}`}
+            accessibilityHint="Opens the time picker"
+            hitSlop={8}
+            className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-background px-3 py-2"
           >
-            <Icon as={Clock} className="size-4 text-primary" />
-            <Text className="text-sm text-primary">
+            <Icon as={Clock} className="size-4 text-primary-text" />
+            <Text className="text-sm text-primary-text">
               {format(value, TIME_FORMAT)}
             </Text>
           </Pressable>

@@ -16,7 +16,7 @@ export function ScreenError({
 }) {
   return (
     <View className="flex-1 items-center justify-center bg-background px-8">
-      <Icon as={AlertTriangle} className="mb-4 size-12 text-negative" />
+      <Icon as={AlertTriangle} className="mb-4 size-12 text-negative-text" />
       <Text className="mb-2 text-base font-bold text-foreground">
         Something went wrong
       </Text>
@@ -80,7 +80,7 @@ export class ComponentErrorBoundary extends Component<
       if (this.props.fallback) return this.props.fallback;
       return (
         <View className="items-center justify-center px-6 py-8">
-          <Icon as={AlertTriangle} className="mb-2 size-8 text-negative" />
+          <Icon as={AlertTriangle} className="mb-2 size-8 text-negative-text" />
           <Text className="mb-1 text-sm font-semibold text-foreground">
             Something went wrong
           </Text>

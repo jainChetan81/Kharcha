@@ -33,6 +33,7 @@ export function DuplicateTransactionSheet({
         <Pressable
           className="flex-1 items-center rounded-xl py-3"
           onPress={onCancel}
+          accessibilityRole="button"
         >
           <Text className="text-sm font-medium text-muted-foreground">
             Cancel
@@ -41,6 +42,7 @@ export function DuplicateTransactionSheet({
         <Pressable
           className="flex-1 items-center rounded-xl bg-primary py-3"
           onPress={onConfirm}
+          accessibilityRole="button"
         >
           <Text className="text-sm font-semibold text-primary-foreground">
             Add Anyway

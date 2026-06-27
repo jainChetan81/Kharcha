@@ -24,6 +24,9 @@ export function ScreenHeader({
       {showBack ? (
         <Pressable
           onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityHint="Goes back to the previous screen"
+          hitSlop={8}
           className="flex-row items-center py-1"
         >
           <Icon as={ChevronLeft} className="mr-1 size-6 text-foreground" />

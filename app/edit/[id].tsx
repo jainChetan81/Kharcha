@@ -138,8 +138,15 @@ export default function EditTransactionScreen() {
           isIOS ? "pt-[60px]" : "pt-12",
         )}
       >
-        <Pressable onPress={() => router.back()} className="py-1 pr-4">
-          <Text className="text-base font-semibold text-primary">Cancel</Text>
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          hitSlop={8}
+          className="py-1 pr-4"
+        >
+          <Text className="text-base font-semibold text-primary-text">
+            Cancel
+          </Text>
         </Pressable>
         <View className="items-center">
           <Text className="text-lg font-bold text-foreground">
@@ -147,7 +154,7 @@ export default function EditTransactionScreen() {
           </Text>
           {transaction.subscription_id && (
             <View className="mt-1 rounded-md bg-primary/20 px-2 py-0.5">
-              <Text className="text-[10px] font-medium text-primary">
+              <Text className="text-[10px] font-medium text-primary-text">
                 SUBSCRIPTION
               </Text>
             </View>

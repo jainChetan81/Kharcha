@@ -52,7 +52,12 @@ export function MonthlyWrapCard({ yearMonth, visible, onDismiss }: Props) {
         className="flex-1 items-center justify-center bg-black/60 px-6"
         style={{ opacity: backdrop }}
       >
-        <Pressable className="absolute inset-0" onPress={onDismiss} />
+        <Pressable
+          className="absolute inset-0"
+          onPress={onDismiss}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
         <Animated.View
           className="w-full rounded-2xl border border-border bg-card p-6"
           style={{ transform: [{ scale }] }}

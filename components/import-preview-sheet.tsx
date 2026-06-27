@@ -44,8 +44,12 @@ export function ImportPreviewSheet({
           </Text>
         </View>
       ) : error ? (
-        <View className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
-          <Text className="text-sm font-medium text-destructive">
+        <View
+          className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3"
+          accessibilityLiveRegion="assertive"
+          accessibilityRole="alert"
+        >
+          <Text className="text-sm font-medium text-negative-text">
             Backup rejected
           </Text>
           <Text className="mt-1 text-xs text-muted-foreground">{error}</Text>
@@ -114,6 +118,11 @@ export function ImportPreviewSheet({
           className="h-12 flex-1 rounded-xl"
           onPress={onConfirm}
           disabled={loading || importing || !!error || !stats}
+          accessibilityLabel="Replace data"
+          accessibilityState={{
+            busy: importing,
+            disabled: loading || importing || !!error || !stats,
+          }}
         >
           {importing ? (
             <ActivityIndicator size="small" color={COLORS.WHITE} />

@@ -143,10 +143,11 @@ export default function HistoryFiltersSheet({
           <Text className="text-base font-bold text-foreground">Filters</Text>
           {draftHasFilters && (
             <Pressable
+              accessibilityRole="button"
               onPress={onClearAllFilters}
               className="rounded-xl border border-border px-4 py-2"
             >
-              <Text className="text-sm font-medium text-negative">
+              <Text className="text-sm font-medium text-negative-text">
                 Clear All
               </Text>
             </Pressable>
@@ -166,6 +167,8 @@ export default function HistoryFiltersSheet({
             {TYPE_FILTERS.map((f) => (
               <Pressable
                 key={f}
+                accessibilityRole="button"
+                accessibilityState={{ selected: draftType === f }}
                 onPress={() => onDraftTypeChange(f)}
                 className={cn(
                   "flex-1 items-center rounded-xl py-2.5",
@@ -242,6 +245,8 @@ export default function HistoryFiltersSheet({
             {SOURCE_TYPE_FILTERS.map((f) => (
               <Pressable
                 key={f}
+                accessibilityRole="button"
+                accessibilityState={{ selected: draftSourceType === f }}
                 onPress={() => onDraftSourceTypeChange(f)}
                 className={cn(
                   "flex-1 items-center rounded-xl py-2.5",
@@ -274,6 +279,8 @@ export default function HistoryFiltersSheet({
             {Object.values(PERIOD_PRESET).map((p) => (
               <Pressable
                 key={p}
+                accessibilityRole="button"
+                accessibilityState={{ selected: draftPreset === p }}
                 onPress={() => handlePresetSelect(p)}
                 className={cn(
                   "rounded-full px-4 py-2.5",
@@ -298,6 +305,7 @@ export default function HistoryFiltersSheet({
           {draftPreset === PERIOD_PRESET.CUSTOM && (
             <View className="mb-3 flex-row gap-3">
               <Pressable
+                accessibilityRole="button"
                 onPress={() => setShowFromPicker(true)}
                 className="flex-1 rounded-xl bg-muted px-4 py-3"
               >
@@ -312,6 +320,7 @@ export default function HistoryFiltersSheet({
                 </Text>
               </Pressable>
               <Pressable
+                accessibilityRole="button"
                 onPress={() => setShowToPicker(true)}
                 className="flex-1 rounded-xl bg-muted px-4 py-3"
               >
@@ -335,6 +344,8 @@ export default function HistoryFiltersSheet({
             {REIMBURSEMENT_FILTERS.map((f) => (
               <Pressable
                 key={f}
+                accessibilityRole="button"
+                accessibilityState={{ selected: draftReimbursement === f }}
                 onPress={() => onDraftReimbursementChange(f)}
                 className={cn(
                   "flex-1 items-center rounded-xl py-2.5",
@@ -360,6 +371,7 @@ export default function HistoryFiltersSheet({
           </Text>
           <View className="mb-5 flex-row gap-3">
             <Input
+              accessibilityLabel="Minimum amount"
               placeholder="Min ₹"
               placeholderTextColor={COLORS.MUTED}
               keyboardType="decimal-pad"
@@ -368,6 +380,7 @@ export default function HistoryFiltersSheet({
               className="flex-1"
             />
             <Input
+              accessibilityLabel="Maximum amount"
               placeholder="Max ₹"
               placeholderTextColor={COLORS.MUTED}
               keyboardType="decimal-pad"
@@ -380,6 +393,7 @@ export default function HistoryFiltersSheet({
 
         <View className={cn("mt-4 flex-row gap-3", isIOS && "mb-6")}>
           <Pressable
+            accessibilityRole="button"
             onPress={onClose}
             className="h-14 flex-1 items-center justify-center rounded-xl border border-border"
           >

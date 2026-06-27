@@ -76,6 +76,7 @@ export default function PortfolioScreen() {
               <Pressable
                 key={h.id}
                 onPress={() => router.push(holdingScreen(h.id))}
+                accessibilityRole="button"
                 className="mx-5 mb-2 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
               >
                 <View className="flex-1 pr-3">

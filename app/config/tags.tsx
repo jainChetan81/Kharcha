@@ -123,7 +123,7 @@ export default function TagsScreen() {
             onPress={() => router.push(tagScreen(activeTag.id))}
             className="mx-5 mb-2 rounded-2xl border border-primary/40 bg-primary/10 p-4"
           >
-            <Text className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+            <Text className="text-[10px] font-semibold uppercase tracking-wider text-primary-text">
               Currently active
             </Text>
             <Text className="mt-1 text-base font-bold text-foreground">
@@ -256,6 +256,7 @@ export default function TagsScreen() {
                     icon={Square}
                     tone="negative"
                     className="ml-2"
+                    accessibilityLabel={`End scope for ${tag.name}`}
                     disabled={endNowMutation.isPending}
                     onPress={() =>
                       endNowMutation.mutate({
@@ -270,6 +271,7 @@ export default function TagsScreen() {
                     icon={Zap}
                     tone="primary"
                     className="ml-2"
+                    accessibilityLabel={`Start scope for ${tag.name}`}
                     disabled={scheduleMutation.isPending}
                     onPress={() => setQuickDurationTarget(tag.name)}
                   />
@@ -277,6 +279,7 @@ export default function TagsScreen() {
                 <IconButton
                   icon={Calendar}
                   className="ml-1"
+                  accessibilityLabel={`Schedule scope for ${tag.name}`}
                   onPress={() =>
                     openSchedule({
                       id: tag.id,
@@ -290,18 +293,21 @@ export default function TagsScreen() {
                   icon={Palette}
                   tone="muted"
                   className="ml-1"
+                  accessibilityLabel={`Edit appearance of ${tag.name}`}
                   onPress={() => setAppearanceTarget(tag)}
                 />
                 <IconButton
                   icon={Pencil}
                   tone="muted"
                   className="ml-1"
+                  accessibilityLabel={`Rename ${tag.name}`}
                   onPress={() => setEditTarget({ id: tag.id, name: tag.name })}
                 />
                 <IconButton
                   icon={Trash2}
                   tone="negative"
                   className="ml-1"
+                  accessibilityLabel={`Delete ${tag.name}`}
                   onPress={() => handleDelete(tag.id, tag.name)}
                 />
               </Pressable>

@@ -1,13 +1,7 @@
 # Project Conventions - Kharcha
 
 ## Architecture
-- `app/` — screens (expo-router file-based routing)
-- `components/ui/` — reusable UI primitives (Button, Text, Input, ChipPicker, BottomSheet, etc.)
-- `components/` — feature components (TransactionForm, SubscriptionForm, TransactionItem)
-- `hooks/` — TanStack Query hooks wrapping db functions
-- `lib/db/` — SQLite via drizzle-orm (connection, schema, typed modules)
-- `lib/gmail/` — Gmail OAuth + bank email parsers
-- `lib/` — shared utilities (constants, format, toast, utils)
+- Directory layout + stack live in [CLAUDE.md](../../CLAUDE.md) (`structure` / `stack`) — single source of truth. The sections below cover conventions not captured there.
 
 ## State Management
 - TanStack Query for all server/db state (query keys in `lib/constants.ts`)

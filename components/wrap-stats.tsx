@@ -35,7 +35,7 @@ export function WrapStats({ data, fmt, monthLabel, prevMonthLabel }: Props) {
             className={cn(
               "text-xs font-medium",
               badge.tone === "down" && "text-positive",
-              badge.tone === "up" && "text-negative",
+              badge.tone === "up" && "text-negative-text",
               badge.tone === "muted" && "text-muted-foreground",
             )}
           >

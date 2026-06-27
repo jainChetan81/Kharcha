@@ -270,6 +270,10 @@ export function TransactionForm({
                 {typeButtons.map((btn) => (
                   <Pressable
                     key={btn.key}
+                    accessibilityRole="button"
+                    accessibilityState={{
+                      selected: field.state.value === btn.key,
+                    }}
                     onPress={() => {
                       if (lockType && btn.key !== defaultValues.type) return;
                       field.handleChange(btn.key);
@@ -330,6 +334,7 @@ export function TransactionForm({
             <View className="mb-5">
               <FormLabel>Amount</FormLabel>
               <Input
+                accessibilityLabel="Amount"
                 placeholder="0"
                 keyboardType="decimal-pad"
                 autoCorrect={false}
@@ -353,6 +358,7 @@ export function TransactionForm({
               <View className="mb-5">
                 <FormLabel>Merchant</FormLabel>
                 <Input
+                  accessibilityLabel="Merchant"
                   placeholder="e.g. Swiggy, Amazon"
                   value={field.state.value}
                   onChangeText={(v) => {
@@ -373,6 +379,7 @@ export function TransactionForm({
                     {filteredSuggestions.map((suggestion) => (
                       <Pressable
                         key={suggestion}
+                        accessibilityRole="button"
                         onPress={() => {
                           field.handleChange(suggestion);
                           setMerchantSearch(suggestion);
@@ -398,6 +405,7 @@ export function TransactionForm({
               <View className="mb-5">
                 <FormLabel>Description</FormLabel>
                 <Input
+                  accessibilityLabel="Description"
                   placeholder="Optional description"
                   value={field.state.value}
                   onChangeText={(v) => {
@@ -445,6 +453,7 @@ export function TransactionForm({
               <View className="mb-5">
                 <FormLabel>From</FormLabel>
                 <Input
+                  accessibilityLabel="From"
                   placeholder="e.g. Employer, Client name"
                   value={field.state.value}
                   onChangeText={(v) => {
@@ -465,6 +474,7 @@ export function TransactionForm({
                     {filteredSuggestions.map((suggestion) => (
                       <Pressable
                         key={suggestion}
+                        accessibilityRole="button"
                         onPress={() => {
                           field.handleChange(suggestion);
                           setMerchantSearch(suggestion);
@@ -571,13 +581,17 @@ export function TransactionForm({
               <View className="mb-5">
                 <FormLabel>Date & Time</FormLabel>
                 <Pressable
+                  accessibilityRole="button"
                   onPress={() => {
                     setDatePickerValue(currentDate);
                     setShowDateTimePicker(true);
                   }}
                   className="h-10 flex-row items-center justify-between rounded-xl border border-border bg-card px-3"
                 >
-                  <Text className="text-base text-foreground">
+                  <Text
+                    maxFontSizeMultiplier={1.4}
+                    className="text-base text-foreground"
+                  >
                     {format(currentDate, DATE_DISPLAY_FORMAT)}
                   </Text>
                   <Icon
@@ -609,6 +623,7 @@ export function TransactionForm({
             <View className="mb-5">
               <FormLabel>Note</FormLabel>
               <Input
+                accessibilityLabel="Note"
                 placeholder="Optional note"
                 multiline
                 numberOfLines={3}
@@ -641,6 +656,7 @@ export function TransactionForm({
                       </Text>
                     </View>
                     <Switch
+                      accessibilityLabel="Reimbursable"
                       value={isReimbursable}
                       onValueChange={(val) => {
                         field.handleChange(
@@ -672,6 +688,8 @@ export function TransactionForm({
                     <>
                       <View className="mt-3 flex-row gap-2">
                         <Pressable
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: !isReimbursed }}
                           onPress={() =>
                             field.handleChange(REIMBURSEMENT_STATUS.PENDING)
                           }
@@ -692,6 +710,8 @@ export function TransactionForm({
                           </Text>
                         </Pressable>
                         <Pressable
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: isReimbursed }}
                           onPress={() =>
                             field.handleChange(REIMBURSEMENT_STATUS.REIMBURSED)
                           }
@@ -735,6 +755,7 @@ export function TransactionForm({
                           <View className="mt-3">
                             <FormLabel>Reimbursable amount</FormLabel>
                             <Input
+                              accessibilityLabel="Reimbursable amount"
                               placeholder="0"
                               keyboardType="decimal-pad"
                               autoCorrect={false}
@@ -784,6 +805,7 @@ export function TransactionForm({
                         {unselectedSuggestions.map((tag) => (
                           <Pressable
                             key={tag.id}
+                            accessibilityRole="button"
                             onPress={() =>
                               field.handleChange([...selected, tag.id])
                             }
@@ -853,7 +875,7 @@ export function TransactionForm({
                   className="h-12 flex-1 rounded-2xl border-negative"
                   onPress={onDelete}
                 >
-                  <Text className="text-base font-semibold text-negative">
+                  <Text className="text-base font-semibold text-negative-text">
                     Delete
                   </Text>
                 </Button>

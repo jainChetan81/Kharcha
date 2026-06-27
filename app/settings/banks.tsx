@@ -199,6 +199,7 @@ export default function BanksScreen() {
                   <View className="flex-row items-center px-4 py-3">
                     <Pressable
                       onPress={() => toggleExpand(bank.id)}
+                      accessibilityRole="button"
                       className="flex-1 flex-row items-center"
                     >
                       <Text className="flex-1 text-sm font-medium text-foreground">
@@ -217,6 +218,7 @@ export default function BanksScreen() {
                     <Switch
                       value={isActive}
                       onValueChange={() => handleToggleActive(bank)}
+                      accessibilityLabel={bank.name}
                       trackColor={{
                         false: COLORS.BAR_BG,
                         true: COLORS.PRIMARY,
@@ -243,14 +245,16 @@ export default function BanksScreen() {
                                 canDelete && handleDeleteEmail(e.id, e.email)
                               }
                               disabled={!canDelete}
-                              hitSlop={6}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Delete ${e.email}`}
+                              hitSlop={14}
                             >
                               <Icon
                                 as={Trash2}
                                 className={cn(
                                   "size-4",
                                   canDelete
-                                    ? "text-negative"
+                                    ? "text-negative-text"
                                     : "text-muted-foreground/40",
                                 )}
                               />
@@ -262,6 +266,7 @@ export default function BanksScreen() {
                       <View className="mt-2 flex-row gap-2">
                         <Input
                           placeholder="add email"
+                          accessibilityLabel="Add email"
                           placeholderTextColor={COLORS.MUTED}
                           value={emailDrafts[bank.id] ?? ""}
                           onChangeText={(v) =>
@@ -286,13 +291,14 @@ export default function BanksScreen() {
                       {bank.is_default !== 1 && (
                         <Pressable
                           onPress={() => handleDeleteBank(bank.id, bank.name)}
+                          accessibilityRole="button"
                           className="mt-3 flex-row items-center justify-center py-2"
                         >
                           <Icon
                             as={Trash2}
-                            className="mr-2 size-4 text-negative"
+                            className="mr-2 size-4 text-negative-text"
                           />
-                          <Text className="text-xs font-medium text-negative">
+                          <Text className="text-xs font-medium text-negative-text">
                             Delete bank
                           </Text>
                         </Pressable>
@@ -339,6 +345,7 @@ export default function BanksScreen() {
         </Text>
         <Input
           placeholder="Bank name"
+          accessibilityLabel="Bank name"
           placeholderTextColor={COLORS.MUTED}
           value={newBankName}
           onChangeText={setNewBankName}
@@ -346,6 +353,7 @@ export default function BanksScreen() {
         />
         <Input
           placeholder="alerts@bank.com"
+          accessibilityLabel="Bank email"
           placeholderTextColor={COLORS.MUTED}
           value={newBankEmail}
           onChangeText={setNewBankEmail}

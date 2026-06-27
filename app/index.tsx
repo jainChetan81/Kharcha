@@ -198,28 +198,39 @@ function CategoryDonut({
             <View className="items-center justify-center px-3">
               <Text
                 numberOfLines={1}
+                maxFontSizeMultiplier={1.3}
                 className="text-sm font-semibold text-foreground"
               >
                 {focused.label}
               </Text>
-              <Text className="mt-0.5 text-base font-bold text-foreground">
+              <Text
+                maxFontSizeMultiplier={1.3}
+                className="mt-0.5 text-base font-bold text-foreground"
+              >
                 {fmt(focused.amount)}
               </Text>
-              <Text className="mt-0.5 text-[10px] text-muted-foreground">
+              <Text
+                maxFontSizeMultiplier={1.3}
+                className="mt-0.5 text-[10px] text-muted-foreground"
+              >
                 {focused.pct.toFixed(0)}% · tap again
               </Text>
             </View>
           ) : (
             <View className="items-center justify-center">
               <Text
+                maxFontSizeMultiplier={1.3}
                 className={cn(
                   "text-xl font-bold",
-                  overspent ? "text-negative" : "text-foreground",
+                  overspent ? "text-negative-text" : "text-foreground",
                 )}
               >
                 {fmt(Math.abs(net))}
               </Text>
-              <Text className="mt-0.5 text-[11px] text-muted-foreground">
+              <Text
+                maxFontSizeMultiplier={1.3}
+                className="mt-0.5 text-[11px] text-muted-foreground"
+              >
                 {overspent ? LABELS.SPENT : LABELS.AVAILABLE}
               </Text>
             </View>
@@ -241,7 +252,7 @@ function getSpendingChangeFlavor(
   if (value === "new")
     return { color: "text-muted-foreground", text: "First month tracking" };
   if (value > 0)
-    return { color: "text-negative", text: `↑ ${value}% vs last month` };
+    return { color: "text-negative-text", text: `↑ ${value}% vs last month` };
   return {
     color: "text-positive",
     text: `↓ ${Math.abs(value)}% vs last month`,
@@ -319,6 +330,9 @@ export default function HomeScreen() {
                 <Pressable
                   onPress={onRefresh}
                   disabled={refreshing}
+                  accessibilityRole="button"
+                  accessibilityLabel="Sync Gmail"
+                  hitSlop={12}
                   className="size-10 items-center justify-center rounded-full border border-border bg-card"
                 >
                   {refreshing ? (
@@ -330,6 +344,8 @@ export default function HomeScreen() {
               )}
               <Pressable
                 onPress={() => router.push(SCREENS.PROFILE)}
+                accessibilityRole="button"
+                accessibilityLabel="Open Profile"
                 className="size-10 items-center justify-center rounded-full bg-primary"
               >
                 <Text className="text-sm font-bold text-primary-foreground">
@@ -343,6 +359,8 @@ export default function HomeScreen() {
             <Pressable
               onPress={() => navigateMonth(subMonths(selectedDate, 1))}
               hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Previous month"
               className="rounded-full p-2"
             >
               <Icon as={ChevronLeft} className="size-6 text-muted-foreground" />
@@ -355,6 +373,8 @@ export default function HomeScreen() {
                 !isCurrentMonth && navigateMonth(addMonths(selectedDate, 1))
               }
               hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Next month"
               className="rounded-full p-2"
             >
               <Icon
@@ -504,11 +524,14 @@ export default function HomeScreen() {
       >
         <View className="flex-row items-center justify-around">
           <View className="items-center gap-1">
-            <Icon as={House} className="size-5 text-primary" />
-            <Text className="text-xs font-semibold text-primary">Home</Text>
+            <Icon as={House} className="size-5 text-primary-text" />
+            <Text className="text-xs font-semibold text-primary-text">
+              Home
+            </Text>
           </View>
           <Pressable
             onPress={() => router.push(SCREENS.HISTORY)}
+            accessibilityRole="button"
             className="items-center gap-1"
           >
             <Icon as={Clock} className="size-5 text-muted-foreground" />
@@ -523,6 +546,7 @@ export default function HomeScreen() {
           <View className="size-[52px]" />
           <Pressable
             onPress={() => router.push(SCREENS.CONFIG)}
+            accessibilityRole="button"
             className="items-center gap-1"
           >
             <Icon as={Settings} className="size-5 text-muted-foreground" />
@@ -532,6 +556,7 @@ export default function HomeScreen() {
           </Pressable>
           <Pressable
             onPress={() => router.push(SCREENS.PROFILE)}
+            accessibilityRole="button"
             className="items-center gap-1"
           >
             <Icon as={User} className="size-5 text-muted-foreground" />
@@ -555,6 +580,8 @@ export default function HomeScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               router.push(SCREENS.ADD);
             }}
+            accessibilityRole="button"
+            accessibilityLabel="Add transaction"
             style={({ pressed }) => ({
               transform: [{ scale: pressed ? 0.92 : 1 }],
             })}

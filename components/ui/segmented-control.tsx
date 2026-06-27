@@ -23,8 +23,10 @@ export function SegmentedControl<T extends string>({
               if (!selected) Haptics.selectionAsync();
               onChange(option.value);
             }}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
             className={cn(
-              "flex-1 items-center justify-center rounded-full px-3 py-2",
+              "min-h-11 flex-1 items-center justify-center rounded-full px-3 py-2",
               selected && "bg-primary",
             )}
           >

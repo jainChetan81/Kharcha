@@ -70,13 +70,18 @@ export default function HistoryInsightsStrip({
 
   return (
     <View className="mx-5 mb-3 overflow-hidden rounded-xl bg-card">
-      <Pressable onPress={toggle} className="flex-row items-center px-4 py-3">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        onPress={toggle}
+        className="flex-row items-center px-4 py-3"
+      >
         <Text className="flex-1 text-xs text-muted-foreground">
           {insights.count} tx
           {insights.spent > 0 && (
             <>
               {"  ·  "}
-              <Text className="text-xs font-semibold text-negative">
+              <Text className="text-xs font-semibold text-negative-text">
                 {fmt(insights.spent)} spent
               </Text>
             </>
@@ -117,7 +122,7 @@ export default function HistoryInsightsStrip({
               <Text
                 className={cn(
                   "mt-0.5 text-2xl font-bold",
-                  netPositive ? "text-positive" : "text-negative",
+                  netPositive ? "text-positive" : "text-negative-text",
                 )}
               >
                 {netPositive ? "+" : "−"}
@@ -203,10 +208,11 @@ export default function HistoryInsightsStrip({
 
           {onSeeFullInsights && (
             <Pressable
+              accessibilityRole="button"
               onPress={onSeeFullInsights}
               className="mt-4 items-center py-2"
             >
-              <Text className="text-sm font-medium text-primary">
+              <Text className="text-sm font-medium text-primary-text">
                 See full insights →
               </Text>
             </Pressable>

@@ -118,7 +118,13 @@ export function ParseMessageSheet({
         <Text className="text-base font-bold text-foreground">
           Parse Message
         </Text>
-        <Pressable onPress={onClose} className="p-1" hitSlop={8}>
+        <Pressable
+          onPress={onClose}
+          className="p-1"
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Close sheet"
+        >
           <Icon as={X} className="size-5 text-muted-foreground" />
         </Pressable>
       </View>
@@ -139,12 +145,23 @@ export function ParseMessageSheet({
         placeholderTextColor={COLORS.MUTED}
       />
       {parseError && (
-        <Text className="mt-2 text-sm text-destructive">{parseError}</Text>
+        <Text
+          className="mt-2 text-sm text-negative-text"
+          accessibilityLiveRegion="assertive"
+          accessibilityRole="alert"
+        >
+          {parseError}
+        </Text>
       )}
       <Button
         className="mt-4 h-12 w-full rounded-xl bg-primary"
         onPress={handleParse}
         disabled={parsing || !messageText.trim()}
+        accessibilityLabel="Parse message"
+        accessibilityState={{
+          busy: parsing,
+          disabled: parsing || !messageText.trim(),
+        }}
       >
         {parsing ? (
           <ActivityIndicator color={COLORS.WHITE} />

@@ -100,6 +100,7 @@ export default function ProfileScreen() {
         </Text>
         <Pressable
           onPress={() => setShowEditName(true)}
+          accessibilityRole="button"
           className={cn(
             "mx-5 mb-2 flex-row items-center rounded-xl border px-4 py-3",
             userName
@@ -113,7 +114,9 @@ export default function ProfileScreen() {
           <Text
             className={cn(
               "mr-2 text-sm",
-              userName ? "text-muted-foreground" : "font-medium text-primary",
+              userName
+                ? "text-muted-foreground"
+                : "font-medium text-primary-text",
             )}
           >
             {userName || "Tap to set"}
@@ -122,7 +125,7 @@ export default function ProfileScreen() {
             as={ChevronRight}
             className={cn(
               "size-4",
-              userName ? "text-muted-foreground" : "text-primary",
+              userName ? "text-muted-foreground" : "text-primary-text",
             )}
           />
         </Pressable>
@@ -226,6 +229,7 @@ export default function ProfileScreen() {
           <Switch
             value={appLockEnabled}
             onValueChange={() => void toggleAppLock()}
+            accessibilityLabel="App Lock"
             trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
             thumbColor={COLORS.WHITE}
           />
@@ -237,6 +241,7 @@ export default function ProfileScreen() {
           <Pressable
             onPress={checkForUpdate}
             disabled={checkingUpdate}
+            accessibilityRole="button"
             className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
           >
             <Icon as={Download} className="mr-3 size-4 text-muted-foreground" />
@@ -266,17 +271,18 @@ export default function ProfileScreen() {
         />
         <Pressable
           onPress={handleClearTransactions}
+          accessibilityRole="button"
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
         >
           <View className="flex-1">
-            <Text className="text-sm font-medium text-negative">
+            <Text className="text-sm font-medium text-negative-text">
               Clear All Transactions
             </Text>
             <Text className="mt-0.5 text-xs text-muted-foreground">
               Permanently delete every transaction.
             </Text>
           </View>
-          <Icon as={Trash2} className="size-4 text-negative" />
+          <Icon as={Trash2} className="size-4 text-negative-text" />
         </Pressable>
         <Pressable
           onPress={async () => {
@@ -294,6 +300,7 @@ export default function ProfileScreen() {
               showErrorToast("Failed to load sample data", err);
             }
           }}
+          accessibilityRole="button"
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
         >
           <Icon as={Database} className="mr-3 size-4 text-muted-foreground" />

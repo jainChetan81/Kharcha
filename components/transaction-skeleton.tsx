@@ -24,7 +24,11 @@ export function TransactionSkeleton({ count = 10 }: { count?: number }) {
   }, [opacity]);
 
   return (
-    <View>
+    <View
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading transactions"
+    >
       {Array.from({ length: count }).map((_, i) => (
         <Animated.View
           // biome-ignore lint/suspicious/noArrayIndexKey: skeleton rows are static

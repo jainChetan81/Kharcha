@@ -151,7 +151,9 @@ export default function SmsForwardScreen() {
         )}
       >
         <Pressable onPress={() => router.back()} className="py-1 pr-4">
-          <Text className="text-base font-semibold text-primary">Cancel</Text>
+          <Text className="text-base font-semibold text-primary-text">
+            Cancel
+          </Text>
         </Pressable>
         <Text className="text-lg font-bold text-foreground">From SMS</Text>
         <View className="w-16" />
@@ -169,7 +171,7 @@ export default function SmsForwardScreen() {
           as={Sparkles}
           className={cn(
             "size-4",
-            parsed ? "text-primary" : "text-muted-foreground",
+            parsed ? "text-primary-text" : "text-muted-foreground",
           )}
         />
         <Text className="flex-1 text-xs font-medium text-foreground">

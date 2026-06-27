@@ -56,7 +56,9 @@ export default function EditSubscriptionScreen() {
         )}
       >
         <Pressable onPress={() => router.back()} className="py-1 pr-4">
-          <Text className="text-base font-semibold text-primary">Cancel</Text>
+          <Text className="text-base font-semibold text-primary-text">
+            Cancel
+          </Text>
         </Pressable>
         <Text className="text-lg font-bold text-foreground">
           Edit Subscription
@@ -76,6 +78,7 @@ export default function EditSubscriptionScreen() {
             onValueChange={toggleActive}
             trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
             thumbColor={COLORS.FOREGROUND}
+            accessibilityLabel="Active"
           />
         </View>
 
@@ -95,6 +98,7 @@ export default function EditSubscriptionScreen() {
                 value={field.state.value}
                 onChangeText={(v) => field.handleChange(v)}
                 placeholderTextColor={COLORS.MUTED}
+                accessibilityLabel="Name"
               />
               <FieldError errors={field.state.meta.errors as string[]} />
             </View>
@@ -120,6 +124,7 @@ export default function EditSubscriptionScreen() {
                 }}
                 className="h-14 text-2xl font-bold"
                 placeholderTextColor={COLORS.MUTED}
+                accessibilityLabel="Amount"
               />
               <FieldError errors={field.state.meta.errors as string[]} />
             </View>
@@ -182,7 +187,7 @@ export default function EditSubscriptionScreen() {
                 className="h-12 flex-1 rounded-2xl border-negative"
                 onPress={confirmDelete}
               >
-                <Text className="text-base font-semibold text-negative">
+                <Text className="text-base font-semibold text-negative-text">
                   Delete
                 </Text>
               </Button>

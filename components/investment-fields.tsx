@@ -95,6 +95,8 @@ export function InvestmentFields({
                 return (
                   <Pressable
                     key={k.key}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
                     onPress={() => field.handleChange(k.key)}
                     className={cn(
                       "flex-1 items-center rounded-xl py-2.5",
@@ -150,6 +152,7 @@ export function InvestmentFields({
                 <View className="mb-5">
                   <FormLabel>Units</FormLabel>
                   <Input
+                    accessibilityLabel="Units"
                     placeholder="0"
                     keyboardType="decimal-pad"
                     value={field.state.value}

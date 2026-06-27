@@ -160,6 +160,7 @@ function TagDetailLoaded({
           icon={Pencil}
           tone="muted"
           variant="card"
+          accessibilityLabel="Edit schedule"
           onPress={() => setEditVisible(true)}
         />
       </ScreenHeader>

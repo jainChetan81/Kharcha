@@ -132,6 +132,7 @@ export function SubscriptionForm({
           <View className="mb-5">
             <FormLabel>Name</FormLabel>
             <Input
+              accessibilityLabel="Name"
               placeholder="e.g. Netflix, Spotify"
               value={field.state.value}
               onChangeText={(v) => field.handleChange(v)}
@@ -152,6 +153,7 @@ export function SubscriptionForm({
           <View className="mb-5">
             <FormLabel>Amount</FormLabel>
             <Input
+              accessibilityLabel="Amount"
               placeholder="0"
               keyboardType="decimal-pad"
               value={field.state.value}
@@ -188,6 +190,9 @@ export function SubscriptionForm({
                   return (
                     <Pressable
                       key={day}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      hitSlop={6}
                       onPress={() => {
                         const next = selected
                           ? selectedDays.filter((d) => d !== day)
@@ -241,6 +246,7 @@ export function SubscriptionForm({
                 </Text>
               </View>
               <Switch
+                accessibilityLabel="This is an SIP"
                 value={isSip}
                 onValueChange={(v) => {
                   field.handleChange(
@@ -317,6 +323,7 @@ export function SubscriptionForm({
                             </Text>
                           </FormLabel>
                           <Input
+                            accessibilityLabel="Default Units"
                             placeholder="0"
                             keyboardType="decimal-pad"
                             value={field.state.value}

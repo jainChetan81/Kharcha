@@ -59,7 +59,9 @@ export default function CurrencyScreen() {
                   {CURRENCIES[code].name}
                 </Text>
               </View>
-              {selected && <Icon as={Check} className="size-4 text-primary" />}
+              {selected && (
+                <Icon as={Check} className="size-4 text-primary-text" />
+              )}
             </Pressable>
           );
         })}

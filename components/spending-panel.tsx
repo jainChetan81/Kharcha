@@ -155,6 +155,7 @@ export function SpendingPanel({
             {top.map((row, i) => (
               <Pressable
                 key={row.key}
+                accessibilityRole="button"
                 onPress={() => router.push(row.href)}
                 className="-mx-3 flex-row items-center rounded-xl px-3 py-2.5"
                 style={({ pressed }) => ({
@@ -193,6 +194,7 @@ export function SpendingPanel({
           </View>
 
           <Pressable
+            accessibilityRole="button"
             onPress={() => {
               logEvent(FIREBASE_EVENTS.SPENDING_VIEW_FULL_BREAKDOWN, { lens });
               router.push(
@@ -205,7 +207,7 @@ export function SpendingPanel({
             }}
             className="items-center pt-4"
           >
-            <Text className="text-sm font-medium text-primary">
+            <Text className="text-sm font-medium text-primary-text">
               View full breakdown →
             </Text>
           </Pressable>

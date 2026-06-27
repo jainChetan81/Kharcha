@@ -176,9 +176,10 @@ export default function GmailSyncScreen() {
               <SectionHeader title="Banks" />
               <Pressable
                 onPress={() => router.push(SCREENS.BANKS)}
+                accessibilityRole="button"
                 className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
               >
-                <Icon as={Landmark} className="mr-3 size-4 text-primary" />
+                <Icon as={Landmark} className="mr-3 size-4 text-primary-text" />
                 <Text className="flex-1 text-sm font-medium text-foreground">
                   Manage Banks
                 </Text>
@@ -197,9 +198,10 @@ export default function GmailSyncScreen() {
                   </Text>
                   <Pressable
                     onPress={() => router.push(SCREENS.BANKS)}
+                    accessibilityRole="button"
                     className="mt-1"
                   >
-                    <Text className="text-xs text-primary">
+                    <Text className="text-xs text-primary-text">
                       Go to Settings → Banks to add your bank
                     </Text>
                   </Pressable>
@@ -230,7 +232,7 @@ export default function GmailSyncScreen() {
                   onPress={handleDisconnect}
                   disabled={busy}
                 >
-                  <Text className="text-sm font-medium text-negative">
+                  <Text className="text-sm font-medium text-negative-text">
                     Disconnect
                   </Text>
                 </Button>
@@ -335,7 +337,7 @@ function Badge({ text, color }: { text: string; color: string }) {
       style={{ backgroundColor: `${color}22` }}
     >
       <Text
-        className="text-[9px] font-bold uppercase tracking-wide"
+        className="text-[10px] font-bold uppercase tracking-wide"
         style={{ color }}
       >
         {text}
@@ -410,10 +412,12 @@ function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
         </Text>
       )}
       {log.reason && (
-        <Text className="mt-1 text-[10px] text-negative">{log.reason}</Text>
+        <Text className="mt-1 text-[10px] text-negative-text">
+          {log.reason}
+        </Text>
       )}
       {log.errorMessage && (
-        <Text className="mt-1 text-[10px] text-negative" numberOfLines={2}>
+        <Text className="mt-1 text-[10px] text-negative-text" numberOfLines={2}>
           {log.errorMessage}
         </Text>
       )}
@@ -427,10 +431,11 @@ function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
               </Text>
               <Pressable
                 onPress={() => copyMaskedToClipboard(log.body ?? "", "Snippet")}
+                accessibilityRole="button"
                 className="flex-row items-center gap-1 rounded-md bg-background px-2 py-1"
               >
-                <Icon as={Copy} className="size-3 text-primary" />
-                <Text className="text-[10px] font-medium text-primary">
+                <Icon as={Copy} className="size-3 text-primary-text" />
+                <Text className="text-[10px] font-medium text-primary-text">
                   Copy
                 </Text>
               </Pressable>

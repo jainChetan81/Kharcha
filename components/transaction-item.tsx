@@ -54,7 +54,7 @@ const TAG_VARIANTS = {
 // adding a future flavor (e.g. a new investment kind) is a single entry.
 const AMOUNT_FLAVOR = {
   income: { color: "text-positive", sign: "+" },
-  expense: { color: "text-negative", sign: "-" },
+  expense: { color: "text-negative-text", sign: "-" },
   transfer: { color: "text-muted-foreground", sign: "" },
   "investment-inflow": { color: "text-positive", sign: "+" },
   "investment-outflow": { color: "text-muted-foreground", sign: "-" },
@@ -219,6 +219,13 @@ export const TransactionItem = memo(function TransactionItem({
       onPress={() => onPress?.(item.id)}
       className="flex-row items-center rounded-2xl border border-border bg-card p-4"
       disabled={!onPress}
+      accessibilityRole="button"
+      accessibilityActions={
+        onSwipeDelete ? [{ name: "delete", label: "Delete" }] : undefined
+      }
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName === "delete") onSwipeDelete?.(item);
+      }}
     >
       <View className="size-10 items-center justify-center rounded-xl bg-muted">
         <Text className="text-sm font-semibold text-muted-foreground">

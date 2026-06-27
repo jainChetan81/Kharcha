@@ -118,6 +118,8 @@ export default function SubscriptionsScreen() {
             onLongPress={() => {}}
             hitSlop={12}
             className="mr-3"
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${sub.name}`}
           >
             <Icon as={Pencil} className="size-5 text-muted-foreground" />
           </Pressable>
@@ -129,6 +131,7 @@ export default function SubscriptionsScreen() {
             }}
             trackColor={{ false: COLORS.BAR_BG, true: COLORS.PRIMARY }}
             thumbColor={COLORS.FOREGROUND}
+            accessibilityLabel={`${sub.name} active`}
           />
         </View>
       </Pressable>
@@ -141,8 +144,10 @@ export default function SubscriptionsScreen() {
         <Pressable
           onPress={() => router.push(`${SCREENS.ADD}?mode=subscription`)}
           className="rounded-xl border border-border bg-card px-3 py-2"
+          accessibilityRole="button"
+          accessibilityLabel="Add subscription"
         >
-          <Icon as={Plus} className="size-4 text-primary" />
+          <Icon as={Plus} className="size-4 text-primary-text" />
         </Pressable>
       </ScreenHeader>
 
@@ -151,7 +156,7 @@ export default function SubscriptionsScreen() {
           <Pressable
             onPress={() => router.push(`${SCREENS.ADD}?mode=subscription`)}
           >
-            <Text className="text-sm font-medium text-primary">
+            <Text className="text-sm font-medium text-primary-text">
               Add your first subscription
             </Text>
           </Pressable>
@@ -299,7 +304,7 @@ function CandidateSubCard({
       <View className="flex-row items-center justify-between">
         <View className="flex-1">
           <View className="flex-row items-center gap-2">
-            <Icon as={Sparkles} className="size-4 text-primary" />
+            <Icon as={Sparkles} className="size-4 text-primary-text" />
             <Text className="text-sm font-semibold text-foreground">
               {candidate.merchant}
             </Text>
@@ -308,7 +313,7 @@ function CandidateSubCard({
             {candidate.hits} charges across {candidate.months} months · day{" "}
             {candidate.suggested_day}
           </Text>
-          <Text className="mt-0.5 text-xs text-primary">
+          <Text className="mt-0.5 text-xs text-primary-text">
             Add as subscription
           </Text>
         </View>

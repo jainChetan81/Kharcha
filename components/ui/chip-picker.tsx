@@ -4,6 +4,7 @@ import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 
 const CHIP_SCROLL_STYLE = { gap: 8, paddingRight: 24 } as const;
+const CHIP_HIT_SLOP = { top: 4, bottom: 4 } as const;
 
 function hapticSelect() {
   Haptics.selectionAsync();
@@ -37,8 +38,11 @@ export function ChipPicker({
               hapticSelect();
               onSelect(null);
             }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: selectedId === null }}
+            hitSlop={CHIP_HIT_SLOP}
             className={cn(
-              "rounded-full px-4 py-2.5",
+              "rounded-full px-4 py-3",
               selectedId === null ? "bg-primary" : "bg-muted",
             )}
           >
@@ -63,8 +67,11 @@ export function ChipPicker({
                 hapticSelect();
                 onSelect(selected ? null : item.id);
               }}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              hitSlop={CHIP_HIT_SLOP}
               className={cn(
-                "rounded-full px-4 py-2.5",
+                "rounded-full px-4 py-3",
                 selected ? "bg-primary" : "border border-border bg-card",
               )}
             >
@@ -84,9 +91,12 @@ export function ChipPicker({
         {onAddNew && (
           <Pressable
             onPress={onAddNew}
-            className="rounded-full border border-dashed border-border bg-card px-4 py-2.5"
+            accessibilityRole="button"
+            accessibilityLabel={`Add ${addLabel ?? "new"}`}
+            hitSlop={CHIP_HIT_SLOP}
+            className="rounded-full border border-dashed border-border bg-card px-4 py-3"
           >
-            <Text className="text-sm font-medium text-primary">
+            <Text className="text-sm font-medium text-primary-text">
               + {addLabel ?? "New"}
             </Text>
           </Pressable>
@@ -141,8 +151,11 @@ export function MultiChipPicker({
                 hapticSelect();
                 toggle(item.id);
               }}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              hitSlop={CHIP_HIT_SLOP}
               className={cn(
-                "rounded-full px-4 py-2.5",
+                "rounded-full px-4 py-3",
                 selected ? "bg-primary" : "border border-border bg-card",
               )}
             >
@@ -162,9 +175,14 @@ export function MultiChipPicker({
         {onAddNew && (
           <Pressable
             onPress={onAddNew}
-            className="rounded-full border border-dashed border-border bg-card px-4 py-2.5"
+            accessibilityRole="button"
+            accessibilityLabel="Add new tag"
+            hitSlop={CHIP_HIT_SLOP}
+            className="rounded-full border border-dashed border-border bg-card px-4 py-3"
           >
-            <Text className="text-sm font-medium text-primary">+ New tag</Text>
+            <Text className="text-sm font-medium text-primary-text">
+              + New tag
+            </Text>
           </Pressable>
         )}
       </ScrollView>

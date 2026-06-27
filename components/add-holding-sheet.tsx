@@ -66,6 +66,7 @@ export default function AddHoldingSheet({
         Add Holding
       </Text>
       <Input
+        accessibilityLabel="Holding name"
         placeholder="e.g. Nippon Small Cap, NIFTYBEES"
         value={name}
         onChangeText={setName}
@@ -81,6 +82,8 @@ export default function AddHoldingSheet({
           return (
             <Pressable
               key={opt}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
               onPress={() => setInstrumentType(opt)}
               className={cn(
                 "rounded-full px-4 py-2",

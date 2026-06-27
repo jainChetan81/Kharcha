@@ -125,6 +125,7 @@ export default function HoldingDetailScreen() {
             <Pressable
               key={tx.id}
               onPress={() => router.push(editScreen(tx.id))}
+              accessibilityRole="button"
               className="mx-5 mb-2 flex-row items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
             >
               <View className="flex-1 pr-3">
@@ -163,7 +164,7 @@ export default function HoldingDetailScreen() {
               )
             }
           >
-            <Text className="text-sm font-medium text-negative">
+            <Text className="text-sm font-medium text-negative-text">
               Delete holding
             </Text>
           </Button>

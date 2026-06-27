@@ -40,7 +40,7 @@ export function ProjectedSpendingCard({
           {fmt(Math.round(projectedLow))} – {fmt(Math.round(projectedHigh))}
         </Text>
         {overBudget && (
-          <Text className="text-[10px] font-medium uppercase tracking-wider text-negative">
+          <Text className="text-[10px] font-medium uppercase tracking-wider text-negative-text">
             over budget
           </Text>
         )}
