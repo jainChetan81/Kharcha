@@ -35,18 +35,30 @@ const PROMPT = `Extract a financial transaction from an Indian bank SMS, push no
 - category: pick the BEST match from the provided Categories list based on the merchant name and transaction context. Use "Other" only when no category fits.
 - confidence: "high" if amount/type/date/(merchant or source) all unambiguous. "medium" if 1-2 inferred. "low" if vague.`;
 
+// Prompt-injection scrub: an instruction verb and target within a short span of
+// each other (either order). We remove only the matched phrase — never a whole
+// line — so a legitimate SMS that merely contains words like "system" or
+// "previous" keeps its transaction data. User text is also fenced + labelled as
+// data downstream, so this is defense-in-depth, not the primary safeguard.
+const INJECTION_VERBS = "ignore|disregard|forget|override|bypass";
+const INJECTION_TARGETS = "above|previous|prior|system|instruction|prompt";
+const INJECTION_PATTERNS = [
+  new RegExp(
+    `\\b(?:${INJECTION_VERBS})\\b[^\\n]{0,40}\\b(?:${INJECTION_TARGETS})\\b`,
+    "gi",
+  ),
+  new RegExp(
+    `\\b(?:${INJECTION_TARGETS})\\b[^\\n]{0,40}\\b(?:${INJECTION_VERBS})\\b`,
+    "gi",
+  ),
+];
+
 function sanitizeForPrompt(text: string): string {
-  return (
-    text
-      .replace(/\n{3,}/g, "\n\n")
-      // Drop any line pairing an injection verb with an instruction target, in
-      // EITHER order (the user text is also fenced + labelled as data downstream).
-      .replace(
-        /^(?=.*\b(?:ignore|disregard|forget|override|bypass)\b)(?=.*\b(?:above|previous|prior|system|instruction|prompt)\b).*$/gim,
-        "",
-      )
-      .trim()
-  );
+  let out = text.replace(/\n{3,}/g, "\n\n");
+  for (const pattern of INJECTION_PATTERNS) {
+    out = out.replace(pattern, " ");
+  }
+  return out.trim();
 }
 
 function buildResponseSchema(categoryNames: string[]) {
