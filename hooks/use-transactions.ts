@@ -424,7 +424,6 @@ export function useClearAllTransactions() {
   return useMutation({
     mutationFn: async () => {
       await clearAllTransactions();
-      await deleteConfig(CONFIG_KEYS.BACKEND_LAST_SYNCED_AT);
       await deleteConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT);
     },
     onSuccess: () => invalidate(),

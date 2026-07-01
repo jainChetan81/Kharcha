@@ -1,6 +1,6 @@
 # gmail sync
 
-automatic expense tracking by reading bank transaction emails from gmail + backend email forwarding.
+automatic expense tracking by reading bank transaction emails directly from gmail, parsed on-device.
 
 supports 12 banks: **axis, hdfc, icici, sbi, kotak, indusind, standard chartered, idfc, citi, hsbc, fintech cards**. gemini AI fallback for unrecognized email formats.
 
@@ -33,20 +33,11 @@ lib/gemini/          gemini 1.5 flash AI fallback for unrecognized formats
 lib/env.ts           validates EXPO_PUBLIC_GOOGLE_* env vars (alert on missing)
 lib/db/config.ts     stores gmail_connected, gmail_last_synced_at, gmail_emails_fetched
 lib/db/banks.ts      bank + bank_emails CRUD
+
+app/settings/banks.tsx    manage bank parsers + alert email addresses
 ```
 
-### backend sync (device sync)
-
-```
-kharcha-backend/
-  src/               bun + hono API
-  docker-compose.yml postgres + app containers
-
-app/settings/sync.tsx     register device, get forwarding email, sync
-app/settings/banks.tsx    manage bank parsers
-```
-
-the backend receives forwarded bank alert emails via postmark inbound webhooks, parses them, and stores transactions in postgres. the mobile app syncs from the backend via HTTP.
+gmail sync runs entirely on-device — there is no backend. all parsing (regex + gemini) happens on the phone.
 
 ---
 
@@ -163,34 +154,6 @@ when regex parsers don't match, the email content is sent to gemini 1.5 flash fo
 
 ---
 
-## backend sync (device sync)
-
-### architecture
-
-```
-bank sends alert email -> user forwards to sync+{token}@mail.thechetanjain.com
--> postmark inbound webhook -> kharcha-backend parses + stores in postgres
--> mobile app: GET /sync (x-device-id header, last_synced_at query param)
--> new transactions returned -> inserted locally with source_type='synced'
-```
-
-### backend endpoints
-
-| method | path | purpose |
-|---|---|---|
-| POST | /register | register device, get unique forwarding email |
-| GET | /sync | fetch new transactions since last sync |
-| POST | /webhook/email/:token | postmark inbound email handler |
-| GET | /feature-flags | gmail sync visibility per user |
-| GET | / | health check |
-
-### mobile screens
-
-- **settings/sync.tsx** — register device, copy forwarding email, manual sync trigger, sync from date picker
-- **settings/banks.tsx** — manage registered banks and alert email addresses
-
----
-
 ## token management
 
 | | iOS | Android |
@@ -204,17 +167,8 @@ bank sends alert email -> user forwards to sync+{token}@mail.thechetanjain.com
 
 - **profile.tsx** — connect/disconnect + last synced + sync now + app lock
 - **gmail-sync.tsx** — full sync screen with stats, date picker, verify, sync, results sheet
-- **settings/sync.tsx** — device sync registration + forwarding email + manual sync
 - **settings/banks.tsx** — manage bank parsers and alert emails
 - **transaction-item.tsx** — "GMAIL" badge (blue) on synced transactions
-
----
-
-## feature flags
-
-gmail sync visibility is controlled by the backend `/feature-flags` endpoint. the profile screen checks if the `gmail_sync_enabled` flag is `true` before showing sync options.
-
-the endpoint requires `x-device-id` header authentication.
 
 ---
 
@@ -236,5 +190,4 @@ the endpoint requires `x-device-id` header authentication.
 - verify bank sender emails match parsers in `lib/gmail/parsers/`
 
 **gemini AI returns bad data:**
-- check network logs (about screen -> tap version 5x)
 - gemini responses are validated — bad extractions are counted as "failed" in sync results

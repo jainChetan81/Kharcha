@@ -1,6 +1,5 @@
 import "react-native-gesture-handler";
 import "../global.css";
-import { useReactQueryDevTools } from "@dev-plugins/react-query";
 import {
   Geist_400Regular,
   Geist_500Medium,
@@ -19,7 +18,6 @@ import { StatusBar } from "expo-status-bar";
 import { Suspense, useEffect, useState } from "react";
 import { ActivityIndicator, AppState, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { startNetworkLogging } from "react-native-network-logger";
 import Toast, { type ToastConfig } from "react-native-toast-message";
 import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { LockedScreen } from "@/components/locked-screen";
@@ -27,7 +25,6 @@ import { MonthlyWrapGate } from "@/components/monthly-wrap-gate";
 import { Text } from "@/components/ui/text";
 import { useAppLock } from "@/hooks/use-app-lock";
 import { readAutoRefreshPrefs } from "@/hooks/use-auto-refresh-prefs";
-import { runSmsListenerDrain } from "@/hooks/use-sms-listener";
 import { maybeAutoBackup } from "@/lib/cloud-backup";
 import {
   COLORS,
@@ -40,8 +37,7 @@ import {
 import { initDB } from "@/lib/db";
 import { getConfig } from "@/lib/db/config";
 import { processSubscriptions } from "@/lib/db/subscriptions";
-import { getOrCreateDeviceId, registerDevice } from "@/lib/device";
-import { ERROR_TYPE, logFirebaseError, logScreenView } from "@/lib/firebase";
+import { logScreenView } from "@/lib/firebase";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { isIOS } from "@/lib/utils";
 import { syncWidgetData } from "@/lib/widget";
@@ -56,30 +52,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-async function autoRegisterDevice() {
-  const existing = await getConfig(CONFIG_KEYS.BACKEND_FORWARDING_EMAIL);
-  if (existing) {
-    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.FEATURE_FLAGS] });
-    return;
-  }
-
-  const deviceId = await getOrCreateDeviceId();
-  const userName = await getConfig(CONFIG_KEYS.USER_NAME);
-
-  try {
-    await registerDevice(
-      deviceId,
-      userName && userName !== "User" ? userName : undefined,
-    );
-    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.FEATURE_FLAGS] });
-  } catch (err) {
-    logFirebaseError(err, {
-      error_type: ERROR_TYPE.API,
-      operation: "auto_register_device",
-    });
-  }
-}
 
 const toastConfig: ToastConfig = {
   success: ({ text1, text2, props }) => (
@@ -147,12 +119,6 @@ function ShareIntentListener() {
 }
 
 export default function RootLayout() {
-  if (__DEV__) {
-    startNetworkLogging();
-    // biome-ignore lint/correctness/useHookAtTopLevel: __DEV__ is a compile-time constant, hook order is stable
-    useReactQueryDevTools(queryClient);
-  }
-
   useQuickActionRouting();
 
   const [fontsLoaded] = useFonts({
@@ -184,8 +150,6 @@ export default function RootLayout() {
         });
         setDbReady(true);
         syncWidgetData();
-        autoRegisterDevice();
-        void runSmsListenerDrain(queryClient);
       })
       .catch((err) => {
         showErrorToast("Database Error", err);
@@ -203,7 +167,6 @@ export default function RootLayout() {
       if (state === "active" && dbReady) {
         syncWidgetData();
         void maybeAutoBackup();
-        void runSmsListenerDrain(queryClient);
       }
     });
     return () => sub.remove();

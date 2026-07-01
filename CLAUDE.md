@@ -4,7 +4,7 @@ personal expense tracking app for ios + android (react native / expo).
 
 ## stack
 
-- expo + expo-router (file-based routing). prebuild/CNG workflow — `ios/`/`android/` are generated & gitignored; edit `app.json`, `plugins/`, or `modules/`, never the native dirs directly
+- expo + expo-router (file-based routing). prebuild/CNG workflow — `ios/`/`android/` are generated & gitignored; edit `app.json` or `plugins/`, never the native dirs directly
 - nativewind v4 + react-native-reusables (tailwind-style ui)
 - tanstack query + tanstack form
 - drizzle-orm + expo-sqlite (local storage)
@@ -12,7 +12,6 @@ personal expense tracking app for ios + android (react native / expo).
 - gemini 2.5 flash — on-device parsing of sms / email / notifications into transactions
 - firebase (analytics, crashlytics, perf) + google sign-in + cloud backup (google drive / icloud)
 - zod (validation), fuse.js (fuzzy merchant match), react-native-gifted-charts (insights)
-- custom expo native module: modules/sms-notification-listener (android)
 - eas (build + ota updates)
 - biome (lint + format)
 - lefthook (git hooks)
@@ -43,10 +42,10 @@ personal expense tracking app for ios + android (react native / expo).
 - `hooks/` — tanstack query hooks wrapping db functions
 - `lib/db/` — drizzle-orm schema, connection, typed modules
 - `lib/gmail/` — gmail oauth + bank email parsers
-- `lib/parsers/` — per-bank sms parsers; `lib/gemini/` — on-device gemini client
+- `lib/parsers/` — per-bank sms regex parsers (local fast-path for the AI-paste sheet); `lib/gemini/` — on-device gemini client
 - `lib/firebase/` — analytics/crashlytics/logging; `lib/cloud-backup/` — gdrive + icloud; `lib/export/` — csv/data export
 - `lib/` — shared utilities (constants, format, toast, utils)
-- `modules/` — custom expo native modules; `widgets/` — ios home-screen widget (swift)
+- `widgets/` — ios home-screen widget (swift)
 - `docs/` — architecture notes (ARCHITECTURE, DRIZZLE, GMAIL_SYNC, RELEASE, CI, ANDROID_DEBUG)
 
 ## environment

@@ -11,7 +11,6 @@ export const FIREBASE_EVENTS = {
   GMAIL_SYNC_STARTED: "gmail_sync_started",
   GMAIL_SYNC_COMPLETED: "gmail_sync_completed",
   GMAIL_SYNC_FAILED: "gmail_sync_failed",
-  DEVICE_SYNC_COMPLETED: "device_sync_completed",
   EXPORT_TRIGGERED: "export_triggered",
   IMPORT_TRIGGERED: "import_triggered",
   CLOUD_BACKUP_TOGGLED: "cloud_backup_toggled",
@@ -19,7 +18,6 @@ export const FIREBASE_EVENTS = {
   CLOUD_BACKUP_RESTORED: "cloud_backup_restored",
   BUDGET_SET: "budget_set",
   SYNC_PREF_TOGGLED: "sync_pref_toggled",
-  SMS_LISTENER_GRANT_TAPPED: "sms_listener_grant_tapped",
   INSIGHT_CARD_TAPPED: "insight_card_tapped",
   SPENDING_LENS_CHANGED: "spending_lens_changed",
   SPENDING_VIEW_FULL_BREAKDOWN: "spending_view_full_breakdown",
@@ -55,7 +53,6 @@ export type KharchaEvent =
 export const ERROR_TYPE = {
   DB: "DB_ERROR",
   API: "API_ERROR",
-  SMS_PARSE: "SMS_PARSE_FAILED",
   SYNC: "SYNC_ERROR",
   UI: "UI_ERROR",
 } as const;

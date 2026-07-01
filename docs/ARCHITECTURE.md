@@ -66,9 +66,8 @@ hooks/
   use-debounce.ts        generic useDebounce hook (used by history search)
   use-refresh.ts         pull-to-refresh (invalidates all queries)
   use-stats.ts           data stats for about screen
-  use-sync-state.ts      gmail + device sync state (last synced, emails fetched, etc.)
+  use-sync-state.ts      gmail sync state (last synced, emails fetched, etc.)
   use-app-lock.ts        biometric authentication state + lock/unlock
-  use-feature-flags.ts   backend feature flags (gmail sync visibility per user)
 ```
 
 ---
@@ -161,25 +160,11 @@ gmail API message -> bank-specific regex parser -> extract (amount, date, mercha
 
 ---
 
-## backend (kharcha-backend)
-
-bun + hono API with postgres for device-based email sync:
-
-- register device -> get unique forwarding email
-- postmark inbound webhooks parse bank alert emails
-- mobile app syncs via GET /sync with device_id header
-- feature flags control gmail sync visibility per user
-
-see [GMAIL_SYNC.md](GMAIL_SYNC.md) for backend endpoints and sync flow.
-
----
-
 ## haptic feedback
 
 `expo-haptics` provides tactile feedback on key actions:
 
 - **add transaction**: success notification on insert
-- **device sync**: success notification when new transactions synced (skipped if none added)
 - **swipe to delete**: impact feedback on threshold
 
 ---

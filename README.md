@@ -38,7 +38,7 @@ this mirrors github actions ci locally. see [docs/CI.md](docs/CI.md) for detaile
 - **[CI & Local Development](docs/CI.md)** — ci/cd workflows, local ci, eas builds, troubleshooting, secrets
 - **[Architecture](docs/ARCHITECTURE.md)** — data flow, query layer, auth, styling
 - **[Drizzle & Migrations](docs/DRIZZLE.md)** — schema management, dual migration strategy, version tracking
-- **[Gmail Sync](docs/GMAIL_SYNC.md)** — oauth setup, platform-specific auth, email parsing, backend sync
+- **[Gmail Sync](docs/GMAIL_SYNC.md)** — oauth setup, platform-specific auth, on-device email parsing
 - **[Android Debugging](docs/ANDROID_DEBUG.md)** — usb debugging, scrcpy, sha-1 setup, apk builds
 - **[Release](docs/RELEASE.md)** — release process, local builds, OTA updates
 
@@ -61,11 +61,9 @@ app/                          screens (expo-router file-based)
   edit-subscription/[id].tsx  edit subscription
   gmail-sync.tsx              gmail oauth + sync screen with verify + results
   export.tsx                  json backup export/import
-  settings/sync.tsx           device sync with backend (register, forwarding email, sync)
   settings/banks.tsx          manage bank parsers
   settings/_layout.tsx        settings stack layout
-  about.tsx                   app/device info (hidden network logger easter egg)
-  network-logs.tsx            debug network requests (dev only)
+  about.tsx                   app/device info
 
 components/
   transaction-form.tsx        shared add/edit form (lockType prop for subscriptions)
@@ -94,10 +92,9 @@ hooks/                        all data access — screens never call useQuery di
   use-currency.ts             { currency, format } helper
   use-refresh.ts              pull-to-refresh (invalidates all queries)
   use-stats.ts                data stats for about screen
-  use-sync-state.ts           gmail + device sync state
+  use-sync-state.ts           gmail sync state
   use-debounce.ts             generic debounce (used by history search)
   use-app-lock.ts             biometric authentication state
-  use-feature-flags.ts        backend feature flags (gmail sync visibility)
 
 lib/db/
   schema.ts                   drizzle tables + inferred types (InferSelectModel)
@@ -128,10 +125,6 @@ lib/
   utils.ts                    cn(), isIOS
   version.ts                  compareVersions, isUpgrade, isMajorUpgrade
   widget.ts                   iOS home screen widget data sync
-
-kharcha-backend/              bun + hono backend for email-based sync
-  src/                        api routes, bank parsers, drizzle + postgres
-  docker-compose.yml          postgres + app containers
 ```
 
 ---
@@ -186,8 +179,6 @@ sqlite <- drizzle-orm <- lib/db/*.ts <- hooks/use-*.ts <- screens
 **multi-currency** — INR/USD/GBP/EUR and more. stored in config table. `useCurrency()` hook provides `format()` everywhere.
 
 **gmail sync** — on-device oauth -> gmail API -> parse bank emails -> dedup -> insert. supports 12 banks: axis, hdfc, icici, sbi, kotak, indusind, standard chartered, idfc, citi, hsbc, fintech cards. gemini AI fallback for unrecognized formats. see [docs/GMAIL_SYNC.md](docs/GMAIL_SYNC.md).
-
-**device sync** — backend (bun + hono + postgres) with postmark inbound email webhooks. forward bank alerts to a unique email address, backend parses and stores, mobile app syncs via HTTP.
 
 **duplicate detection** — warns before saving if a transaction with the same date + amount + note already exists.
 

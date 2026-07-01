@@ -1,7 +1,6 @@
 import { router } from "expo-router";
 import {
   BarChart3,
-  BellRing,
   ChevronRight,
   Database,
   Download,
@@ -11,8 +10,6 @@ import {
   Layers,
   Lock,
   Mail,
-  MessageSquare,
-  RefreshCw,
   Repeat,
   Trash2,
   TrendingUp,
@@ -42,12 +39,6 @@ import { useAppLockSetting } from "@/hooks/use-app-lock";
 import { isAppUpdateSupported, useAppUpdate } from "@/hooks/use-app-update";
 import { useConfig } from "@/hooks/use-config";
 import {
-  useDeviceSyncEnabled,
-  useSmsListenerEnabled,
-  useSmsSyncEnabled,
-} from "@/hooks/use-feature-flags";
-import { useUpdateDeviceName } from "@/hooks/use-sync";
-import {
   useClearTransactionsWithConfirm,
   useSeedSampleData,
 } from "@/hooks/use-transactions";
@@ -65,16 +56,10 @@ export default function ProfileScreen() {
     useAppLockSetting();
   const { checking: checkingUpdate, checkForUpdate } = useAppUpdate();
 
-  const deviceSyncEnabled = useDeviceSyncEnabled();
-  const smsSyncEnabled = useSmsSyncEnabled();
-  const smsListenerEnabled = useSmsListenerEnabled();
-  const updateDeviceNameMutation = useUpdateDeviceName();
-
   const initials = getInitials(userName);
 
   async function handleSaveName(name: string) {
     await updateUserName(name);
-    updateDeviceNameMutation.mutate(name);
     setShowEditName(false);
     showSuccessToast("Name updated");
   }
@@ -178,30 +163,6 @@ export default function ProfileScreen() {
           description="Parse bank emails to auto-import transactions."
           onPress={() => router.push(SCREENS.GMAIL_SYNC)}
         />
-        {smsSyncEnabled && (
-          <NavRow
-            icon={MessageSquare}
-            title="SMS Sync"
-            description="Share bank SMS into Kharcha to turn them into transactions."
-            onPress={() => router.push(SCREENS.SMS_SYNC)}
-          />
-        )}
-        {smsListenerEnabled && (
-          <NavRow
-            icon={BellRing}
-            title="SMS Listener"
-            description="Auto-capture bank SMS as they arrive — no sharing needed."
-            onPress={() => router.push(SCREENS.SMS_LISTENER)}
-          />
-        )}
-        {deviceSyncEnabled && (
-          <NavRow
-            icon={RefreshCw}
-            title="Device Sync"
-            description="Mirror your data across your other devices."
-            onPress={() => router.push(SCREENS.DEVICE_SYNC)}
-          />
-        )}
 
         <Text className="mb-2 mt-6 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Export

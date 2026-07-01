@@ -10,17 +10,12 @@ export const SCREENS = {
   EDIT: "/edit",
   EDIT_SUBSCRIPTION: "/edit-subscription",
   GMAIL_SYNC: "/gmail-sync",
-  DEVICE_SYNC: "/settings/sync",
-  SMS_SYNC: "/sms-sync",
-  SMS_LISTENER: "/sms-listener",
-  SMS_FORWARD: "/sms-forward",
   BANKS: "/settings/banks",
   TAGS: "/config/tags",
   CONFIG_EXPENSE_CATEGORIES: "/config/expense-categories",
   CONFIG_INCOME_CATEGORIES: "/config/income-categories",
   CONFIG_SOURCES: "/config/sources",
   CONFIG_CURRENCY: "/config/currency",
-  NETWORK_LOGS: "/network-logs",
   EXPORT: "/export",
   REIMBURSEMENTS: "/reimbursements",
   PORTFOLIO: "/portfolio",
@@ -293,25 +288,17 @@ export const CONFIG_KEYS = {
   SCHEMA_VERSION: "schema_version",
   GMAIL_CONNECTED: "gmail_connected",
   GMAIL_LAST_SYNCED_AT: "gmail_last_synced_at",
-  DEVICE_ID: "device_id",
-  BACKEND_FORWARDING_EMAIL: "backend_forwarding_email",
-  BACKEND_LAST_SYNCED_AT: "backend_last_synced_at",
   APP_LOCK_ENABLED: "app_lock_enabled",
   AI_HINT_DISMISSED: "ai_hint_dismissed",
   CLOUD_BACKUP_ENABLED: "cloud_backup_enabled",
   CLOUD_BACKUP_LAST_AT: "cloud_backup_last_at",
   CLOUD_BACKUP_LAST_FILE_ID: "cloud_backup_last_file_id",
   GMAIL_SYNC_USER_ENABLED: "gmail_sync_user_enabled",
-  DEVICE_SYNC_USER_ENABLED: "device_sync_user_enabled",
-  SMS_SYNC_USER_ENABLED: "sms_sync_user_enabled",
-  SMS_LISTENER_USER_ENABLED: "sms_listener_user_enabled",
   LAST_WRAP_SHOWN_MONTH: "last_wrap_shown_month",
 } as const;
 
 export const SUBSCRIPTION_NOTE = "Auto-created from subscription";
 export const GMAIL_SYNC_NOTE = "synced from gmail";
-export const SMS_SYNC_NOTE = "synced from sms";
-export const SMS_LISTENER_NOTE = "synced from sms notification";
 
 export const OTHER_CATEGORY_LABEL = "Other";
 
@@ -383,7 +370,6 @@ export const QUERY_KEYS = {
   CONFIG: "config",
   BUDGETS: "budgets",
   SUBSCRIPTIONS: "subscriptions",
-  FEATURE_FLAGS: "feature-flags",
   BANKS: "banks",
   REIMBURSEMENT_SUMMARY: "reimbursement-summary",
   TAGS: "tags",
@@ -398,9 +384,7 @@ export const QUERY_KEYS = {
   HOLDING_TRANSACTIONS: "holding-transactions",
   PORTFOLIO_SUMMARY: "portfolio-summary",
   CLOUD_BACKUP: "cloud-backup",
-  DEVICE_SYNC_CONFIG: "device-sync",
   USER_SYNC_PREFS: "user-sync-prefs",
-  SMS_LISTENER_STATUS: "sms-listener-status",
   BIGGEST_TRANSACTION: "biggest-transaction",
   TRANSACTION_COUNT: "transaction-count",
   TRACKING_STREAK: "tracking-streak",
@@ -410,10 +394,6 @@ export const QUERY_KEYS = {
 export const BOOL_FLAG = {
   ON: "1",
   OFF: "0",
-} as const;
-
-export const API_ERRORS = {
-  DEVICE_NOT_REGISTERED: "Device not registered",
 } as const;
 
 // Layout
