@@ -88,7 +88,6 @@ Repo convention: ask the operator to run pnpm commands and report output rather 
 
 **Out of scope** (do NOT touch):
 - Any parser regex or parsing behavior — these are **characterization tests**: they lock in current behavior, bugs included. If a test reveals a bug, record it in the test as `// BUG(characterized): ...` and report it; do not fix it here.
-- `kharcha-backend/` — backend tests are a follow-up (see plan 009 maintenance notes).
 - Hooks, screens, components — no UI testing in this plan.
 
 ## Git workflow
@@ -192,4 +191,4 @@ Stop and report back (do not improvise) if:
 - Every future parser change must update its characterization tests — this is the point.
 - Plan 005 changes `lib/db/holdings.ts` sell-branch clamping; its test additions belong in `holdings-math.test.ts` created here.
 - Plan 009 (parser consolidation) will reorganize parser files; tests move with them and are the safety net.
-- Deferred: backend (`kharcha-backend`) tests via `bun:test`; integration tests against a real SQLite db (drizzle + better-sqlite3) for `processSubscriptions` — worth a follow-up plan if subscription bugs recur.
+- Deferred: integration tests against a real SQLite db (drizzle + better-sqlite3) for `processSubscriptions` — worth a follow-up plan if subscription bugs recur.

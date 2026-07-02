@@ -7,5 +7,16 @@
       "@/*": ["./*"]
     }
   },
-  "exclude": ["kharcha-backend"]
+  // A local "exclude" replaces expo/tsconfig.base's, so list the base entries
+  // too. Drop this whole property once the local kharcha-backend/ checkout is
+  // deleted from disk.
+  "exclude": [
+    "node_modules",
+    "babel.config.js",
+    "metro.config.js",
+    "jest.config.js",
+    "android",
+    "ios",
+    "kharcha-backend"
+  ]
 }

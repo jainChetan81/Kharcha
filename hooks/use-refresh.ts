@@ -33,33 +33,22 @@ export function useSyncRefresh() {
     inFlight.current = true;
     setRefreshing(true);
     try {
-      const tasks: Promise<void>[] = [];
-
       if (gmailConnected) {
-        tasks.push(
-          (async () => {
-            try {
-              const result = await syncGmailTransactions();
-              if (result.nobanks) {
-                showErrorToast(
-                  "No active banks",
-                  "Add a bank in settings to sync",
-                );
-              } else if (result.added > 0) {
-                const parts = [`${result.added} added`];
-                if (result.skipped > 0)
-                  parts.push(`${result.skipped} duplicates`);
-                if (result.failed > 0) parts.push(`${result.failed} failed`);
-                showSuccessToast("Gmail synced", parts.join(" · "));
-              }
-            } catch (err) {
-              showErrorToast("Gmail sync failed", err);
-            }
-          })(),
-        );
+        try {
+          const result = await syncGmailTransactions();
+          if (result.nobanks) {
+            showErrorToast("No active banks", "Add a bank in settings to sync");
+          } else if (result.added > 0) {
+            const parts = [`${result.added} added`];
+            if (result.skipped > 0) parts.push(`${result.skipped} duplicates`);
+            if (result.failed > 0) parts.push(`${result.failed} failed`);
+            showSuccessToast("Gmail synced", parts.join(" · "));
+          }
+        } catch (err) {
+          showErrorToast("Gmail sync failed", err);
+        }
       }
 
-      await Promise.all(tasks);
       await queryClient.invalidateQueries();
     } finally {
       inFlight.current = false;

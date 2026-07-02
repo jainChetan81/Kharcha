@@ -43,12 +43,12 @@ play-store-key.json
 
 # typescript
 *.tsbuildinfo
-modules/*/android/build/
-modules/*/android/.gradle/
 
 # generated native folders
 /ios
 /android
 **/*.aab
+
+# removed backend — drop these once the local checkout is deleted from disk
 kharcha-backend/
 /kharcha-backend

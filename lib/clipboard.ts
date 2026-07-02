@@ -1,7 +1,7 @@
 import * as Clipboard from "expo-clipboard";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
-export async function copyToClipboard(value: string, label: string) {
+async function copyToClipboard(value: string, label: string) {
   try {
     await Clipboard.setStringAsync(value);
     showSuccessToast(`${label} copied`);
@@ -14,7 +14,7 @@ export async function copyToClipboard(value: string, label: string) {
 // them to the system clipboard (other apps can read clipboard contents).
 // Covers: full/partial card numbers, account numbers, UPI IDs, phone
 // numbers, OTPs, and CVVs.
-export function maskSensitivePii(text: string): string {
+function maskSensitivePii(text: string): string {
   return (
     text
       // 13–19 digit card numbers with optional spaces/dashes

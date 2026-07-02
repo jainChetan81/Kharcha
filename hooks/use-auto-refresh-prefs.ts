@@ -24,19 +24,12 @@ export function useAutoRefreshPrefs() {
 export function useSetAutoRefreshPref() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      key,
-      enabled,
-    }: {
-      key: "gmail";
-      enabled: boolean;
-    }) => {
+    mutationFn: async (enabled: boolean) => {
       await updateConfig(
         CONFIG_KEYS.GMAIL_SYNC_USER_ENABLED,
         enabled ? BOOL_FLAG.ON : BOOL_FLAG.OFF,
       );
       logEvent(FIREBASE_EVENTS.SYNC_PREF_TOGGLED, {
-        key,
         enabled: enabled ? 1 : 0,
       });
     },
