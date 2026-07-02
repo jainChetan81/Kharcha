@@ -1854,32 +1854,6 @@ export async function getTotalMonthlyBudget(): Promise<number> {
   }
 }
 
-export async function syncedTransactionExists(
-  date: string,
-  amount: number,
-): Promise<boolean> {
-  try {
-    const rows = await db
-      .select({ id: transactions.id })
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.date, date),
-          eq(transactions.amount, amount),
-          eq(transactions.source_type, "synced"),
-        ),
-      )
-      .limit(1);
-    return rows.length > 0;
-  } catch (error) {
-    logFirebaseError(error, {
-      error_type: ERROR_TYPE.DB,
-      operation: "syncedTransactionExists",
-    });
-    throw error;
-  }
-}
-
 // Escape LIKE wildcards so merchants containing `%` or `_` (or `\`) don't
 // silently widen the match. Caller appends `%` for a prefix match.
 function escapeLikeWildcards(value: string): string {
