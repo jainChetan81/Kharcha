@@ -10,8 +10,7 @@ pre-commit:
 
 pre-push:
   commands:
-    # TODO: re-enable once typecheck + dead-code are green after the strip-down
-    # typecheck:
-    #   run: pnpm typecheck
+    typecheck:
+      run: pnpm typecheck
     react-doctor:
       run: pnpm react-doctor:diff

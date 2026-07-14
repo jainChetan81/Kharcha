@@ -15,7 +15,6 @@ import {
   gte,
   inArray,
   isNull,
-  like,
   lte,
   or,
   sql,
@@ -1811,7 +1810,7 @@ export async function searchMerchants(
   limit = 5,
 ): Promise<string[]> {
   try {
-    const term = `%${searchTerm}%`;
+    const term = `%${escapeLikeWildcards(searchTerm)}%`;
     const rows = await db
       .select({
         merchant: transactions.merchant,
@@ -1820,7 +1819,7 @@ export async function searchMerchants(
       .from(transactions)
       .where(
         and(
-          like(transactions.merchant, term),
+          sql`${transactions.merchant} LIKE ${term} ESCAPE '\\'`,
           sql`${transactions.merchant} IS NOT NULL`,
           sql`TRIM(${transactions.merchant}) != ''`,
         ),
@@ -1849,32 +1848,6 @@ export async function getTotalMonthlyBudget(): Promise<number> {
     logFirebaseError(error, {
       error_type: ERROR_TYPE.DB,
       operation: "getTotalMonthlyBudget",
-    });
-    throw error;
-  }
-}
-
-export async function syncedTransactionExists(
-  date: string,
-  amount: number,
-): Promise<boolean> {
-  try {
-    const rows = await db
-      .select({ id: transactions.id })
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.date, date),
-          eq(transactions.amount, amount),
-          eq(transactions.source_type, "synced"),
-        ),
-      )
-      .limit(1);
-    return rows.length > 0;
-  } catch (error) {
-    logFirebaseError(error, {
-      error_type: ERROR_TYPE.DB,
-      operation: "syncedTransactionExists",
     });
     throw error;
   }

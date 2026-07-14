@@ -24,7 +24,7 @@
 		"quality": "pnpm lint && pnpm typecheck",
 		"local-ci": "pnpm install --frozen-lockfile && pnpm quality && pnpm audit --audit-level=high || true && pnpm dead-code",
 		"doctor": "expo-doctor",
-		"react-doctor": "react-doctor . --offline",
+		"react-doctor:scan": "react-doctor . --offline",
 		"react-doctor:diff": "react-doctor . --diff main --fail-on error --offline",
 		"expo-dependency-check": "pnpm dlx expo install --check",
 		"dead-code": "knip --no-exit-code",
@@ -67,7 +67,6 @@
 		"expo-linear-gradient": "^55.0.11",
 		"expo-linking": "~55.0.9",
 		"expo-local-authentication": "~55.0.13",
-		"expo-modules-core": "^55.0.23",
 		"expo-quick-actions": "^6.0.1",
 		"expo-router": "~55.0.8",
 		"expo-secure-store": "~55.0.9",
@@ -110,6 +109,11 @@
 		"typescript": "~5.9.2"
 	},
 	"private": true,
+	"expo": {
+		"install": {
+			"exclude": ["react-native-reanimated", "react-native-worklets"]
+		}
+	},
 	"pnpm": {
 		"overrides": {
 			"@expo/log-box": "55.0.8"
