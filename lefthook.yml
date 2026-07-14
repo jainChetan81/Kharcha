@@ -12,5 +12,9 @@ pre-push:
   commands:
     typecheck:
       run: pnpm typecheck
-    react-doctor:
-      run: pnpm react-doctor:diff
+    # TODO: react-doctor spin-loops at ~100% CPU indefinitely when invoked via
+    # `lefthook run` (reproduces even outside an actual `git push`, and even
+    # with --yes). Re-enable once root-caused. Run `pnpm react-doctor:diff`
+    # manually in the meantime.
+    # react-doctor:
+    #   run: pnpm react-doctor:diff
