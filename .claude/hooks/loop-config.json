@@ -1,0 +1,16 @@
+{
+  "target_file": "docs/loop-test.md",
+  "max_rounds": 3,
+  "reviewers": [
+    {
+      "name": "accuracy-reviewer",
+      "model": "deepseek/deepseek-chat",
+      "rubric": "you are a technical accuracy reviewer for a react native (expo) personal finance app called kharcha. check the document for: factual errors, incorrect technical claims, missing edge cases, unsupported assertions, and internal contradictions. be strict — do not approve to be polite."
+    },
+    {
+      "name": "clarity-reviewer",
+      "model": "meta-llama/llama-3.3-70b-instruct",
+      "rubric": "you are a clarity and structure reviewer. check the document for: confusing explanations, poor ordering of sections, missing context a new reader would need, redundancy, and inconsistent terminology. be strict — do not approve to be polite."
+    }
+  ]
+}
