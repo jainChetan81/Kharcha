@@ -120,11 +120,6 @@
           {
             "type": "command",
             "command": "~/.claude/stop-hook-git-check.sh"
-          },
-          {
-            "type": "command",
-            "command": "python3 .claude/hooks/reviewer.py",
-            "timeout": 300
           }
         ]
       }
