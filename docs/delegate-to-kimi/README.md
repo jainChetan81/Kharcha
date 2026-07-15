@@ -7,20 +7,18 @@ verifies.
 
 ## where things live
 
-- **the skill itself:** `.claude/skills/delegate-to-kimi/SKILL.md` — this is
-  the file claude code actually reads and follows. it's committed here in
-  the repo, and also symlinked to `~/.claude/skills/delegate-to-kimi` so it's
-  available globally across every project on this machine, not just kharcha.
-  edit the repo copy; the symlink picks it up automatically.
+- **the skill itself is no longer canonical here.** the skill isn't
+  kharcha-specific, so as of 2026-07-15 the real file lives at
+  `~/Desktop/Claude/ai-setup/delegate-to-kimi/SKILL.md`. this repo's
+  `.claude/skills/delegate-to-kimi` is a symlink pointing there, and the
+  global `~/.claude/skills/delegate-to-kimi` symlink also points there —
+  edit the ai-setup copy, both symlinks pick it up automatically.
 - **this folder:** background on why the skill looks the way it does —
   useful if you're revising it later and want to know what's already been
   tried and rejected, so you don't re-litigate settled trade-offs by accident.
   - `DESIGN_HISTORY.md` — the full evolution across every review round
   - `kimi-review.md` — kimi's own review of the skill from the executor's
     seat, and claude's reply reconciling it
-  - `CURRENT_SKILL_SNAPSHOT.md` — a plain-text copy of the live skill file,
-    for browsing without opening the `.claude/` dotfolder (not canonical —
-    the real one is `.claude/skills/delegate-to-kimi/SKILL.md`)
 - **`memory/PROJECT_MEMORY.md`** (repo root) — a human-readable mirror of
   what claude has learned about this project across sessions, so it's
   visible here instead of locked inside claude's own private memory
