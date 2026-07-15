@@ -18,6 +18,12 @@ verifies.
   - `DESIGN_HISTORY.md` — the full evolution across every review round
   - `kimi-review.md` — kimi's own review of the skill from the executor's
     seat, and claude's reply reconciling it
+  - `CURRENT_SKILL_SNAPSHOT.md` — a plain-text copy of the live skill file,
+    for browsing without opening the `.claude/` dotfolder (not canonical —
+    the real one is `.claude/skills/delegate-to-kimi/SKILL.md`)
+- **`memory/PROJECT_MEMORY.md`** (repo root) — a human-readable mirror of
+  what claude has learned about this project across sessions, so it's
+  visible here instead of locked inside claude's own private memory
 
 ## how it's actually run
 
