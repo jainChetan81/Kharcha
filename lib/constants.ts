@@ -142,6 +142,7 @@ export const SOURCE_TYPE = {
   ALL: "all",
   MANUAL: "manual",
   SYNCED: "synced",
+  MINI_SYNCED: "mini_synced",
   RECURRING: "recurring",
   TRANSFER: "transfer",
 } as const;
@@ -295,6 +296,8 @@ export const CONFIG_KEYS = {
   CLOUD_BACKUP_LAST_FILE_ID: "cloud_backup_last_file_id",
   GMAIL_SYNC_USER_ENABLED: "gmail_sync_user_enabled",
   LAST_WRAP_SHOWN_MONTH: "last_wrap_shown_month",
+  MINI_SYNC_ENABLED: "mini_sync_enabled",
+  MINI_SYNC_LAST_ID: "mini_sync_last_id",
 } as const;
 
 export const SUBSCRIPTION_NOTE = "Auto-created from subscription";
@@ -349,6 +352,7 @@ export type GeminiErrorType = (typeof GEMINI_ERROR)[keyof typeof GEMINI_ERROR];
 export const PARSED_BY = {
   REGEX: "regex",
   GEMINI: "gemini",
+  OPENROUTER: "openrouter",
 } as const;
 
 export type ParsedByType = (typeof PARSED_BY)[keyof typeof PARSED_BY];

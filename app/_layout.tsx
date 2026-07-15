@@ -37,7 +37,9 @@ import {
 import { initDB } from "@/lib/db";
 import { getConfig } from "@/lib/db/config";
 import { processSubscriptions } from "@/lib/db/subscriptions";
+import { env } from "@/lib/env";
 import { logScreenView } from "@/lib/firebase";
+import { syncMiniTransactions } from "@/lib/mini-sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { isIOS } from "@/lib/utils";
 import { syncWidgetData } from "@/lib/widget";
@@ -160,13 +162,28 @@ export default function RootLayout() {
     if (ready) SplashScreen.hideAsync();
   }, [ready]);
 
-  // Refresh widget data when app returns to foreground (catches midnight resets)
-  // and opportunistically run an auto-backup if it's been >24h since the last.
+  // Refresh widget data when app returns to foreground (catches midnight resets),
+  // opportunistically run an auto-backup if it's been >24h since the last, and
+  // pull from the personal mini pipeline when enabled.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active" && dbReady) {
         syncWidgetData();
         void maybeAutoBackup();
+        void (async () => {
+          try {
+            const configured =
+              Boolean(env.MINI_API_URL) && Boolean(env.MINI_API_TOKEN);
+            const enabledFlag = await getConfig(CONFIG_KEYS.MINI_SYNC_ENABLED);
+            const enabled =
+              enabledFlag === "1" || (enabledFlag === null && configured);
+            if (!enabled) return;
+            await syncMiniTransactions();
+          } catch {
+            // Fail silently — foreground sync is best-effort; pull-to-refresh
+            // will surface any persistent error with a toast.
+          }
+        })();
       }
     });
     return () => sub.remove();

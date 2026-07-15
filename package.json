@@ -99,6 +99,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.9",
 		"@types/react": "~19.2.2",
+		"babel-plugin-inline-import": "^3.0.0",
 		"babel-plugin-react-compiler": "^1.0.0",
 		"drizzle-kit": "^0.31.10",
 		"expo-doctor": "1.18.15-canary-20260328-2049187",
@@ -111,7 +112,10 @@
 	"private": true,
 	"expo": {
 		"install": {
-			"exclude": ["react-native-reanimated", "react-native-worklets"]
+			"exclude": [
+				"react-native-reanimated",
+				"react-native-worklets"
+			]
 		}
 	},
 	"pnpm": {

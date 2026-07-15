@@ -11,6 +11,7 @@ import {
   OTHER_CATEGORY_LABEL,
   PAGE_SIZE,
   QUERY_KEYS,
+  SOURCE_TYPE,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import {
@@ -39,7 +40,9 @@ import {
 } from "@/lib/db";
 import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
 import { deleteConfig } from "@/lib/db/config";
+import { env } from "@/lib/env";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
+import { pushTransactionToMini } from "@/lib/mini-sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { syncWidgetData } from "@/lib/widget";
 
@@ -315,7 +318,13 @@ export function useTransactionsPaginated(filters: {
   type?: "income" | "expense" | "transfer" | "investment" | "all";
   categoryId?: number | null;
   sourceId?: number | null;
-  sourceType?: "manual" | "synced" | "recurring" | "transfer" | "all";
+  sourceType?:
+    | "manual"
+    | "synced"
+    | "mini_synced"
+    | "recurring"
+    | "transfer"
+    | "all";
   dateFrom?: string | null;
   dateTo?: string | null;
   amountMin?: number | null;
@@ -377,11 +386,42 @@ export function useInsertTransaction() {
   const invalidate = useInvalidateTransactions();
   return useMutation({
     mutationFn: insertTransaction,
-    onSuccess: (_data, variables) => {
+    onSuccess: async (_data, variables) => {
       logEvent(FIREBASE_EVENTS.TRANSACTION_ADDED, {
         source_type: variables.sourceType ?? "manual",
         transaction_type: variables.type,
       });
+
+      const isManualEntry =
+        (variables.sourceType ?? SOURCE_TYPE.MANUAL) === SOURCE_TYPE.MANUAL;
+      const isPushableType =
+        variables.type === TRANSACTION_TYPE.INCOME ||
+        variables.type === TRANSACTION_TYPE.EXPENSE;
+
+      if (
+        isManualEntry &&
+        isPushableType &&
+        env.MINI_API_URL &&
+        env.MINI_API_TOKEN &&
+        variables.merchant
+      ) {
+        try {
+          await pushTransactionToMini({
+            type: variables.type as "income" | "expense",
+            amount: variables.amount,
+            merchant: variables.merchant,
+            date: variables.date,
+            rawText: variables.note ?? variables.merchant,
+            senderId: "manual",
+          });
+          logEvent(FIREBASE_EVENTS.MINI_PUSH_SUCCEEDED);
+        } catch (_err) {
+          logEvent(FIREBASE_EVENTS.MINI_PUSH_FAILED);
+          // Best-effort push: the local insert already succeeded, so we don't
+          // surface this error to the user. The next pull cycle can reconcile.
+        }
+      }
+
       invalidate();
     },
     onError: (err) => {

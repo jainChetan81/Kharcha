@@ -43,6 +43,7 @@ const DIM_DANGER = "#7a2e2e";
 const TAG_VARIANTS = {
   muted: { bg: "bg-muted-foreground", text: "text-white" },
   gmail: { bg: "bg-blue-700", text: "text-white" },
+  mini: { bg: "bg-purple-700", text: "text-white" },
   primary: { bg: "bg-primary", text: "text-primary-foreground" },
   ai: { bg: "bg-indigo-600", text: "text-white" },
   warning: { bg: "bg-amber-600", text: "text-white" },
@@ -246,6 +247,9 @@ export const TransactionItem = memo(function TransactionItem({
           )}
           {item.source_type === SOURCE_TYPE.SYNCED && (
             <Tag label="GMAIL" variant="gmail" />
+          )}
+          {item.source_type === SOURCE_TYPE.MINI_SYNCED && (
+            <Tag label="MINI" variant="mini" />
           )}
           {item.parsed_by === PARSED_BY.GEMINI && (
             <Tag label="AI" variant="ai" />

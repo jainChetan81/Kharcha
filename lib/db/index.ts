@@ -142,6 +142,8 @@ export async function initDB(): Promise<void> {
       subscription_id INTEGER REFERENCES subscriptions(id),
       source_type TEXT NOT NULL DEFAULT 'manual',
       gmail_message_id TEXT,
+      mini_transaction_id INTEGER,
+      reference_number TEXT,
       reimbursement_status TEXT NOT NULL DEFAULT 'none',
       reimbursed_at TEXT,
       date TEXT NOT NULL,
@@ -149,6 +151,10 @@ export async function initDB(): Promise<void> {
       created_at TEXT DEFAULT (datetime('now'))
     )
   `);
+
+      await db.run(
+        sql`CREATE UNIQUE INDEX IF NOT EXISTS mini_transaction_id_idx ON transactions(mini_transaction_id)`,
+      );
 
       await db.run(sql`
     CREATE TABLE IF NOT EXISTS budgets (
@@ -339,6 +345,22 @@ export async function initDB(): Promise<void> {
       if (!hasColumn("tags", "emoji")) {
         await db.run(sql`ALTER TABLE tags ADD COLUMN emoji TEXT`);
       }
+
+      if (!hasColumn("transactions", "mini_transaction_id")) {
+        await db.run(
+          sql`ALTER TABLE transactions ADD COLUMN mini_transaction_id INTEGER`,
+        );
+      }
+
+      if (!hasColumn("transactions", "reference_number")) {
+        await db.run(
+          sql`ALTER TABLE transactions ADD COLUMN reference_number TEXT`,
+        );
+      }
+
+      await db.run(
+        sql`CREATE UNIQUE INDEX IF NOT EXISTS mini_transaction_id_idx ON transactions(mini_transaction_id)`,
+      );
 
       // Tag schedules used to be date-only (`YYYY-MM-DD`); now they're full
       // datetimes so the start/end window can be anchored to specific times
@@ -1383,6 +1405,8 @@ export async function insertTransaction(params: {
   units?: number | null;
   sourceType?: SourceType;
   parsedBy?: ParsedByType;
+  miniTransactionId?: number | null;
+  referenceNumber?: string | null;
   reimbursementStatus?: "none" | "pending" | "reimbursed";
   reimbursableAmount?: number | null;
   date: string;
@@ -1421,6 +1445,8 @@ export async function insertTransaction(params: {
         units: validated.units ?? null,
         source_type: validated.sourceType,
         parsed_by: validated.parsedBy ?? null,
+        mini_transaction_id: validated.miniTransactionId ?? null,
+        reference_number: validated.referenceNumber ?? null,
         reimbursement_status: validated.reimbursementStatus,
         reimbursable_amount: reimbursableAmount,
         date: validated.date,

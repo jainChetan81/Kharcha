@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useMiniSync, useMiniSyncConfig } from "@/hooks/use-mini-sync";
 import { useGoogleAuth } from "@/lib/gmail/auth";
 import { syncGmailTransactions } from "@/lib/gmail/sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
@@ -17,9 +18,22 @@ export function useRefresh() {
   return { refreshing, onRefresh };
 }
 
+function formatMiniSyncResult(result: {
+  added: number;
+  skipped: number;
+  failed: number;
+}): string {
+  const parts = [`${result.added} added`];
+  if (result.skipped > 0) parts.push(`${result.skipped} duplicates`);
+  if (result.failed > 0) parts.push(`${result.failed} failed`);
+  return parts.join(" · ");
+}
+
 export function useSyncRefresh() {
   const queryClient = useQueryClient();
   const { isConnected } = useGoogleAuth();
+  const { enabled: miniSyncEnabled } = useMiniSyncConfig();
+  const miniSync = useMiniSync();
   const [refreshing, setRefreshing] = useState(false);
   const [gmailConnected, setGmailConnected] = useState(false);
 
@@ -46,14 +60,28 @@ export function useSyncRefresh() {
                   "Add a bank in settings to sync",
                 );
               } else if (result.added > 0) {
-                const parts = [`${result.added} added`];
-                if (result.skipped > 0)
-                  parts.push(`${result.skipped} duplicates`);
-                if (result.failed > 0) parts.push(`${result.failed} failed`);
-                showSuccessToast("Gmail synced", parts.join(" · "));
+                showSuccessToast("Gmail synced", formatMiniSyncResult(result));
               }
             } catch (err) {
               showErrorToast("Gmail sync failed", err);
+            }
+          })(),
+        );
+      }
+
+      if (miniSyncEnabled) {
+        tasks.push(
+          (async () => {
+            try {
+              const result = await miniSync.mutateAsync();
+              if (result.result.added > 0) {
+                showSuccessToast(
+                  "Mini synced",
+                  formatMiniSyncResult(result.result),
+                );
+              }
+            } catch (err) {
+              showErrorToast("Mini sync failed", err);
             }
           })(),
         );
@@ -65,7 +93,7 @@ export function useSyncRefresh() {
       inFlight.current = false;
       setRefreshing(false);
     }
-  }, [queryClient, gmailConnected]);
+  }, [queryClient, gmailConnected, miniSyncEnabled, miniSync]);
 
   return { refreshing, onRefresh, gmailConnected };
 }
