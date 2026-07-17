@@ -70,11 +70,6 @@ function mapParsedBy(value: MiniTransaction["parsedBy"]): ParsedByType | null {
   return null;
 }
 
-function extractDate(raw: string): string {
-  // Mini stores either YYYY-MM-DD or YYYY-MM-DD HH:mm. The app uses YYYY-MM-DD.
-  return raw.slice(0, 10);
-}
-
 async function fetchMiniTransactions(
   since: number | null,
 ): Promise<{ transactions: MiniTransaction[] }> {
@@ -180,7 +175,10 @@ export async function syncMiniTransactions(): Promise<MiniSyncResult> {
           continue;
         }
 
-        const date = extractDate(row.date);
+        // Mini dates are YYYY-MM-DD or YYYY-MM-DD HH:mm — keep the time
+        // component; truncating it made every synced row display a wrong
+        // default time in the app.
+        const date = row.date;
         const isDuplicate = await findDuplicateTransaction(
           date,
           row.amount,

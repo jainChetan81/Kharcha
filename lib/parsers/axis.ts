@@ -1,5 +1,5 @@
 import type { Parser } from "./types";
-import { parseAmount, parseAxisDate, today } from "./utils";
+import { parseAmount, parseAxisDate, today, withGuard } from "./utils";
 
 const axisUpiDebit: Parser = (text) => {
   const amountMatch = text.match(/Amount Debited:\s*INR ([\d,]+\.?\d*)/i);
@@ -59,6 +59,27 @@ const axisCreditCard: Parser = (text) => {
   };
 };
 
+// "INR {amount} credited to A/c no. XX{last4} on {DD-MM-YY} at {HH:mm:ss} IST. Info - NEFT/CMS{ref}/{remitter}."
+// The single-line NEFT/IMPS credit format monthly salary arrives in — the
+// mini-side audit found months of salary credits unparsed for lack of it.
+const axisNeftCredit: Parser = (text) => {
+  const match = text.match(
+    /INR\s+([\d,]+\.?\d*)\s+credited\s+to\s+A\/c\s+no\.\s+XX\d{4}\s+on\s+(\d{2}-\d{2}-\d{2})/i,
+  );
+  if (!match) return null;
+
+  const infoMatch = text.match(
+    /Info\s*[-:]\s*(?:NEFT|IMPS|RTGS)\/[A-Z0-9]+\/([^./\n]+)/i,
+  );
+
+  return {
+    amount: parseAmount(match[1]),
+    merchant: infoMatch ? infoMatch[1].trim() : "NEFT Credit",
+    date: parseAxisDate(match[2]),
+    type: "income",
+  };
+};
+
 const axisGenericDebit: Parser = (text) => {
   const amountMatch = text.match(
     /(?:spent|debited)\s*(?:INR|Rs\.?)\s*([\d,]+\.?\d*)/i,
@@ -104,7 +125,8 @@ export const AXIS_PARSERS: Parser[] = [
   axisUpiDebit,
   axisUpiCredit,
   axisCreditCard,
+  axisNeftCredit,
   axisGenericDebit,
   axisSubjectDebit,
   axisSubjectCredit,
-];
+].map(withGuard);

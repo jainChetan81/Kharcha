@@ -152,10 +152,6 @@ export async function initDB(): Promise<void> {
     )
   `);
 
-      await db.run(
-        sql`CREATE UNIQUE INDEX IF NOT EXISTS mini_transaction_id_idx ON transactions(mini_transaction_id)`,
-      );
-
       await db.run(sql`
     CREATE TABLE IF NOT EXISTS budgets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

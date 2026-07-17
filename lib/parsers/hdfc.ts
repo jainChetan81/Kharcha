@@ -1,5 +1,5 @@
 import type { Parser } from "./types";
-import { parseAmount, parseHdfcDate } from "./utils";
+import { parseAmount, parseHdfcDate, withGuard } from "./utils";
 
 const hdfcDebit: Parser = (text) => {
   const match = text.match(
@@ -16,4 +16,4 @@ const hdfcDebit: Parser = (text) => {
   };
 };
 
-export const HDFC_PARSERS: Parser[] = [hdfcDebit];
+export const HDFC_PARSERS: Parser[] = [hdfcDebit].map(withGuard);

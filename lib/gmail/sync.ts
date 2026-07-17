@@ -208,8 +208,11 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
 
     function matchCategoryId(
       name: string | undefined,
-      type: "expense" | "income",
+      type: "expense" | "income" | "investment",
     ): number | null {
+      // Categories are seeded per expense/income only; investment rows carry
+      // no category.
+      if (type === "investment") return null;
       const needle = (name ?? "other").toLowerCase();
       const match = allCategories.find(
         (c) => c.name.toLowerCase() === needle && c.type === type,
