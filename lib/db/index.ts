@@ -1995,7 +1995,15 @@ export async function getMonthlyInsights(
     const monthDate = new Date(year, month - 1, 1);
     const daysInMonth = getDaysInMonth(monthDate);
     const today = new Date();
-    const daysElapsed = Math.max(1, differenceInDays(today, monthDate) + 1);
+    // Projections only make sense while the month is in progress: past months
+    // are complete and future months have no data yet, so gate to the current
+    // calendar month and return null projections otherwise (the UI hides the
+    // projection card when projectedLow/projectedHigh are null).
+    const isCurrentMonth = format(today, MONTH_FORMAT) === yearMonth;
+    const daysElapsed = Math.min(
+      daysInMonth,
+      Math.max(1, differenceInDays(today, monthDate) + 1),
+    );
 
     const [thisMonthCategories, prevMonthCategories, currentSpendResult] =
       await Promise.all([
@@ -2068,11 +2076,11 @@ export async function getMonthlyInsights(
     // dailyRate negative, the UI would otherwise render a negative forecast
     // which confuses users and breaks progress-bar math in the widget.
     const projectedLow =
-      daysElapsed >= 7
+      isCurrentMonth && daysElapsed >= 7
         ? Math.max(0, currentSpend + dailyRate * remainingDays * 0.8)
         : null;
     const projectedHigh =
-      daysElapsed >= 7
+      isCurrentMonth && daysElapsed >= 7
         ? Math.max(0, currentSpend + dailyRate * remainingDays * 1.2)
         : null;
 

@@ -22,7 +22,6 @@ import {
   SOURCE_TYPE,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { safeRecomputeHolding } from "@/lib/db";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
@@ -110,19 +109,8 @@ export default function EditTransactionScreen() {
         note: value.note || null,
         tagIds: value.tagIds,
       });
-      const originalHoldingId = transaction?.holding_id ?? null;
-      if (originalHoldingId && originalHoldingId !== value.holdingId) {
-        await safeRecomputeHolding(originalHoldingId, {
-          operation: "editTransaction",
-          source: "previous_holding",
-        });
-      }
-      if (isInvestment && value.holdingId) {
-        await safeRecomputeHolding(value.holdingId, {
-          operation: "editTransaction",
-          source: "new_holding",
-        });
-      }
+      // Holding recompute for both old and new holdings happens inside
+      // updateTransaction's db transaction — no screen-level recompute needed.
       showSuccessToast("Transaction updated");
       router.back();
     } catch (err) {

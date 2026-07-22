@@ -386,11 +386,15 @@ export function useInsertTransaction() {
   const invalidate = useInvalidateTransactions();
   return useMutation({
     mutationFn: insertTransaction,
-    onSuccess: async (_data, variables) => {
+    onSuccess: (_data, variables) => {
       logEvent(FIREBASE_EVENTS.TRANSACTION_ADDED, {
         source_type: variables.sourceType ?? "manual",
         transaction_type: variables.type,
       });
+
+      // Invalidate before the mini push — the local insert already succeeded,
+      // and a sleeping mini (15s timeout) must never delay the UI update.
+      invalidate();
 
       const isManualEntry =
         (variables.sourceType ?? SOURCE_TYPE.MANUAL) === SOURCE_TYPE.MANUAL;
@@ -405,24 +409,19 @@ export function useInsertTransaction() {
         env.MINI_API_TOKEN &&
         variables.merchant
       ) {
-        try {
-          await pushTransactionToMini({
-            type: variables.type as "income" | "expense",
-            amount: variables.amount,
-            merchant: variables.merchant,
-            date: variables.date,
-            rawText: variables.note ?? variables.merchant,
-            senderId: "manual",
-          });
-          logEvent(FIREBASE_EVENTS.MINI_PUSH_SUCCEEDED);
-        } catch (_err) {
-          logEvent(FIREBASE_EVENTS.MINI_PUSH_FAILED);
-          // Best-effort push: the local insert already succeeded, so we don't
-          // surface this error to the user. The next pull cycle can reconcile.
-        }
+        // Best-effort, fire-and-forget push: the error is never surfaced to
+        // the user. The next pull cycle can reconcile.
+        void pushTransactionToMini({
+          type: variables.type as "income" | "expense",
+          amount: variables.amount,
+          merchant: variables.merchant,
+          date: variables.date,
+          rawText: variables.note ?? variables.merchant,
+          senderId: "manual",
+        })
+          .then(() => logEvent(FIREBASE_EVENTS.MINI_PUSH_SUCCEEDED))
+          .catch(() => logEvent(FIREBASE_EVENTS.MINI_PUSH_FAILED));
       }
-
-      invalidate();
     },
     onError: (err) => {
       showErrorToast("Transaction failed", err);

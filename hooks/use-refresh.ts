@@ -18,7 +18,7 @@ export function useRefresh() {
   return { refreshing, onRefresh };
 }
 
-function formatMiniSyncResult(result: {
+export function formatMiniSyncResult(result: {
   added: number;
   skipped: number;
   failed: number;

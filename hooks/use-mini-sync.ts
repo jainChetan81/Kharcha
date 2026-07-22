@@ -51,13 +51,17 @@ export function useMiniSyncConfig() {
   };
 }
 
-export function useMiniSync() {
+// Default is an incremental pull from the stored cursor. `{ full: true }`
+// re-walks the mini from the beginning (used by the home-screen sync button)
+// — safe because the pull path dedupes per row.
+export function useMiniSync(options?: { full?: boolean }) {
   const queryClient = useQueryClient();
+  const full = options?.full ?? false;
 
   return useMutation({
     mutationFn: async () => {
       logEvent(FIREBASE_EVENTS.MINI_SYNC_STARTED);
-      const result = await syncMiniTransactions();
+      const result = await syncMiniTransactions(full ? { full } : undefined);
 
       if (result.notConfigured) {
         throw new Error("Mini sync not configured");
