@@ -1,8 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["app/**/*.{ts,tsx}"],
-  "project": ["app/**/*.{ts,tsx}", "components/**/*.{ts,tsx}", "hooks/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}"],
-  "ignoreDependencies": ["expo-font", "babel-plugin-react-compiler"],
+  "entry": ["app/**/*.{ts,tsx}", "plugins/**/*.js"],
+  "project": ["app/**/*.{ts,tsx}", "components/**/*.{ts,tsx}", "hooks/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}", "plugins/**/*.js"],
+  "ignoreDependencies": ["expo-font", "babel-plugin-react-compiler", "babel-plugin-inline-import"],
   "ignoreBinaries": ["pod", "eas"],
   "ignoreExportsUsedInFile": true
 }

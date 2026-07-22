@@ -14,20 +14,19 @@ tasks to kimi (`~/.kimi-code/bin/kimi`, moonshot ai's coding cli) as a
 background execution agent — claude plans, kimi executes, claude verifies
 independently. kimi's own "done" report is never trusted alone.
 
-- **canonical file:** `.claude/skills/delegate-to-kimi/SKILL.md`, committed
-  to git.
-- **global availability:** symlinked to `~/.claude/skills/delegate-to-kimi`
-  on chetan's mac, so it's usable from any project, not just kharcha. the
-  repo copy is the single source of truth; the symlink just exposes it
-  elsewhere. re-run the symlink on any other machine:
-  `ln -s ~/Desktop/Kharcha/.claude/skills/delegate-to-kimi ~/.claude/skills/delegate-to-kimi`
+- **canonical file:** `~/Desktop/Claude/ai-setup/delegate-to-kimi/SKILL.md`
+  (moved out of this repo in commit e8c6ced). this repo's
+  `.claude/skills/delegate-to-kimi` is a symlink to that directory.
+- **global availability:** also symlinked to `~/.claude/skills/delegate-to-kimi`
+  on chetan's mac, so it's usable from any project, not just kharcha. ai-setup
+  is the single source of truth; the symlinks just expose it elsewhere.
+  re-run the symlink on any other machine:
+  `ln -s ~/Desktop/Claude/ai-setup/delegate-to-kimi ~/.claude/skills/delegate-to-kimi`
 - **docs:** `docs/delegate-to-kimi/README.md` (overview + how a run actually
   goes), `docs/delegate-to-kimi/DESIGN_HISTORY.md` (all five review rounds
-  and what each one changed or deliberately didn't), `docs/delegate-to-kimi/
+  and what each one changed or deliberately didn't), and `docs/delegate-to-kimi/
   kimi-review.md` (kimi's own review of the skill from the executor's seat,
-  verbatim, plus claude's reply), and `docs/delegate-to-kimi/
-  CURRENT_SKILL_SNAPSHOT.md` (a plain-text copy of the live skill file, for
-  browsing without digging into the `.claude/` dotfolder).
+  verbatim, plus claude's reply).
 
 ## skill-writing style: brevity as a safety property
 

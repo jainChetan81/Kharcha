@@ -4,7 +4,7 @@ This doc covers database schema management with Drizzle ORM and migrations for S
 
 ## Overview
 
-- **Schema Definition**: `lib/db/schema.ts` — 8 tables (categories, sources, transactions, subscriptions, budgets, banks, bank_emails, config) using Drizzle table factories
+- **Schema Definition**: `lib/db/schema.ts` — 11 tables (categories, sources, transactions, subscriptions, holdings, budgets, banks, bank_emails, config, tags, transaction_tags) using Drizzle table factories
 - **Migration Storage**: `drizzle/` — generated SQL migration files + metadata
 - **Connection**: `lib/db/connection.ts` — SQLite connection + migration runner
 - **Initialization**: `lib/db/index.ts` — `initDB()` runs migrations + seeds defaults
@@ -119,7 +119,7 @@ Inside `initDB()`, the inline `CREATE TABLE IF NOT EXISTS` statements run first 
 
 | File | Purpose |
 |------|---------|
-| `lib/db/schema.ts` | Drizzle table definitions (8 tables) |
+| `lib/db/schema.ts` | Drizzle table definitions (11 tables) |
 | `lib/db/types.ts` | Shared types (TransactionRow, etc.) |
 | `lib/db/connection.ts` | SQLite connection + migration runner |
 | `lib/db/index.ts` | Database initialization + seeds |
@@ -276,97 +276,18 @@ After changes, just run `pnpm drizzle:generate` → migrations are created autom
 
 ---
 
-## Version Tracking & Upgrades
+## Schema Upgrades (How It Actually Works)
 
-### Overview
+There is no app-version comparison machinery. Schema evolution is handled entirely inside `initDB()` (`lib/db/index.ts`), which runs on every launch:
 
-The app tracks versions in the `config` table to detect upgrades and run version-specific logic:
+1. Inline `CREATE TABLE IF NOT EXISTS` statements create all tables (fresh-install safety net).
+2. A `hasColumn`-guarded `ALTER TABLE ... ADD COLUMN` chain backfills every column added since v1 (idempotent — no-ops if the column exists).
+3. Drizzle migrations apply on top.
+4. `seedDefaults()` runs idempotently.
 
-- **`APP_VERSION`** — Current app version (from `package.json`)
-- **`SCHEMA_VERSION`** — Schema version (tracks DB schema changes)
+So both fresh installs and upgrades converge on the same schema without tracking version numbers. When you change the schema: edit `lib/db/schema.ts`, run `pnpm drizzle:generate`, keep the inline DDL + `hasColumn` chain in sync (see [Workflow](#workflow) above).
 
-Both are stored in `lib/constants.ts` `CONFIG_KEYS`.
-
-### Upgrade Detection
-
-In `lib/db/index.ts`, on each app startup:
-
-```typescript
-const previousVersion = await getConfigValue(CONFIG_KEYS.APP_VERSION);
-const hasUpgrade = isUpgrade(previousVersion);
-
-// Seed defaults only on first boot
-if (!previousVersion) {
-  await seedDefaults();
-}
-
-if (hasUpgrade && previousVersion) {
-  console.info(`[DB] Upgraded from ${previousVersion} to ${APP_VERSION}`);
-}
-```
-
-### Version Comparison
-
-`lib/version.ts` provides helpers:
-
-```typescript
-import { compareVersions, isUpgrade, isMajorUpgrade, APP_VERSION } from "@/lib/version";
-
-compareVersions("1.0.0", "1.1.0"); // -1 (first is older)
-compareVersions("1.2.0", "1.1.0"); // 1 (first is newer)
-
-isUpgrade("0.9.0"); // true — upgrade needed
-isUpgrade("1.0.0"); // false — same version
-
-isMajorUpgrade("0.9.0"); // true — 0→1 is major
-isMajorUpgrade("1.0.0"); // false — 1→1 is not major
-```
-
-### Handling Version-Specific Logic
-
-For breaking changes or data transformations during upgrades:
-
-```typescript
-// lib/db/index.ts
-export async function initDB() {
-  await runMigrations();
-
-  const previousVersion = await getConfigValue(CONFIG_KEYS.APP_VERSION);
-
-  // Handle v1.0.0 -> v1.1.0 upgrade (added tags column)
-  if (previousVersion && compareVersions(previousVersion, "1.1.0") < 0) {
-    await migrateToV1_1_0();
-  }
-
-  // Handle major version upgrade (v1 -> v2)
-  if (isMajorUpgrade(previousVersion)) {
-    console.warn("[DB] Major upgrade detected!");
-    // Run any critical data transformations
-  }
-
-  await seedDefaults(); // Idempotent
-}
-
-async function migrateToV1_1_0() {
-  console.info("[DB] Running v1.1.0 upgrade tasks...");
-  // Any JS-level data transformation (if migration SQL isn't enough)
-  // E.g., backfill new columns, rename fields, etc.
-}
-```
-
-### Release Checklist
-
-When releasing a new version:
-
-1. **Update version** in `app.json` and `package.json`
-2. **Update `CHANGELOG.md`** with changes
-3. **Generate migrations** if schema changed: `pnpm drizzle:generate`
-4. **Document breaking changes** in CHANGELOG's "Migration Guide"
-5. **Add version-specific upgrade logic** if needed in `lib/db/index.ts`
-6. **Test locally**: `pnpm ios` with new version
-7. **Commit & tag**: `git tag v1.2.0 && git push origin v1.2.0`
-
-**Result**: ✅ App automatically detects upgrades + runs migrations on next launch.
+For release/versioning process, see `docs/RELEASE.md` and the `bump-version` skill.
 
 
 

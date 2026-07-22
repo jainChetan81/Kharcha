@@ -150,7 +150,7 @@ duplicate detection: before saving, checks for existing transactions with same d
 
 ```
 gmail API message -> bank-specific regex parser -> extract (amount, date, merchant)
-                  -> if regex fails -> gemini 1.5 flash AI fallback
+                  -> if regex fails -> gemini 2.5 flash AI fallback
                   -> auto-categorisation suggestion
                   -> dedup check (same date + amount + note)
                   -> insert with source_type='synced'

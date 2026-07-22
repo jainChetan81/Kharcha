@@ -2,7 +2,7 @@
 
 automatic expense tracking by reading bank transaction emails directly from gmail, parsed on-device.
 
-supports 12 banks: **axis, hdfc, icici, sbi, kotak, indusind, standard chartered, idfc, citi, hsbc, fintech cards**. gemini AI fallback for unrecognized email formats.
+supports 11 banks: **axis, hdfc, icici, sbi, kotak, indusind, standard chartered, idfc, citi, hsbc, fintech cards**. gemini AI fallback for unrecognized email formats.
 
 ---
 
@@ -13,7 +13,7 @@ supports 12 banks: **axis, hdfc, icici, sbi, kotak, indusind, standard chartered
 ```
 lib/gmail/
   auth.ts           useGoogleAuth hook — platform-specific sign-in
-  parsers/           bank-specific regex parsers (12 banks)
+  parsers/           bank-specific regex parsers (11 banks)
     axis.ts          axis bank (UPI, credit card, IMPS)
     hdfc.ts          hdfc bank (debit alerts, credit card)
     icici.ts         icici bank
@@ -29,7 +29,7 @@ lib/gmail/
     utils.ts         shared parsing helpers
   sync.ts            fetch gmail messages, parse, dedup, insert
 
-lib/gemini/          gemini 1.5 flash AI fallback for unrecognized formats
+lib/gemini/          gemini 2.5 flash AI fallback for unrecognized formats
 lib/env.ts           validates EXPO_PUBLIC_GOOGLE_* env vars (alert on missing)
 lib/db/config.ts     stores gmail_connected, gmail_last_synced_at, gmail_emails_fetched
 lib/db/banks.ts      bank + bank_emails CRUD
@@ -150,7 +150,7 @@ all parsed transactions default to category "other" (expense). gemini AI auto-ca
 
 ### gemini AI fallback
 
-when regex parsers don't match, the email content is sent to gemini 1.5 flash for extraction. the AI prompt extracts amount, date, merchant, and suggests a category. responses are validated before inserting.
+when regex parsers don't match, the email content is sent to gemini 2.5 flash for extraction. the AI prompt extracts amount, date, merchant, and suggests a category. responses are validated before inserting.
 
 ---
 

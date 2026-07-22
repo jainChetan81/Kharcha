@@ -38,7 +38,8 @@ __pycache__/
 *.pyc
 
 # local env files
-.env*.local
+.env*
+!.env.example
 
 # eas credentials
 credentials.json
