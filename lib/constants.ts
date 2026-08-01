@@ -285,8 +285,6 @@ export const CONFIG_KEYS = {
   APP_ID: "app_id",
   CURRENCY: "currency",
   USER_NAME: "userName",
-  APP_VERSION: "app_version",
-  SCHEMA_VERSION: "schema_version",
   GMAIL_CONNECTED: "gmail_connected",
   GMAIL_LAST_SYNCED_AT: "gmail_last_synced_at",
   APP_LOCK_ENABLED: "app_lock_enabled",

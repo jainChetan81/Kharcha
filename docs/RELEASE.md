@@ -5,7 +5,7 @@ kharcha ships via two mechanisms:
 1. **EAS Build** — produces a native binary (`.aab` / `.ipa`). Required when native code, plugins, or `app.json` native config changes.
 2. **EAS Update (OTA)** — ships JS + asset changes to already-installed builds. No store review, instant rollout.
 
-Runtime version policy is `fingerprint` ([app.json](app.json)): the runtime is a hash of the project's **native** layer — native deps, config plugins, `app.json` native fields, and custom native modules under `modules/` — computed by [`@expo/fingerprint`](https://docs.expo.dev/versions/latest/sdk/fingerprint/). An OTA update only reaches builds whose fingerprint matches, so the runtime changes exactly when a new native build is needed and never on a plain version bump. Marketing `version` / `buildNumber` / `versionCode` are excluded from the hash via [fingerprint.config.js](../fingerprint.config.js) (`sourceSkips: ['ExpoConfigVersions']`), so bumping them never breaks OTA continuity. Whenever you ship a native build, follow the [version bump checklist](#version-bump-checklist) at the bottom of this doc.
+Runtime version policy is `fingerprint` ([app.json](app.json)): the runtime is a hash of the project's **native** layer — native deps, config plugins (including custom ones, e.g. [`plugins/firebase-ios-fix.js`](../plugins/firebase-ios-fix.js)'s `withDangerousMod` Podfile edit), and `app.json` native fields — computed by [`@expo/fingerprint`](https://docs.expo.dev/versions/latest/sdk/fingerprint/). An OTA update only reaches builds whose fingerprint matches, so the runtime changes exactly when a new native build is needed and never on a plain version bump. Marketing `version` / `buildNumber` / `versionCode` are excluded from the hash via [fingerprint.config.js](../fingerprint.config.js) (`sourceSkips: ['ExpoConfigVersions']`), so bumping them never breaks OTA continuity. Whenever you ship a native build, follow the [version bump checklist](#version-bump-checklist) at the bottom of this doc.
 
 > Migrated from the `appVersion` policy (which minted a new runtime on every version bump, so OTA updates were version-locked and couldn't span releases). Builds made under the old policy have runtimes like `0.5.1`; they won't receive fingerprint-runtime updates — but with no OTA users at migration time there's nothing to carry over.
 
@@ -67,14 +67,13 @@ Installed prod builds poll `https://u.expo.dev/a5f4eef2-...` ([app.json](app.jso
 | JS logic, components, styles                     | ❌       | ✅     |
 | New JS-only dep                                  | ❌       | ✅     |
 | New native dep or expo plugin                    | ✅       | ❌     |
-| Native code under `modules/`                     | ✅       | ❌     |
 | `app.json` native fields (permissions, plugins)  | ✅       | ❌     |
 | Icons / splash screen                            | ✅       | ❌     |
 | `app.json` → `version` / `buildNumber` / `versionCode` bump | ❌\* | ✅ |
 
 \* Excluded from the fingerprint via [fingerprint.config.js](../fingerprint.config.js), so a version bump alone does **not** change the runtime — existing builds keep receiving OTA updates. You still rebuild + bump for store submissions, but OTA continuity is preserved across the bump.
 
-Rule of thumb: if the **fingerprint** changes, rebuild. Anything that alters the native layer (deps, plugins, `modules/`, native `app.json` fields, bundled assets) changes it; pure-JS changes don't. EAS computes and compares the fingerprint automatically on every build and update.
+Rule of thumb: if the **fingerprint** changes, rebuild. Anything that alters the native layer (deps, plugins, native `app.json` fields, bundled assets) changes it; pure-JS changes don't. EAS computes and compares the fingerprint automatically on every build and update.
 
 ---
 

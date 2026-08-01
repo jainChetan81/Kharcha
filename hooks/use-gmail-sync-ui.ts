@@ -185,7 +185,7 @@ export function useGmailSyncUi(): UseGmailSyncUiReturn {
   }
 
   function toggleAutoRefresh(enabled: boolean) {
-    setAutoRefreshPref.mutate({ key: "gmail", enabled });
+    setAutoRefreshPref.mutate(enabled);
   }
 
   return {

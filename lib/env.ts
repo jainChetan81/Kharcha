@@ -16,9 +16,9 @@ const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
 // Deliberate trade-off: this key ships in the client bundle (EXPO_PUBLIC_* is
 // inlined into the JS, so it is extractable from the IPA/APK). Acceptable ONLY
 // as a key restricted in Google Cloud to the Generative Language API + this
-// app's bundle id / package name, and it MUST NOT be the backend's key. Before
-// any public (non-internal) release, move Gemini calls back behind an authed
-// backend proxy. AI parsing is optional — a missing key degrades gracefully
+// app's bundle id / package name. If this app ever gets a public
+// (non-internal) release, move Gemini calls behind an authed proxy first.
+// AI parsing is optional — a missing key degrades gracefully
 // (callGemini returns NO_API_KEY), so we don't block startup with an alert.
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? "";
 // Mini sync (personal Mac mini pipeline). Optional — if either value is empty,

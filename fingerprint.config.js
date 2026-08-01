@@ -3,9 +3,10 @@
  * (app.json → `runtimeVersion: { policy: "fingerprint" }`).
  *
  * The fingerprint is a hash of the project's *native* layer — native deps,
- * config plugins, app.json native fields, and custom native modules under
- * `modules/`. OTA updates only reach builds whose fingerprint matches, so the
- * runtime changes exactly when (and only when) a new native build is required.
+ * config plugins (including custom ones, e.g. `plugins/firebase-ios-fix.js`'s
+ * `withDangerousMod` Podfile edit), and app.json native fields. OTA updates
+ * only reach builds whose fingerprint matches, so the runtime changes exactly
+ * when (and only when) a new native build is required.
  *
  * `ExpoConfigVersions` strips `version`, `ios.buildNumber`, and
  * `android.versionCode` from the hash. Without this, bumping any of those
