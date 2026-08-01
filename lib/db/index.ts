@@ -1620,6 +1620,9 @@ export async function deleteTransaction(id: number) {
         .from(transactions)
         .where(eq(transactions.id, id))
         .limit(1);
+      await db
+        .delete(transactionTags)
+        .where(eq(transactionTags.transaction_id, id));
       await db.delete(transactions).where(eq(transactions.id, id));
       if (existing?.holding_id) {
         await safeRecomputeHolding(existing.holding_id, {
@@ -1638,7 +1641,10 @@ export async function deleteTransaction(id: number) {
 
 export async function clearAllTransactions() {
   try {
-    return await db.delete(transactions);
+    return await expo.withTransactionAsync(async () => {
+      await db.delete(transactionTags);
+      await db.delete(transactions);
+    });
   } catch (error) {
     logFirebaseError(error, {
       error_type: ERROR_TYPE.DB,

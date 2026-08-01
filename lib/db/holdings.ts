@@ -6,7 +6,12 @@ import {
 } from "@/lib/constants";
 import { ERROR_TYPE, logFirebaseError } from "@/lib/firebase";
 import expo, { db } from "./connection";
-import { holdings, subscriptions, transactions } from "./schema";
+import {
+  holdings,
+  subscriptions,
+  transactions,
+  transactionTags,
+} from "./schema";
 import type {
   Holding,
   InstrumentType,
@@ -69,10 +74,20 @@ export async function deleteHoldingCascade(id: number): Promise<void> {
       .where(eq(subscriptions.holding_id, id));
     for (const sub of linkedSubs) {
       await db
+        .delete(transactionTags)
+        .where(
+          sql`${transactionTags.transaction_id} IN (SELECT id FROM transactions WHERE subscription_id = ${sub.id})`,
+        );
+      await db
         .delete(transactions)
         .where(eq(transactions.subscription_id, sub.id));
       await db.delete(subscriptions).where(eq(subscriptions.id, sub.id));
     }
+    await db
+      .delete(transactionTags)
+      .where(
+        sql`${transactionTags.transaction_id} IN (SELECT id FROM transactions WHERE holding_id = ${id})`,
+      );
     await db.delete(transactions).where(eq(transactions.holding_id, id));
     await db.delete(holdings).where(eq(holdings.id, id));
   });
