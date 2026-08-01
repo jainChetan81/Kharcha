@@ -35,8 +35,8 @@ finding — the swipe-to-delete stale-closure bug — is **plan 001** below.
 
 | Plan | Title | Priority | Effort | Risk | Depends on | Status |
 |------|-------|----------|--------|------|------------|--------|
-| 001 | Fix swipe-to-delete gesture bugs (stale closure + wrong-direction commit) | P0 | S | LOW | — | TODO |
-| 002 | Boot sequence failure fallback (splash-screen hang) | P0 | S | LOW | — | TODO |
+| 001 | Fix swipe-to-delete gesture bugs (stale closure + wrong-direction commit) | P0 | S | LOW | — | IN PROGRESS (code complete, on-device manual smoke test pending) |
+| 002 | Boot sequence failure fallback (splash-screen hang) | P0 | S | LOW | — | IN PROGRESS (code complete, on-device manual smoke test pending) |
 | 003 | Gmail/SMS sync data-integrity hardening | P1 | L | MED | — | TODO |
 | 004 | Gmail-sync screen and hook correctness | P1 | M | LOW | — (soft: touches adjacent files to 003, no hard order) | TODO |
 | 005 | Database layer referential integrity and correctness | P1 | M | MED | — | TODO |
