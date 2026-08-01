@@ -63,25 +63,45 @@ export function stageFile(
   return staging;
 }
 
-// Replace `destination` with an already-verified `staging` file. The slow,
-// fallible part (the write) already happened and was checked before this
-// runs, so the only failure window left is the delete + rename itself.
+// Replace `destination` with an already-verified `staging` file. Never
+// moves onto a path that already has a file: expo-file-system's `move()`
+// isn't a guaranteed-atomic overwrite (on iOS it deletes the destination
+// then moves, which is two steps, not one; Android has no built-in atomic
+// replace either), so overwriting in place risks losing both the old and
+// new file if the app is killed mid-swap. Instead, relocate the old file
+// to a `.prior` sibling first (a move onto an *empty* path), then move
+// staging into the now-empty destination. If that second move throws, the
+// old file is restored from `.prior` before rethrowing.
 export function commitStagedFile(staging: File, destination: File): void {
+  const prior = new File(`${destination.uri}.prior`);
   try {
-    if (destination.exists) destination.delete();
-    staging.move(destination);
+    if (!destination.exists && prior.exists) {
+      // A previous swap was interrupted between relocating the old file
+      // and moving the new one in. Recover it before attempting another
+      // swap instead of silently discarding it.
+      prior.move(destination);
+    }
+    if (prior.exists) prior.delete();
+    if (destination.exists) destination.move(prior);
+    try {
+      staging.move(destination);
+    } catch (err) {
+      if (prior.exists) prior.move(destination);
+      throw err;
+    }
+    discardStagedFile(prior);
   } finally {
     discardStagedFile(staging);
   }
 }
 
-// Best-effort cleanup of a staging file that failed verification or was
-// already moved (moving updates `staging.uri`, so this is a harmless no-op
-// in the success case).
+// Best-effort delete of a `.staging`/`.prior` sidecar file left over after
+// a failed verification or a completed move (moving updates `File.uri`, so
+// this is a harmless no-op once the file's already been moved away).
 export function discardStagedFile(staging: File): void {
   try {
     if (staging.exists) staging.delete();
   } catch {
-    // Stale staging file — harmless, not worth surfacing.
+    // Stale sidecar file — harmless, not worth surfacing.
   }
 }
