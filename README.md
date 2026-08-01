@@ -223,3 +223,5 @@ pnpm run local-ci  # full ci pipeline (before push)
 see [docs/CI.md](docs/CI.md) for detailed workflows, when to use which, environment setup, and troubleshooting.
 
 pnpm version from `packageManager` in package.json. node 22.
+
+<!-- pr-agent smoke test 1785605380 -->
