@@ -6,6 +6,7 @@ import {
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // "Rs.1500 debited from your Kotak Bank A/c X1234 on 01-04-25"
@@ -85,4 +86,4 @@ export const KOTAK_PARSERS: Parser[] = [
   kotakCreditCard,
   kotakDebit,
   kotakCredit,
-];
+].map(withGuard);

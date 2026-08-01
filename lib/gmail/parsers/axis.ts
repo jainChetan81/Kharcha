@@ -1,5 +1,5 @@
 import { TRANSACTION_TYPE } from "@/lib/constants";
-import { type Parser, parseAmount, parseAxisDate } from "./utils";
+import { type Parser, parseAmount, parseAxisDate, withGuard } from "./utils";
 
 // "Amount Debited: INR 75.00 ... Date & Time: 01-04-26, 19:03:35 ... Transaction Info: UPI/P2M/..."
 export const axisUpiDebit: Parser = (body) => {
@@ -93,4 +93,4 @@ export const AXIS_PARSERS: Parser[] = [
   axisUpiCredit,
   axisCreditCard,
   axisGenericDebit,
-];
+].map(withGuard);

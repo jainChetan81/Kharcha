@@ -6,6 +6,7 @@ import {
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // "Your ICICI Bank Account XX1234 has been debited with INR 1,500.00 on 01-Apr-25"
@@ -81,4 +82,4 @@ export const ICICI_PARSERS: Parser[] = [
   iciciCreditCard,
   iciciDebit,
   iciciCredit,
-];
+].map(withGuard);

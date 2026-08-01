@@ -6,6 +6,7 @@ import {
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // "Your Citi Credit Card XX1234 has been charged INR 2,500.00 at MERCHANT on DD/MM/YYYY"
@@ -30,4 +31,4 @@ export const citiCardDebit: Parser = (body) => {
   };
 };
 
-export const CITI_PARSERS: Parser[] = [citiCardDebit];
+export const CITI_PARSERS: Parser[] = [citiCardDebit].map(withGuard);

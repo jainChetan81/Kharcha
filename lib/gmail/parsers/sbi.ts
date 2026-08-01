@@ -5,6 +5,7 @@ import {
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // "Your A/c no. XXXXXXXX1234 is debited for Rs.1500.00 on 01APR25"
@@ -55,4 +56,4 @@ export const sbiCredit: Parser = (body) => {
   };
 };
 
-export const SBI_PARSERS: Parser[] = [sbiDebit, sbiCredit];
+export const SBI_PARSERS: Parser[] = [sbiDebit, sbiCredit].map(withGuard);

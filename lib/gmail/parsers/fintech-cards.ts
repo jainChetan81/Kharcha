@@ -5,6 +5,7 @@ import {
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // --- Slice ---
@@ -85,6 +86,6 @@ export const uniCardDebit: Parser = (body) => {
   };
 };
 
-export const SLICE_PARSERS: Parser[] = [sliceDebit];
-export const ONECARD_PARSERS: Parser[] = [oneCardDebit];
-export const UNI_PARSERS: Parser[] = [uniCardDebit];
+export const SLICE_PARSERS: Parser[] = [sliceDebit].map(withGuard);
+export const ONECARD_PARSERS: Parser[] = [oneCardDebit].map(withGuard);
+export const UNI_PARSERS: Parser[] = [uniCardDebit].map(withGuard);

@@ -6,6 +6,7 @@ import {
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // "Your IDFC FIRST Bank Credit Card ending 1234 was used for Rs.2500 at MERCHANT on DD-MM-YYYY"
@@ -51,4 +52,6 @@ export const idfcCredit: Parser = (body) => {
   };
 };
 
-export const IDFC_PARSERS: Parser[] = [idfcCardDebit, idfcCredit];
+export const IDFC_PARSERS: Parser[] = [idfcCardDebit, idfcCredit].map(
+  withGuard,
+);

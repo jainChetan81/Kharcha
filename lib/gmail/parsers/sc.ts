@@ -6,6 +6,7 @@ import {
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // "Your Standard Chartered Card ending 1234 was used for INR 2,500.00 at MERCHANT on DD/MM/YYYY"
@@ -53,4 +54,4 @@ export const scCredit: Parser = (body) => {
   };
 };
 
-export const SC_PARSERS: Parser[] = [scCardDebit, scCredit];
+export const SC_PARSERS: Parser[] = [scCardDebit, scCredit].map(withGuard);

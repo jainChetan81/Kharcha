@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { DATE_TIME_FORMAT, TRANSACTION_TYPE } from "@/lib/constants";
-import { type Parser, parseAmount } from "./utils";
+import { type Parser, parseAmount, withGuard } from "./utils";
 
 const today = () => format(new Date(), DATE_TIME_FORMAT);
 
@@ -83,4 +83,4 @@ export const INDUSIND_PARSERS: Parser[] = [
   indusindUpiCredit,
   indusindImpsCredit,
   indusindGenericDebit,
-];
+].map(withGuard);
