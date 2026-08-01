@@ -37,10 +37,10 @@ finding — the swipe-to-delete stale-closure bug — is **plan 001** below.
 |------|-------|----------|--------|------|------------|--------|
 | 001 | Fix swipe-to-delete gesture bugs (stale closure + wrong-direction commit) | P0 | S | LOW | — | IN PROGRESS (code complete, on-device manual smoke test pending) |
 | 002 | Boot sequence failure fallback (splash-screen hang) | P0 | S | LOW | — | IN PROGRESS (code complete, on-device manual smoke test pending) |
-| 003 | Gmail/SMS sync data-integrity hardening | P1 | L | MED | — | TODO |
-| 004 | Gmail-sync screen and hook correctness | P1 | M | LOW | — (soft: touches adjacent files to 003, no hard order) | TODO |
-| 005 | Database layer referential integrity and correctness | P1 | M | MED | — | TODO |
-| 014 | App icon/splash asset integrity (missing file, format mismatch) | P1 | S | LOW | — | TODO |
+| 003 | Gmail/SMS sync data-integrity hardening | P1 | L | MED | — | IN PROGRESS (all 9 steps code complete, manual smoke tests pending) |
+| 004 | Gmail-sync screen and hook correctness | P1 | M | LOW | — (soft: touches adjacent files to 003, no hard order) | IN PROGRESS (all 5 steps code complete, manual smoke tests pending) |
+| 005 | Database layer referential integrity and correctness | P1 | M | MED | — | IN PROGRESS (steps 1-3, 6-8 code complete; steps 4-5 blocked — need operator to run the live-data duplicate-check queries before adding unique indexes) |
+| 014 | App icon/splash asset integrity (missing file, format mismatch) | P1 | S | LOW | — | IN PROGRESS (step 1 code complete; steps 2-3 blocked — no image-conversion tool in this environment, ImageMagick install pending) |
 | 006 | Double-toast error-feedback cleanup | P2 | M | LOW | — | TODO |
 | 007 | Android widget fixes | P2 | S | LOW | — | TODO |
 | 008 | AI parsing and mini-sync pipeline hardening | P2 | M | MED | — (soft: `app/_layout.tsx`, see note) | TODO |
