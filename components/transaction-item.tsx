@@ -131,6 +131,17 @@ export const TransactionItem = memo(function TransactionItem({
     return () => translateX.removeListener(id);
   }, [translateX]);
 
+  // The PanResponder below is created once (useRef) so its handlers close
+  // over whatever `item` was in scope on this fiber's first render. FlashList
+  // recycles this component across different rows without remounting it (see
+  // the item.id effect above), so a later swipe could otherwise still delete
+  // the ORIGINAL item. Keep a ref current so the release handler always reads
+  // the row actually on screen.
+  const itemRef = useRef(item);
+  useEffect(() => {
+    itemRef.current = item;
+  }, [item]);
+
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) =>
@@ -141,7 +152,7 @@ export const TransactionItem = memo(function TransactionItem({
         }
       },
       onPanResponderRelease: (_, gesture) => {
-        if (Math.abs(gesture.dx) > SWIPE_COMMIT_THRESHOLD) {
+        if (gesture.dx < -SWIPE_COMMIT_THRESHOLD) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           Animated.parallel([
             Animated.timing(translateX, {
@@ -156,7 +167,7 @@ export const TransactionItem = memo(function TransactionItem({
             }),
           ]).start(() => {
             inCommitZone.current = false;
-            onSwipeDelete?.(item);
+            onSwipeDelete?.(itemRef.current);
           });
         } else {
           Animated.spring(translateX, {
@@ -211,8 +222,8 @@ export const TransactionItem = memo(function TransactionItem({
     : item.merchant || item.category_name || OTHER_CATEGORY_LABEL;
   const avatarLetter = (
     isInvestment
-      ? (item.holding_name ?? "?")
-      : (item.merchant ?? item.category_name ?? "?")
+      ? item.holding_name || "?"
+      : item.merchant || item.category_name || "?"
   )[0].toUpperCase();
 
   const content = (
