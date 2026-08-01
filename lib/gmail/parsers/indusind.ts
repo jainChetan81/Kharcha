@@ -1,8 +1,5 @@
-import { format } from "date-fns";
-import { DATE_TIME_FORMAT, TRANSACTION_TYPE } from "@/lib/constants";
+import { TRANSACTION_TYPE } from "@/lib/constants";
 import { type Parser, parseAmount, withGuard } from "./utils";
-
-const today = () => format(new Date(), DATE_TIME_FORMAT);
 
 // "Debited for INR 200.00 towards UPI/140853857998/DR/TRIS/FDRL/..."
 export const indusindUpiDebit: Parser = (body) => {
@@ -14,7 +11,7 @@ export const indusindUpiDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountMatch[1]),
     merchant: upiMatch ? upiMatch[1].trim() : "UPI Payment",
-    date: today(),
+    date: null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
@@ -29,7 +26,7 @@ export const indusindUpiCredit: Parser = (body) => {
   return {
     amount: parseAmount(amountMatch[1]),
     merchant: upiMatch ? upiMatch[1].trim() : "Credit",
-    date: today(),
+    date: null,
     type: TRANSACTION_TYPE.INCOME,
   };
 };
@@ -48,7 +45,7 @@ export const indusindGenericDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountMatch[1]),
     merchant,
-    date: today(),
+    date: null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
@@ -63,7 +60,7 @@ export const indusindImpsCredit: Parser = (body) => {
 
   if (!amountMatch) return null;
 
-  let date = today();
+  let date: string | null = null;
   if (dateMatch) {
     const [day, month, year] = dateMatch[1].split("-");
     date = `20${year}-${month}-${day} 00:00`;
@@ -74,7 +71,6 @@ export const indusindImpsCredit: Parser = (body) => {
     merchant: fromMatch ? fromMatch[1].trim() : "IMPS Credit",
     date,
     type: TRANSACTION_TYPE.INCOME,
-    source: "IMPS",
   };
 };
 

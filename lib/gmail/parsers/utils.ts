@@ -67,11 +67,6 @@ export function decodeHtmlEntities(str: string): string {
     .replace(/&nbsp;/g, " ");
 }
 
-/** Current datetime as the standard fallback when no date can be extracted. */
-export function fallbackNow(): string {
-  return format(new Date(), DATE_TIME_FORMAT);
-}
-
 /**
  * Parse a date string from an Indian bank email/SMS alert.
  * Tries every common Indian banking date format before falling back to now().

@@ -1,7 +1,6 @@
 import { TRANSACTION_TYPE } from "@/lib/constants";
 import {
   DATE_REGEX,
-  fallbackNow,
   MERCHANT_REGEX,
   type Parser,
   parseAmount,
@@ -29,7 +28,7 @@ export const kotakDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "Kotak Debit",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
@@ -54,7 +53,7 @@ export const kotakCredit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "Kotak Credit",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.INCOME,
   };
 };
@@ -77,7 +76,7 @@ export const kotakCreditCard: Parser = (body) => {
   return {
     amount: parseAmount(amountMatch[1]),
     merchant: merchantMatch ? merchantMatch[1].trim() : "Kotak Card Payment",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };

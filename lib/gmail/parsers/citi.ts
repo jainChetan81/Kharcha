@@ -1,7 +1,6 @@
 import { TRANSACTION_TYPE } from "@/lib/constants";
 import {
   DATE_REGEX,
-  fallbackNow,
   MERCHANT_REGEX,
   type Parser,
   parseAmount,
@@ -26,7 +25,7 @@ export const citiCardDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "Citi Card Payment",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
