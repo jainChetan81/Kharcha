@@ -19,6 +19,7 @@ import { Suspense, useEffect, useState } from "react";
 import { ActivityIndicator, AppState, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Toast, { type ToastConfig } from "react-native-toast-message";
+import { BootErrorScreen } from "@/components/boot-error-screen";
 import { ComponentErrorBoundary } from "@/components/error-boundary";
 import { LockedScreen } from "@/components/locked-screen";
 import { MonthlyWrapGate } from "@/components/monthly-wrap-gate";
@@ -39,7 +40,7 @@ import { initDB } from "@/lib/db";
 import { getConfig } from "@/lib/db/config";
 import { processSubscriptions } from "@/lib/db/subscriptions";
 import { env } from "@/lib/env";
-import { logScreenView } from "@/lib/firebase";
+import { ERROR_TYPE, logFirebaseError, logScreenView } from "@/lib/firebase";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { isIOS } from "@/lib/utils";
 import { syncWidgetData } from "@/lib/widget";
@@ -168,12 +169,24 @@ export default function RootLayout() {
   });
 
   const [dbReady, setDbReady] = useState(false);
+  const [bootError, setBootError] = useState<Error | null>(null);
+  const [bootAttempt, setBootAttempt] = useState(0);
   const { locked, authenticate } = useAppLock(dbReady);
   const ready = dbReady && fontsLoaded;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: bootAttempt is the trigger — we intentionally re-run the boot chain when it's bumped (via BootErrorScreen's retry), even though the body doesn't reference it.
   useEffect(() => {
-    initDB()
-      .then(async () => {
+    let cancelled = false;
+    setBootError(null);
+
+    (async () => {
+      // Fatal: without a working database there is nothing for the app to do.
+      await initDB();
+      if (cancelled) return;
+
+      // Best-effort: failures here are logged and surfaced, but must not
+      // block the app from becoming usable.
+      try {
         const created = await processSubscriptions();
         if (created.length > 0) {
           showSuccessToast(
@@ -181,21 +194,49 @@ export default function RootLayout() {
             created.join(", "),
           );
         }
+      } catch (err) {
+        logFirebaseError(err, {
+          error_type: ERROR_TYPE.DB,
+          boot_step: "processSubscriptions",
+        });
+        showErrorToast("Some subscriptions may not have renewed", err);
+      }
+
+      try {
         await queryClient.prefetchQuery({
           queryKey: [QUERY_KEYS.USER_SYNC_PREFS],
           queryFn: readAutoRefreshPrefs,
         });
-        setDbReady(true);
-        syncWidgetData();
-      })
-      .catch((err) => {
-        showErrorToast("Database Error", err);
+      } catch (err) {
+        // Non-fatal: useAutoRefreshPrefs() refetches on demand if the
+        // prefetch didn't warm the cache.
+        logFirebaseError(err, {
+          error_type: ERROR_TYPE.DB,
+          boot_step: "prefetchSyncPrefs",
+        });
+      }
+
+      if (cancelled) return;
+      setDbReady(true);
+      syncWidgetData();
+    })().catch((err) => {
+      if (cancelled) return;
+      const error = err instanceof Error ? err : new Error(String(err));
+      logFirebaseError(error, {
+        error_type: ERROR_TYPE.DB,
+        boot_step: "initDB",
       });
-  }, []);
+      setBootError(error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bootAttempt]);
 
   useEffect(() => {
-    if (ready) SplashScreen.hideAsync();
-  }, [ready]);
+    if ((dbReady || bootError) && fontsLoaded) SplashScreen.hideAsync();
+  }, [dbReady, bootError, fontsLoaded]);
 
   // Refresh widget data when app returns to foreground (catches midnight
   // resets) and opportunistically run an auto-backup if it's been >24h since
@@ -262,7 +303,15 @@ export default function RootLayout() {
                 </View>
               }
             >
-              {ready ? (
+              {bootError ? (
+                <BootErrorScreen
+                  error={bootError}
+                  onRetry={() => {
+                    setBootError(null);
+                    setBootAttempt((n) => n + 1);
+                  }}
+                />
+              ) : ready ? (
                 locked ? (
                   <LockedScreen onUnlock={authenticate} />
                 ) : (
