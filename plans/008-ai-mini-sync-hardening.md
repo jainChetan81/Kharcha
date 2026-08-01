@@ -7,7 +7,7 @@
 > in `plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
-> **Drift check (run first)**: `git diff --stat f5a9dc9..HEAD -- lib/mini-sync.ts hooks/use-mini-sync.ts hooks/use-refresh.ts hooks/use-transactions.ts lib/gemini/client.ts app/_layout.tsx`
+> **Drift check (run first)**: `git diff --stat f5a9dc9..HEAD -- lib/mini-sync.ts hooks/use-mini-sync.ts hooks/use-refresh.ts hooks/use-transactions.ts lib/gemini/client.ts app/_layout.tsx hooks/use-gmail-sync.ts`
 > If any of these files changed since this plan was written, re-read the
 > affected file in full and reconcile the line numbers/excerpts below before
 > proceeding; if a function this plan edits no longer matches its excerpt,
@@ -20,7 +20,7 @@
 - **Risk**: MED
 - **Depends on**: none (soft coordination note, not a dependency — see "Why this matters")
 - **Category**: bug
-- **Planned at**: audit-derived, current HEAD
+- **Planned at**: commit `f5a9dc9`, 2026-08-01
 
 ## Why this matters
 
@@ -323,7 +323,7 @@ Then update the four call sites:
   ```
   Add `isConfigured` to the existing `import { pushTransactionToMini } from "@/lib/mini-sync";` (line 45). Remove the now-unused `import { env } from "@/lib/env";` (line 43) — confirm with `grep -n "env\." hooks/use-transactions.ts` first (it should only match the two lines being replaced).
 
-**Verify**: `pnpm typecheck` → exit 0 (catches any leftover unused-import or missing-import mistakes as errors under most tsconfigs, but confirm with lint too). `pnpm lint` → exit 0 (biome flags unused imports). `grep -rn "Boolean(env.MINI_API_URL)" hooks app lib` → zero matches (all four copies replaced).
+**Verify**: `pnpm typecheck` → exit 0 (catches any leftover unused-import or missing-import mistakes as errors under most tsconfigs, but confirm with lint too). `pnpm lint` → exit 0 (biome flags unused imports). `grep -rn "Boolean(env.MINI_API_URL)" hooks app lib` → **exactly one match**, inside `lib/mini-sync.ts`'s `isConfigured()` itself (that's the canonical copy this step exports and keeps — NOT zero matches). The three *duplicated* call sites (`hooks/use-mini-sync.ts`, `app/_layout.tsx`, `hooks/use-transactions.ts`) are what should be gone; confirm that with `grep -rn "Boolean(env.MINI_API_URL)" hooks/use-mini-sync.ts app/_layout.tsx hooks/use-transactions.ts` → zero matches.
 
 ### Step 4: Validate the mini API response, normalize Gemini's currency, back off before retrying a rate limit
 
@@ -470,13 +470,13 @@ In `hooks/use-mini-sync.ts`:
 
 Addendum, added after the rest of this plan was written and reviewed: audit finding index 42 was present in this plan's source bucket file but got left out of an earlier draft's scope by mistake (a drafting-prompt error, not a finding about the code) — re-verified against current source and it's real, so it belongs here rather than going unaddressed.
 
-`hooks/use-mini-sync.ts`'s sync-success handler and `hooks/use-gmail-sync.ts`'s sync-success handler each hand-roll the identical 7-key `queryClient.invalidateQueries(...)` list — `TRANSACTIONS`, `TRANSACTIONS_PAGINATED`, `MONTHLY_SUMMARY`, `CATEGORY_BREAKDOWN`, `REIMBURSEMENT_SUMMARY`, `TAG_BREAKDOWN`, `TAG_BREAKDOWN_ALL_TIME` — instead of calling the canonical `useInvalidateTransactions()` (`hooks/use-transactions.ts:52-91`), which invalidates those same 7 keys *plus* `MERCHANT_BREAKDOWN`, `TOTAL_MONTHLY_BUDGET`, `MONTHLY_INSIGHTS`, `FILTERED_INSIGHTS`, `HOLDINGS`, and others (confirmed by reading the live helper — it's ~11+ keys, not the ~7 either sync hook covers). Concretely: after a background Gmail or mini sync adds a transaction, the Home screen's budget bar, the Insights screen's filtered view, and Portfolio holdings can all keep showing stale numbers until something else happens to invalidate them (a manual pull-to-refresh on that specific screen, or a cold app restart) — not because the sync failed, but because it only invalidated 7 of the ~11+ caches that actually depend on transaction data.
+`hooks/use-mini-sync.ts`'s sync-success handler and `hooks/use-gmail-sync.ts`'s sync-success handler each hand-roll the identical 7-key `queryClient.invalidateQueries(...)` list — `TRANSACTIONS`, `TRANSACTIONS_PAGINATED`, `MONTHLY_SUMMARY`, `CATEGORY_BREAKDOWN`, `REIMBURSEMENT_SUMMARY`, `TAG_BREAKDOWN`, `TAG_BREAKDOWN_ALL_TIME` — instead of calling the canonical `useInvalidateTransactions()` (`hooks/use-transactions.ts:52-120`), which invalidates those same 7 keys *plus* `MERCHANT_BREAKDOWN`, `TOTAL_MONTHLY_BUDGET`, `MONTHLY_INSIGHTS`, `FILTERED_INSIGHTS`, `HOLDINGS`, `HOLDING`, `HOLDING_TRANSACTIONS`, `PORTFOLIO_SUMMARY`, `TRANSACTION`, `BIGGEST_TRANSACTION`, `TRANSACTION_COUNT`, `TRACKING_STREAK`, `DAILY_SPEND` — ~20 keys total, not ~11 — plus a `.then(() => syncWidgetData())` side effect (lines 116-119) that neither sync hook currently triggers either. Concretely: after a background Gmail or mini sync adds a transaction, the Home screen's budget bar, the Insights screen's filtered view, Portfolio holdings, and the home-screen widget can all keep showing stale numbers until something else happens to invalidate them (a manual pull-to-refresh on that specific screen, or a cold app restart) — not because the sync failed, but because it only invalidated 7 of the ~20 caches that actually depend on transaction data, and never re-synced the widget. Adopting `useInvalidateTransactions()` pulls in the `syncWidgetData()` call too — that's an intentional side effect of sharing the helper, not a separate change; note it in your report but do not try to opt out of it.
 
-In `hooks/use-mini-sync.ts`: replace the 7 individual `queryClient.invalidateQueries({...})` calls in the sync-success path with a call to `useInvalidateTransactions()` (import it from `@/hooks/use-transactions`, call the hook at the top of `useMiniSync`/`useMiniSyncConfig` — whichever hook owns the success handler — same as its existing callers in `hooks/use-transactions.ts:386,433,448,462` do it, then invoke the returned function in place of the 7 manual calls).
+In `hooks/use-mini-sync.ts`: this file has **two separate** `const queryClient = useQueryClient();` declarations — one inside the config hook (line 9, used only for the unrelated `CONFIG` key invalidation at line 20 — leave this one alone entirely) and one inside `useMiniSync` (line 58, used only by the 7 calls this step removes). In `useMiniSync` only: replace the 7 individual `queryClient.invalidateQueries({...})` calls in the sync-success path with a call to `useInvalidateTransactions()` (import it from `@/hooks/use-transactions`, call the hook at the top of `useMiniSync` — same as its existing callers in `hooks/use-transactions.ts:386,433,448,462` do it — then invoke the returned function in place of the 7 manual calls). Once those 7 calls are gone, `useMiniSync`'s own `const queryClient = useQueryClient();` (line 58) has no remaining reference inside that function — delete that declaration too. Do NOT touch line 9's declaration or the `useQueryClient` import — both are still needed by the config hook.
 
-In `hooks/use-gmail-sync.ts`: same replacement for its matching 7-call block.
+In `hooks/use-gmail-sync.ts`: same call-site replacement for its matching 7-call block. Unlike `use-mini-sync.ts`, this file has only one `const queryClient = useQueryClient();` (line 26), used only by the 7 calls being removed — after the replacement it has zero remaining references anywhere in the file. Delete both the declaration and the now-fully-unused `import { useQueryClient } from "@tanstack/react-query";` (or the `useQueryClient` specifier from it, if the import line has other named imports — check first).
 
-**Verify**: `grep -n "useInvalidateTransactions" hooks/use-mini-sync.ts hooks/use-gmail-sync.ts` → present in both; `grep -c "invalidateQueries" hooks/use-mini-sync.ts hooks/use-gmail-sync.ts` → each drops by 7 (only the `CONFIG` invalidation in `use-mini-sync.ts:20`, unrelated to transaction data, should remain as a direct call). `pnpm typecheck` → exit 0.
+**Verify**: `grep -n "useInvalidateTransactions" hooks/use-mini-sync.ts hooks/use-gmail-sync.ts` → present in both; `grep -c "invalidateQueries" hooks/use-mini-sync.ts hooks/use-gmail-sync.ts` → each drops by 7 (only the `CONFIG` invalidation in `use-mini-sync.ts:20`, unrelated to transaction data, should remain as a direct call); `grep -c "useQueryClient" hooks/use-gmail-sync.ts` → zero (import and declaration both gone); `grep -c "useQueryClient" hooks/use-mini-sync.ts` → exactly 2 (the import line, plus the one remaining declaration for the config hook). `pnpm typecheck` → exit 0. **`pnpm lint` → exit 0** (this is the step that actually catches a leftover unused `queryClient`/`useQueryClient` — don't skip it and rely on typecheck alone, `tsconfig.json` has no `noUnusedLocals`).
 
 ## Test plan
 
@@ -487,7 +487,7 @@ No test runner exists in this repo, so verification here is typecheck/lint/dead-
 - [ ] `grep -n "firstFailedId" lib/mini-sync.ts` shows the tracker declared and read in the persist block
 - [ ] `grep -n "inFlightSync" lib/mini-sync.ts` shows the module-level lock guarding `syncMiniTransactions`
 - [ ] `grep -n "result.result.failed" hooks/use-refresh.ts` shows the new toast branch
-- [ ] `grep -rn "Boolean(env.MINI_API_URL)" hooks app lib` → zero matches; `grep -n "export function isConfigured\|export function deriveMiniSyncEnabled" lib/mini-sync.ts` → both present
+- [ ] `grep -rn "Boolean(env.MINI_API_URL)" hooks/use-mini-sync.ts app/_layout.tsx hooks/use-transactions.ts` → zero matches (the 3 duplicated call sites are gone; the canonical copy inside `lib/mini-sync.ts`'s `isConfigured()` legitimately remains); `grep -n "export function isConfigured\|export function deriveMiniSyncEnabled" lib/mini-sync.ts` → both present
 - [ ] `grep -n "as { transactions: MiniTransaction\[\] }" lib/mini-sync.ts` → zero matches (blind cast gone); `grep -n "miniTransactionSchema\|miniApiEnvelopeSchema" lib/mini-sync.ts` → present
 - [ ] `grep -n "toUpperCase" lib/gemini/client.ts` → present in `resolveInrAmount`; `grep -n "GEMINI_RETRY_DELAY_MS" lib/gemini/client.ts` → present
 - [ ] `grep -rn "MiniSyncLog\|setLastId" lib hooks app components` → zero matches

@@ -2,12 +2,16 @@
 
 > **Executor instructions**: Follow this plan step by step. Run every
 > verification command and confirm the expected result before moving to the
-> next step. Step 5 opens with a decision point — read it before writing any
-> code for that step; do not pick a path yourself if the operator hasn't
-> weighed in (see Step 5). If anything in the "STOP conditions" section
-> occurs, stop and report — do not improvise. When done, update the status
-> row for this plan in `plans/README.md` — unless a reviewer dispatched you
-> and told you they maintain the index.
+> next step. Step 5 opens with a decision point between two options — this
+> plan's stated default is **Option B**, and Option B is fully specified
+> below (code, verify commands, done criteria) — proceed with it without
+> waiting for operator input. Only **Option A** requires an explicit
+> operator go-ahead before starting (it is deliberately left unspecified —
+> see Step 5's STOP condition); if the operator hasn't asked for Option A,
+> build Option B. If anything in the "STOP conditions" section occurs, stop
+> and report — do not improvise. When done, update the status row for this
+> plan in `plans/README.md` — unless a reviewer dispatched you and told you
+> they maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat f5a9dc9..HEAD -- hooks/use-gmail-sync-ui.ts app/gmail-sync.tsx hooks/use-auto-refresh-prefs.ts hooks/use-refresh.ts`
 > If any of these changed since planning, re-read the affected file in full
@@ -21,7 +25,7 @@
 - **Risk**: LOW
 - **Depends on**: none
 - **Category**: bug
-- **Planned at**: audit-derived, current HEAD (`f5a9dc9`)
+- **Planned at**: commit `f5a9dc9`, 2026-08-01
 
 ## Why this matters
 
@@ -375,7 +379,10 @@ async function handleVerify() {
       // Network failure, timeout/abort, or a JSON parse error land here.
       // None of these prove the Gmail session expired — surface them as an
       // ordinary failure instead of disconnecting the user.
-      if (err instanceof Error && err.name === "AbortError") {
+      if (
+        err instanceof Error &&
+        (err.name === "AbortError" || err.name === "TimeoutError")
+      ) {
         showErrorToast(
           "Verification timed out",
           "Check your connection and try again",
@@ -674,7 +681,7 @@ No automated test suite exists in this repo. Machine checks are the greps and `p
 
 ## Done criteria
 
-- [ ] `grep -n "await handleSessionExpired" hooks/use-gmail-sync-ui.ts` → exactly one call inside `handleVerify`'s catch-adjacent logic is gated on `res.status === 401 || res.status === 403` or the pre-existing `!token` check — the bare `catch { await handleSessionExpired(); }` is gone
+- [ ] `grep -n "await handleSessionExpired" hooks/use-gmail-sync-ui.ts` → exactly **two** calls remain (not one): the pre-existing `!token` branch, and the new branch gated on `res.status === 401 || res.status === 403`. The bare, ungated `catch { await handleSessionExpired(); }` is gone.
 - [ ] `grep -n "setLastSynced(date.toISOString())" hooks/use-gmail-sync-ui.ts` → no matches
 - [ ] `grep -n "response.result.nobanks" hooks/use-gmail-sync-ui.ts` → no matches
 - [ ] `grep -n "style={{" app/gmail-sync.tsx` → no matches

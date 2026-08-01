@@ -21,7 +21,7 @@
 - **Risk**: LOW
 - **Depends on**: none
 - **Category**: bug
-- **Planned at**: audit-derived, current HEAD (`f5a9dc9`)
+- **Planned at**: commit `f5a9dc9`, 2026-08-01
 
 ## Why this matters
 

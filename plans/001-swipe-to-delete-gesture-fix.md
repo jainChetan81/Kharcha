@@ -8,11 +8,20 @@
 > maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat f5a9dc9..HEAD -- components/transaction-item.tsx hooks/use-transactions.ts`
-> If `components/transaction-item.tsx` shows changes, re-read it in full and
-> re-locate `panResponder`, `avatarLetter`, and the `item.id` reset effect by
-> name before proceeding — line numbers below may have shifted. If any body
-> differs structurally from the excerpts in "Current state" (not just
-> line-shifted), STOP.
+> `hooks/use-transactions.ts` is cited as read-only evidence (Step 4 context)
+> and is NOT edited by this plan — it's included in the drift check only to
+> confirm `useSwipeDelete`'s behavior hasn't changed since planning, not
+> because this plan touches it. If `components/transaction-item.tsx` shows
+> changes, re-read it in full and re-locate `panResponder`, `avatarLetter`,
+> and the `item.id` reset effect by name before proceeding — line numbers
+> below may have shifted. If any body differs structurally from the excerpts
+> in "Current state" (not just line-shifted), STOP.
+>
+> **Line numbers shift after Step 1**: Step 1 inserts a ~10-line block before
+> `panResponder`'s declaration, so every line number below it (including the
+> ones Steps 2 and 3 cite) moves down by that amount once Step 1 lands.
+> Locate every edit target in Steps 2 and 3 by searching for its quoted code
+> text, not by trusting the stated line number after Step 1 is applied.
 
 ## Status
 
@@ -21,7 +30,7 @@
 - **Risk**: LOW
 - **Depends on**: none
 - **Category**: bug
-- **Planned at**: audit-derived, current HEAD (`f5a9dc9`)
+- **Planned at**: commit `f5a9dc9`, 2026-08-01
 
 ## Why this matters
 
@@ -179,25 +188,25 @@ onSwipeDelete?.(itemRef.current);
 
 Do not touch the `onAccessibilityAction` handler at lines 227-229 — it already reads live `item` correctly (see "Current state").
 
-**Verify**: `grep -n "itemRef" components/transaction-item.tsx` → shows the declaration, the effect, and the one call site at the old line 159; `pnpm typecheck` → exit 0.
+**Verify**: `grep -n "itemRef" components/transaction-item.tsx` → shows exactly 3 matches: the `useRef(item)` declaration, the `itemRef.current = item;` effect body, and the `onSwipeDelete?.(itemRef.current);` call site (its line number will have shifted down from 159 by however many lines Step 1's block added — that's expected, not a failure; confirm by content, not by the number 159 literally appearing). `pnpm typecheck` → exit 0.
 
 ### Step 2: Make the release-time commit check direction-aware
 
-Change line 144 from:
+Find this line (its line number has shifted down since Step 1 — search for the text, don't assume line 144):
 ```tsx
 if (Math.abs(gesture.dx) > SWIPE_COMMIT_THRESHOLD) {
 ```
-to:
+Change it to:
 ```tsx
 if (gesture.dx < -SWIPE_COMMIT_THRESHOLD) {
 ```
 This matches `onPanResponderMove`, which only ever moves the row for `gesture.dx < 0`. A rightward swipe now falls through to the existing `else` branch (spring back to 0) instead of committing — and since the row was never visually displaced rightward in the first place, the spring-back is a visual no-op, so no other branch needs to change.
 
-**Verify**: `pnpm typecheck` → exit 0; `grep -n "gesture.dx < -SWIPE_COMMIT_THRESHOLD" components/transaction-item.tsx` → one match.
+**Verify**: `grep -n "gesture.dx < -SWIPE_COMMIT_THRESHOLD" components/transaction-item.tsx` → one match (confirms the change actually landed, not just that the file still typechecks); `grep -n "Math.abs(gesture.dx) > SWIPE_COMMIT_THRESHOLD" components/transaction-item.tsx` → zero matches (confirms the old sign-agnostic check is gone); `pnpm typecheck` → exit 0.
 
 ### Step 3: Guard `avatarLetter` against empty strings
 
-Change lines 212-216 from:
+Find this block (its line number has shifted since Step 1 — search for the text, don't assume lines 212-216):
 ```tsx
 const avatarLetter = (
     isInvestment
@@ -213,9 +222,9 @@ const avatarLetter = (
       : item.merchant || item.category_name || "?"
   )[0].toUpperCase();
 ```
-This mirrors the `||`-based fallback `titleText` already uses for the non-investment branch two lines above (line 211) — same technique, now applied consistently so `""` can never reach `[0]`.
+This mirrors the `||`-based fallback `titleText` already uses for its non-investment branch (the `item.merchant || item.category_name || OTHER_CATEGORY_LABEL` line) — same technique, now applied consistently so `""` can never reach `[0]`. Note `titleText`'s *investment* branch still uses `??` (`item.holding_name ?? OTHER_CATEGORY_LABEL`) — that's intentionally out of scope for this step too; only `avatarLetter` is being changed.
 
-**Verify**: `pnpm typecheck` → exit 0; `pnpm lint` → exit 0.
+**Verify**: `grep -n 'item.holding_name || "?"' components/transaction-item.tsx` → one match; `grep -n '(item.holding_name ?? "?"' components/transaction-item.tsx` → zero matches (confirms both `avatarLetter` branches switched from `??` to `||`); `pnpm typecheck` → exit 0; `pnpm lint` → exit 0.
 
 ### Step 4 (optional — defense-in-depth, not required to close this plan)
 
@@ -238,7 +247,7 @@ No test runner exists for component-level RN gesture behavior in this repo (`pnp
 
 - [ ] `itemRef` present and the release-handler delete call reads `itemRef.current`, not `item`
 - [ ] `onPanResponderRelease`'s commit check is `gesture.dx < -SWIPE_COMMIT_THRESHOLD` (direction-aware)
-- [ ] `avatarLetter` uses `||` fallbacks for both branches, matching `titleText`'s existing pattern
+- [ ] `avatarLetter` uses `||` fallbacks for both branches (matching the `||` technique `titleText`'s non-investment branch already uses — `titleText`'s own investment branch still correctly uses `??` and is unchanged)
 - [ ] `pnpm typecheck`, `pnpm lint`, `pnpm quality` all exit 0
 - [ ] `pnpm react-doctor:diff` shows no new findings on this file
 - [ ] Manual smoke test (Test plan above) passed on-device, reported by the operator

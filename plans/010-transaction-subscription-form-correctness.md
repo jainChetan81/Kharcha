@@ -21,7 +21,7 @@
 - **Risk**: LOW
 - **Depends on**: none
 - **Category**: bug
-- **Planned at**: audit-derived, current HEAD (`f5a9dc99`)
+- **Planned at**: commit `f5a9dc9`, 2026-08-01
 
 ## Why this matters
 
@@ -391,9 +391,19 @@ typecheck/lint plus the manual smoke checks called out per step and in
   primitive only; do not touch call sites, their existing try/catch blocks
   around `onSave` are still fine (belt-and-suspenders, not redundant).
 - Re-theming or restyling the Home/Insights spending-change badges — step 6
-  preserves existing copy and colors exactly (including Insights' existing,
-  already-correct text), it only removes duplicate logic and fixes Home's
-  0% branch.
+  preserves existing copy and colors for every case Home already renders a
+  badge for, and matches Insights' existing, already-correct text. **One
+  disclosed exception, not a re-theme**: today, Home renders no badge at all
+  when `|rawPct| > 999` (`getSpendingChangeFlavor` returns `null` for that
+  case); after step 6, Home switches to the shared `computeSpendingChange`,
+  which returns `"huge-up"`/`"huge-down"` for that same case instead of
+  `null` — so Home starts showing a `"↑ vs last month"` / `"↓ vs last
+  month"` badge for extreme-change months where it previously showed
+  nothing. This converges Home with Insights (which already handles this
+  case), and is an intentional, disclosed part of unifying the two
+  implementations — not a silent side effect. Include a manual check for an
+  extreme-change month (e.g. temporarily set a transaction amount 10×
+  normal for one category) in Step 6's Verify, not just the 0%-change case.
 - `lib/db/subscriptions.ts`, `lib/validation.ts`, `lib/format.ts` — read
   for reference, not modified.
 
@@ -589,10 +599,21 @@ In `components/ui/bottom-sheet.tsx`:
 5. In the existing `useEffect` that resyncs `value` on open (lines 71-75),
    also reset `setIsSaving(false)` — a defensive reset in case the sheet is
    ever reopened while a previous save was still technically in flight.
+6. **A second, live instance of Finding #1's bug lives in this same file** —
+   found while re-verifying this plan, not in the original audit. Line 110's
+   numeric branch does `setValue(v.replace(/[^0-9.]/g, ""));` — the exact
+   same raw-regex bug Step 1 fixes in Edit Subscription's amount field,
+   reachable here via `components/set-budget-sheet.tsx:27`'s
+   `keyboardType="numeric"` prop. Replace it with
+   `setValue(sanitizeDecimalInput(v));` (import `sanitizeDecimalInput` from
+   `@/lib/format`, same helper Step 1 uses).
 
 **Verify**: `pnpm typecheck` → exit 0. Manual: operator opens the New Tag
 sheet from Add Transaction, taps Save rapidly twice, confirms only one tag
 is created and the button shows a spinner instead of staying tappable.
+Separately: operator opens Set Budget (numeric-keyboard sheet), types
+"12.5.6", confirms it's sanitized the same way the Edit Subscription amount
+field now is (Step 1) — not left as raw garbled input.
 
 ### Step 6: Unify month-over-month spending-change math and fix the 0% bug
 
@@ -720,7 +741,12 @@ the muted/gray color, not "↓ 0%" in green; (b) operator opens Insights for
 the same month and confirms the Wrap card still reads "Same as <prev
 month>"; (c) spot-check a month with an up% and a down% change on both
 Home and Insights to confirm copy/colors are unchanged from before this
-step.
+step; (d) **new check, not just the 0%/typical cases**: operator creates a
+month where spend is >10x the prior month (or the prior month had near-zero
+spend), opens Home, and confirms a `"↑ vs last month"` badge now appears —
+before this step, Home showed no badge at all for this case (see the
+disclosed behavior change in "Scope" above); confirm Insights shows the
+equivalent badge for the same month, unchanged from before this step.
 
 ### Step 7: Catch the AI-hint-dismissed config read
 
@@ -802,7 +828,8 @@ Stop and report back (do not improvise) if:
 
 - Any future amount/units text input must sanitize with
   `sanitizeDecimalInput` from `lib/format.ts`, not a hand-rolled regex —
-  this is now the case everywhere in the app after Step 1.
+  this is now the case everywhere in the app after Steps 1 and 5.6 (both
+  found live instances of the same raw-regex bug).
 - If the Edit Subscription screen ever grows full SIP-editing support
   (holding, default units, investment kind), it should copy the branching
   pattern from `components/subscription-form.tsx:270-360` rather than

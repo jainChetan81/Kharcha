@@ -21,7 +21,7 @@
 - **Risk**: MED
 - **Depends on**: none
 - **Category**: bug
-- **Planned at**: audit-derived, current HEAD (`f5a9dc9`, 2026-08-01)
+- **Planned at**: commit `f5a9dc9`, 2026-08-01
 
 ## Why this matters
 
@@ -180,7 +180,7 @@ export async function deleteTag(id: number) {
 }
 ```
 
-**The five gap sites** (all confirmed via `grep -rn "db.delete(transactions)" lib/db/*.ts`):
+**The five gap sites** (all confirmed via `grep -rn "\.delete(transactions" lib/db/*.ts` (not `"db.delete(transactions)"` — one call in `holdings.ts` line-wraps `db` and `.delete(transactions)` onto separate lines, which a `db.delete(transactions)` substring search misses; the pattern above catches it too)):
 
 - `lib/db/index.ts:1611-1637` — `deleteTransaction`:
   ```ts
@@ -903,12 +903,21 @@ export async function findDuplicateTransaction(
 matching how `transactions.date` strings are stored and compared
 everywhere else in this window.
 
-**Verify**: `pnpm typecheck` → exit 0. Manual check: on a device/simulator
-set to IST, add a transaction dated e.g. `2024-01-15 02:00` with a
-merchant, then attempt to add another with the same merchant/amount dated
-`2024-01-15 23:00` — confirm the duplicate sheet appears (before the fix,
-the UTC shift could push `from`/`to` a day off and miss this pair
-depending on exact times).
+**Verify**: `pnpm typecheck` → exit 0. Manual check — the times matter, this
+is not just "any two nearby dates": on a device/simulator set to IST, add a
+transaction with a merchant/amount dated `2024-01-16` (any time of day),
+then attempt to add another with the **same merchant/amount** dated
+`2024-01-15 02:00` (the early-morning local time is the part that matters —
+`02:00 IST` is `20:30 UTC` on the *previous* day, which is what triggers the
+bug). Before this fix: `new Date("2024-01-15 02:00")` computes its ±1-day
+window from the UTC-shifted instant, landing on `["2024-01-13",
+"2024-01-15"]` — the Jan-16 row falls outside it and the duplicate sheet
+does **not** appear (a real miss). After this fix (local-time arithmetic):
+the window is the locally-correct `["2024-01-14", "2024-01-16"]`, the Jan-16
+row is included, and the duplicate sheet **does** appear. (An earlier draft
+of this check used two evening times that never cross the UTC/local
+day boundary — that version passes identically before and after the fix and
+proves nothing; use the times above instead.)
 
 ### Step 7: Move `updateTransaction()`'s snapshot read inside its transaction
 
@@ -1004,7 +1013,7 @@ and `pnpm dead-code` once after all steps land.
 
 ## Done criteria
 
-- [ ] `grep -rn "db.delete(transactions)" lib/db/*.ts` — every call site
+- [ ] `grep -rn "\.delete(transactions" lib/db/*.ts` (not `"db.delete(transactions)"` — one call in `holdings.ts` line-wraps `db` and `.delete(transactions)` onto separate lines, which a `db.delete(transactions)` substring search misses; the pattern above catches it too) — every call site
       (`index.ts` x2, `holdings.ts` x2, `subscriptions.ts` x1) has a
       preceding or accompanying `transactionTags` cleanup in the same
       transaction

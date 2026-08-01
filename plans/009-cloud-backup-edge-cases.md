@@ -19,7 +19,7 @@
 - **Risk**: LOW
 - **Depends on**: none
 - **Category**: bug
-- **Planned at**: audit-derived, current HEAD (`f5a9dc9`)
+- **Planned at**: commit `f5a9dc9`, 2026-08-01
 
 ## Why this matters
 
@@ -157,7 +157,7 @@ These are separate from, and not overlapping with, the three delete-before-write
 ## Scope
 
 **In scope**:
-- `lib/cloud-backup/gdrive.ts` (`getLatestDriveBackup`, `uploadMultipart`, `uploadBackupToDrive` only)
+- `lib/cloud-backup/gdrive.ts` (`getLatestDriveBackup`, `uploadMultipart`, `uploadBackupToDrive`, and a new `DriveFileNotFoundError` class Step 2 adds — nothing else in this file)
 - `lib/cloud-backup/index.ts` (`backupNow` only — passing the stored file id through)
 
 **Out of scope** (do NOT touch):
@@ -262,25 +262,35 @@ Do not export `DriveFileNotFoundError` — it's fully handled inside this module
 
 ### Step 3: Pass the stored file id from `backupNow()`
 
-In `lib/cloud-backup/index.ts`, inside `backupNow()` (around line 111-114), change:
+In `lib/cloud-backup/index.ts`, inside `backupNow()` (lines 111-117), the full `if`/`else if`/`else` chain today reads:
 
 ```ts
-} else if (provider === "gdrive") {
-  const r = await uploadBackupToDrive(bytes);
-  modifiedTime = r.modifiedTime;
-  fileId = r.fileId;
-}
+      } else if (provider === "gdrive") {
+        const r = await uploadBackupToDrive(bytes);
+        modifiedTime = r.modifiedTime;
+        fileId = r.fileId;
+      } else {
+        throw new Error("Cloud backup not supported on this platform");
+      }
 ```
 
-to:
+**Do not treat the 4-line `gdrive` branch alone as the edit target — the block continues with an `else { throw ... }` clause immediately after `fileId = r.fileId;` (no bare closing brace there). Match against the full 7-line excerpt above, and only touch the two lines noted below; leave the trailing `} else { throw new Error(...); }` exactly as it is.**
+
+Make two changes inside the `gdrive` branch only:
+1. Insert a new line before `const r = await uploadBackupToDrive(bytes);`: `const knownFileId = await getConfig(CONFIG_KEYS.CLOUD_BACKUP_LAST_FILE_ID);`
+2. Change that line's call from `uploadBackupToDrive(bytes)` to `uploadBackupToDrive(bytes, knownFileId)`.
+
+Result:
 
 ```ts
-} else if (provider === "gdrive") {
-  const knownFileId = await getConfig(CONFIG_KEYS.CLOUD_BACKUP_LAST_FILE_ID);
-  const r = await uploadBackupToDrive(bytes, knownFileId);
-  modifiedTime = r.modifiedTime;
-  fileId = r.fileId;
-}
+      } else if (provider === "gdrive") {
+        const knownFileId = await getConfig(CONFIG_KEYS.CLOUD_BACKUP_LAST_FILE_ID);
+        const r = await uploadBackupToDrive(bytes, knownFileId);
+        modifiedTime = r.modifiedTime;
+        fileId = r.fileId;
+      } else {
+        throw new Error("Cloud backup not supported on this platform");
+      }
 ```
 
 `getConfig` is already imported at the top of this file — no import changes needed. On a first-ever backup (or a reinstall where local config was wiped but a Drive backup from a previous install still exists), `getConfig` returns `null`, `uploadBackupToDrive` skips the known-id fast path, and falls straight through to `findExistingBackup` — identical behavior to today, so the existing dedup-on-reinstall case is preserved.
@@ -300,6 +310,7 @@ No automated tests cover this path. Manual verification (operator-run, requires 
 - [ ] `uploadBackupToDrive()` accepts an optional `knownFileId`, tries it via PATCH first, and falls back to `findExistingBackup()` on a 404 or when no id was supplied
 - [ ] `backupNow()` reads `CONFIG_KEYS.CLOUD_BACKUP_LAST_FILE_ID` via `getConfig` and passes it into `uploadBackupToDrive()`
 - [ ] `pnpm typecheck`, `pnpm lint`, `pnpm quality` all exit 0
+- [ ] `git status --short` shows changes only in `lib/cloud-backup/gdrive.ts` and `lib/cloud-backup/index.ts` — no other file touched
 - [ ] `plans/README.md` status row updated
 
 ## STOP conditions

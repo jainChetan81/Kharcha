@@ -20,7 +20,7 @@
 - **Risk**: LOW
 - **Depends on**: none
 - **Category**: bug
-- **Planned at**: audit-derived, current HEAD (`f5a9dc9`)
+- **Planned at**: commit `f5a9dc9`, 2026-08-01
 
 ## Why this matters
 
@@ -28,7 +28,7 @@
 
 `lib/toast.ts:15-24` shows why this is worse than a cosmetic annoyance: `showErrorToast` fires `Haptics.notificationAsync(...Error)` **and** `AccessibilityInfo.announceForAccessibility(...)` on every call, not just the visible `Toast.show`. Every duplicated toast is also a duplicated error buzz and a duplicated VoiceOver announcement — a screen-reader user hears the failure spoken twice.
 
-The audit flagged 6 sites and explicitly warned the pattern recurs in "at least 7+ places" and is likely under-counted. I re-verified all 6 against the current files (all still reproduce exactly as described) and grepped every `mutateAsync`/`.mutate()` call site in `app/`, `hooks/`, and `components/` against its mutation hook's `onSuccess`/`onError` definition. Most of the ~50 call sites I checked are **correctly structured already** — many hooks (`useAddCategory`, `useAddSource`, `useAddHolding`, `useDeleteBudget`, bank mutations in `hooks/use-banks.ts`, cloud-backup mutations, etc.) deliberately have no `onError`, and their call sites correctly own the single toast. Those are out of scope and must not be touched. But I found **11 more genuinely duplicated call sites beyond the 6 seeded findings**, bringing the confirmed total to 21 call sites across 10 files. Two of the 21 (Load Sample Data, and the post-insert budget check) are a different flavor — the mutation itself succeeds and a success toast already fired, but something afterward reports failure anyway — those get their own steps because the fix shape differs from "just remove the duplicate catch."
+The audit flagged 6 sites and explicitly warned the pattern recurs in "at least 7+ places" and is likely under-counted. I re-verified all 6 against the current files (all still reproduce exactly as described) and grepped every `mutateAsync`/`.mutate()` call site in `app/`, `hooks/`, and `components/` against its mutation hook's `onSuccess`/`onError` definition. Most of the ~50 call sites I checked are **correctly structured already** — many hooks (`useAddCategory`, `useAddSource`, `useAddHolding`, `useDeleteBudget`, bank mutations in `hooks/use-banks.ts`, cloud-backup mutations, etc.) deliberately have no `onError`, and their call sites correctly own the single toast. Those are out of scope and must not be touched. But I found genuinely duplicated call sites well beyond the 6 seeded findings, across 10 files — see the enumerated Steps below and the "Done criteria" list for the authoritative count (the Steps section is the source of truth; do not re-derive a total from this paragraph). Two of them (Load Sample Data, and the post-insert budget check) are a different flavor — the mutation itself succeeds and a success toast already fired, but something afterward reports failure anyway — those get their own steps because the fix shape differs from "just remove the duplicate catch."
 
 ## Current state
 
@@ -266,7 +266,7 @@ Four independent fixes in this one file:
 
 Do not touch `TagAppearanceSheet.onSave` (364-377) or either `endNowMutation.mutate(...)` call (139-144, 262-268) — all three are already correct. Keep the `showErrorToast` import (still used by `TagAppearanceSheet.onSave` at line 375).
 
-**Verify**: `grep -n "showErrorToast" app/config/tags.tsx` → exactly one match (line ~375, the appearance sheet); `pnpm typecheck` → exit 0.
+**Verify**: `grep -n "showErrorToast" app/config/tags.tsx` → exactly two matches (the `import { showErrorToast, ... }` line, which stays since the appearance sheet below still needs it, plus the appearance sheet's call at line ~375 — NOT one match, the import line itself contains the string too); `pnpm typecheck` → exit 0.
 
 ### Step 5: `hooks/use-tag-sheets.tsx` + `app/tag/[id].tsx` — quick-start / schedule sheets
 
@@ -280,7 +280,7 @@ In `app/tag/[id].tsx`, replace the schedule sheet's catch (274-275) the same way
 
 Replace the catch body at 852-853 (inside the New Tag `BottomSheet.onSave`, 843-855) with a comment-only no-op referencing `useAddTag`'s own `onError`. Keep the `showErrorToast` import — the unrelated "Missing fields" validation toast at line 896 still needs it.
 
-**Verify**: `grep -n "showErrorToast" components/transaction-form.tsx` → exactly one match (line ~896); `pnpm typecheck` → exit 0.
+**Verify**: `grep -n "showErrorToast" components/transaction-form.tsx` → exactly two matches (the `import` line, kept because the "Missing fields" toast at line ~896 still needs it, plus that line itself — NOT one match); `pnpm typecheck` → exit 0.
 
 ### Step 7: `app/edit/[id].tsx` — transaction update / delete
 
@@ -404,7 +404,7 @@ No test runner exists in this repo (`pnpm test` is not a defined script) — ver
 
 ## Done criteria
 
-- [ ] All 21 call sites listed in "Current state" no longer show a second toast for the same outcome their mutation hook already reports
+- [ ] Every call site edited by Steps 1-9 above no longer shows a second toast/haptic for an outcome its mutation hook already reports (verify against each step's own grep, not a précis count)
 - [ ] `grep -rn "showErrorToast" app/subscriptions/index.tsx hooks/use-edit-subscription.ts hooks/use-tag-sheets.tsx "app/tag/[id].tsx" "app/edit/[id].tsx" app/profile.tsx` → no matches in any of the six files
 - [ ] `app/config/tags.tsx` and `components/transaction-form.tsx` each retain exactly one (untouched, correct) `showErrorToast` call
 - [ ] `useSeedSampleData`'s `onSuccess` branches on the resolved value; `app/profile.tsx`'s Load Sample Data button no longer has its own try/catch/if-else

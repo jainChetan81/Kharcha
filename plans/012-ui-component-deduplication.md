@@ -7,7 +7,7 @@
 > in `plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
-> **Drift check (run first)**: `git diff --stat f5a9dc9..HEAD -- components/ui/inline-add-sheet.tsx hooks/use-inline-adders.tsx components/ui/chip-picker.tsx components/ui/date-picker-modal.tsx components/ui/date-time-picker-row.tsx components/ui/date-time-picker-field.tsx app/config/expense-categories.tsx app/config/income-categories.tsx app/config/sources.tsx app/config/tags.tsx app/portfolio.tsx components/add-category-sheet.tsx components/add-source-sheet.tsx components/add-holding-sheet.tsx components/transaction-form.tsx components/subscription-form.tsx components/investment-fields.tsx components/ui/tag-chip.tsx components/ui/stacked-bar.tsx components/ui/bottom-sheet.tsx components/spending-panel.tsx`
+> **Drift check (run first)**: `git diff --stat f5a9dc9..HEAD -- components/ui/inline-add-sheet.tsx hooks/use-inline-adders.tsx components/ui/chip-picker.tsx components/ui/date-picker-modal.tsx components/ui/date-time-picker-row.tsx components/ui/date-time-picker-field.tsx app/config/expense-categories.tsx app/config/income-categories.tsx app/config/sources.tsx app/config/tags.tsx app/portfolio.tsx components/add-category-sheet.tsx components/add-source-sheet.tsx components/add-holding-sheet.tsx components/transaction-form.tsx components/subscription-form.tsx components/investment-fields.tsx components/ui/tag-chip.tsx components/ui/stacked-bar.tsx components/ui/bottom-sheet.tsx components/spending-panel.tsx components/history-filters-sheet.tsx lib/constants.ts CLAUDE.md .claude/rules/project-conventions.md`
 > If any file above changed, re-read it before touching it — the line
 > numbers cited below were captured at `f5a9dc9` and will drift. If a cited
 > function/component was renamed, moved, or deleted outright, STOP and
@@ -20,7 +20,7 @@
 - **Risk**: MED
 - **Depends on**: none
 - **Category**: tech-debt
-- **Planned at**: audit-derived, current HEAD (`f5a9dc9`)
+- **Planned at**: commit `f5a9dc9`, 2026-08-01
 
 ## Why this matters
 
@@ -392,7 +392,14 @@ smoke tests named in each step.
   `components/add-category-sheet.tsx` / `components/add-source-sheet.tsx`
   (deletion) and `lib/constants.ts` (`INLINE_ADD_COPY` — add a `TAG` entry
   if needed)
-- `components/ui/chip-picker.tsx` (internal refactor only)
+- `components/ui/chip-picker.tsx` (internal refactor only, plus adding the
+  `addLabel` prop to `MultiChipPicker`)
+- `components/history-filters-sheet.tsx:232` — the other of `MultiChipPicker`'s
+  two callers; needs the new `addLabel="tag"` prop added by Step 2 (this
+  file was missing from an earlier draft's scope list — added here, not a
+  new finding about the code)
+- `lib/constants.ts` (`INLINE_ADD_COPY` — add a `TAG` entry if needed, per
+  the first bullet above)
 - `components/ui/date-picker-modal.tsx` (internal refactor only)
 - `app/config/expense-categories.tsx`, `app/config/income-categories.tsx`
   (consolidate into a shared component/config; both route files must still
@@ -539,8 +546,9 @@ formatter (defaulting to `item.name` — `MultiChipPicker`'s current tag
 callers pass `(item) => \`#${item.name}\`\``), and the existing `onAddNew`/
 `addLabel` props (both components get the parametrized `addLabel` — do not
 leave `MultiChipPicker`'s hardcoded `"+ New tag"`/`"Add new tag"` baked into
-the shared base; its two current callers should pass `addLabel="tag"`
-explicitly so the rendered output is unchanged). Keep `ChipPicker` and
+the shared base; its two current callers — `components/transaction-form.tsx:824`
+and `components/history-filters-sheet.tsx:232` — should each pass
+`addLabel="tag"` explicitly so the rendered output is unchanged). Keep `ChipPicker` and
 `MultiChipPicker` as the two exported, differently-typed public functions
 (callers' import lines must not change) — they become thin callers of the
 shared base with their own selection semantics. Preserve exactly: the
@@ -628,10 +636,12 @@ Bundle these — each is small and independently low-risk:
    copy verbatim (`button.tsx`'s `active:` classes target semantic tokens,
    not a plain neutral-gray row tint) — `active:bg-foreground/10` is a
    reasonable approximation of `rgba(150,150,150,0.1)` but is **not
-   guaranteed pixel-identical** in both light and dark theme. Flag this to
-   the operator for a visual check in both themes rather than assuming it's
-   correct; adjust the opacity/token if it visibly differs from the
-   original.
+   guaranteed pixel-identical**. Flag this to the operator for a visual
+   check rather than assuming it's correct; adjust the opacity/token if it
+   visibly differs from the original. (This app has no light theme —
+   `app.json`'s `userInterfaceStyle` is hardcoded `"dark"` and there is no
+   `Appearance`/theme-toggle code anywhere in the repo — so the check is a
+   single-theme visual comparison, not a light-vs-dark comparison.)
 
 3. **`investment-fields.tsx` `any`-widening**: attempt to narrow the 11
    `any` generic positions in `TxFormApi` (lines 26-46) to `undefined`
@@ -686,7 +696,8 @@ Bundle these — each is small and independently low-risk:
 
 **Verify** (for all of Step 5): `pnpm typecheck` → exit 0; `pnpm lint` →
 exit 0; `pnpm quality` → exit 0. For item 2, operator visually confirms the
-row-press tint in both light and dark theme via `pnpm ios`/`pnpm android`.
+row-press tint via `pnpm ios`/`pnpm android` (this app is dark-theme-only —
+no light-mode comparison exists to run).
 For item 5, no automated test exists — confirm by temporarily feeding
 `DateTimePickerField` a garbage `value` string in a dev build and observing
 it renders `placeholder` instead of crashing, then revert the temporary
@@ -712,8 +723,12 @@ screens (add + dedupe-toast behavior).
       or a documented Option-B fallback for any site that didn't fit
 - [ ] `components/add-category-sheet.tsx` / `components/add-source-sheet.tsx`
       deleted (if Step 1 Option A completed) with no remaining references
-- [ ] `ChipPicker`/`MultiChipPicker` share one internal base; both exported
-      function signatures unchanged
+- [ ] `ChipPicker`/`MultiChipPicker` share one internal base; both remain
+      exported under their current names with their current call sites'
+      existing props still valid — `MultiChipPicker` additionally gains an
+      `addLabel` prop per Step 2 (a prop *addition*, not a breaking
+      signature change; its two current callers are updated in the same
+      step to pass `addLabel="tag"`)
 - [ ] `DatePickerModal`/`TimePickerModal`/`DateTimePickerModal` share one
       chrome wrapper; all three exported function signatures unchanged
 - [ ] `diff app/config/expense-categories.tsx app/config/income-categories.tsx`
@@ -736,11 +751,23 @@ Stop and report back (do not improvise) if:
 
 - Any cited file's structure no longer matches the excerpts above (see
   drift check).
-- `showErrorToast`'s handling of a non-`Error` `err` differs meaningfully
-  between the hand-rolled `err instanceof Error ? ... : ...` branch in the
-  category/source screens and `InlineAddSheet`'s direct `showErrorToast(errorTitle,
-  err)` — resolve which behavior is correct before migrating, don't silently
-  pick one.
+- **This one is a confirmed, not just a possible, gap — fix it, don't just
+  check for it.** `lib/toast.ts`'s `showErrorToast` computes its subtitle as
+  `err ? String(err) : undefined`. For a real `Error` instance (which is
+  what `lib/db/categories.ts`/`lib/db/sources.ts` actually throw —
+  `throw new Error(...)`), `String(err)` renders as `"Error: <message>"`
+  (JS's default `Error.toString()`), not the bare `<message>`. The hand-rolled
+  code being replaced in the three category/source sites extracts
+  `err.message` directly (`err instanceof Error ? showErrorToast("Failed",
+  err.message) : ...`) — no `"Error: "` prefix. Migrating those three sites
+  to `InlineAddSheet`'s `showErrorToast(errorTitle, err)` therefore changes
+  the toast body text on essentially every real error there, not just the
+  non-`Error` edge case. Before migrating those three sites, either (a)
+  confirm this prefix change is acceptable copy (get an explicit yes, don't
+  assume), or (b) have `InlineAddSheet` pass `err instanceof Error ?
+  err.message : err` instead of raw `err`, matching today's behavior.
+  `tags.tsx`/`transaction-form.tsx`'s tag-add sites already pass raw `err`
+  today, so they're unaffected either way.
 - Migrating `tags.tsx` or `transaction-form.tsx`'s tag-add to
   `InlineAddSheet` changes anything about the `tagIds` field-value wiring
   beyond the intentional `isNew` fix called out in Step 1 — that field

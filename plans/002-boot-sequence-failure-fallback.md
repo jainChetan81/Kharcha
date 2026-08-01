@@ -1,17 +1,22 @@
 # Plan 002: Boot sequence failure fallback (splash-screen hang)
 
-> **Executor instructions**: Follow this plan step by step. Run every
-> verification command and confirm the expected result before moving to the
-> next step. If anything in the "STOP conditions" section occurs, stop and
-> report — do not improvise. When done, update the status row for this plan
-> in `plans/README.md` — unless a reviewer dispatched you and told you they
-> maintain the index.
+> **Executor instructions**: Follow this plan step by step. Every
+> `**Verify**` line naming a `pnpm` command is something you tell the
+> operator to run and report back — per this repo's convention (restated in
+> "Current state" below), never invoke `pnpm` yourself. Confirm the expected
+> result before moving to the next step. If anything in the "STOP
+> conditions" section occurs, stop and report — do not improvise. When done,
+> update the status row for this plan in `plans/README.md` — unless a
+> reviewer dispatched you and told you they maintain the index.
 >
 > **Drift check (run first)**: `git diff --stat f5a9dc9..HEAD -- app/_layout.tsx lib/db/subscriptions.ts lib/toast.ts lib/firebase/index.ts`
-> If `app/_layout.tsx` changed, re-read the boot `useEffect` (currently
-> lines 174-198) and the splash-hide `useEffect` (currently lines 196-198)
-> before proceeding — the line numbers below may have shifted. If the
-> function shapes of `processSubscriptions`, `showErrorToast`, or
+> Only `app/_layout.tsx` is edited by this plan; `lib/db/subscriptions.ts`,
+> `lib/toast.ts`, and `lib/firebase/index.ts` are included here only as
+> read-only evidence (their function shapes are assumed, not changed) — see
+> Scope. If `app/_layout.tsx` changed, re-read the boot `useEffect`
+> (currently lines 174-198) and the splash-hide `useEffect` (currently lines
+> 196-198) before proceeding — the line numbers below may have shifted. If
+> the function shapes of `processSubscriptions`, `showErrorToast`, or
 > `logFirebaseError` changed (not just moved), STOP.
 
 ## Status
@@ -21,7 +26,7 @@
 - **Risk**: LOW
 - **Depends on**: none
 - **Category**: bug
-- **Planned at**: audit-derived, current HEAD (`f5a9dc9`)
+- **Planned at**: commit `f5a9dc9`, 2026-08-01
 
 ## Why this matters
 
@@ -106,10 +111,14 @@ hang: no error, no retry, no explanation.
   `react-native-toast-message` toast and calls
   `AccessibilityInfo.announceForAccessibility`. No fallback path if the toast
   can't be seen (e.g. hidden behind splash).
-- `components/locked-screen.tsx` (28 lines) — the existing house style for a
+- `components/locked-screen.tsx` (27 lines) — the existing house style for a
   full-screen, pre-`Stack` gate: centered icon in a circular `bg-card`
   badge, title, subtitle, single `Pressable` CTA. This plan's new component
-  should match it.
+  should match that layout. It deliberately does NOT match `LockedScreen`'s
+  icon color (`text-primary-text`) — Step 2 below uses `text-negative-text`
+  instead, matching `ScreenError`'s error-icon convention, since this is an
+  error state, not a lock. This is an intentional deviation, not an
+  oversight — do not "fix" it to `text-primary-text` while implementing.
 - `components/error-boundary.tsx:10-44` — `ScreenError`, the existing
   "something went wrong, Try Again" pattern (icon + message + retry button),
   used inside error boundaries. Confirms the repo's established shape for
@@ -144,7 +153,12 @@ smoke tests described in Step 5.
 **Out of scope** (do NOT touch):
 - `lib/db/subscriptions.ts`, `lib/db/index.ts`, `lib/firebase/index.ts` —
   read-only for this plan; the fix is entirely in how `_layout.tsx` reacts to
-  failures, not in making the underlying calls fail less.
+  failures, not in making the underlying calls fail less. **One narrow,
+  explicit exception**: Step 5's manual smoke test asks the *operator* (never
+  the executor) to temporarily add and then remove a throw statement in
+  `lib/db/index.ts`/`lib/db/subscriptions.ts` for local, uncommitted manual
+  testing only — this is the operator's action to describe and hand off, not
+  something the executor edits itself.
 - `hooks/use-app-lock.ts` — already degrades gracefully on its own config
   read failure (catches and leaves unlocked); not part of this finding.
 - `useFonts` / font-load failure handling — a different, separate failure
@@ -171,13 +185,19 @@ missed run is caught on the next launch) and the prefetch is just a cache
 warm for `useAutoRefreshPrefs` — any screen that actually needs it will
 refetch on demand. Neither should be able to keep the user out of the app.
 
-Replace the boot `useEffect` (lines 174-194) with:
+**This step has two separate edits — do not treat the code block below as one contiguous replacement.** `const [dbReady, setDbReady] = useState(false);` already exists today at line 170, three lines above the `useEffect` this step replaces (174-194). If you paste the block below as a single replacement of lines 174-194, you will end up with `dbReady` declared twice in the same scope (the existing line 170, plus the one inside the pasted block) — an immediate `pnpm typecheck` failure.
 
+Do this instead, as two edits:
+
+**Edit A** — immediately after the existing line `const [dbReady, setDbReady] = useState(false);` (line 170; leave that line exactly as it is, add these two new lines right after it):
 ```tsx
-const [dbReady, setDbReady] = useState(false);
 const [bootError, setBootError] = useState<Error | null>(null);
 const [bootAttempt, setBootAttempt] = useState(0);
+```
 
+**Edit B** — replace the boot `useEffect` itself (lines 174-194 — starts at `useEffect(() => {`, ends at the matching `}, []);`; do NOT include the `const [dbReady...]` line from Edit A, it's already handled) with:
+
+```tsx
 useEffect(() => {
   let cancelled = false;
   setBootError(null);
@@ -239,7 +259,15 @@ useEffect(() => {
 ```
 
 Add `logFirebaseError` and `ERROR_TYPE` to the existing `@/lib/firebase`
-import (line 42 currently imports only `logScreenView` from there).
+import (line 42 currently imports only `logScreenView` from there). Biome's
+`organizeImports` assist (part of `pnpm lint`) sorts named imports
+alphabetically — the merged line must read exactly:
+```ts
+import { ERROR_TYPE, logFirebaseError, logScreenView } from "@/lib/firebase";
+```
+(matching the constants-before-camelCase, alphabetical ordering already used
+at `lib/db/subscriptions.ts:14-19`). Appending in call-order instead will
+fail `pnpm lint`.
 
 **Verify**: `pnpm typecheck` → exit 0. Read the new effect back and confirm
 `initDB()` is the only call outside a `try/catch` before `setDbReady(true)`.
@@ -367,8 +395,11 @@ same guarded path — no separate retry code path to maintain.
 
 ### Step 5: Manual smoke test (tell the operator to run this — do not attempt it yourself)
 
-Tell the operator to run `pnpm ios` (or `pnpm android`) and confirm three
-scenarios:
+Tell the operator to run `pnpm ios` (or `pnpm android`) and to personally
+perform the temporary edits described in scenarios 2 and 3 below — these are
+the one narrow exception to "do NOT touch" `lib/db/index.ts` /
+`lib/db/subscriptions.ts` in Scope, and they're the operator's action, not
+yours. Ask them to confirm three scenarios:
 
 1. **Normal boot**: app launches as before — splash hides, home screen
    appears. (Regression check — nothing about the happy path should have

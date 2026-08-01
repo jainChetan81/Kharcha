@@ -20,7 +20,7 @@
 - **Risk**: LOW
 - **Depends on**: none
 - **Category**: feature-completeness
-- **Planned at**: audit-derived, current HEAD
+- **Planned at**: commit `f5a9dc9`, 2026-08-01
 
 ## Why this matters
 

@@ -21,7 +21,7 @@
 - **Risk**: MED
 - **Depends on**: none
 - **Category**: bug
-- **Planned at**: audit-derived, current HEAD (`f5a9dc9`)
+- **Planned at**: commit `f5a9dc9`, 2026-08-01
 
 ## Why this matters
 
@@ -137,9 +137,10 @@ Gemini network round-trip for a feature explicitly built to avoid it.
   exception (lines 85-90) is dead code: it can never run, because any body
   it would apply to already exited at line 80. Confirmed by construction, not
   just by the audit's claim.
-- Verified by reading all 11 remaining bank modules
+- Verified by reading all 10 remaining bank-parser files
   (`axis.ts`, `citi.ts`, `fintech-cards.ts`, `hsbc.ts`, `icici.ts`, `idfc.ts`,
-  `indusind.ts`, `kotak.ts`, `sbi.ts`, `sc.ts`) — none contain a
+  `indusind.ts`, `kotak.ts`, `sbi.ts`, `sc.ts` — `fintech-cards.ts` alone
+  covers 3 of the 13 `PARSER_MAP` keys below) — none contain a
   `will\s*be|e-?mandate|scheduled|upcoming` check or anything equivalent.
   `lib/gmail/parsers/index.ts:36-50`'s `PARSER_MAP` wires all of them
   (13 keys — `axis`, `citi`, `hdfc`, `hsbc`, `icici`, `idfc`, `indusind`,
@@ -525,9 +526,18 @@ For the 10 files listed under "no guard at all" in Current State (`axis.ts`,
 `citi.ts`, `fintech-cards.ts`, `hsbc.ts`, `icici.ts`, `idfc.ts`, `indusind.ts`,
 `kotak.ts`, `sbi.ts`, `sc.ts`), add `withGuard` to each file's import from
 `./utils` and wrap each `export const X_PARSERS: Parser[] = [...]` with
-`.map(withGuard)`, matching the SMS-side pattern from Step 1.
+`.map(withGuard)`, matching the SMS-side pattern from Step 1. **9 of these
+10 files export exactly one such array — `fintech-cards.ts` is the
+exception and exports three** (`SLICE_PARSERS`, `ONECARD_PARSERS`,
+`UNI_PARSERS`, one per card issuer). Wrap all three with their own
+`.map(withGuard)` in that file — don't wrap only the first one you find
+while pattern-matching off the other 9 single-array files.
 
-For `hdfc.ts` specifically: delete the bespoke inline block (lines 66-90,
+For `hdfc.ts` specifically: add `withGuard` to its own import from `./utils`
+too (currently `{ MERCHANT_REGEX, type Parser, parseAmount, parseHdfcDate }`,
+no `withGuard` — this file needs the same import addition as the other 10,
+it's just not repeated from the paragraph above since this file's body edit
+differs). Delete the bespoke inline block (lines 66-90,
 the two `if` blocks quoted in Current State — both the unconditional
 e-mandate reject and the now-provably-dead past-tense exception under it),
 and instead wrap `HDFC_PARSERS` itself with `.map(withGuard)`:
@@ -570,9 +580,20 @@ the only callers), and leaving it would show up as a new dead export in
 `pnpm dead-code`.
 
 `indusind.ts` needs a slightly different, non-mechanical edit since it never
-imported `fallbackNow` — it has its own local wall-clock helper. Remove the
-local `today` function (`lib/gmail/parsers/indusind.ts:5`) and its now-unused
-`format`/`DATE_TIME_FORMAT` imports (lines 1-2), then:
+imported `fallbackNow` — it has its own local wall-clock helper. The file's
+first two lines are:
+```ts
+import { format } from "date-fns";
+import { DATE_TIME_FORMAT, TRANSACTION_TYPE } from "@/lib/constants";
+```
+**Do not delete "lines 1-2" wholesale** — line 2 also imports
+`TRANSACTION_TYPE`, which every parser in this file uses
+(`TRANSACTION_TYPE.EXPENSE`/`.INCOME`) and is unrelated to the date-fallback
+fix; deleting it breaks the build. Remove the local `today` function
+(`lib/gmail/parsers/indusind.ts:5`) and only these two things: the entire
+`import { format } from "date-fns";` line (line 1), and just the
+`DATE_TIME_FORMAT` specifier from line 2 (leaving
+`import { TRANSACTION_TYPE } from "@/lib/constants";`). Then:
 - `indusindUpiDebit` (line 17), `indusindUpiCredit` (line 32),
   `indusindGenericDebit` (line 51): change `date: today(),` to `date: null,`
   — none of these three ever extract a date, so `null` is the honest value.
@@ -661,7 +682,9 @@ parseEmailWithFallback(...)` network call. Close it the same way the
 subscriptions block already does: re-check immediately before the write,
 with both statements inside one `expo.withTransactionAsync`.
 
-Replace the insert block (currently lines 361-376):
+Replace the insert block (currently lines 361-376). **Note the comment on
+the line right before `note,`** — it's easy to drop by accident in a
+find/replace and Step 8 (below) still needs it there to update later:
 
 ```ts
 await db.insert(transactions).values({
@@ -675,6 +698,7 @@ await db.insert(transactions).values({
       ? PARSED_BY.GEMINI
       : PARSED_BY.REGEX,
   date: fallbackDate,
+  // store the original email snippet so the user can see exactly what was parsed
   note,
   type: outcome.parsed.type,
   source_type: "synced",
@@ -712,6 +736,7 @@ await expo.withTransactionAsync(async () => {
         ? PARSED_BY.GEMINI
         : PARSED_BY.REGEX,
     date: fallbackDate,
+    // store the original email snippet so the user can see exactly what was parsed
     note,
     type: outcome.parsed.type,
     source_type: "synced",
@@ -921,11 +946,12 @@ the date regex doesn't match.
 
 - [ ] `lib/parsers/indusind.ts`'s `INDUSIND_PARSERS` ends `.map(withGuard)`
 - [ ] `lib/gmail/parsers/utils.ts` exports `isNonTransactionNotice`/`withGuard`
-- [ ] All 11 Gmail bank-parser export arrays (`AXIS_PARSERS` through
-      `UNI_PARSERS`) are wrapped `.map(withGuard)`; `hdfc.ts`'s bespoke
-      inline e-mandate check is gone
+- [ ] All 13 Gmail bank-parser export arrays across 11 files (`AXIS_PARSERS`
+      through `UNI_PARSERS` — `fintech-cards.ts` alone contributes 3:
+      `SLICE_PARSERS`, `ONECARD_PARSERS`, `UNI_PARSERS`) are wrapped
+      `.map(withGuard)`; `hdfc.ts`'s bespoke inline e-mandate check is gone
 - [ ] `fallbackNow()` no longer exists anywhere in the Gmail parser tree
-      (function removed, all 18 call sites across 8 files changed to `null`)
+      (function removed, all 17 call sites across 8 files changed to `null`)
 - [ ] `lib/gmail/parsers/indusind.ts` has no local `today()` helper; its 4
       parsers return `null` (not a wall-clock string) when no date is
       extracted; its dead `source: "IMPS"` field is gone

@@ -9,12 +9,15 @@
 >
 > **Drift check (run first)**: `git diff --stat f5a9dc9..HEAD -- app/_layout.tsx lib/db/subscriptions.ts app/gmail-sync.tsx lib/clipboard.ts hooks/use-transactions.ts lib/env.ts lib/export/csv.ts`
 > If any of these seven files changed since planning, re-read the affected
-> file and reconcile line numbers before proceeding. Two of these files
-> (`app/_layout.tsx`, `lib/db/subscriptions.ts`) are also touched by
-> `plans/002-boot-sequence-failure-fallback.md`, but at disjoint locations —
-> plan 002 edits the boot `useEffect` (lines 174-198) and splash-hide effect;
-> this plan edits the separate Crashlytics `useEffect` (lines 214-224). If
-> plan 002 has landed, re-check those line numbers shifted before assuming
+> file and reconcile line numbers before proceeding. `app/_layout.tsx` is
+> also touched by `plans/002-boot-sequence-failure-fallback.md`, but at a
+> disjoint location — plan 002 edits the boot `useEffect` (lines 174-198)
+> and splash-hide effect; this plan edits the separate Crashlytics
+> `useEffect` (lines 214-224). `lib/db/subscriptions.ts` is also touched by
+> `plans/005-db-layer-referential-integrity.md` (`deleteSubscription`,
+> `getUnusedSubscriptions`) — NOT by plan 002, which lists this file as
+> out-of-scope/read-only. If plan 002 or 005 have landed, re-check those
+> line numbers shifted before assuming
 > 214-224 is still the Crashlytics effect. STOP if a cited function body
 > differs materially from the excerpt below rather than just having moved.
 
@@ -25,7 +28,7 @@
 - **Risk**: LOW
 - **Depends on**: none
 - **Category**: security
-- **Planned at**: audit-derived, current HEAD (`f5a9dc9`)
+- **Planned at**: commit `f5a9dc9`, 2026-08-01
 
 ## Why this matters
 
@@ -190,10 +193,13 @@ useEffect(() => {
 }, [dbReady]);
 ```
 
-`grep -rn "CrashlyticsCollectionEnabled" .` (excluding `node_modules`)
-returns only this one call site — there is no `CONFIG_KEYS` entry, settings
-row, or any other code path that ever calls it with `false`. Collection is
-unconditional on every non-dev build, and every crash report is tagged with
+`grep -rn "CrashlyticsCollectionEnabled" app hooks lib components` (scoped
+to app source — a bare `grep -rn ... .` from repo root also matches this
+very plan file's own prose once it's committed, and `node_modules` if not
+excluded; the scoped form avoids both) returns only this one call site —
+there is no `CONFIG_KEYS` entry, settings row, or any other code path that
+ever calls it with `false`. Collection is unconditional on every non-dev
+build, and every crash report is tagged with
 the user's real display name (`CONFIG_KEYS.USER_NAME`, entered via
 `app/profile.tsx`'s "Name" row) with no equivalent toggle anywhere.
 
@@ -359,11 +365,13 @@ or the sibling `RECURRING_TRANSACTION_POSTED` event three lines below —
 both are correct as-is.
 
 **Verify**: `pnpm typecheck` → exit 0; `pnpm lint` → exit 0; `grep -n
-"amount: sub.amount" lib/db/subscriptions.ts` → no output (was previously
-one match, inside the `SIP_POSTED` call only — confirm via `git diff` that
-no other `amount: sub.amount` in the file was touched, e.g. the
-`db.insert(transactions)` call at line 303 keeps its own `amount: sub.amount`,
-that one is the real transaction row and is correct/required).
+"amount: sub.amount" lib/db/subscriptions.ts` → **exactly one match**
+remaining, at line ~303 (`db.insert(transactions)`, the real transaction
+row — correct and required, do not touch it). Before the fix this grep
+returns **two** matches (line 303's insert, plus line 332's
+`SIP_POSTED` `logEvent` call); after the fix, only line 303 remains — do
+NOT expect zero output, and do not remove `amount` from the `db.insert`
+call trying to force a zero-match result.
 
 ### Step 3: Guard CSV export against formula injection
 
@@ -502,7 +510,7 @@ dynamic import pattern, the `!dbReady || __DEV__` guard, or the outer
 
 **Verify**: `pnpm typecheck` → exit 0; `pnpm lint` → exit 0; `grep -n
 "setAttribute\|user_name" app/_layout.tsx` → no output. `grep -rn
-"CrashlyticsCollectionEnabled" .` (excluding `node_modules`) → still exactly
+"CrashlyticsCollectionEnabled" app hooks lib components` → still exactly
 one match, now with the tradeoff comment above it.
 
 ## Test plan
