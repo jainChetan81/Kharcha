@@ -4,6 +4,7 @@ import {
   real,
   sqliteTable,
   text,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
 // --- Tables ---
@@ -72,46 +73,56 @@ export const holdings = sqliteTable("holdings", {
   created_at: text("created_at").default("(datetime('now'))"),
 });
 
-export const transactions = sqliteTable("transactions", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  type: text("type", {
-    enum: ["income", "expense", "transfer", "investment"],
-  })
-    .notNull()
-    .default("expense"),
-  amount: real("amount").notNull(),
-  merchant: text("merchant"),
-  category_id: integer("category_id").references(() => categories.id),
-  source_id: integer("source_id").references(() => sources.id),
-  destination_source_id: integer("destination_source_id").references(
-    () => sources.id,
-  ),
-  subscription_id: integer("subscription_id").references(
-    () => subscriptions.id,
-  ),
-  holding_id: integer("holding_id").references(() => holdings.id),
-  investment_kind: text("investment_kind", {
-    enum: ["buy", "sell", "dividend", "interest"],
+export const transactions = sqliteTable(
+  "transactions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    type: text("type", {
+      enum: ["income", "expense", "transfer", "investment"],
+    })
+      .notNull()
+      .default("expense"),
+    amount: real("amount").notNull(),
+    merchant: text("merchant"),
+    category_id: integer("category_id").references(() => categories.id),
+    source_id: integer("source_id").references(() => sources.id),
+    destination_source_id: integer("destination_source_id").references(
+      () => sources.id,
+    ),
+    subscription_id: integer("subscription_id").references(
+      () => subscriptions.id,
+    ),
+    holding_id: integer("holding_id").references(() => holdings.id),
+    investment_kind: text("investment_kind", {
+      enum: ["buy", "sell", "dividend", "interest"],
+    }),
+    units: real("units"),
+    source_type: text("source_type", {
+      enum: ["manual", "synced", "recurring", "transfer", "mini_synced"],
+    })
+      .notNull()
+      .default("manual"),
+    gmail_message_id: text("gmail_message_id"),
+    mini_transaction_id: integer("mini_transaction_id"),
+    reference_number: text("reference_number"),
+    parsed_by: text("parsed_by", { enum: ["regex", "gemini", "openrouter"] }),
+    reimbursement_status: text("reimbursement_status", {
+      enum: ["none", "pending", "reimbursed"],
+    })
+      .notNull()
+      .default("none"),
+    reimbursable_amount: real("reimbursable_amount"),
+    reimbursed_at: text("reimbursed_at"),
+    date: text("date").notNull(),
+    note: text("note"),
+    created_at: text("created_at").default("(datetime('now'))"),
+  },
+  (table) => ({
+    miniTransactionIdIdx: uniqueIndex("mini_transaction_id_idx").on(
+      table.mini_transaction_id,
+    ),
   }),
-  units: real("units"),
-  source_type: text("source_type", {
-    enum: ["manual", "synced", "recurring", "transfer"],
-  })
-    .notNull()
-    .default("manual"),
-  gmail_message_id: text("gmail_message_id"),
-  parsed_by: text("parsed_by", { enum: ["regex", "gemini"] }),
-  reimbursement_status: text("reimbursement_status", {
-    enum: ["none", "pending", "reimbursed"],
-  })
-    .notNull()
-    .default("none"),
-  reimbursable_amount: real("reimbursable_amount"),
-  reimbursed_at: text("reimbursed_at"),
-  date: text("date").notNull(),
-  note: text("note"),
-  created_at: text("created_at").default("(datetime('now'))"),
-});
+);
 
 export const budgets = sqliteTable("budgets", {
   id: integer("id").primaryKey({ autoIncrement: true }),

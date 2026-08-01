@@ -24,15 +24,15 @@ Mirrors the GitHub Actions CI pipeline locally in a single command:
 pnpm install --frozen-lockfile
 pnpm lint          # biome check
 pnpm typecheck     # tsc --noEmit
-pnpm audit         # dependency audit (warning only)
 pnpm run dead-code # dead code detection
+pnpm audit         # dependency audit (warning only, runs last)
 ```
 
 ### When to Use
 
 - **Before pushing**: Always run this to avoid CI failures.
 - **Local development**: Run after making code changes.
-- **Team**: Developers should run this before committing (enforced via lefthook pre-commit hook).
+- **Team**: Developers should run this before pushing (lefthook only enforces biome on pre-commit and typecheck on pre-push; `local-ci` itself is manual).
 
 ### Why It Works Locally
 
@@ -134,7 +134,7 @@ $ pnpm run local-ci
 
 ## EAS Build Profiles
 
-The app has two profiles in `eas.json`:
+The app has three profiles in `eas.json` (`development`, `preview`, `production`):
 
 ### `preview` (Current Default)
 
@@ -148,10 +148,11 @@ Characteristics:
 - Updates enabled (can push OTA updates)
 - Not optimized for App Store
 
-### `production` (Not Configured Yet)
+### `production`
 
-Future use:
-- App Store release builds
+Used for:
+- App Store / Play Store release builds (`pnpm build:android`, `pnpm build:ios`)
+- OTA updates on the `production` channel (`pnpm update:production`)
 - Optimized, signed for production
 - No development features
 
@@ -175,7 +176,7 @@ cp .env.example .env.local
 | `EXPO_TOKEN` | Expo CLI authentication (for builds) | GitHub CI only |
 | `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | Google OAuth iOS | Development, iOS build |
 | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Google OAuth Web | Gmail sync |
-| `EXPO_PUBLIC_GEMINI_API_KEY` | On-device Gemini parsing (optional — AI parsing degrades gracefully) | AI paste/share parsing |
+| `EXPO_PUBLIC_GEMINI_API_KEY` | On-device Gemini parsing (optional — AI parsing degrades gracefully). `EXPO_PUBLIC_*` is inlined into the client bundle and extractable from the IPA/APK — do not treat this as secret; restrict the key in Google Cloud instead (see [lib/env.ts](../lib/env.ts)) | AI paste/share parsing |
 | `EXPO_DEVTOOLS_LISTEN_ADDRESS` | Metro bundler address | Local development |
 | `RCT_METRO_PORT` | Metro bundler port | Local development |
 
@@ -200,8 +201,12 @@ pnpm install
 
 ### What Runs Before Commit
 
-- `biome check --write` (format + lint)
+- `biome format --write` + `biome check` on staged files (format + lint)
+
+### What Runs Before Push
+
 - `tsc --noEmit` (type check)
+- (`react-doctor:diff` is currently disabled — spin-loop bug, see lefthook.yml TODO)
 
 ### Skip Hooks (Dev Only)
 
@@ -223,7 +228,7 @@ pnpm quality           # lint + typecheck
 pnpm local-ci          # full CI pipeline (before push)
 pnpm run dead-code                # knip dead code detection
 pnpm audit                        # dependency audit
-pnpm run expo-dependency-check    # expo dependency compatibility check
+pnpm run deps:check    # expo dependency compatibility check
 ```
 
 ### Development
@@ -234,10 +239,10 @@ pnpm ios                          # run on iOS simulator (requires Mac)
 pnpm android                      # run on Android emulator
 pnpm web                          # run on web (localhost:19006)
 pnpm doctor                       # expo health check
-pnpm run expo-dependency-check    # expo dependency compatibility check
+pnpm run deps:check    # expo dependency compatibility check
 ```
 
-**Note on `pnpm run expo-dependency-check`**: Validates that all installed packages are compatible with Expo SDK 55. Run this if you see warnings about mismatched dependencies or if the app won't start. It will recommend package versions to install.
+**Note on `pnpm run deps:check`**: Validates that all installed packages are compatible with Expo SDK 55. Run this if you see warnings about mismatched dependencies or if the app won't start. It will recommend package versions to install.
 
 ### Database
 
@@ -453,7 +458,7 @@ git commit -m "fix: update dependencies for security"
 | Fix lint errors | `pnpm lint:fix` | Auto-format code |
 | Type check only | `pnpm typecheck` | Fast feedback |
 | Dead code scan | `pnpm run dead-code` | Find unused code |
-| Check dependencies | `pnpm run expo-dependency-check` | Verify Expo compatibility |
+| Check dependencies | `pnpm run deps:check` | Verify Expo compatibility |
 | Full dev cycle | `pnpm start` | Run app locally |
 | Release Android | GitHub UI → android-build.yml | Creates release with APK |
 | Release iOS beta | GitHub UI → ios-build.yml | Submits to TestFlight |

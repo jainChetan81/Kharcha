@@ -11,6 +11,7 @@ import {
   OTHER_CATEGORY_LABEL,
   PAGE_SIZE,
   QUERY_KEYS,
+  SOURCE_TYPE,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import {
@@ -39,7 +40,9 @@ import {
 } from "@/lib/db";
 import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
 import { deleteConfig } from "@/lib/db/config";
+import { env } from "@/lib/env";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
+import { pushTransactionToMini } from "@/lib/mini-sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { syncWidgetData } from "@/lib/widget";
 
@@ -315,7 +318,13 @@ export function useTransactionsPaginated(filters: {
   type?: "income" | "expense" | "transfer" | "investment" | "all";
   categoryId?: number | null;
   sourceId?: number | null;
-  sourceType?: "manual" | "synced" | "recurring" | "transfer" | "all";
+  sourceType?:
+    | "manual"
+    | "synced"
+    | "mini_synced"
+    | "recurring"
+    | "transfer"
+    | "all";
   dateFrom?: string | null;
   dateTo?: string | null;
   amountMin?: number | null;
@@ -382,7 +391,37 @@ export function useInsertTransaction() {
         source_type: variables.sourceType ?? "manual",
         transaction_type: variables.type,
       });
+
+      // Invalidate before the mini push — the local insert already succeeded,
+      // and a sleeping mini (15s timeout) must never delay the UI update.
       invalidate();
+
+      const isManualEntry =
+        (variables.sourceType ?? SOURCE_TYPE.MANUAL) === SOURCE_TYPE.MANUAL;
+      const isPushableType =
+        variables.type === TRANSACTION_TYPE.INCOME ||
+        variables.type === TRANSACTION_TYPE.EXPENSE;
+
+      if (
+        isManualEntry &&
+        isPushableType &&
+        env.MINI_API_URL &&
+        env.MINI_API_TOKEN &&
+        variables.merchant
+      ) {
+        // Best-effort, fire-and-forget push: the error is never surfaced to
+        // the user. The next pull cycle can reconcile.
+        void pushTransactionToMini({
+          type: variables.type as "income" | "expense",
+          amount: variables.amount,
+          merchant: variables.merchant,
+          date: variables.date,
+          rawText: variables.note ?? variables.merchant,
+          senderId: "manual",
+        })
+          .then(() => logEvent(FIREBASE_EVENTS.MINI_PUSH_SUCCEEDED))
+          .catch(() => logEvent(FIREBASE_EVENTS.MINI_PUSH_FAILED));
+      }
     },
     onError: (err) => {
       showErrorToast("Transaction failed", err);

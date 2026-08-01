@@ -50,12 +50,17 @@ export function ParseMessageSheet({
     setParsing(true);
     setParseError(null);
     try {
-      // Try local regex parsers first (instant, no network)
+      // Try local regex parsers first (instant, no network). The offline
+      // regex fallback has no currency detection, so these are always
+      // reported as INR-native — matches the amount field 1:1.
       const local = parseMessage(messageText);
       if (local) {
         onParsed(
           {
             amount: local.amount,
+            currency: "INR",
+            original_amount: local.amount,
+            amount_inr: null,
             type: local.type,
             date: local.date,
             merchant: local.merchant,

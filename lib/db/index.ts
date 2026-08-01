@@ -15,7 +15,6 @@ import {
   gte,
   inArray,
   isNull,
-  like,
   lte,
   or,
   sql,
@@ -143,6 +142,8 @@ export async function initDB(): Promise<void> {
       subscription_id INTEGER REFERENCES subscriptions(id),
       source_type TEXT NOT NULL DEFAULT 'manual',
       gmail_message_id TEXT,
+      mini_transaction_id INTEGER,
+      reference_number TEXT,
       reimbursement_status TEXT NOT NULL DEFAULT 'none',
       reimbursed_at TEXT,
       date TEXT NOT NULL,
@@ -340,6 +341,22 @@ export async function initDB(): Promise<void> {
       if (!hasColumn("tags", "emoji")) {
         await db.run(sql`ALTER TABLE tags ADD COLUMN emoji TEXT`);
       }
+
+      if (!hasColumn("transactions", "mini_transaction_id")) {
+        await db.run(
+          sql`ALTER TABLE transactions ADD COLUMN mini_transaction_id INTEGER`,
+        );
+      }
+
+      if (!hasColumn("transactions", "reference_number")) {
+        await db.run(
+          sql`ALTER TABLE transactions ADD COLUMN reference_number TEXT`,
+        );
+      }
+
+      await db.run(
+        sql`CREATE UNIQUE INDEX IF NOT EXISTS mini_transaction_id_idx ON transactions(mini_transaction_id)`,
+      );
 
       // Tag schedules used to be date-only (`YYYY-MM-DD`); now they're full
       // datetimes so the start/end window can be anchored to specific times
@@ -1384,6 +1401,8 @@ export async function insertTransaction(params: {
   units?: number | null;
   sourceType?: SourceType;
   parsedBy?: ParsedByType;
+  miniTransactionId?: number | null;
+  referenceNumber?: string | null;
   reimbursementStatus?: "none" | "pending" | "reimbursed";
   reimbursableAmount?: number | null;
   date: string;
@@ -1422,6 +1441,8 @@ export async function insertTransaction(params: {
         units: validated.units ?? null,
         source_type: validated.sourceType,
         parsed_by: validated.parsedBy ?? null,
+        mini_transaction_id: validated.miniTransactionId ?? null,
+        reference_number: validated.referenceNumber ?? null,
         reimbursement_status: validated.reimbursementStatus,
         reimbursable_amount: reimbursableAmount,
         date: validated.date,
@@ -1811,7 +1832,7 @@ export async function searchMerchants(
   limit = 5,
 ): Promise<string[]> {
   try {
-    const term = `%${searchTerm}%`;
+    const term = `%${escapeLikeWildcards(searchTerm)}%`;
     const rows = await db
       .select({
         merchant: transactions.merchant,
@@ -1820,7 +1841,7 @@ export async function searchMerchants(
       .from(transactions)
       .where(
         and(
-          like(transactions.merchant, term),
+          sql`${transactions.merchant} LIKE ${term} ESCAPE '\\'`,
           sql`${transactions.merchant} IS NOT NULL`,
           sql`TRIM(${transactions.merchant}) != ''`,
         ),
@@ -1974,7 +1995,15 @@ export async function getMonthlyInsights(
     const monthDate = new Date(year, month - 1, 1);
     const daysInMonth = getDaysInMonth(monthDate);
     const today = new Date();
-    const daysElapsed = Math.max(1, differenceInDays(today, monthDate) + 1);
+    // Projections only make sense while the month is in progress: past months
+    // are complete and future months have no data yet, so gate to the current
+    // calendar month and return null projections otherwise (the UI hides the
+    // projection card when projectedLow/projectedHigh are null).
+    const isCurrentMonth = format(today, MONTH_FORMAT) === yearMonth;
+    const daysElapsed = Math.min(
+      daysInMonth,
+      Math.max(1, differenceInDays(today, monthDate) + 1),
+    );
 
     const [thisMonthCategories, prevMonthCategories, currentSpendResult] =
       await Promise.all([
@@ -2047,11 +2076,11 @@ export async function getMonthlyInsights(
     // dailyRate negative, the UI would otherwise render a negative forecast
     // which confuses users and breaks progress-bar math in the widget.
     const projectedLow =
-      daysElapsed >= 7
+      isCurrentMonth && daysElapsed >= 7
         ? Math.max(0, currentSpend + dailyRate * remainingDays * 0.8)
         : null;
     const projectedHigh =
-      daysElapsed >= 7
+      isCurrentMonth && daysElapsed >= 7
         ? Math.max(0, currentSpend + dailyRate * remainingDays * 1.2)
         : null;
 

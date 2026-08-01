@@ -6,8 +6,9 @@
 // a fresh install. We may add an optional passphrase later.
 import { Platform } from "react-native";
 import { CONFIG_KEYS } from "@/lib/constants";
+import { withDbSnapshot } from "@/lib/db/backup";
 import { getConfig, updateConfig } from "@/lib/db/config";
-import { checkpointWal } from "@/lib/db/connection";
+import { closeDatabase, reopenDatabase } from "@/lib/db/connection";
 import { deleteDbSidecars, getDbFile, isSqliteBytes } from "@/lib/db/files";
 import { withTrace } from "@/lib/firebase";
 import {
@@ -40,12 +41,14 @@ export type BackupSummary = {
   provider: Provider;
 };
 
+// Upload a VACUUM INTO snapshot rather than a raw copy of the live file —
+// a raw copy stays WAL-mode and our own import preview / restore tooling
+// can't open WAL files. See `withDbSnapshot`.
 async function readDbBytes(): Promise<ArrayBuffer> {
-  checkpointWal();
-  const src = getDbFile();
-  if (!src.exists) throw new Error("Database file not found");
-  const bytes = await src.bytes();
-  return bytes.slice().buffer;
+  return withDbSnapshot("kharcha-cloud-backup.db", async (snapshot) => {
+    const bytes = await snapshot.bytes();
+    return bytes.slice().buffer;
+  });
 }
 
 function writeDbBytes(bytes: ArrayBuffer): void {
@@ -57,11 +60,22 @@ function writeDbBytes(bytes: ArrayBuffer): void {
   if (!isSqliteBytes(view)) {
     throw new Error("Cloud backup is not a valid Kharcha database file.");
   }
-  const dest = getDbFile();
-  if (dest.exists) dest.delete();
-  deleteDbSidecars();
-  dest.create();
-  dest.write(view);
+  // Close the module-level connection before swapping the file underneath
+  // it, then reopen so the singleton `db`/`expo` handles point at the
+  // restored file — the old handle would keep the deleted inode alive and
+  // serve pre-restore rows.
+  closeDatabase();
+  try {
+    const dest = getDbFile();
+    if (dest.exists) dest.delete();
+    deleteDbSidecars();
+    dest.create();
+    dest.write(view);
+  } finally {
+    // Reopen even if the swap failed midway — leaving the module-level
+    // handle closed would break every subsequent query in the session.
+    reopenDatabase();
+  }
 }
 
 export async function backupNow(): Promise<BackupSummary> {

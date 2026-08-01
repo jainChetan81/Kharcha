@@ -1,0 +1,314 @@
+import { eq } from "drizzle-orm";
+import {
+  CONFIG_KEYS,
+  PARSED_BY,
+  type ParsedByType,
+  SOURCE_TYPE,
+} from "@/lib/constants";
+import { db, findDuplicateTransaction, insertTransaction } from "@/lib/db";
+import { getAllCategories } from "@/lib/db/categories";
+import { getConfig, updateConfig } from "@/lib/db/config";
+import { transactions } from "@/lib/db/schema";
+import { env } from "@/lib/env";
+import { ERROR_TYPE, logFirebaseError, withTrace } from "@/lib/firebase";
+
+const MINI_SYNC_LIMIT = 200;
+const MINI_SYNC_MAX_PAGES = 50;
+const MINI_SYNC_TIMEOUT_MS = 15_000;
+
+// Mini rows with parsedBy "failed" are parse failures, not real transactions —
+// they are skipped, never imported.
+const MINI_PARSED_BY_FAILED = "failed";
+
+export interface MiniSyncResult {
+  added: number;
+  skipped: number;
+  failed: number;
+  notConfigured?: boolean;
+  logs: MiniSyncLog[];
+}
+
+export interface MiniSyncLog {
+  miniId: number;
+  merchant: string;
+  status: "added" | "skipped" | "failed";
+  reason?: string;
+}
+
+export interface MiniPushPayload {
+  type: "income" | "expense";
+  amount: number;
+  merchant: string;
+  category?: string;
+  date: string;
+  rawText?: string;
+  senderId?: string;
+  bankName?: string;
+  referenceNumber?: string | null;
+  accountLast4?: string | null;
+}
+
+interface MiniTransaction {
+  id: number;
+  type: "income" | "expense";
+  amount: number;
+  merchant: string;
+  category: string | null;
+  date: string;
+  parsedBy: "regex" | "openrouter" | "failed" | "manual";
+  referenceNumber: string | null;
+  accountLast4: string | null;
+  bankName: string | null;
+}
+
+function emptyResult(): MiniSyncResult {
+  return { added: 0, skipped: 0, failed: 0, logs: [] };
+}
+
+function isConfigured(): boolean {
+  return Boolean(env.MINI_API_URL) && Boolean(env.MINI_API_TOKEN);
+}
+
+// "manual" rows on the mini are real transactions entered by hand (or pushed
+// from the app). The app-side parsed_by enum has no "manual" value — manual
+// entries are stored with parsed_by null — so they map to undefined here,
+// matching how the app stores its own manual entries.
+function mapParsedBy(
+  value: MiniTransaction["parsedBy"],
+): ParsedByType | undefined {
+  if (value === PARSED_BY.REGEX) return PARSED_BY.REGEX;
+  if (value === PARSED_BY.OPENROUTER) return PARSED_BY.OPENROUTER;
+  return undefined;
+}
+
+async function fetchMiniTransactions(
+  since: number | null,
+): Promise<{ transactions: MiniTransaction[] }> {
+  const url = new URL("/transactions", env.MINI_API_URL);
+  if (since !== null) {
+    url.searchParams.set("since", String(since));
+  }
+  url.searchParams.set("limit", String(MINI_SYNC_LIMIT));
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), MINI_SYNC_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${env.MINI_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const bodyText = await response.text().catch(() => "");
+      throw new Error(
+        `Mini sync failed: ${response.status} ${response.statusText} ${bodyText}`.slice(
+          0,
+          200,
+        ),
+      );
+    }
+
+    return (await response.json()) as { transactions: MiniTransaction[] };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export async function syncMiniTransactions(options?: {
+  full?: boolean;
+}): Promise<MiniSyncResult> {
+  return withTrace("mini_sync", async () => {
+    if (!isConfigured()) {
+      return { ...emptyResult(), notConfigured: true };
+    }
+
+    const result = emptyResult();
+
+    const cursorRaw = await getConfig(CONFIG_KEYS.MINI_SYNC_LAST_ID);
+    const storedCursor = cursorRaw ? Number(cursorRaw) : null;
+    if (cursorRaw && !Number.isFinite(storedCursor)) {
+      throw new Error("Invalid mini sync cursor");
+    }
+
+    // Full sync re-walks the mini from the beginning — the per-row dedupe
+    // below (mini_transaction_id first, then date/amount/merchant) makes it
+    // idempotent, so previously synced rows are skipped, not duplicated.
+    let cursor = options?.full ? null : storedCursor;
+
+    const allCategories = await getAllCategories();
+    function matchCategoryId(
+      name: string | null,
+      type: "income" | "expense",
+    ): number | null {
+      const needle = (name ?? "other").toLowerCase();
+      const match = allCategories.find(
+        (c) => c.name.toLowerCase() === needle && c.type === type,
+      );
+      return match?.id ?? null;
+    }
+
+    let maxSeenId = cursor ?? 0;
+
+    for (let page = 0; page < MINI_SYNC_MAX_PAGES; page++) {
+      const data = await fetchMiniTransactions(cursor);
+      const rows = data.transactions ?? [];
+
+      if (rows.length === 0) {
+        break;
+      }
+
+      for (const row of rows) {
+        try {
+          if (row.parsedBy === MINI_PARSED_BY_FAILED) {
+            result.skipped++;
+            result.logs.push({
+              miniId: row.id,
+              merchant: row.merchant,
+              status: "skipped",
+              reason: "failed parse on mini — not a transaction",
+            });
+            maxSeenId = Math.max(maxSeenId, row.id);
+            continue;
+          }
+
+          const existing = await db
+            .select({ id: transactions.id })
+            .from(transactions)
+            .where(eq(transactions.mini_transaction_id, row.id))
+            .limit(1);
+
+          if (existing.length > 0) {
+            result.skipped++;
+            result.logs.push({
+              miniId: row.id,
+              merchant: row.merchant,
+              status: "skipped",
+              reason: "mini_transaction_id duplicate",
+            });
+            maxSeenId = Math.max(maxSeenId, row.id);
+            continue;
+          }
+
+          // Mini dates are YYYY-MM-DD or YYYY-MM-DD HH:mm — keep the time
+          // component; truncating it made every synced row display a wrong
+          // default time in the app.
+          const date = row.date;
+          const isDuplicate = await findDuplicateTransaction(
+            date,
+            row.amount,
+            row.merchant,
+          );
+
+          if (isDuplicate) {
+            result.skipped++;
+            result.logs.push({
+              miniId: row.id,
+              merchant: row.merchant,
+              status: "skipped",
+              reason: "matched existing transaction by date/amount/merchant",
+            });
+            maxSeenId = Math.max(maxSeenId, row.id);
+            continue;
+          }
+
+          const note = row.bankName
+            ? `synced from mini${row.accountLast4 ? ` · ${row.accountLast4}` : ""}`
+            : "synced from mini";
+
+          await insertTransaction({
+            type: row.type,
+            amount: row.amount,
+            merchant: row.merchant,
+            categoryId: matchCategoryId(row.category, row.type),
+            sourceId: null,
+            sourceType: SOURCE_TYPE.MINI_SYNCED,
+            parsedBy: mapParsedBy(row.parsedBy),
+            miniTransactionId: row.id,
+            referenceNumber: row.referenceNumber,
+            date,
+            note,
+          });
+
+          result.added++;
+          result.logs.push({
+            miniId: row.id,
+            merchant: row.merchant,
+            status: "added",
+          });
+        } catch (err) {
+          logFirebaseError(err, {
+            error_type: ERROR_TYPE.SYNC,
+            operation: "mini_sync",
+            stage: "process_row",
+            mini_id: String(row.id),
+          });
+          result.failed++;
+          result.logs.push({
+            miniId: row.id,
+            merchant: row.merchant,
+            status: "failed",
+            reason: String(err).slice(0, 200),
+          });
+        }
+
+        maxSeenId = Math.max(maxSeenId, row.id);
+      }
+
+      // Persist the cursor after every page so an interrupted sync resumes
+      // where it left off instead of refetching processed rows. Never move it
+      // backwards — a full sync starts below the stored cursor by design.
+      if (maxSeenId > (storedCursor ?? 0)) {
+        await updateConfig(CONFIG_KEYS.MINI_SYNC_LAST_ID, String(maxSeenId));
+      }
+
+      // A short page means the server has no more rows. Also bail if the
+      // cursor didn't advance (misbehaving server) to avoid refetching the
+      // same page until the page cap.
+      if (rows.length < MINI_SYNC_LIMIT || maxSeenId <= (cursor ?? 0)) {
+        break;
+      }
+      cursor = maxSeenId;
+    }
+
+    return result;
+  });
+}
+
+export async function pushTransactionToMini(
+  payload: MiniPushPayload,
+): Promise<void> {
+  if (!isConfigured()) {
+    return;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), MINI_SYNC_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(`${env.MINI_API_URL}/transactions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.MINI_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const bodyText = await response.text().catch(() => "");
+      throw new Error(
+        `Mini push failed: ${response.status} ${response.statusText} ${bodyText}`.slice(
+          0,
+          200,
+        ),
+      );
+    }
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}

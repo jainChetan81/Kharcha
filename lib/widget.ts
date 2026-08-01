@@ -84,7 +84,7 @@ export async function buildWidgetPayload(): Promise<WidgetData> {
 }
 
 async function syncIOS(payload: WidgetData): Promise<void> {
-  const { requireNativeModule } = require("expo-modules-core") as {
+  const { requireNativeModule } = require("expo") as {
     requireNativeModule: (name: string) => {
       setWidgetData: (json: string) => void;
     };

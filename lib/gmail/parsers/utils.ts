@@ -5,7 +5,7 @@ export interface ParsedTransaction {
   amount: number;
   merchant: string;
   date: string | null;
-  type: "expense" | "income";
+  type: "expense" | "income" | "investment";
   category?: string;
   confidence?: "high" | "medium" | "low";
   is_subscription?: boolean;

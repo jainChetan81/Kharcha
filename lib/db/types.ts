@@ -1,4 +1,5 @@
 import type { InferSelectModel } from "drizzle-orm";
+import type { ParsedByType, SourceType } from "@/lib/constants";
 import type {
   bankEmails,
   banks,
@@ -40,8 +41,8 @@ export type TransactionRow = Transaction & {
   source_name: string | null;
   destination_source_name: string | null;
   holding_name: string | null;
-  source_type: "manual" | "synced" | "recurring" | "transfer";
-  parsed_by: "regex" | "gemini" | null;
+  source_type: SourceType;
+  parsed_by: ParsedByType | null;
   reimbursement_status: "none" | "pending" | "reimbursed";
   reimbursable_amount: number | null;
   reimbursed_at: string | null;

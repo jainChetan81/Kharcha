@@ -156,6 +156,9 @@ export async function recomputeHoldingFromTransactions(
       const avgCost = units > 0 ? invested / units : 0;
       units -= sellUnits;
       invested -= sellUnits * avgCost;
+      // Float residue can leave invested a hair below zero while units remain;
+      // the units<=0 reset below only covers the fully-sold case.
+      if (invested < 0) invested = 0;
       if (units <= 0) {
         units = 0;
         invested = 0;

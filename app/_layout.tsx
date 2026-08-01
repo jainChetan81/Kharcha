@@ -25,6 +25,7 @@ import { MonthlyWrapGate } from "@/components/monthly-wrap-gate";
 import { Text } from "@/components/ui/text";
 import { useAppLock } from "@/hooks/use-app-lock";
 import { readAutoRefreshPrefs } from "@/hooks/use-auto-refresh-prefs";
+import { useMiniSync } from "@/hooks/use-mini-sync";
 import { maybeAutoBackup } from "@/lib/cloud-backup";
 import {
   COLORS,
@@ -37,6 +38,7 @@ import {
 import { initDB } from "@/lib/db";
 import { getConfig } from "@/lib/db/config";
 import { processSubscriptions } from "@/lib/db/subscriptions";
+import { env } from "@/lib/env";
 import { logScreenView } from "@/lib/firebase";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { isIOS } from "@/lib/utils";
@@ -103,6 +105,41 @@ function ScreenViewTracker() {
   return null;
 }
 
+// Pull from the personal mini pipeline on launch and whenever the app returns
+// to foreground. Lives under the QueryClientProvider so a successful sync
+// invalidates the transaction caches via useMiniSync — synced rows appear
+// without a manual refresh. Mounted only once the db is ready and the app is
+// unlocked, so the unlock itself also triggers the initial sync.
+function ForegroundMiniSync() {
+  const { mutate: runMiniSync } = useMiniSync();
+
+  useEffect(() => {
+    const maybeSync = () => {
+      void (async () => {
+        try {
+          const configured =
+            Boolean(env.MINI_API_URL) && Boolean(env.MINI_API_TOKEN);
+          if (!configured) return;
+          const enabledFlag = await getConfig(CONFIG_KEYS.MINI_SYNC_ENABLED);
+          if (enabledFlag !== "1" && enabledFlag !== null) return;
+          runMiniSync();
+        } catch {
+          // Fail silently — foreground sync is best-effort; pull-to-refresh
+          // will surface any persistent error with a toast.
+        }
+      })();
+    };
+
+    maybeSync();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") maybeSync();
+    });
+    return () => sub.remove();
+  }, [runMiniSync]);
+
+  return null;
+}
+
 function ShareIntentListener() {
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
   useEffect(() => {
@@ -160,8 +197,10 @@ export default function RootLayout() {
     if (ready) SplashScreen.hideAsync();
   }, [ready]);
 
-  // Refresh widget data when app returns to foreground (catches midnight resets)
-  // and opportunistically run an auto-backup if it's been >24h since the last.
+  // Refresh widget data when app returns to foreground (catches midnight
+  // resets) and opportunistically run an auto-backup if it's been >24h since
+  // the last. The mini pipeline pull lives in <ForegroundMiniSync /> so it can
+  // invalidate query caches through the QueryClientProvider.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active" && dbReady) {
@@ -229,6 +268,7 @@ export default function RootLayout() {
                 ) : (
                   <>
                     <ScreenViewTracker />
+                    <ForegroundMiniSync />
                     <ShareIntentListener />
                     <Stack
                       screenOptions={{

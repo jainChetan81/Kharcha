@@ -21,6 +21,10 @@ const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
 // AI parsing is optional — a missing key degrades gracefully
 // (callGemini returns NO_API_KEY), so we don't block startup with an alert.
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? "";
+// Mini sync (personal Mac mini pipeline). Optional — if either value is empty,
+// the feature is treated as not configured and degrades to a no-op.
+const MINI_API_URL = process.env.EXPO_PUBLIC_MINI_API_URL ?? "";
+const MINI_API_TOKEN = process.env.EXPO_PUBLIC_MINI_API_TOKEN ?? "";
 export const env = {
   GOOGLE_IOS_CLIENT_ID: warnIfMissing(
     "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID",
@@ -31,4 +35,6 @@ export const env = {
     GOOGLE_WEB_CLIENT_ID,
   ),
   GEMINI_API_KEY,
+  MINI_API_URL,
+  MINI_API_TOKEN,
 } as const;

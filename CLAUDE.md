@@ -28,9 +28,9 @@ personal expense tracking app for ios + android (react native / expo).
 - `pnpm lint:fix` — biome lint + format fix
 - `pnpm typecheck` — tsc --noEmit
 - `pnpm quality` — lint + typecheck
-- `pnpm local-ci` — full local CI gate (frozen install + quality + audit + dead-code)
+- `pnpm local-ci` — full local CI gate (frozen install + quality + dead-code + audit)
 - `pnpm dead-code` — knip dead code check
-- `pnpm react-doctor` — full repo react/rn anti-pattern scan (offline)
+- `pnpm react-doctor:scan` — full repo react/rn anti-pattern scan (offline)
 - `pnpm react-doctor:diff` — scan only files changed vs main (used by pre-push)
 - `pnpm build:android` / `pnpm update:production` — eas production build / ota update (see docs/RELEASE.md)
 

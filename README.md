@@ -1,6 +1,6 @@
 # kharcha
 
-personal expense tracking app for ios. built with expo, react native, and local-first sqlite storage.
+personal expense tracking app for ios + android. built with expo, react native, and local-first sqlite storage.
 
 ---
 
@@ -112,7 +112,7 @@ lib/db/
 
 lib/gmail/
   auth.ts                     useGoogleAuth hook (oauth, token refresh, secure store)
-  parsers/                    bank email parsers (12 banks, see below)
+  parsers/                    bank email parsers (11 banks, see below)
   sync.ts                     gmail API fetch + parse + dedup + insert
 
 lib/gemini/                   gemini AI fallback for unrecognized email formats
@@ -123,7 +123,6 @@ lib/
   toast.ts                    showErrorToast, showSuccessToast helpers
   format.ts                   formatCurrency, parseDate, buildListData
   utils.ts                    cn(), isIOS
-  version.ts                  compareVersions, isUpgrade, isMajorUpgrade
   widget.ts                   iOS home screen widget data sync
 ```
 
@@ -131,17 +130,20 @@ lib/
 
 ## database
 
-8 tables in `lib/db/schema.ts`:
+11 tables in `lib/db/schema.ts` (key columns shown; schema.ts is the source of truth):
 
 ```
-categories    (id, name, type, is_default, sort_order)
-sources       (id, name, is_default, sort_order)
-subscriptions (id, name, amount, billing_day, category_id, source_id, is_active, created_at)
-transactions  (id, type, amount, merchant, category_id, source_id, destination_source_id, subscription_id, source_type, gmail_message_id, date, note, created_at)
-budgets       (id, category_id UNIQUE, amount)
-banks         (id, name, parser_key, is_default, is_active)
-bank_emails   (id, bank_id, email, is_default)
-config        (key PK, value)
+categories       (id, name, type, is_default, sort_order)
+sources          (id, name, is_default, sort_order)
+subscriptions    (id, name, amount, billing_day(s), category_id, source_id, type, holding_id, investment_kind, is_active, created_at)
+holdings         (id, name, instrument_type, units, avg_cost, invested, is_closed, sort_order, created_at)
+transactions     (id, type, amount, merchant, category_id, source_id, destination_source_id, subscription_id, holding_id, source_type, gmail_message_id, mini_transaction_id, parsed_by, date, note, created_at, ...)
+budgets          (id, category_id UNIQUE, amount)
+banks            (id, name, parser_key, is_default, is_active)
+bank_emails      (id, bank_id, email, is_default)
+config           (key PK, value)
+tags             (id, name UNIQUE, sort_order, start_date, end_date, color, emoji, created_at)
+transaction_tags (transaction_id, tag_id) PK
 ```
 
 types auto-inferred via drizzle — no manual duplication. `TransactionRow` extends `Transaction` with joined `category_name` + `source_name`.
@@ -178,7 +180,7 @@ sqlite <- drizzle-orm <- lib/db/*.ts <- hooks/use-*.ts <- screens
 
 **multi-currency** — INR/USD/GBP/EUR and more. stored in config table. `useCurrency()` hook provides `format()` everywhere.
 
-**gmail sync** — on-device oauth -> gmail API -> parse bank emails -> dedup -> insert. supports 12 banks: axis, hdfc, icici, sbi, kotak, indusind, standard chartered, idfc, citi, hsbc, fintech cards. gemini AI fallback for unrecognized formats. see [docs/GMAIL_SYNC.md](docs/GMAIL_SYNC.md).
+**gmail sync** — on-device oauth -> gmail API -> parse bank emails -> dedup -> insert. supports 11 banks: axis, hdfc, icici, sbi, kotak, indusind, standard chartered, idfc, citi, hsbc, fintech cards. gemini AI fallback for unrecognized formats. see [docs/GMAIL_SYNC.md](docs/GMAIL_SYNC.md).
 
 **duplicate detection** — warns before saving if a transaction with the same date + amount + note already exists.
 
@@ -211,7 +213,7 @@ pnpm run local-ci  # full ci pipeline (before push)
 
 ## ci/cd
 
-**local**: `pnpm run local-ci` — lint, type check, audit, dead code detection (run before push)
+**local**: `pnpm run local-ci` — lint, type check, dead code detection, audit (run before push)
 
 **github actions**:
 - `ci.yml` — push/PR to main -> quality checks (lint, typecheck, audit, knip)

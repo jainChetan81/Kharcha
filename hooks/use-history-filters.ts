@@ -119,6 +119,7 @@ export function useHistoryFilters() {
     if (
       params.source_type === SOURCE_TYPE.MANUAL ||
       params.source_type === SOURCE_TYPE.SYNCED ||
+      params.source_type === SOURCE_TYPE.MINI_SYNCED ||
       params.source_type === SOURCE_TYPE.RECURRING ||
       params.source_type === SOURCE_TYPE.TRANSFER
     ) {

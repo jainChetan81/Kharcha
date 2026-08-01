@@ -8,6 +8,7 @@ import {
   House,
   Mail,
   Plus,
+  Server,
   Settings,
   User,
 } from "lucide-react-native";
@@ -38,7 +39,8 @@ import { Text } from "@/components/ui/text";
 import { useConfig } from "@/hooks/use-config";
 import { useCurrency } from "@/hooks/use-currency";
 import { useHomeData } from "@/hooks/use-home-data";
-import { useSyncRefresh } from "@/hooks/use-refresh";
+import { useMiniSync, useMiniSyncConfig } from "@/hooks/use-mini-sync";
+import { formatMiniSyncResult, useSyncRefresh } from "@/hooks/use-refresh";
 import { useCategoryBreakdown } from "@/hooks/use-transactions";
 import {
   CATEGORY_PALETTE,
@@ -59,6 +61,7 @@ import {
   historyHref,
   smartCapitalize,
 } from "@/lib/format";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
 
 // FAB sits half-out of the bar's top edge. Rendered absolutely (not via
@@ -266,6 +269,21 @@ export default function HomeScreen() {
   const { refreshing, onRefresh, gmailConnected } = useSyncRefresh();
   const showSyncButton = gmailConnected;
 
+  // Full mini sync: re-walks the mini pipeline from the beginning, so rows
+  // missed by the incremental cursor (e.g. older manual entries) get imported.
+  // Idempotent thanks to the pull path's per-row dedupe.
+  const { enabled: miniSyncEnabled } = useMiniSyncConfig();
+  const miniFullSync = useMiniSync({ full: true });
+  const handleMiniFullSync = async () => {
+    if (miniFullSync.isPending) return;
+    try {
+      const { result } = await miniFullSync.mutateAsync();
+      showSuccessToast("Mini synced", formatMiniSyncResult(result));
+    } catch (err) {
+      showErrorToast("Mini sync failed", err);
+    }
+  };
+
   const now = new Date();
   const [selectedDate, setSelectedDate] = useState(now);
   const isCurrentMonth = isSameMonth(selectedDate, now);
@@ -339,6 +357,25 @@ export default function HomeScreen() {
                     <ActivityIndicator size="small" color={COLORS.PRIMARY} />
                   ) : (
                     <Icon as={Mail} className="size-4 text-muted-foreground" />
+                  )}
+                </Pressable>
+              )}
+              {miniSyncEnabled && (
+                <Pressable
+                  onPress={handleMiniFullSync}
+                  disabled={miniFullSync.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel="Full mini sync"
+                  hitSlop={12}
+                  className="size-10 items-center justify-center rounded-full border border-border bg-card"
+                >
+                  {miniFullSync.isPending ? (
+                    <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+                  ) : (
+                    <Icon
+                      as={Server}
+                      className="size-4 text-muted-foreground"
+                    />
                   )}
                 </Pressable>
               )}

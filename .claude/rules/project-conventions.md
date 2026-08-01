@@ -26,9 +26,9 @@
 - Hooks re-export what screens need; screens never import from `lib/db/` directly
 
 ## Performance
-- Lists use `@shopify/flash-list` with `estimatedItemSize`
+- Lists use `@shopify/flash-list` (v2 — `estimatedItemSize` no longer required)
 - `getDataStats()` uses `Promise.all` for parallel queries — follow this pattern
 - Subscription processing batch-fetches to avoid N+1 queries
 
 ## Quality
-- `react-doctor` enforces React/RN anti-patterns (state & effects, perf, a11y); config in `react-doctor.config.json`. Pre-push runs `react-doctor:diff` against `main` and blocks on errors.
+- `react-doctor` enforces React/RN anti-patterns (state & effects, perf, a11y); config in `react-doctor.config.json`. The pre-push `react-doctor:diff` hook is currently disabled (spin-loop bug, see lefthook.yml TODO) — run `pnpm react-doctor:diff` manually.

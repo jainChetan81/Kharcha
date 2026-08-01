@@ -49,7 +49,7 @@ export const transactionInputSchema = z
       .optional(),
     units: z.number().nullable().optional(),
     sourceType: z
-      .enum(["manual", "synced", "recurring", "transfer"])
+      .enum(["manual", "synced", "recurring", "transfer", "mini_synced"])
       .default("manual"),
     date: z
       .string()
@@ -58,7 +58,9 @@ export const transactionInputSchema = z
     tagIds: z.array(z.number()).optional(),
     subscriptionId: z.number().nullable().optional(),
     gmailMessageId: z.string().nullable().optional(),
-    parsedBy: z.enum(["regex", "gemini"]).nullable().optional(),
+    parsedBy: z.enum(["regex", "gemini", "openrouter"]).nullable().optional(),
+    miniTransactionId: z.number().int().nullable().optional(),
+    referenceNumber: z.string().nullable().optional(),
     reimbursementStatus: z
       .enum(["none", "pending", "reimbursed"])
       .default("none"),
