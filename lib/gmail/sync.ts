@@ -225,6 +225,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     // Fetch per-sender (Gmail's combined `from:a OR from:b` query is unreliable)
     const seenIds = new Set<string>();
     const messages: { id: string }[] = [];
+    let listQueryFailed = false;
     for (const sender of allEmails) {
       try {
         const query = `from:${sender} after:${formatted}`;
@@ -244,6 +245,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         }
       } catch (err) {
         result.failed++;
+        listQueryFailed = true;
         result.emailLogs.push({
           id: `query-${sender}`,
           from: sender,
@@ -256,10 +258,12 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     }
 
     if (messages.length === 0) {
-      await updateConfig(
-        CONFIG_KEYS.GMAIL_LAST_SYNCED_AT,
-        new Date().toISOString(),
-      );
+      if (!listQueryFailed) {
+        await updateConfig(
+          CONFIG_KEYS.GMAIL_LAST_SYNCED_AT,
+          new Date().toISOString(),
+        );
+      }
       return result;
     }
 
@@ -453,10 +457,12 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
       }
     }
 
-    await updateConfig(
-      CONFIG_KEYS.GMAIL_LAST_SYNCED_AT,
-      new Date().toISOString(),
-    );
+    if (!listQueryFailed) {
+      await updateConfig(
+        CONFIG_KEYS.GMAIL_LAST_SYNCED_AT,
+        new Date().toISOString(),
+      );
+    }
 
     return result;
   });
