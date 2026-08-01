@@ -235,6 +235,9 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             headers: { Authorization: `Bearer ${accessToken}` },
           },
         );
+        if (!listResponse.ok) {
+          throw new Error(`Gmail list query failed: ${listResponse.status}`);
+        }
         const listData = (await listResponse.json()) as {
           messages?: { id: string }[];
         };
@@ -277,6 +280,9 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             headers: { Authorization: `Bearer ${accessToken}` },
           },
         );
+        if (!msgResponse.ok) {
+          throw new Error(`Gmail message fetch failed: ${msgResponse.status}`);
+        }
         const msgData = await msgResponse.json();
         const headers = msgData.payload?.headers as
           | { name: string; value: string }[]
@@ -345,9 +351,9 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
           continue;
         }
 
-        const trimmedSnippet = snippet.trim();
-        const note = trimmedSnippet
-          ? trimmedSnippet.slice(0, MAX_NOTE_CHARS)
+        const trimmedBody = body.trim();
+        const note = trimmedBody
+          ? trimmedBody.slice(0, MAX_NOTE_CHARS)
           : GMAIL_SYNC_NOTE;
 
         const matchedCategoryId = matchCategoryId(
