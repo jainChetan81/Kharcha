@@ -4,7 +4,14 @@ import { File, Paths } from "expo-file-system";
 import { shareAsync } from "expo-sharing";
 import { DATE_ISO_FORMAT } from "@/lib/constants";
 import { closeDatabase, reopenDatabase, vacuumInto } from "./connection";
-import { deleteDbSidecars, getDbFile, isSqliteBytes } from "./files";
+import {
+  commitStagedFile,
+  deleteDbSidecars,
+  discardStagedFile,
+  getDbFile,
+  isSqliteBytes,
+  stageFile,
+} from "./files";
 
 const DB_MIMETYPE = "application/x-sqlite3";
 const DB_UTI = "public.database";
@@ -86,8 +93,11 @@ export async function pickBackupFile(): Promise<PickedBackup | null> {
   return { uri: asset.uri, bytes };
 }
 
-// Commit a previously picked + inspected backup to the live DB. Closes the
-// module-level connection before the swap and reopens it after, so
+// Commit a previously picked + inspected backup to the live DB. Stages the
+// copy beside the live file and verifies it before touching anything — if
+// the copy fails or is truncated (disk full, interrupted app), the live DB
+// is never deleted. Only once the stage is confirmed complete does this
+// close the module-level connection and swap it in, reopening after so
 // migrations/queries run against the restored file instead of the deleted
 // inode the old handle would keep alive. Caller is responsible for:
 // (a) inspecting via `inspectBackupBytes` first, and (b) running `initDB()`
@@ -97,12 +107,18 @@ export function commitImport(picked: PickedBackup): void {
   if (!src.exists) {
     throw new Error("Picked file no longer exists in cache.");
   }
+  const dest = getDbFile();
+  const staging = stageFile(dest, (s) => src.copy(s));
+  if (staging.size !== src.size) {
+    discardStagedFile(staging);
+    throw new Error(
+      `Import copy incomplete: expected ${src.size} bytes, wrote ${staging.size}.`,
+    );
+  }
   closeDatabase();
   try {
-    const dest = getDbFile();
-    if (dest.exists) dest.delete();
     deleteDbSidecars();
-    src.copy(dest);
+    commitStagedFile(staging, dest);
   } finally {
     // Reopen even if the swap failed midway — leaving the module-level
     // handle closed would break every subsequent query in the session.

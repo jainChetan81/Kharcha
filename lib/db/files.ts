@@ -41,3 +41,47 @@ export function isSqliteBytes(bytes: Uint8Array): boolean {
   }
   return true;
 }
+
+// Atomic-replace helpers shared by every path that overwrites a live file
+// with untrusted/fallible input (local DB import, cloud DB restore, cloud
+// backup upload). The old delete-then-write pattern destroyed the live file
+// before the replacement was confirmed complete — a disk-full or
+// interrupted write left nothing behind. These stage the write beside the
+// destination first, so the only thing that touches the destination is a
+// same-directory `move()` (a rename, not a byte copy) after the write is
+// verified — and if the write fails, the destination was never touched.
+
+// Write into a staging file next to `destination`. Caller supplies how to
+// populate it (copy or create+write); the destination itself is untouched.
+export function stageFile(
+  destination: File,
+  write: (staging: File) => void,
+): File {
+  const staging = new File(`${destination.uri}.staging`);
+  if (staging.exists) staging.delete();
+  write(staging);
+  return staging;
+}
+
+// Replace `destination` with an already-verified `staging` file. The slow,
+// fallible part (the write) already happened and was checked before this
+// runs, so the only failure window left is the delete + rename itself.
+export function commitStagedFile(staging: File, destination: File): void {
+  try {
+    if (destination.exists) destination.delete();
+    staging.move(destination);
+  } finally {
+    discardStagedFile(staging);
+  }
+}
+
+// Best-effort cleanup of a staging file that failed verification or was
+// already moved (moving updates `staging.uri`, so this is a harmless no-op
+// in the success case).
+export function discardStagedFile(staging: File): void {
+  try {
+    if (staging.exists) staging.delete();
+  } catch {
+    // Stale staging file — harmless, not worth surfacing.
+  }
+}
