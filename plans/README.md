@@ -15,13 +15,13 @@ NativeWind classes only, no `any`, functional components only.
 |------|-------|----------|--------|------------|--------|
 | 001  | Vitest baseline: parsers, money math, billing logic | P1 | M | — | TODO |
 | 002  | Crash-safe backup import (staged swap + recovery) | P1 | S | — | TODO |
-| 003  | Gemini API key exposure — decision gate + mitigation | P1 | S | operator input | TODO |
+| 003  | Gemini API key exposure — decision gate + mitigation | P1 | S | operator input | PARTIAL — decision gate resolved by `c7eb9f5` (Path A: direct on-device Gemini, backend removed; `lib/env.ts` documents the trade-off). Remaining: confirm key restriction/rotation in Google Cloud (Step A1) |
 | 004  | Gmail sync: dedup before message download | P2 | S | — | TODO |
 | 005  | LIKE-wildcard escaping + holdings invested clamp | P2 | S | — (tests need 001) | TODO |
-| 006  | Backend hardening: timing-safe token, log redaction, auth-model doc | P2 | S | — | TODO |
+| 006  | Backend hardening: timing-safe token, log redaction, auth-model doc | P2 | S | — | REJECTED — backend removed in `c7eb9f5`; plan file deleted |
 | 007  | Untrack Firebase config files + restore docs | P3 | S | — | TODO |
 | 008  | README / .env.example refresh | P3 | S | coordinate with 003 | TODO |
-| 009  | Parser drift control: shared utils + cross-runtime fixtures | P2 | L | 001 (hard) | TODO |
+| 009  | Parser drift control: shared utils + fixtures | P2 | L | 001 (hard) | TODO |
 | 010  | Split lib/db/index.ts into domain modules | P3 | M | 001 (soft) | TODO |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale).
@@ -30,22 +30,21 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 
 - **009 requires 001 DONE**: the characterization tests are the only safety net for moving parser code; without them drift control is guesswork.
 - **010 prefers 001**: holdings/billing tests give partial regression coverage for the move-only split; typecheck + knip carry the rest.
-- **003 requires an operator decision** before any change (direct client calls vs backend proxy). It was planned against UNCOMMITTED working-tree changes in `lib/gemini/client.ts` / `lib/env.ts` — executors must never touch the operator's in-flight work.
+- **003's operator decision is resolved**: Path A (direct on-device Gemini calls) shipped in `7a3913c` and the backend was removed in `c7eb9f5`. Only the key-hygiene checklist (Google Cloud key restriction/rotation) remains.
 - **008 coordinates with 003**: both may edit `.env.example` (the `EXPO_PUBLIC_GEMINI_API_KEY` line). Check 003's status before reconciling env vars.
-- 002, 004, 005, 006, 007 are independent and can run in any order or in parallel worktrees.
+- 002, 004, 005, 007 are independent and can run in any order or in parallel worktrees.
 
 ## Findings considered and rejected (do not re-audit)
 
 - **Pull-to-refresh invalidates all queries** (`hooks/use-refresh.ts:15,89`): documented design (README "query architecture" section); cheap against local SQLite.
 - **Missing `staleTime` on individual queries**: global defaults set in `app/_layout.tsx:52-55` (10s stale, 30min gc).
-- **`POSTMARK_WEBHOOK_TOKEN` not env-validated on the backend**: false — required at `kharcha-backend/src/lib/env.ts:16`.
+- **`POSTMARK_WEBHOOK_TOKEN` not env-validated on the backend**: moot — the backend was removed in `c7eb9f5`.
 - **"Reimbursement audit screen missing"**: false — `app/reimbursements.tsx` exists (212 lines) with `hooks/use-reimbursement-list.ts`.
 - **"Cloud backup is a stub"**: false — `lib/cloud-backup/gdrive.ts` and `icloud.ts` are both functional implementations.
-- **Network logger exposure**: properly `__DEV__`-gated in `app/_layout.tsx`; no action.
 - **Certificate pinning**: not worth the operational cost for a personal expense app on standard TLS.
 - **Fuse.js re-index per keystroke**: search results are cached per query key and capped (`SEARCH_RESULT_CAP = 200` in `hooks/use-transactions.ts`); rebuild happens per debounced term, acceptable.
 - **Backup import schema validation gap**: covered by the existing `lib/db/inspect.ts` preview flow + magic-byte check; plan 002 addresses the remaining (atomicity) risk.
-- **"README claims 12 banks but only 3 exist"**: false — `lib/gmail/parsers/` has 12 bank modules; the 3-parser dirs are SMS (`lib/parsers/`) and backend.
+- **"README claims 12 banks but only 3 exist"**: false — `lib/gmail/parsers/` has 12 bank modules; the other parser dir is SMS (`lib/parsers/`).
 - **Unawaited `invalidate()` in mutation `onSuccess`**: standard TanStack pattern; active queries refetch automatically.
 - **Widget sync running 7 queries on foreground**: by design, debounced, against local SQLite; not worth churn.
 - **Email body stored in sync emailLogs / sent to Gemini**: inherent to the AI-parse feature on a local-first personal device; revisit only if the app ships to other users.
@@ -55,5 +54,5 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 Recorded for context; these become design/spike plans only if the operator opts in:
 
 1. **Smart category rules v2** — `1624617` (built) → `40b4de8` (reverted 10 min later, no stated reason). Merchant-history auto-fill (`72c64c4`) has since absorbed part of the value. A spike would establish what killed v1 and whether user-defined rules still add anything.
-2. **SMS capture half-shipped** — native module `modules/sms-notification-listener` + three gated screens (`sms-sync`, `sms-listener`, `sms-forward`). Finish the listener→sync wiring or remove the module and screens.
-3. **Decide the backend's role** — the working-tree Gemini change (plan 003) pulls one of the backend's three jobs (AI proxy, device sync, feature flags) into the app. Going fully local deletes a deploy target; keeping the backend argues for the proxy path in 003.
+2. **SMS capture half-shipped** — RESOLVED by `c7eb9f5`: the native module and the `sms-sync` / `sms-listener` / `sms-forward` screens were removed (on-device paste/share parsing retained).
+3. **Decide the backend's role** — RESOLVED by `7a3913c` + `c7eb9f5`: the app went fully local; the backend (AI proxy, device sync, feature flags) was removed as a deploy target.

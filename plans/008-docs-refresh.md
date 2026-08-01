@@ -10,6 +10,11 @@
 > **Drift check (run first)**: `git diff --stat 20fc794..HEAD -- README.md .env.example lib/db/schema.ts`
 > Drift here is fine (docs work is additive) — just re-verify each claimed
 > staleness below against the live tree before fixing it.
+>
+> **Note**: the tree has moved substantially since `20fc794` — commit `c7eb9f5`
+> removed the custom backend, the SMS listener module/screens, and dev debug
+> tools, and follow-up work already reconciled `.env.example` (item 4 done).
+> Re-verify every staleness claim below before acting on it.
 
 ## Status
 
@@ -30,7 +35,7 @@ Verified stale items (each re-verifiable with the command shown):
 
 1. **Table count + list.** `README.md:141` says "8 tables in `lib/db/schema.ts`" and lists 8. Actual: 11 — verify with `grep -c "sqliteTable(" lib/db/schema.ts` → 11. Missing from README: `holdings` (schema.ts:48), `tags` (schema.ts:146), `transaction_tags` (schema.ts:159). The `transactions` column list at README:147 is also stale (schema now includes `holding_id`, `investment_kind`, `units`, `reimbursement_status`, `reimbursable_amount` — read `lib/db/schema.ts:75-114` and transcribe the real columns).
 2. **Deleted file referenced.** `README.md:129` lists `lib/version.ts   compareVersions, isUpgrade, isMajorUpgrade` — deleted in commit `439ca05`. Verify: `ls lib/version.ts` → no such file.
-3. **Structure section drift.** `README.md:47-135` — written against an older tree. Examples: `app/config.tsx` is now the `app/config/` directory; `components/currency-picker.tsx` no longer exists; screens missing entirely: `insights.tsx`, `portfolio.tsx`, `reimbursements.tsx`, `budgets.tsx` variants, `holding/`, `tag/`, `sms-sync.tsx`, `sms-listener.tsx`, `sms-forward.tsx`; hooks list (README:86-101) names ~14 of the actual 33 files in `hooks/`; `lib/db/` list misses `holdings.ts`, `tags.ts`, `files.ts`, `inspect.ts`. Verify with `ls app components hooks lib/db`.
+3. **Structure section drift.** `README.md:47-135` — written against an older tree. Examples: `app/config.tsx` is now the `app/config/` directory; `components/currency-picker.tsx` no longer exists; screens missing entirely: `insights.tsx`, `portfolio.tsx`, `reimbursements.tsx`, `budgets.tsx` variants, `holding/`, `tag/`; hooks list (README:86-101) names ~14 of the actual 33 files in `hooks/`; `lib/db/` list misses `holdings.ts`, `tags.ts`, `files.ts`, `inspect.ts`. Verify with `ls app components hooks lib/db`.
 4. **.env.example orphan.** `.env.example` lists `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID`, but `lib/env.ts` never reads it. Verify: `grep -rn "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID" --include="*.ts" --include="*.tsx" --include="*.json" . | grep -v node_modules | grep -v .env` → if zero hits (check `app.json` and any google-signin config especially), the variable is dead and should be removed from `.env.example`; if it IS consumed somewhere (e.g. native config, `@react-native-google-signin` setup), instead add it to `lib/env.ts` validation following the exact pattern of `GOOGLE_IOS_CLIENT_ID` at `lib/env.ts:14,21-24`.
 
 Conventions: README is lowercase-heading, terse style — match it. **Never run pnpm commands yourself — tell the user which command to run and wait.**
@@ -70,13 +75,13 @@ Update README:139-154: table count to 11, add the three missing tables with thei
 
 ### Step 2: Regenerate the structure section
 
-Rewrite README:47-135 from the live tree (`ls app app/settings components components/ui hooks lib lib/db lib/gmail lib/parsers lib/gemini lib/cloud-backup lib/export kharcha-backend/src`). Keep the existing format (path + one-line description). For files you can't describe confidently from their name, open them and read the header comment or main export. Remove the `lib/version.ts` line. Keep descriptions to one line each; don't editorialize.
+Rewrite README:47-135 from the live tree (`ls app app/settings components components/ui hooks lib lib/db lib/gmail lib/parsers lib/gemini lib/cloud-backup lib/export`). Keep the existing format (path + one-line description). For files you can't describe confidently from their name, open them and read the header comment or main export. Remove the `lib/version.ts` line. Keep descriptions to one line each; don't editorialize.
 
 **Verify**: `grep -n "version.ts" README.md` → no matches; spot-check 5 random listed paths exist (`ls <path>`).
 
 ### Step 3: Reconcile .env.example
 
-Apply item 4's verified branch (remove the dead var, or wire it into `lib/env.ts`). Also confirm every variable `lib/env.ts` reads appears in `.env.example` with a placeholder (currently: IOS_CLIENT_ID, WEB_CLIENT_ID, API_URL, plus GEMINI key depending on plan 003's outcome — check `plans/README.md` for plan 003's status and don't fight its change).
+Item 4 is already applied (dead var removed from `.env.example`). Confirm every variable `lib/env.ts` reads appears in `.env.example` with a placeholder (currently: IOS_CLIENT_ID, WEB_CLIENT_ID, and the GEMINI key).
 
 **Verify**: `pnpm typecheck` → exit 0 (if lib/env.ts changed); every `process.env.EXPO_PUBLIC_*` literal in `lib/env.ts` has a matching line in `.env.example` (manual cross-check, list them in your report).
 

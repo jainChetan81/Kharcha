@@ -174,8 +174,8 @@ cp .env.example .env.local
 |---|---|---|
 | `EXPO_TOKEN` | Expo CLI authentication (for builds) | GitHub CI only |
 | `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | Google OAuth iOS | Development, iOS build |
-| `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` | Google OAuth Android | Development, Android build |
 | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Google OAuth Web | Gmail sync |
+| `EXPO_PUBLIC_GEMINI_API_KEY` | On-device Gemini parsing (optional — AI parsing degrades gracefully) | AI paste/share parsing |
 | `EXPO_DEVTOOLS_LISTEN_ADDRESS` | Metro bundler address | Local development |
 | `RCT_METRO_PORT` | Metro bundler port | Local development |
 

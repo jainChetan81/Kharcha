@@ -1,9 +1,17 @@
 # Plan 003: Resolve the Gemini API key exposure (decision gate: direct client calls vs backend proxy)
 
-> **Executor instructions**: This plan starts with a DECISION GATE that only
-> the operator (repo owner) can answer. Ask it first; do not pick a path
-> yourself. Follow the chosen path's steps, run every verification command,
-> and honor the STOP conditions. When done, update the status row in
+> **⚠️ DECISION GATE RESOLVED (post-`c7eb9f5`)**: Path A was chosen and shipped —
+> `7a3913c` moved Gemini calls on-device (`lib/gemini/client.ts` calls
+> `generativelanguage.googleapis.com` directly) and `c7eb9f5` removed the backend
+> entirely, so Path B (backend proxy) is no longer possible. `lib/env.ts` already
+> documents the key-in-bundle trade-off. **Only the operator key-hygiene checklist
+> below remains** — Step A1 (restrict the key in Google Cloud to the Generative
+> Language API + this app's bundle id/package name, and rotate it if it was ever
+> the server's key). Everything about Path B and `kharcha-backend/` is obsolete.
+
+> **Executor instructions**: The decision gate is already answered (Path A). Only
+> the residual key-hygiene work (Step A1, optionally the `docs/SECURITY.md` note)
+> is actionable; ignore the Path B branch. When done, update the status row in
 > `plans/README.md` — unless a reviewer dispatched you and told you they
 > maintain the index.
 >
