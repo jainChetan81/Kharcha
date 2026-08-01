@@ -362,22 +362,52 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             ? format(new Date(Number(msgData.internalDate)), "yyyy-MM-dd")
             : format(new Date(), "yyyy-MM-dd");
 
-        await db.insert(transactions).values({
-          amount: outcome.parsed.amount,
-          merchant: outcome.parsed.merchant,
-          category_id: matchedCategoryId,
-          source_id: null,
-          gmail_message_id: message.id,
-          parsed_by:
-            outcome.parsedBy === PARSED_BY.GEMINI
-              ? PARSED_BY.GEMINI
-              : PARSED_BY.REGEX,
-          date: fallbackDate,
-          // store the original email snippet so the user can see exactly what was parsed
-          note,
-          type: outcome.parsed.type,
-          source_type: "synced",
+        // Re-check for a concurrent insert immediately before writing — the
+        // early check above can't close this race because a Gemini network
+        // call (this message's `parseEmailWithFallback` above) sits between
+        // it and here, long enough for a second, parallel sync (manual
+        // trigger + background sync) to pass its own early check and insert
+        // first. Mirrors the subscriptions guard below.
+        let raceDuplicate = false;
+        await expo.withTransactionAsync(async () => {
+          const stillMissing = await db
+            .select({ id: transactions.id })
+            .from(transactions)
+            .where(eq(transactions.gmail_message_id, message.id))
+            .limit(1);
+          if (stillMissing.length > 0) {
+            raceDuplicate = true;
+            return;
+          }
+          await db.insert(transactions).values({
+            amount: outcome.parsed.amount,
+            merchant: outcome.parsed.merchant,
+            category_id: matchedCategoryId,
+            source_id: null,
+            gmail_message_id: message.id,
+            parsed_by:
+              outcome.parsedBy === PARSED_BY.GEMINI
+                ? PARSED_BY.GEMINI
+                : PARSED_BY.REGEX,
+            date: fallbackDate,
+            // store the original email body so the user can see exactly what was parsed
+            note,
+            type: outcome.parsed.type,
+            source_type: "synced",
+          });
         });
+
+        if (raceDuplicate) {
+          result.skipped++;
+          result.emailLogs.push({
+            id: message.id,
+            from,
+            subject,
+            parsedBy: outcome.parsedBy,
+            status: EMAIL_LOG_STATUS.DUPLICATE,
+          });
+          continue;
+        }
 
         // Auto-create a subscription row when Gemini flags the email as
         // recurring — skip if one already exists for the same merchant + cycle
