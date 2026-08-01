@@ -153,6 +153,14 @@ export const TransactionItem = memo(function TransactionItem({
       },
       onPanResponderRelease: (_, gesture) => {
         if (gesture.dx < -SWIPE_COMMIT_THRESHOLD) {
+          // Capture the row's current item NOW, synchronously at commit
+          // time — not inside the animation callback below. The callback
+          // fires ~ANIMATION_DURATION_MS later; if a background sync
+          // updates the list data during that window, FlashList can
+          // reassign this row's pool slot to a different transaction and
+          // itemRef.current would have already moved on by the time the
+          // callback reads it, deleting the wrong row.
+          const committedItem = itemRef.current;
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           Animated.parallel([
             Animated.timing(translateX, {
@@ -167,7 +175,7 @@ export const TransactionItem = memo(function TransactionItem({
             }),
           ]).start(() => {
             inCommitZone.current = false;
-            onSwipeDelete?.(itemRef.current);
+            onSwipeDelete?.(committedItem);
           });
         } else {
           Animated.spring(translateX, {
