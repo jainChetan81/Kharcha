@@ -72,26 +72,37 @@ export function stageFile(
 // to a `.prior` sibling first (a move onto an *empty* path), then move
 // staging into the now-empty destination. If that second move throws, the
 // old file is restored from `.prior` before rethrowing.
+//
+// `File.move()` also mutates the *caller's* `.uri` to the new location, so
+// a `File` object must never be reused across a move (including for a
+// later exists-check or cleanup) — doing so silently retargets it at
+// wherever it was last moved to/from. Every path is captured as a plain
+// (immutable) string up front, and `at(uri)` builds a fresh `File` right
+// before each operation instead.
 export function commitStagedFile(staging: File, destination: File): void {
-  const prior = new File(`${destination.uri}.prior`);
+  const destUri = destination.uri;
+  const stagingUri = staging.uri;
+  const priorUri = `${destUri}.prior`;
+  const at = (uri: string) => new File(uri);
+
   try {
-    if (!destination.exists && prior.exists) {
+    if (!at(destUri).exists && at(priorUri).exists) {
       // A previous swap was interrupted between relocating the old file
       // and moving the new one in. Recover it before attempting another
       // swap instead of silently discarding it.
-      prior.move(destination);
+      at(priorUri).move(at(destUri));
     }
-    if (prior.exists) prior.delete();
-    if (destination.exists) destination.move(prior);
+    discardStagedFile(at(priorUri));
+    if (at(destUri).exists) at(destUri).move(at(priorUri));
     try {
-      staging.move(destination);
+      at(stagingUri).move(at(destUri));
     } catch (err) {
-      if (prior.exists) prior.move(destination);
+      if (at(priorUri).exists) at(priorUri).move(at(destUri));
       throw err;
     }
-    discardStagedFile(prior);
+    discardStagedFile(at(priorUri));
   } finally {
-    discardStagedFile(staging);
+    discardStagedFile(at(stagingUri));
   }
 }
 
