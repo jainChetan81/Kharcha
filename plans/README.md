@@ -42,6 +42,7 @@ finding — the swipe-to-delete stale-closure bug — is **plan 001** below.
 | 005 | Database layer referential integrity and correctness | P1 | M | MED | — | TODO |
 | 014 | App icon/splash asset integrity (missing file, format mismatch) | P1 | S | LOW | — | TODO |
 | 006 | Double-toast error-feedback cleanup | P2 | M | LOW | — | TODO |
+| 007 | Android widget fixes | P2 | S | LOW | — | TODO |
 | 008 | AI parsing and mini-sync pipeline hardening | P2 | M | MED | — (soft: `app/_layout.tsx`, see note) | TODO |
 | 010 | Transaction and subscription form correctness | P2 | M | LOW | — | TODO |
 | 013 | Security and data-handling hardening | P2 | S | LOW | — (soft: `app/_layout.tsx`, `lib/db/subscriptions.ts`, see note) | TODO |
