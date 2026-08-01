@@ -798,15 +798,7 @@
           "default": "'(datetime(''now''))'"
         }
       },
-      "indexes": {
-        "mini_transaction_id_idx": {
-          "name": "mini_transaction_id_idx",
-          "columns": [
-            "mini_transaction_id"
-          ],
-          "isUnique": true
-        }
-      },
+      "indexes": {},
       "foreignKeys": {
         "transactions_category_id_categories_id_fk": {
           "name": "transactions_category_id_categories_id_fk",
