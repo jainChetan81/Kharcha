@@ -49,6 +49,11 @@ const PARSER_MAP: Record<string, Parser[]> = {
   uni: UNI_PARSERS,
 };
 
+/** Every Gmail bank parser, flattened — used by the SMS paste sheet as a
+ * second local-regex tier (see lib/parsers/index.ts) since it doesn't know
+ * the sender's bank ahead of time the way Gmail sync does via parser_key. */
+export const ALL_EMAIL_PARSERS: Parser[] = Object.values(PARSER_MAP).flat();
+
 export async function parseEmailWithFallback(
   body: string,
   parserKey: string | null,
