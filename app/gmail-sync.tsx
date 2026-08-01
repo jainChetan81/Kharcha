@@ -166,7 +166,7 @@ export default function GmailSyncScreen() {
                 <Button
                   className="h-12 rounded-xl bg-primary"
                   onPress={handleSync}
-                  disabled={busy || noActiveBanks || !autoRefreshEnabled}
+                  disabled={busy || noActiveBanks}
                 >
                   {syncing ? (
                     <ActivityIndicator
@@ -191,8 +191,8 @@ export default function GmailSyncScreen() {
                 }
               />
               <SwitchRow
-                label="Enable Gmail Sync"
-                description="Turn off to pause all Gmail syncing — manual and automatic."
+                label="Auto-sync on refresh"
+                description="When off, pulling to refresh on Home or History won't check Gmail. Sync Now above always works."
                 value={autoRefreshEnabled}
                 onValueChange={toggleAutoRefresh}
               />

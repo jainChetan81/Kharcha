@@ -235,7 +235,7 @@ export function useGmailSyncUi(): UseGmailSyncUiReturn {
     lastSynced,
     activeBanks,
     noActiveBanks,
-    autoRefreshEnabled: autoRefreshPrefs?.gmail ?? false,
+    autoRefreshEnabled: autoRefreshPrefs?.gmail ?? true,
     toggleAutoRefresh,
     syncResult,
     showResults,
