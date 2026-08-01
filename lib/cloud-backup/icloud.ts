@@ -12,6 +12,7 @@
 //     when we read it; reading may briefly fail with ENOENT until the
 //     download completes — surfaced as ICloudSyncingError.
 import { Directory, File, Paths } from "expo-file-system";
+import { commitStagedFile, discardStagedFile, stageFile } from "@/lib/db/files";
 
 const BACKUP_DIR = "iCloud-Backup";
 const BACKUP_FILENAME = "kharcha-backup.db";
@@ -29,11 +30,22 @@ export async function uploadBackupToICloud(
 ): Promise<{ modifiedTime: string }> {
   const dir = getBackupDir();
   if (!dir.exists) dir.create({ intermediates: true });
+  const view = new Uint8Array(body);
   const file = getBackupFile();
-  if (file.exists) file.delete();
-  // expo-file-system v2 File API — write the binary blob.
-  file.create();
-  file.write(new Uint8Array(body));
+  // Stage the upload beside the existing backup and verify it's complete
+  // before replacing anything — previously this deleted the last-known-good
+  // backup first, so a failed/interrupted write left nothing behind.
+  const staging = stageFile(file, (s) => {
+    s.create();
+    s.write(view);
+  });
+  if (staging.size !== view.byteLength) {
+    discardStagedFile(staging);
+    throw new Error(
+      `iCloud backup write incomplete: expected ${view.byteLength} bytes, wrote ${staging.size}.`,
+    );
+  }
+  commitStagedFile(staging, file);
   return { modifiedTime: new Date().toISOString() };
 }
 

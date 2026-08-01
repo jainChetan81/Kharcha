@@ -41,3 +41,78 @@ export function isSqliteBytes(bytes: Uint8Array): boolean {
   }
   return true;
 }
+
+// Atomic-replace helpers shared by every path that overwrites a live file
+// with untrusted/fallible input (local DB import, cloud DB restore, cloud
+// backup upload). The old delete-then-write pattern destroyed the live file
+// before the replacement was confirmed complete — a disk-full or
+// interrupted write left nothing behind. These stage the write beside the
+// destination first, so the only thing that touches the destination is a
+// same-directory `move()` (a rename, not a byte copy) after the write is
+// verified — and if the write fails, the destination was never touched.
+
+// Write into a staging file next to `destination`. Caller supplies how to
+// populate it (copy or create+write); the destination itself is untouched.
+export function stageFile(
+  destination: File,
+  write: (staging: File) => void,
+): File {
+  const staging = new File(`${destination.uri}.staging`);
+  if (staging.exists) staging.delete();
+  write(staging);
+  return staging;
+}
+
+// Replace `destination` with an already-verified `staging` file. Never
+// moves onto a path that already has a file: expo-file-system's `move()`
+// isn't a guaranteed-atomic overwrite (on iOS it deletes the destination
+// then moves, which is two steps, not one; Android has no built-in atomic
+// replace either), so overwriting in place risks losing both the old and
+// new file if the app is killed mid-swap. Instead, relocate the old file
+// to a `.prior` sibling first (a move onto an *empty* path), then move
+// staging into the now-empty destination. If that second move throws, the
+// old file is restored from `.prior` before rethrowing.
+//
+// `File.move()` also mutates the *caller's* `.uri` to the new location, so
+// a `File` object must never be reused across a move (including for a
+// later exists-check or cleanup) — doing so silently retargets it at
+// wherever it was last moved to/from. Every path is captured as a plain
+// (immutable) string up front, and `at(uri)` builds a fresh `File` right
+// before each operation instead.
+export function commitStagedFile(staging: File, destination: File): void {
+  const destUri = destination.uri;
+  const stagingUri = staging.uri;
+  const priorUri = `${destUri}.prior`;
+  const at = (uri: string) => new File(uri);
+
+  try {
+    if (!at(destUri).exists && at(priorUri).exists) {
+      // A previous swap was interrupted between relocating the old file
+      // and moving the new one in. Recover it before attempting another
+      // swap instead of silently discarding it.
+      at(priorUri).move(at(destUri));
+    }
+    discardStagedFile(at(priorUri));
+    if (at(destUri).exists) at(destUri).move(at(priorUri));
+    try {
+      at(stagingUri).move(at(destUri));
+    } catch (err) {
+      if (at(priorUri).exists) at(priorUri).move(at(destUri));
+      throw err;
+    }
+    discardStagedFile(at(priorUri));
+  } finally {
+    discardStagedFile(at(stagingUri));
+  }
+}
+
+// Best-effort delete of a `.staging`/`.prior` sidecar file left over after
+// a failed verification or a completed move (moving updates `File.uri`, so
+// this is a harmless no-op once the file's already been moved away).
+export function discardStagedFile(staging: File): void {
+  try {
+    if (staging.exists) staging.delete();
+  } catch {
+    // Stale sidecar file — harmless, not worth surfacing.
+  }
+}

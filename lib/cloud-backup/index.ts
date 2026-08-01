@@ -9,7 +9,14 @@ import { CONFIG_KEYS } from "@/lib/constants";
 import { withDbSnapshot } from "@/lib/db/backup";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import { closeDatabase, reopenDatabase } from "@/lib/db/connection";
-import { deleteDbSidecars, getDbFile, isSqliteBytes } from "@/lib/db/files";
+import {
+  commitStagedFile,
+  deleteDbSidecars,
+  discardStagedFile,
+  getDbFile,
+  isSqliteBytes,
+  stageFile,
+} from "@/lib/db/files";
 import { withTrace } from "@/lib/firebase";
 import {
   type DriveBackupFile,
@@ -60,17 +67,28 @@ function writeDbBytes(bytes: ArrayBuffer): void {
   if (!isSqliteBytes(view)) {
     throw new Error("Cloud backup is not a valid Kharcha database file.");
   }
+  // Stage the write beside the live file and verify it's complete before
+  // touching anything — a disk-full or interrupted write leaves the
+  // staging file broken instead of the live DB.
+  const dest = getDbFile();
+  const staging = stageFile(dest, (s) => {
+    s.create();
+    s.write(view);
+  });
+  if (staging.size !== view.byteLength) {
+    discardStagedFile(staging);
+    throw new Error(
+      `Cloud restore write incomplete: expected ${view.byteLength} bytes, wrote ${staging.size}.`,
+    );
+  }
   // Close the module-level connection before swapping the file underneath
   // it, then reopen so the singleton `db`/`expo` handles point at the
   // restored file — the old handle would keep the deleted inode alive and
   // serve pre-restore rows.
   closeDatabase();
   try {
-    const dest = getDbFile();
-    if (dest.exists) dest.delete();
     deleteDbSidecars();
-    dest.create();
-    dest.write(view);
+    commitStagedFile(staging, dest);
   } finally {
     // Reopen even if the swap failed midway — leaving the module-level
     // handle closed would break every subsequent query in the session.
