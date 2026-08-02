@@ -157,12 +157,7 @@ export function SpendingPanel({
                 key={row.key}
                 accessibilityRole="button"
                 onPress={() => router.push(row.href)}
-                className="-mx-3 flex-row items-center rounded-xl px-3 py-2.5"
-                style={({ pressed }) => ({
-                  backgroundColor: pressed
-                    ? "rgba(150, 150, 150, 0.1)"
-                    : "transparent",
-                })}
+                className="-mx-3 flex-row items-center rounded-xl px-3 py-2.5 active:bg-foreground/10"
               >
                 <Text className="w-5 text-sm text-muted-foreground">
                   {i + 1}
