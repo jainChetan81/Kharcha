@@ -5,7 +5,19 @@ import { CSV_DATE_FORMAT, CSV_TIME_FORMAT } from "@/lib/constants";
 import type { TransactionRow } from "@/lib/db/types";
 import { parseDate } from "@/lib/format";
 
-const csvEscape = (val: string) => `"${val.replace(/"/g, '""')}"`;
+// Cells whose value starts with =, +, -, or @ are interpreted as formulas
+// by Excel / Google Sheets when the CSV is opened, regardless of the
+// surrounding CSV quoting (OWASP "CSV Injection"). `merchant` is
+// unconstrained free text extracted by Gemini from arbitrary SMS/email
+// bodies (lib/gemini/client.ts), and `note` can be the entire raw pasted
+// message verbatim (hooks/use-add-transaction.ts) — both are
+// attacker-reachable if a crafted message ever gets parsed. Prefix a
+// defusing single quote so the value round-trips as literal text.
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
+const csvEscape = (val: string) => {
+  const safe = FORMULA_TRIGGER.test(val) ? `'${val}` : val;
+  return `"${safe.replace(/"/g, '""')}"`;
+};
 
 function buildCSV(transactions: TransactionRow[]): string {
   return [

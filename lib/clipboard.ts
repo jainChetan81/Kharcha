@@ -14,7 +14,7 @@ async function copyToClipboard(value: string, label: string) {
 // them to the system clipboard (other apps can read clipboard contents).
 // Covers: full/partial card numbers, account numbers, UPI IDs, phone
 // numbers, OTPs, and CVVs.
-function maskSensitivePii(text: string): string {
+export function maskSensitivePii(text: string): string {
   return (
     text
       // 13–19 digit card numbers with optional spaces/dashes

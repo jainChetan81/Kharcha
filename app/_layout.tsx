@@ -255,11 +255,14 @@ export default function RootLayout() {
   useEffect(() => {
     if (!dbReady || __DEV__) return;
     import("@react-native-firebase/crashlytics")
-      .then(async (mod) => {
-        const crash = mod.default();
-        crash.setCrashlyticsCollectionEnabled(true);
-        const userName = await getConfig(CONFIG_KEYS.USER_NAME);
-        crash.setAttribute("user_name", userName ?? "unknown");
+      .then((mod) => {
+        // Deliberate tradeoff: collection is always-on with no in-app
+        // opt-out. This is a single-developer personal app (see
+        // docs/V3_SPEC.md) — crash reports go only to the developer's own
+        // Firebase project, not a third party with other users' data mixed
+        // in. Revisit with a real settings toggle if this app ever gets a
+        // wider (non-personal) release.
+        mod.default().setCrashlyticsCollectionEnabled(true);
       })
       .catch(() => {});
   }, [dbReady]);
