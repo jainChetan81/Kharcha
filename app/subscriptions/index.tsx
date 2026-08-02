@@ -47,7 +47,7 @@ import {
 import { formatBillingDays, parseBillingDays } from "@/lib/db/subscriptions";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 import { historyHref, parseDate } from "@/lib/format";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { showSuccessToast } from "@/lib/toast";
 import { getRefreshControlProps } from "@/lib/utils";
 
 export default function SubscriptionsScreen() {
@@ -82,8 +82,9 @@ export default function SubscriptionsScreen() {
         try {
           await deleteMutation.mutateAsync(sub.id);
           showSuccessToast("Subscription deleted");
-        } catch (err) {
-          showErrorToast("Failed", err);
+        } catch {
+          // useDeleteSubscription's onError already toasted
+          // "Subscription update failed".
         }
       },
     );
