@@ -39,8 +39,8 @@ import {
 import { initDB } from "@/lib/db";
 import { getConfig } from "@/lib/db/config";
 import { processSubscriptions } from "@/lib/db/subscriptions";
-import { env } from "@/lib/env";
 import { ERROR_TYPE, logFirebaseError, logScreenView } from "@/lib/firebase";
+import { deriveMiniSyncEnabled, isConfigured } from "@/lib/mini-sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { isIOS } from "@/lib/utils";
 import { syncWidgetData } from "@/lib/widget";
@@ -118,11 +118,10 @@ function ForegroundMiniSync() {
     const maybeSync = () => {
       void (async () => {
         try {
-          const configured =
-            Boolean(env.MINI_API_URL) && Boolean(env.MINI_API_TOKEN);
+          const configured = isConfigured();
           if (!configured) return;
           const enabledFlag = await getConfig(CONFIG_KEYS.MINI_SYNC_ENABLED);
-          if (enabledFlag !== "1" && enabledFlag !== null) return;
+          if (!deriveMiniSyncEnabled(configured, enabledFlag)) return;
           runMiniSync();
         } catch {
           // Fail silently — foreground sync is best-effort; pull-to-refresh

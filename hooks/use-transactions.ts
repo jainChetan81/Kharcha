@@ -40,9 +40,8 @@ import {
 } from "@/lib/db";
 import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
 import { deleteConfig } from "@/lib/db/config";
-import { env } from "@/lib/env";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
-import { pushTransactionToMini } from "@/lib/mini-sync";
+import { isConfigured, pushTransactionToMini } from "@/lib/mini-sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { syncWidgetData } from "@/lib/widget";
 
@@ -405,8 +404,7 @@ export function useInsertTransaction() {
       if (
         isManualEntry &&
         isPushableType &&
-        env.MINI_API_URL &&
-        env.MINI_API_TOKEN &&
+        isConfigured() &&
         variables.merchant
       ) {
         // Best-effort, fire-and-forget push: the error is never surfaced to

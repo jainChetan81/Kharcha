@@ -85,6 +85,15 @@ export function useSyncRefresh() {
                   "Mini synced",
                   formatMiniSyncResult(result.result),
                 );
+              } else if (result.result.failed > 0) {
+                // Every processable row failed this run — added stayed 0 so
+                // the success branch above never fires. Without this, a
+                // fully-failed sync produced no user-visible signal at all
+                // on the one path meant to surface it.
+                showErrorToast(
+                  "Mini sync issues",
+                  formatMiniSyncResult(result.result),
+                );
               }
             } catch (err) {
               showErrorToast("Mini sync failed", err);

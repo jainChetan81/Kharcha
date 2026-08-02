@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
 import { getAllConfig, updateConfig } from "@/lib/db/config";
-import { env } from "@/lib/env";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
-import { syncMiniTransactions } from "@/lib/mini-sync";
+import {
+  deriveMiniSyncEnabled,
+  isConfigured,
+  syncMiniTransactions,
+} from "@/lib/mini-sync";
 
 export function useMiniSyncConfig() {
   const queryClient = useQueryClient();
@@ -20,13 +23,9 @@ export function useMiniSyncConfig() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CONFIG] }),
   });
 
-  const configured = Boolean(env.MINI_API_URL) && Boolean(env.MINI_API_TOKEN);
+  const configured = isConfigured();
   const enabledFlag = raw?.[CONFIG_KEYS.MINI_SYNC_ENABLED];
-  // Default to enabled when the mini env vars are configured and the user
-  // hasn't explicitly toggled it off. This avoids needing a settings screen
-  // in v1 while still letting a future toggle disable the feature.
-  const enabled =
-    enabledFlag === "1" || (enabledFlag === undefined && configured);
+  const enabled = deriveMiniSyncEnabled(configured, enabledFlag);
   const lastId = raw?.[CONFIG_KEYS.MINI_SYNC_LAST_ID] ?? null;
 
   const setEnabled = async (value: boolean): Promise<void> => {
