@@ -371,32 +371,44 @@ export function useAddTransaction(): UseAddTransactionReturn {
   }
 
   async function handleTransactionSubmit(value: TransactionFormValues) {
-    try {
-      const merchant = value.merchant?.trim();
-      // Skip duplicate check when no merchant is provided — merchant is the
-      // strongest dedupe signal, and date+amount alone produce too many
-      // false positives (e.g. multiple ₹100 cash expenses on the same day).
-      if (merchant) {
-        const isDuplicate = await findDuplicateTransaction(
+    const merchant = value.merchant?.trim();
+    // Skip duplicate check when no merchant is provided — merchant is the
+    // strongest dedupe signal, and date+amount alone produce too many
+    // false positives (e.g. multiple ₹100 cash expenses on the same day).
+    if (merchant) {
+      let isDuplicate: boolean;
+      try {
+        isDuplicate = await findDuplicateTransaction(
           value.date,
           Number(value.amount),
           merchant,
         );
-        if (isDuplicate) {
-          pendingTxRef.current = value;
-          setDupSheetVisible(true);
-          return;
-        }
+      } catch (err) {
+        showErrorToast(FAILED_TO_SAVE, err);
+        return;
       }
+      if (isDuplicate) {
+        pendingTxRef.current = value;
+        setDupSheetVisible(true);
+        return;
+      }
+    }
+    try {
       await commitTransaction(value);
-    } catch (err) {
-      showErrorToast(FAILED_TO_SAVE, err);
+    } catch {
+      // useInsertTransaction's onError already toasted "Transaction failed".
     }
   }
 
   async function handleSubscriptionSubmit(value: SubscriptionFormSubmitValue) {
     try {
       await addSubMutation.mutateAsync(value);
+    } catch {
+      // useAddSubscription's onError already toasted
+      // "Subscription update failed".
+      return;
+    }
+    try {
       await processSubscriptions();
       await queryClient.invalidateQueries();
       showSuccessToast(
@@ -421,8 +433,8 @@ export function useAddTransaction(): UseAddTransactionReturn {
     if (value) {
       try {
         await commitTransaction(value);
-      } catch (err) {
-        showErrorToast(FAILED_TO_SAVE, err);
+      } catch {
+        // useInsertTransaction's onError already toasted "Transaction failed".
       }
     }
   }
