@@ -149,9 +149,14 @@ export function useAddTransaction(): UseAddTransactionReturn {
 
   useEffect(() => {
     let alive = true;
-    getConfig(CONFIG_KEYS.AI_HINT_DISMISSED).then((v) => {
-      if (alive) setHintDismissed(v === "1");
-    });
+    getConfig(CONFIG_KEYS.AI_HINT_DISMISSED)
+      .then((v) => {
+        if (alive) setHintDismissed(v === "1");
+      })
+      .catch(() => {
+        // Config read failed — don't block the app, leave the hint dismissed
+        // (the safer default: better to hide a helpful hint than to throw).
+      });
     return () => {
       alive = false;
     };
