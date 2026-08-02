@@ -146,7 +146,7 @@ export async function getLatestDriveBackup(): Promise<DriveBackupFile | null> {
   if (!res.ok) {
     const text = await res.text();
     if (isScopeError(res.status, text)) throw new DriveScopeMissingError();
-    return null;
+    throw new Error(`Drive list failed: ${res.status} ${text}`);
   }
   const data = (await res.json()) as { files?: DriveBackupFile[] };
   const file = data.files?.[0];
