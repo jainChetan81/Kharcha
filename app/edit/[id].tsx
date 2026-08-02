@@ -22,7 +22,7 @@ import {
   SOURCE_TYPE,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
 const TransactionForm = lazy(() =>
@@ -113,8 +113,8 @@ export default function EditTransactionScreen() {
       // updateTransaction's db transaction — no screen-level recompute needed.
       showSuccessToast("Transaction updated");
       router.back();
-    } catch (err) {
-      showErrorToast("Failed to update", err);
+    } catch {
+      // useUpdateTransaction's onError already toasted "Transaction failed".
     }
   }
 
@@ -171,8 +171,9 @@ export default function EditTransactionScreen() {
                   await deleteMutation.mutateAsync(transactionId);
                   showSuccessToast("Transaction deleted");
                   router.back();
-                } catch (err) {
-                  showErrorToast("Failed to delete", err);
+                } catch {
+                  // useDeleteTransaction's onError already toasted
+                  // "Transaction failed".
                 }
               },
             );
