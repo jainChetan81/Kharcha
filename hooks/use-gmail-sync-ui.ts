@@ -159,6 +159,14 @@ export function useGmailSyncUi(): UseGmailSyncUiReturn {
         headers: { Authorization: `Bearer ${token}` },
         signal: controller.signal,
       });
+      // Same auth-failure check as the messages request above — the two
+      // calls share the same token, so a 401/403 here is just as much
+      // proof of an expired session, and shouldn't be silently swallowed
+      // into a false "Connection verified".
+      if (profileRes.status === 401 || profileRes.status === 403) {
+        await handleSessionExpired();
+        return;
+      }
       if (profileRes.ok) {
         const profile = await profileRes.json();
         setEmail(profile.emailAddress);
