@@ -1,11 +1,9 @@
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import { ScrollView, View } from "react-native";
 import { ConfigRow } from "@/components/config-row";
-import {
-  ComponentErrorBoundary,
-  ScreenError,
-} from "@/components/error-boundary";
+import { ScreenError } from "@/components/error-boundary";
 import { DashedAddButton } from "@/components/ui/dashed-add-button";
+import { InlineAddSheet } from "@/components/ui/inline-add-sheet";
 import { ScreenDescription } from "@/components/ui/screen-description";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import {
@@ -20,9 +18,6 @@ import {
   TOAST_COPY,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
-
-const AddCategorySheet = lazy(() => import("@/components/add-category-sheet"));
 
 export default function IncomeCategoriesScreen() {
   const [showAdd, setShowAdd] = useState(false);
@@ -72,33 +67,20 @@ export default function IncomeCategoriesScreen() {
         />
       </ScrollView>
 
-      <Suspense fallback={null}>
-        <ComponentErrorBoundary>
-          <AddCategorySheet
-            visible={showAdd}
-            onClose={() => setShowAdd(false)}
-            categoryType={TRANSACTION_TYPE.INCOME}
-            onSave={async (name) => {
-              try {
-                const { isNew } = await addMutation.mutateAsync({
-                  name,
-                  type: TRANSACTION_TYPE.INCOME,
-                });
-                setShowAdd(false);
-                showSuccessToast(
-                  isNew ? "Category added" : TOAST_COPY.ALREADY_EXISTS,
-                );
-              } catch (err) {
-                if (err instanceof Error) {
-                  showErrorToast("Failed", err.message);
-                } else {
-                  showErrorToast("Failed", "Could not add category");
-                }
-              }
-            }}
-          />
-        </ComponentErrorBoundary>
-      </Suspense>
+      <InlineAddSheet
+        visible={showAdd}
+        onClose={() => setShowAdd(false)}
+        title="Add Income Category"
+        placeholder="Category name"
+        submitLabel="Add Category"
+        mutateAsync={(name) =>
+          addMutation.mutateAsync({ name, type: TRANSACTION_TYPE.INCOME })
+        }
+        onAdded={() => {}}
+        addedToast="Category added"
+        existingToast={TOAST_COPY.ALREADY_EXISTS}
+        errorTitle="Failed"
+      />
     </View>
   );
 }

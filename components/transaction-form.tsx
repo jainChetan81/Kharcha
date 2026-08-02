@@ -837,13 +837,13 @@ export function TransactionForm({
           submitLabel="Add Tag"
           onSave={async (name) => {
             try {
-              const { id } = await addTagMutation.mutateAsync(name);
+              const { id, isNew } = await addTagMutation.mutateAsync(name);
               const current = form.getFieldValue("tagIds") ?? [];
               if (!current.includes(id)) {
                 form.setFieldValue("tagIds", [...current, id]);
               }
               setNewTagSheetVisible(false);
-              showSuccessToast("Tag added");
+              showSuccessToast(isNew ? "Tag added" : "Tag already exists");
             } catch {
               // useAddTag's onError already toasted.
             }

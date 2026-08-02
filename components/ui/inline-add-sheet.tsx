@@ -46,7 +46,11 @@ export function InlineAddSheet({
           onClose();
           showSuccessToast(isNew ? addedToast : existingToast);
         } catch (err) {
-          showErrorToast(errorTitle, err);
+          // showErrorToast stringifies a raw Error via String(err), which
+          // renders "Error: <message>" (JS's default toString) — match the
+          // callers this component replaces, which extract err.message
+          // directly with no prefix.
+          showErrorToast(errorTitle, err instanceof Error ? err.message : err);
         }
       }}
     />
