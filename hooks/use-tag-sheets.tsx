@@ -3,7 +3,7 @@ import { useState } from "react";
 import { QuickStartTagSheet } from "@/components/quick-start-tag-sheet";
 import { TagScheduleSheet } from "@/components/tag-schedule-sheet";
 import { TAG_SCOPE_COPY, tagScreen } from "@/lib/constants";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { showSuccessToast } from "@/lib/toast";
 import { useScheduleTag, useUpdateSchedule } from "./use-tags";
 
 type ScheduleTarget = {
@@ -54,8 +54,9 @@ export function useTagSheets(opts: UseTagSheetsOptions = {}) {
             setQuickStart(null);
             showSuccessToast(TAG_SCOPE_COPY.scopeStarted(values.name));
             if (opts.navigateOnSuccess) router.push(tagScreen(id));
-          } catch (err) {
-            showErrorToast(TAG_SCOPE_COPY.failedToStart, err);
+          } catch {
+            // useScheduleTag's onError already toasted
+            // "Failed to update schedule".
           }
         }}
       />
@@ -83,8 +84,9 @@ export function useTagSheets(opts: UseTagSheetsOptions = {}) {
             }
             setSchedule(null);
             showSuccessToast(`#${values.name} scheduled`);
-          } catch (err) {
-            showErrorToast(TAG_SCOPE_COPY.failedToSchedule, err);
+          } catch {
+            // useScheduleTag's/useUpdateSchedule's onError already toasted
+            // "Failed to update schedule".
           }
         }}
       />
