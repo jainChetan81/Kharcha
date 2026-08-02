@@ -87,8 +87,8 @@ export default function TagsScreen() {
         try {
           await deleteMutation.mutateAsync(id);
           showSuccessToast("Tag deleted");
-        } catch (err) {
-          showErrorToast("Failed to delete", err);
+        } catch {
+          // useDeleteTag's onError already toasted.
         }
       },
     );
@@ -328,8 +328,8 @@ export default function TagsScreen() {
               const { isNew } = await addMutation.mutateAsync(name);
               setAddSheetVisible(false);
               showSuccessToast(isNew ? "Tag added" : "Tag already exists");
-            } catch (err) {
-              showErrorToast("Failed to add tag", err);
+            } catch {
+              // useAddTag's onError already toasted.
             }
           }}
         />
@@ -347,8 +347,8 @@ export default function TagsScreen() {
               await renameMutation.mutateAsync({ id: editTarget.id, name });
               setEditTarget(null);
               showSuccessToast("Tag updated");
-            } catch (err) {
-              showErrorToast("Failed to update", err);
+            } catch {
+              // useRenameTag's onError already toasted.
             }
           }}
         />
@@ -394,8 +394,6 @@ export default function TagsScreen() {
               {
                 onSuccess: () =>
                   showSuccessToast(TAG_SCOPE_COPY.scopeStarted(name)),
-                onError: (err) =>
-                  showErrorToast(TAG_SCOPE_COPY.failedToStart, err),
               },
             );
             setQuickDurationTarget(null);
