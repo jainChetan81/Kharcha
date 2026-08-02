@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import {
   CONFIG_KEYS,
   PARSED_BY,
@@ -48,18 +49,24 @@ export interface MiniPushPayload {
   accountLast4?: string | null;
 }
 
-interface MiniTransaction {
-  id: number;
-  type: "income" | "expense";
-  amount: number;
-  merchant: string;
-  category: string | null;
-  date: string;
-  parsedBy: "regex" | "openrouter" | "failed" | "manual";
-  referenceNumber: string | null;
-  accountLast4: string | null;
-  bankName: string | null;
-}
+const miniTransactionSchema = z.object({
+  id: z.number(),
+  type: z.enum(["income", "expense"]),
+  amount: z.number(),
+  merchant: z.string(),
+  category: z.string().nullable(),
+  date: z.string(),
+  parsedBy: z.enum(["regex", "openrouter", "failed", "manual"]),
+  referenceNumber: z.string().nullable(),
+  accountLast4: z.string().nullable(),
+  bankName: z.string().nullable(),
+});
+
+type MiniTransaction = z.infer<typeof miniTransactionSchema>;
+
+const miniApiEnvelopeSchema = z.object({
+  transactions: z.array(z.unknown()),
+});
 
 function emptyResult(): MiniSyncResult {
   return { added: 0, skipped: 0, failed: 0, logs: [] };
@@ -95,9 +102,7 @@ function mapParsedBy(
   return undefined;
 }
 
-async function fetchMiniTransactions(
-  since: number | null,
-): Promise<{ transactions: MiniTransaction[] }> {
+async function fetchMiniTransactions(since: number | null): Promise<unknown[]> {
   const url = new URL("/transactions", env.MINI_API_URL);
   if (since !== null) {
     url.searchParams.set("since", String(since));
@@ -126,7 +131,14 @@ async function fetchMiniTransactions(
       );
     }
 
-    return (await response.json()) as { transactions: MiniTransaction[] };
+    const json: unknown = await response.json();
+    const envelope = miniApiEnvelopeSchema.safeParse(json);
+    if (!envelope.success) {
+      throw new Error(
+        `Mini sync: malformed response envelope: ${envelope.error.issues.map((i) => i.message).join(", ")}`,
+      );
+    }
+    return envelope.data.transactions;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -184,14 +196,37 @@ async function runMiniSync(options?: {
   let firstFailedId: number | null = null;
 
   for (let page = 0; page < MINI_SYNC_MAX_PAGES; page++) {
-    const data = await fetchMiniTransactions(cursor);
-    const rows = data.transactions ?? [];
+    const rows = await fetchMiniTransactions(cursor);
 
     if (rows.length === 0) {
       break;
     }
 
-    for (const row of rows) {
+    for (const rawRow of rows) {
+      const parsedRow = miniTransactionSchema.safeParse(rawRow);
+      if (!parsedRow.success) {
+        result.failed++;
+        const idGuess =
+          typeof rawRow === "object" &&
+          rawRow !== null &&
+          "id" in rawRow &&
+          typeof (rawRow as { id: unknown }).id === "number"
+            ? (rawRow as { id: number }).id
+            : null;
+        logFirebaseError(new Error("Invalid mini transaction row shape"), {
+          error_type: ERROR_TYPE.SYNC,
+          operation: "mini_sync",
+          stage: "validate_row",
+          mini_id: idGuess !== null ? String(idGuess) : "unknown",
+        });
+        if (idGuess !== null) {
+          if (firstFailedId === null) firstFailedId = idGuess;
+          maxSeenId = Math.max(maxSeenId, idGuess);
+        }
+        continue;
+      }
+      const row = parsedRow.data;
+
       try {
         if (row.parsedBy === MINI_PARSED_BY_FAILED) {
           result.skipped++;
