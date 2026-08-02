@@ -312,6 +312,17 @@ async function runMiniSync(options?: {
       await updateConfig(CONFIG_KEYS.MINI_SYNC_LAST_ID, String(maxSeenId));
     }
 
+    // Stop paging further once any row has failed this run. Pages beyond
+    // the failure are already excluded from what gets persisted above, so
+    // fetching more of them only wastes API/DB work — and for a malformed
+    // row with no usable id (which can't set firstFailedId at all),
+    // continuing would let maxSeenId race past it via later valid rows,
+    // silently losing the one boundary marker (result.failed) that shows
+    // it was ever seen.
+    if (result.failed > 0) {
+      break;
+    }
+
     // A short page means the server has no more rows. Also bail if the
     // cursor didn't advance (misbehaving server) to avoid refetching the
     // same page until the page cap.
