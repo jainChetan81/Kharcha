@@ -36,7 +36,12 @@ import {
 import { safeRecomputeHolding } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import type { Source } from "@/lib/db/types";
-import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
+import {
+  ERROR_TYPE,
+  FIREBASE_EVENTS,
+  logEvent,
+  logFirebaseError,
+} from "@/lib/firebase";
 import type { GeminiParsedTransaction } from "@/lib/gemini/client";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
@@ -334,18 +339,30 @@ export function useAddTransaction(): UseAddTransactionReturn {
     }
 
     if (value.type === TRANSACTION_TYPE.EXPENSE && value.categoryId) {
-      const budget = await getBudgetForCategory(value.categoryId);
-      if (budget) {
-        const yearMonth = value.date.slice(0, 7);
-        const spent = await getCategorySpent(value.categoryId, yearMonth);
-        const totalSpent = spent + Number(value.amount);
-        if (totalSpent >= budget) {
-          showErrorToast(`⚠️ ${value.merchant || "Category"} budget exceeded`);
-        } else if (totalSpent >= budget * BUDGET_CRITICAL_THRESHOLD) {
-          showErrorToast(
-            `⚠️ Approaching ${value.merchant || "category"} budget`,
-          );
+      try {
+        const budget = await getBudgetForCategory(value.categoryId);
+        if (budget) {
+          const yearMonth = value.date.slice(0, 7);
+          const spent = await getCategorySpent(value.categoryId, yearMonth);
+          const totalSpent = spent + Number(value.amount);
+          if (totalSpent >= budget) {
+            showErrorToast(`⚠️ ${value.merchant || "Category"} budget exceeded`);
+          } else if (totalSpent >= budget * BUDGET_CRITICAL_THRESHOLD) {
+            showErrorToast(
+              `⚠️ Approaching ${value.merchant || "category"} budget`,
+            );
+          }
         }
+      } catch (error) {
+        // Non-critical: the transaction already saved and already showed its
+        // own success toast. A budget-check failure must never surface as
+        // "Failed to save" or skip the setAiParsedBy/router.back() below —
+        // mirrors safeRecomputeHolding's swallow-and-report pattern
+        // (lib/db/holdings.ts).
+        logFirebaseError(error, {
+          error_type: ERROR_TYPE.DB,
+          operation: "budgetThresholdCheck",
+        });
       }
     }
 
