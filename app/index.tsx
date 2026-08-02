@@ -61,6 +61,10 @@ import {
   historyHref,
   smartCapitalize,
 } from "@/lib/format";
+import {
+  getSpendingChangeTone,
+  type SpendingChange,
+} from "@/lib/spending-change";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, getRefreshControlProps, isIOS } from "@/lib/utils";
 
@@ -249,17 +253,20 @@ function CategoryDonut({
 // pairs a className with its rendered copy — keeping color and text in
 // lockstep, instead of two parallel ternaries that can drift.
 function getSpendingChangeFlavor(
-  value: number | "new" | null,
+  value: SpendingChange,
 ): { color: string; text: string } | null {
   if (value === null) return null;
   if (value === "new")
     return { color: "text-muted-foreground", text: "First month tracking" };
-  if (value > 0)
-    return { color: "text-negative-text", text: `↑ ${value}% vs last month` };
-  return {
-    color: "text-positive",
-    text: `↓ ${Math.abs(value)}% vs last month`,
-  };
+  const tone = getSpendingChangeTone(value);
+  if (tone === "muted")
+    return { color: "text-muted-foreground", text: "Same as last month" };
+  const color = tone === "up" ? "text-negative-text" : "text-positive";
+  const arrow = tone === "up" ? "↑" : "↓";
+  if (value === "huge-up" || value === "huge-down") {
+    return { color, text: `${arrow} vs last month` };
+  }
+  return { color, text: `${arrow} ${Math.abs(value)}% vs last month` };
 }
 
 export default function HomeScreen() {

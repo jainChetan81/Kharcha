@@ -6,15 +6,14 @@ import {
   useTrackingStreak,
   useTransactionCount,
 } from "@/hooks/use-transactions";
-
-// Same display cap the home screen applies — guards against tiny prior-month
-// totals (e.g. ₹100 → ₹39k = 38900%) that produce alarmist deltas. When
-// exceeded, the wrap shows direction only ("↑ vs March") instead of a number.
-const PERCENT_DISPLAY_CAP = 999;
+import {
+  computeSpendingChange,
+  type SpendingChange,
+} from "@/lib/spending-change";
 
 // `"new"` = no prior data, current > 0. `"huge-up" | "huge-down"` = prior > 0
 // but the % delta is too large to print; direction is still meaningful.
-export type InsightsChange = number | "new" | "huge-up" | "huge-down" | null;
+export type InsightsChange = SpendingChange;
 
 export function useInsightsData(
   selectedMonth: string,
@@ -32,20 +31,10 @@ export function useInsightsData(
     const expenses = summary.data?.total_expenses ?? 0;
     const income = summary.data?.total_income ?? 0;
     const prevExpenses = prevSummary.data?.total_expenses ?? 0;
-    const rawPct =
-      prevExpenses > 0
-        ? Math.round(((expenses - prevExpenses) / prevExpenses) * 100)
-        : null;
-    const change: InsightsChange =
-      rawPct !== null
-        ? Math.abs(rawPct) > PERCENT_DISPLAY_CAP
-          ? rawPct > 0
-            ? "huge-up"
-            : "huge-down"
-          : rawPct
-        : expenses > 0
-          ? "new"
-          : null;
+    const change: InsightsChange = computeSpendingChange(
+      expenses,
+      prevExpenses,
+    );
 
     const transactionCount = txCount.data ?? 0;
     const error =

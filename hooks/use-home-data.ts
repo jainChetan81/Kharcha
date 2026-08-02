@@ -9,12 +9,7 @@ import {
   useTotalMonthlyBudget,
 } from "@/hooks/use-transactions";
 import { RECENT_TRANSACTIONS_LIMIT } from "@/lib/constants";
-
-// When the prior month had near-zero spending, the percentage delta
-// explodes (e.g. ₹100 → ₹39k = 38900%) and becomes alarmist noise. Cap
-// the absolute change we'll display; beyond it, hide the comparison.
-// Currency-agnostic — purely a sanity bound on the rendered number.
-const PERCENT_DISPLAY_CAP = 999;
+import { computeSpendingChange } from "@/lib/spending-change";
 
 /**
  * Composable data hook for the home screen.
@@ -56,18 +51,7 @@ export function useHomeData(
     const income = summary.data?.total_income ?? 0;
     const expenses = summary.data?.total_expenses ?? 0;
     const prevExpenses = prevSummary.data?.total_expenses ?? 0;
-    const rawPct =
-      prevExpenses > 0
-        ? Math.round(((expenses - prevExpenses) / prevExpenses) * 100)
-        : null;
-    const spendingChange =
-      rawPct !== null
-        ? Math.abs(rawPct) > PERCENT_DISPLAY_CAP
-          ? null
-          : rawPct
-        : expenses > 0
-          ? ("new" as const)
-          : null;
+    const spendingChange = computeSpendingChange(expenses, prevExpenses);
 
     return {
       recentTransactions: recent.data ?? [],
