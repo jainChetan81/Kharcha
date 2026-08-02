@@ -9,6 +9,7 @@ import {
 const SetBudgetSheet = lazy(() => import("@/components/set-budget-sheet"));
 
 import { Icon } from "@/components/ui/icon";
+import { QueryErrorState } from "@/components/ui/query-error-state";
 import { ScreenDescription } from "@/components/ui/screen-description";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
@@ -22,8 +23,9 @@ import { cn } from "@/lib/utils";
 
 export default function BudgetsScreen() {
   const { format: fmt } = useCurrency();
-  const { data: categories = [] } = useAllCategories();
-  const { data: budgets = [] } = useBudgets();
+  const { data: categories = [], error: categoriesError } = useAllCategories();
+  const { data: budgets = [], error: budgetsError } = useBudgets();
+  const error = categoriesError ?? budgetsError;
   const setBudgetMutation = useSetBudget();
   const deleteBudgetMutation = useDeleteBudget();
 
@@ -56,49 +58,57 @@ export default function BudgetsScreen() {
           change its limit.
         </ScreenDescription>
 
-        <Text className="mb-2 mt-2 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Expense Categories
-        </Text>
-        {expenseCategories.map((c) => {
-          const budget = budgetMap.get(c.id);
-          return (
-            <Pressable
-              key={c.id}
-              onPress={() => openEditor(c.id, c.name)}
-              className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
-              accessibilityRole="button"
-            >
-              <Text className="flex-1 text-sm font-medium text-foreground">
-                {c.name}
-              </Text>
-              <Text
-                className={cn(
-                  "text-sm",
-                  budget ? "text-foreground" : "text-muted-foreground",
-                )}
-              >
-                {budget ? fmt(budget) : "Not set"}
-              </Text>
-              {budget && (
+        {error ? (
+          <View className="mt-8">
+            <QueryErrorState title="Couldn't load budgets" error={error} />
+          </View>
+        ) : (
+          <>
+            <Text className="mb-2 mt-2 px-5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Expense Categories
+            </Text>
+            {expenseCategories.map((c) => {
+              const budget = budgetMap.get(c.id);
+              return (
                 <Pressable
-                  onPress={() =>
-                    showDeleteConfirm(
-                      "Remove Budget",
-                      `Remove budget for ${c.name}?`,
-                      () => deleteBudgetMutation.mutate(c.id),
-                    )
-                  }
-                  className="ml-3"
-                  hitSlop={14}
+                  key={c.id}
+                  onPress={() => openEditor(c.id, c.name)}
+                  className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
                   accessibilityRole="button"
-                  accessibilityLabel={`Remove budget for ${c.name}`}
                 >
-                  <Icon as={Trash2} className="size-4 text-negative-text" />
+                  <Text className="flex-1 text-sm font-medium text-foreground">
+                    {c.name}
+                  </Text>
+                  <Text
+                    className={cn(
+                      "text-sm",
+                      budget ? "text-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {budget ? fmt(budget) : "Not set"}
+                  </Text>
+                  {budget && (
+                    <Pressable
+                      onPress={() =>
+                        showDeleteConfirm(
+                          "Remove Budget",
+                          `Remove budget for ${c.name}?`,
+                          () => deleteBudgetMutation.mutate(c.id),
+                        )
+                      }
+                      className="ml-3"
+                      hitSlop={14}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove budget for ${c.name}`}
+                    >
+                      <Icon as={Trash2} className="size-4 text-negative-text" />
+                    </Pressable>
+                  )}
                 </Pressable>
-              )}
-            </Pressable>
-          );
-        })}
+              );
+            })}
+          </>
+        )}
       </ScrollView>
 
       {selectedCategory && (
