@@ -1,4 +1,8 @@
-import type { ReactFormExtendedApi } from "@tanstack/react-form";
+import type {
+  FormAsyncValidateOrFn,
+  FormValidateOrFn,
+  ReactFormExtendedApi,
+} from "@tanstack/react-form";
 import { Pressable, View } from "react-native";
 import { ChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
@@ -17,29 +21,28 @@ import { cn } from "@/lib/utils";
 import type { TransactionFormValues } from "./transaction-form";
 
 // TanStack Form's public type has 12 validator generics. TransactionForm's
-// useForm({ defaultValues, onSubmit }) call wires only onSubmit — every
-// other validator slot (onMount/onChange/onChangeAsync/onBlur/onBlurAsync/
-// onSubmitAsync/onDynamic/onDynamicAsync/onServer) is unset, so those
-// positions type as `undefined` per FormOptions' own bound
-// (`undefined | FormValidateOrFn<TFormData>`), and TSubmitMeta defaults to
-// `never` when omitted (FormOptions' `TSubmitMeta = never`). Only onSubmit
-// itself is left widened — reproducing its exact validator-fn signature
-// here isn't worth the 200-char type for a field-rendering component that
-// never calls submit.
+// useForm({ defaultValues, onSubmit }) call passes no validators — its
+// `onSubmit` is the submit handler (typed via `value`/`formApi`/`meta`,
+// unrelated to the TOnSubmit *validator* generic below) — so every one of
+// these 11 positions is uninferred and TypeScript widens each to its own
+// declared bound: `FormValidateOrFn<T> | undefined` for the sync
+// validators, `FormAsyncValidateOrFn<T> | undefined` for the async ones,
+// and `unknown` for TSubmitMeta (no default on useForm's own signature).
+// Confirmed against the real inferred type of `form` via a typecheck
+// failure — this is not a guess.
 type TxFormApi = ReactFormExtendedApi<
   TransactionFormValues,
-  undefined,
-  undefined,
-  undefined,
-  undefined,
-  undefined,
-  // biome-ignore lint/suspicious/noExplicitAny: onSubmit's real validator-fn type isn't worth reproducing here
-  any,
-  undefined,
-  undefined,
-  undefined,
-  undefined,
-  never
+  FormValidateOrFn<TransactionFormValues> | undefined, // onMount
+  FormValidateOrFn<TransactionFormValues> | undefined, // onChange
+  FormAsyncValidateOrFn<TransactionFormValues> | undefined, // onChangeAsync
+  FormValidateOrFn<TransactionFormValues> | undefined, // onBlur
+  FormAsyncValidateOrFn<TransactionFormValues> | undefined, // onBlurAsync
+  FormValidateOrFn<TransactionFormValues> | undefined, // onSubmit (validator)
+  FormAsyncValidateOrFn<TransactionFormValues> | undefined, // onSubmitAsync
+  FormValidateOrFn<TransactionFormValues> | undefined, // onDynamic
+  FormAsyncValidateOrFn<TransactionFormValues> | undefined, // onDynamicAsync
+  FormAsyncValidateOrFn<TransactionFormValues> | undefined, // onServer
+  unknown // submitMeta
 >;
 
 const KIND_OPTIONS: { key: InvestmentKindType; label: string }[] = [
