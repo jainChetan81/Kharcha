@@ -821,6 +821,7 @@ export function TransactionForm({
                     selectedIds={selected}
                     onChange={(ids) => field.handleChange(ids)}
                     onAddNew={() => setNewTagSheetVisible(true)}
+                    addLabel="New tag"
                     emptyLabel="No tags yet — create one to group transactions across categories"
                   />
                 </View>
