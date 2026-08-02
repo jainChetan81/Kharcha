@@ -14,8 +14,8 @@ import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useEditSubscription } from "@/hooks/use-edit-subscription";
+import { formatBillingDays, parseBillingDays } from "@/hooks/use-subscriptions";
 import { COLORS, TRANSACTION_TYPE } from "@/lib/constants";
-import { formatBillingDays, parseBillingDays } from "@/lib/db/subscriptions";
 import { sanitizeDecimalInput } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
 import {

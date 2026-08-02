@@ -25,6 +25,8 @@ import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
 import { useRefresh } from "@/hooks/use-refresh";
 import {
+  formatBillingDays,
+  parseBillingDays,
   type SubscriptionAuditRow,
   type SubscriptionCandidate,
   type SubscriptionRow,
@@ -44,7 +46,6 @@ import {
   SCROLL_BOTTOM_PADDING,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { formatBillingDays, parseBillingDays } from "@/lib/db/subscriptions";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 import { historyHref, parseDate } from "@/lib/format";
 import { showSuccessToast } from "@/lib/toast";
