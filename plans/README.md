@@ -41,11 +41,11 @@ finding — the swipe-to-delete stale-closure bug — is **plan 001** below.
 | 004 | Gmail-sync screen and hook correctness | P1 | M | LOW | — (soft: touches adjacent files to 003, no hard order) | IN PROGRESS (all 5 steps code complete, manual smoke tests pending) |
 | 005 | Database layer referential integrity and correctness | P1 | M | MED | — | IN PROGRESS (steps 1-3, 6-8 code complete; steps 4-5 blocked — need operator to run the live-data duplicate-check queries before adding unique indexes) |
 | 014 | App icon/splash asset integrity (missing file, format mismatch) | P1 | S | LOW | — | IN PROGRESS (step 1 code complete; steps 2-3 blocked — no image-conversion tool in this environment, ImageMagick install pending) |
-| 006 | Double-toast error-feedback cleanup | P2 | M | LOW | — | TODO |
-| 007 | Android widget fixes | P2 | S | LOW | — | TODO |
-| 008 | AI parsing and mini-sync pipeline hardening | P2 | M | MED | — (soft: `app/_layout.tsx`, see note) | TODO |
-| 010 | Transaction and subscription form correctness | P2 | M | LOW | — | TODO |
-| 013 | Security and data-handling hardening | P2 | S | LOW | — (soft: `app/_layout.tsx`, `lib/db/subscriptions.ts`, see note) | TODO |
+| 006 | Double-toast error-feedback cleanup | P2 | M | LOW | — | IN PROGRESS (all 9 steps code complete, manual smoke tests pending) |
+| 007 | Android widget fixes | P2 | S | LOW | — | IN PROGRESS (all 3 steps code complete, manual on-device smoke test pending) |
+| 008 | AI parsing and mini-sync pipeline hardening | P2 | M | MED | — (soft: `app/_layout.tsx`, see note) | IN PROGRESS (all 6 steps code complete, manual smoke tests pending) |
+| 010 | Transaction and subscription form correctness | P2 | M | LOW | — | IN PROGRESS (all 7 steps code complete, manual smoke tests pending) |
+| 013 | Security and data-handling hardening | P2 | S | LOW | — (soft: `app/_layout.tsx`, `lib/db/subscriptions.ts`, see note) | IN PROGRESS (all 5 steps code complete — Crashlytics decision point implemented per plan's own recommendation, Option B — manual smoke tests pending) |
 | 009 | Fix silent error swallowing in Drive backup lookup; reuse stored file id on upload | P3 | S | LOW | — | TODO |
 | 011 | Feature-completeness and empty-state gaps | P3 | M | LOW | — | TODO |
 | 012 | UI component deduplication and consistency | P3 | L | MED | — | TODO |
