@@ -21,9 +21,11 @@ import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { TagChip } from "@/components/ui/tag-chip";
 import { Text } from "@/components/ui/text";
+import { useCategoriesByType } from "@/hooks/use-categories";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAllHoldings } from "@/hooks/use-holdings";
 import { useInlineAdders } from "@/hooks/use-inline-adders";
+import { useAllSources } from "@/hooks/use-sources";
 import { useActiveTag, useAddTag, useAllTags } from "@/hooks/use-tags";
 import {
   COLORS,
@@ -36,8 +38,6 @@ import {
   TRANSACTION_TYPE,
 } from "@/lib/constants";
 import {
-  getAllSources,
-  getCategoriesByType,
   getMostUsedCategoryForMerchant,
   getMostUsedSourceForMerchant,
   getMostUsedTagsForMerchant,
@@ -163,16 +163,11 @@ export function TransactionForm({
     }
   }
 
-  const { data: categories = [] } = useQuery({
-    queryKey: [QUERY_KEYS.CATEGORIES, categoryType],
-    queryFn: () => getCategoriesByType(categoryType),
-    enabled: !isTransfer && !isInvestment,
-  });
-
-  const { data: sources = [] } = useQuery({
-    queryKey: [QUERY_KEYS.SOURCES],
-    queryFn: getAllSources,
-  });
+  const { data: categories = [] } = useCategoriesByType(
+    categoryType,
+    !isTransfer && !isInvestment,
+  );
+  const { data: sources = [] } = useAllSources();
 
   const { data: suggestedMerchants = [] } = useQuery({
     queryKey: [QUERY_KEYS.MERCHANT_SUGGESTIONS, debouncedMerchant],
