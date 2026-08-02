@@ -1,5 +1,6 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
+import { useMutation } from "@tanstack/react-query";
+import { useInvalidateTransactions } from "@/hooks/use-transactions";
+import { CONFIG_KEYS } from "@/lib/constants";
 import { deleteConfig, updateConfig } from "@/lib/db/config";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 import { syncGmailTransactions } from "@/lib/gmail/sync";
@@ -23,7 +24,7 @@ export function useGmailSyncConfig() {
 }
 
 export function useGmailSync() {
-  const queryClient = useQueryClient();
+  const invalidateTransactions = useInvalidateTransactions();
 
   return useMutation({
     mutationFn: async () => {
@@ -40,25 +41,7 @@ export function useGmailSync() {
       logEvent(FIREBASE_EVENTS.GMAIL_SYNC_COMPLETED, {
         count: String(data.result.added),
       });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TRANSACTIONS] });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.REIMBURSEMENT_SUMMARY],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TAG_BREAKDOWN],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TAG_BREAKDOWN_ALL_TIME],
-      });
+      invalidateTransactions();
     },
     onError: () => {
       logEvent(FIREBASE_EVENTS.GMAIL_SYNC_FAILED);

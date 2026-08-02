@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInvalidateTransactions } from "@/hooks/use-transactions";
 import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
 import { getAllConfig, updateConfig } from "@/lib/db/config";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
@@ -46,7 +47,7 @@ export function useMiniSyncConfig() {
 // re-walks the mini from the beginning (used by the home-screen sync button)
 // — safe because the pull path dedupes per row.
 export function useMiniSync(options?: { full?: boolean }) {
-  const queryClient = useQueryClient();
+  const invalidateTransactions = useInvalidateTransactions();
   const full = options?.full ?? false;
 
   return useMutation({
@@ -64,25 +65,7 @@ export function useMiniSync(options?: { full?: boolean }) {
       logEvent(FIREBASE_EVENTS.MINI_SYNC_COMPLETED, {
         count: String(data.result.added),
       });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TRANSACTIONS] });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.REIMBURSEMENT_SUMMARY],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TAG_BREAKDOWN],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TAG_BREAKDOWN_ALL_TIME],
-      });
+      invalidateTransactions();
     },
     onError: () => {
       logEvent(FIREBASE_EVENTS.MINI_SYNC_FAILED);
