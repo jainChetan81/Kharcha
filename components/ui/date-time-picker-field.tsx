@@ -51,7 +51,9 @@ export function DateTimePickerField({
         <Icon as={Calendar} className="mr-2 size-4 text-muted-foreground" />
         <Text
           className={
-            value ? "text-xs text-foreground" : "text-xs text-muted-foreground"
+            validValue
+              ? "text-xs text-foreground"
+              : "text-xs text-muted-foreground"
           }
         >
           {validValue ? format(validValue, DATE_DISPLAY_FORMAT) : placeholder}
