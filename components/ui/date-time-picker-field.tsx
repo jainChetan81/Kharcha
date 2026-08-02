@@ -35,6 +35,12 @@ export function DateTimePickerField({
     onPickerVisibilityChange?.(open);
   }
 
+  // parse() returns an Invalid Date (not a throw) for a non-matching string;
+  // format() then throws RangeError on it, so guard before formatting.
+  const parsedValue = value ? parse(value, DATE_TIME_FORMAT, new Date()) : null;
+  const validValue =
+    parsedValue && !Number.isNaN(parsedValue.getTime()) ? parsedValue : null;
+
   return (
     <View>
       <FormLabel>{label}</FormLabel>
@@ -48,17 +54,12 @@ export function DateTimePickerField({
             value ? "text-xs text-foreground" : "text-xs text-muted-foreground"
           }
         >
-          {value
-            ? format(
-                parse(value, DATE_TIME_FORMAT, new Date()),
-                DATE_DISPLAY_FORMAT,
-              )
-            : placeholder}
+          {validValue ? format(validValue, DATE_DISPLAY_FORMAT) : placeholder}
         </Text>
       </Pressable>
       <DateTimePickerModal
         visible={showPicker}
-        value={value ? parse(value, DATE_TIME_FORMAT, new Date()) : new Date()}
+        value={validValue ?? new Date()}
         minimumDate={
           minValue ? parse(minValue, DATE_TIME_FORMAT, new Date()) : undefined
         }
