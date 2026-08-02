@@ -27,6 +27,7 @@ export type UseReimbursementListReturn = {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   isLoading: boolean;
+  error: Error | null;
   markReimbursed: (id: number) => Promise<void>;
   markPending: (id: number) => Promise<void>;
 };
@@ -47,8 +48,14 @@ export function useReimbursementList(): UseReimbursementListReturn {
     [tab],
   );
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-    useTransactionsPaginated(filters);
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    error,
+  } = useTransactionsPaginated(filters);
 
   const allTransactions = data?.pages.flat() ?? [];
   const listData = buildListData(allTransactions);
@@ -90,6 +97,7 @@ export function useReimbursementList(): UseReimbursementListReturn {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    error,
     markReimbursed,
     markPending,
   };
