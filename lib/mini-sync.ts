@@ -288,21 +288,28 @@ async function runMiniSync(options?: {
     }
 
     // Persist the cursor after every page so an interrupted sync resumes
-    // where it left off instead of refetching processed rows. Never move it
-    // backwards — a full sync starts below the stored cursor by design.
-    // Cap it below the first row that failed this run so a
-    // permanently-broken row gets retried by the next incremental sync
-    // instead of being silently skipped forever — rows after it stay safe
-    // to skip on retry (they're re-deduped, not re-inserted).
-    const persistCandidate =
-      firstFailedId !== null
-        ? Math.min(maxSeenId, firstFailedId - 1)
-        : maxSeenId;
-    if (persistCandidate > (storedCursor ?? 0)) {
+    // where it left off instead of refetching processed rows.
+    if (firstFailedId !== null) {
+      // A failure this run means the true safe boundary is capped below it
+      // — persist that even if it's lower than the previously stored
+      // cursor. A full sync (which starts its walk from 0, not from
+      // storedCursor) can legitimately need to lower the cursor to expose
+      // an earlier unresolved failure for retry; leaving the old, higher
+      // cursor in place would silently skip that row forever, defeating
+      // the point of capping below the first failure at all. For an
+      // incremental sync this is always a no-op-or-forward move: every
+      // processed row's id is already > storedCursor by construction of
+      // the `since` query, so persistCandidate can never regress it.
+      const persistCandidate = Math.min(maxSeenId, firstFailedId - 1);
       await updateConfig(
         CONFIG_KEYS.MINI_SYNC_LAST_ID,
         String(persistCandidate),
       );
+    } else if (maxSeenId > (storedCursor ?? 0)) {
+      // No failure this run — plain progress tracking. Never move the
+      // cursor backwards; a full sync starts below the stored cursor by
+      // design and only overtakes it once it's walked back past it.
+      await updateConfig(CONFIG_KEYS.MINI_SYNC_LAST_ID, String(maxSeenId));
     }
 
     // A short page means the server has no more rows. Also bail if the
