@@ -35,18 +35,10 @@ export function useMiniSyncConfig() {
     });
   };
 
-  const setLastId = async (id: number): Promise<void> => {
-    await mutation.mutateAsync({
-      key: CONFIG_KEYS.MINI_SYNC_LAST_ID,
-      value: String(id),
-    });
-  };
-
   return {
     enabled,
     lastId,
     setEnabled,
-    setLastId,
   };
 }
 

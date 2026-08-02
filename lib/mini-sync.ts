@@ -26,14 +26,6 @@ export interface MiniSyncResult {
   skipped: number;
   failed: number;
   notConfigured?: boolean;
-  logs: MiniSyncLog[];
-}
-
-export interface MiniSyncLog {
-  miniId: number;
-  merchant: string;
-  status: "added" | "skipped" | "failed";
-  reason?: string;
 }
 
 export interface MiniPushPayload {
@@ -69,7 +61,7 @@ const miniApiEnvelopeSchema = z.object({
 });
 
 function emptyResult(): MiniSyncResult {
-  return { added: 0, skipped: 0, failed: 0, logs: [] };
+  return { added: 0, skipped: 0, failed: 0 };
 }
 
 export function isConfigured(): boolean {
@@ -230,12 +222,6 @@ async function runMiniSync(options?: {
       try {
         if (row.parsedBy === MINI_PARSED_BY_FAILED) {
           result.skipped++;
-          result.logs.push({
-            miniId: row.id,
-            merchant: row.merchant,
-            status: "skipped",
-            reason: "failed parse on mini — not a transaction",
-          });
           maxSeenId = Math.max(maxSeenId, row.id);
           continue;
         }
@@ -248,12 +234,6 @@ async function runMiniSync(options?: {
 
         if (existing.length > 0) {
           result.skipped++;
-          result.logs.push({
-            miniId: row.id,
-            merchant: row.merchant,
-            status: "skipped",
-            reason: "mini_transaction_id duplicate",
-          });
           maxSeenId = Math.max(maxSeenId, row.id);
           continue;
         }
@@ -270,12 +250,6 @@ async function runMiniSync(options?: {
 
         if (isDuplicate) {
           result.skipped++;
-          result.logs.push({
-            miniId: row.id,
-            merchant: row.merchant,
-            status: "skipped",
-            reason: "matched existing transaction by date/amount/merchant",
-          });
           maxSeenId = Math.max(maxSeenId, row.id);
           continue;
         }
@@ -299,11 +273,6 @@ async function runMiniSync(options?: {
         });
 
         result.added++;
-        result.logs.push({
-          miniId: row.id,
-          merchant: row.merchant,
-          status: "added",
-        });
       } catch (err) {
         logFirebaseError(err, {
           error_type: ERROR_TYPE.SYNC,
@@ -312,12 +281,6 @@ async function runMiniSync(options?: {
           mini_id: String(row.id),
         });
         result.failed++;
-        result.logs.push({
-          miniId: row.id,
-          merchant: row.merchant,
-          status: "failed",
-          reason: String(err).slice(0, 200),
-        });
         if (firstFailedId === null) firstFailedId = row.id;
       }
 
