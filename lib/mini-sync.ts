@@ -186,6 +186,12 @@ async function runMiniSync(options?: {
   // Set on the first row that fails this run and never overwritten after
   // that.
   let firstFailedId: number | null = null;
+  // True if any failed row had no usable numeric id at all — unlike
+  // firstFailedId, there's no boundary to cap the cursor at, so this
+  // forces the persist step below to skip advancing the cursor entirely
+  // this run rather than let maxSeenId race past the unidentifiable row
+  // via later valid rows in the same page.
+  let hadUnidentifiableFailure = false;
 
   for (let page = 0; page < MINI_SYNC_MAX_PAGES; page++) {
     const rows = await fetchMiniTransactions(cursor);
@@ -214,6 +220,8 @@ async function runMiniSync(options?: {
         if (idGuess !== null) {
           if (firstFailedId === null) firstFailedId = idGuess;
           maxSeenId = Math.max(maxSeenId, idGuess);
+        } else {
+          hadUnidentifiableFailure = true;
         }
         continue;
       }
@@ -289,7 +297,15 @@ async function runMiniSync(options?: {
 
     // Persist the cursor after every page so an interrupted sync resumes
     // where it left off instead of refetching processed rows.
-    if (firstFailedId !== null) {
+    if (hadUnidentifiableFailure) {
+      // A row failed with no usable numeric id — there's no boundary to
+      // cap the cursor at, so don't advance the persisted cursor at all
+      // this run. The whole page (including the unidentifiable row) gets
+      // retried next time instead of silently walking past it via later
+      // valid rows in the same page. Takes priority over firstFailedId:
+      // an id-bearing failure elsewhere in this same page doesn't make it
+      // safe to advance past an unidentifiable one.
+    } else if (firstFailedId !== null) {
       // A failure this run means the true safe boundary is capped below it
       // — persist that even if it's lower than the previously stored
       // cursor. A full sync (which starts its walk from 0, not from
