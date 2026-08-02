@@ -25,6 +25,17 @@ export class DriveScopeMissingError extends Error {
   }
 }
 
+// Thrown when a PATCH against a previously-known file id 404s — the file
+// was deleted from Drive (manually, or by clearing appDataFolder) since we
+// last recorded its id. Caller falls back to a fresh lookup instead of
+// failing the backup outright.
+class DriveFileNotFoundError extends Error {
+  constructor(fileId: string) {
+    super(`Drive file ${fileId} no longer exists`);
+    this.name = "DriveFileNotFoundError";
+  }
+}
+
 function isScopeError(status: number, bodyText: string): boolean {
   if (status !== 401 && status !== 403) return false;
   return (
@@ -116,6 +127,9 @@ async function uploadMultipart(
   if (!res.ok) {
     const text = await res.text();
     if (isScopeError(res.status, text)) throw new DriveScopeMissingError();
+    if (existingId && res.status === 404) {
+      throw new DriveFileNotFoundError(existingId);
+    }
     throw new Error(`Drive upload failed: ${res.status} ${text}`);
   }
   const json = (await res.json()) as { id: string };
@@ -124,8 +138,18 @@ async function uploadMultipart(
 
 export async function uploadBackupToDrive(
   body: ArrayBuffer,
+  knownFileId?: string | null,
 ): Promise<{ fileId: string; modifiedTime: string }> {
   const token = await getToken();
+  if (knownFileId) {
+    try {
+      const fileId = await uploadMultipart(token, body, knownFileId);
+      return { fileId, modifiedTime: new Date().toISOString() };
+    } catch (err) {
+      if (!(err instanceof DriveFileNotFoundError)) throw err;
+      // Stored id is stale — fall through to a fresh lookup below.
+    }
+  }
   const existingId = await findExistingBackup(token);
   const fileId = await uploadMultipart(token, body, existingId);
   return { fileId, modifiedTime: new Date().toISOString() };
