@@ -1,11 +1,11 @@
 import { TRANSACTION_TYPE } from "@/lib/constants";
 import {
   DATE_REGEX,
-  fallbackNow,
   MERCHANT_REGEX,
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // "Your ICICI Bank Account XX1234 has been debited with INR 1,500.00 on 01-Apr-25"
@@ -26,7 +26,7 @@ export const iciciDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "ICICI Debit",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
@@ -51,7 +51,7 @@ export const iciciCredit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "ICICI Credit",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.INCOME,
   };
 };
@@ -72,7 +72,7 @@ export const iciciCreditCard: Parser = (body) => {
   return {
     amount: parseAmount(amountMatch[1]),
     merchant: merchantMatch ? merchantMatch[1].trim() : "Credit Card Payment",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
@@ -81,4 +81,4 @@ export const ICICI_PARSERS: Parser[] = [
   iciciCreditCard,
   iciciDebit,
   iciciCredit,
-];
+].map(withGuard);

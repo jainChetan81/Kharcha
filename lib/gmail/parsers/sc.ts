@@ -1,11 +1,11 @@
 import { TRANSACTION_TYPE } from "@/lib/constants";
 import {
   DATE_REGEX,
-  fallbackNow,
   MERCHANT_REGEX,
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // "Your Standard Chartered Card ending 1234 was used for INR 2,500.00 at MERCHANT on DD/MM/YYYY"
@@ -23,7 +23,7 @@ export const scCardDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "SC Card Payment",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
@@ -48,9 +48,9 @@ export const scCredit: Parser = (body) => {
     merchant: merchantMatch
       ? merchantMatch[1].trim()
       : "Standard Chartered Credit",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.INCOME,
   };
 };
 
-export const SC_PARSERS: Parser[] = [scCardDebit, scCredit];
+export const SC_PARSERS: Parser[] = [scCardDebit, scCredit].map(withGuard);

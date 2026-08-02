@@ -20,7 +20,13 @@ import {
 import { subscriptionInputSchema } from "@/lib/validation";
 import expo, { db } from "./connection";
 import { safeRecomputeHolding } from "./holdings";
-import { categories, sources, subscriptions, transactions } from "./schema";
+import {
+  categories,
+  sources,
+  subscriptions,
+  transactions,
+  transactionTags,
+} from "./schema";
 import type { SubscriptionRow } from "./types";
 
 export type { SubscriptionRow };
@@ -183,6 +189,11 @@ export async function updateSubscription(
 
 export async function deleteSubscription(id: number) {
   await expo.withTransactionAsync(async () => {
+    await db
+      .delete(transactionTags)
+      .where(
+        sql`${transactionTags.transaction_id} IN (SELECT id FROM transactions WHERE subscription_id = ${id})`,
+      );
     await db.delete(transactions).where(eq(transactions.subscription_id, id));
     await db.delete(subscriptions).where(eq(subscriptions.id, id));
   });
@@ -549,6 +560,10 @@ export async function getUnusedSubscriptions(): Promise<
       billing_days: subscriptions.billing_days,
       category_id: subscriptions.category_id,
       source_id: subscriptions.source_id,
+      type: subscriptions.type,
+      holding_id: subscriptions.holding_id,
+      investment_kind: subscriptions.investment_kind,
+      default_units: subscriptions.default_units,
       is_active: subscriptions.is_active,
       created_at: subscriptions.created_at,
       category_name: categories.name,

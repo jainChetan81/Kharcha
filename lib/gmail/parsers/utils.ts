@@ -14,6 +14,48 @@ export interface ParsedTransaction {
 
 export type Parser = (body: string) => ParsedTransaction | null;
 
+/** Wrap a parser so non-transaction notices are never matched. */
+export function withGuard(parser: Parser): Parser {
+  return (body) => (isNonTransactionNotice(body) ? null : parser(body));
+}
+
+/**
+ * True for emails that must never be parsed as completed transactions by
+ * the regex fast path. Mirrors lib/parsers/utils.ts's SMS-side guard:
+ * OTPs, statements, payment-due reminders, upcoming AutoPay / e-mandate
+ * pre-debit notices (unless past-tense confirmation wording is also
+ * present), credit-card bill-payment confirmations (self-transfers, not
+ * income), and foreign-currency spends (deferred to Gemini, which is
+ * currency-aware).
+ */
+export function isNonTransactionNotice(body: string): boolean {
+  if (/\bOTP\b|\bUPI\s+PIN\b|has\s+been\s+declined/i.test(body)) return true;
+  if (
+    /statement\s+(?:generated|for\s+your)|total\s+due|min\.?\s*due|amount\s+due|is\s+(?:over)?due|reminder!/i.test(
+      body,
+    )
+  )
+    return true;
+  if (
+    /(?:e-?mandate|upcoming\s+(?:mandate|debit|payment|transaction|AutoPay)|will\s+be\s+(?:debited|charged|auto-?debited)|to\s+be\s+debited\s+by|scheduled\s+(?:for|on)|shall\s+be\s+debited|auto\s*pay\s*activation)/i.test(
+      body,
+    ) &&
+    !/(?:has\s+been|have\s+been|was|were)\s+(?:debited|charged)/i.test(body)
+  ) {
+    return true;
+  }
+  if (
+    /payment\s+of\s+(?:INR|Rs\.?)\s+[\d,.]+\s+has\s+been\s+received\s+towards\s+your\s+.*credit\s+card/i.test(
+      body,
+    )
+  ) {
+    return true;
+  }
+  if (/\b(?:USD|EUR|GBP|AED|SGD|AUD|CAD)\s*[\d,]+(?:\.\d+)?/.test(body))
+    return true;
+  return false;
+}
+
 export function decodeHtmlEntities(str: string): string {
   return str
     .replace(/&amp;/g, "&")
@@ -23,11 +65,6 @@ export function decodeHtmlEntities(str: string): string {
     .replace(/&gt;/g, ">")
     .replace(/&#x27;/g, "'")
     .replace(/&nbsp;/g, " ");
-}
-
-/** Current datetime as the standard fallback when no date can be extracted. */
-export function fallbackNow(): string {
-  return format(new Date(), DATE_TIME_FORMAT);
 }
 
 /**

@@ -225,6 +225,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     // Fetch per-sender (Gmail's combined `from:a OR from:b` query is unreliable)
     const seenIds = new Set<string>();
     const messages: { id: string }[] = [];
+    let listQueryFailed = false;
     for (const sender of allEmails) {
       try {
         const query = `from:${sender} after:${formatted}`;
@@ -234,6 +235,9 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             headers: { Authorization: `Bearer ${accessToken}` },
           },
         );
+        if (!listResponse.ok) {
+          throw new Error(`Gmail list query failed: ${listResponse.status}`);
+        }
         const listData = (await listResponse.json()) as {
           messages?: { id: string }[];
         };
@@ -244,6 +248,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         }
       } catch (err) {
         result.failed++;
+        listQueryFailed = true;
         result.emailLogs.push({
           id: `query-${sender}`,
           from: sender,
@@ -256,10 +261,12 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
     }
 
     if (messages.length === 0) {
-      await updateConfig(
-        CONFIG_KEYS.GMAIL_LAST_SYNCED_AT,
-        new Date().toISOString(),
-      );
+      if (!listQueryFailed) {
+        await updateConfig(
+          CONFIG_KEYS.GMAIL_LAST_SYNCED_AT,
+          new Date().toISOString(),
+        );
+      }
       return result;
     }
 
@@ -273,6 +280,9 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             headers: { Authorization: `Bearer ${accessToken}` },
           },
         );
+        if (!msgResponse.ok) {
+          throw new Error(`Gmail message fetch failed: ${msgResponse.status}`);
+        }
         const msgData = await msgResponse.json();
         const headers = msgData.payload?.headers as
           | { name: string; value: string }[]
@@ -341,39 +351,72 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
           continue;
         }
 
-        const trimmedSnippet = snippet.trim();
-        const note = trimmedSnippet
-          ? trimmedSnippet.slice(0, MAX_NOTE_CHARS)
+        // Captured into a local so TypeScript's null-narrowing survives
+        // inside the withTransactionAsync closure below — `outcome.parsed`
+        // itself re-widens to `ParsedTransaction | null` across a closure
+        // boundary even though it's never reassigned.
+        const parsed = outcome.parsed;
+
+        const trimmedBody = body.trim();
+        const note = trimmedBody
+          ? trimmedBody.slice(0, MAX_NOTE_CHARS)
           : GMAIL_SYNC_NOTE;
 
-        const matchedCategoryId = matchCategoryId(
-          outcome.parsed.category,
-          outcome.parsed.type,
-        );
+        const matchedCategoryId = matchCategoryId(parsed.category, parsed.type);
 
         // If the parsed date is null, use the email's internalDate as fallback
-        const fallbackDate = outcome.parsed.date
-          ? outcome.parsed.date
+        const fallbackDate = parsed.date
+          ? parsed.date
           : msgData.internalDate
             ? format(new Date(Number(msgData.internalDate)), "yyyy-MM-dd")
             : format(new Date(), "yyyy-MM-dd");
 
-        await db.insert(transactions).values({
-          amount: outcome.parsed.amount,
-          merchant: outcome.parsed.merchant,
-          category_id: matchedCategoryId,
-          source_id: null,
-          gmail_message_id: message.id,
-          parsed_by:
-            outcome.parsedBy === PARSED_BY.GEMINI
-              ? PARSED_BY.GEMINI
-              : PARSED_BY.REGEX,
-          date: fallbackDate,
-          // store the original email snippet so the user can see exactly what was parsed
-          note,
-          type: outcome.parsed.type,
-          source_type: "synced",
+        // Re-check for a concurrent insert immediately before writing — the
+        // early check above can't close this race because a Gemini network
+        // call (this message's `parseEmailWithFallback` above) sits between
+        // it and here, long enough for a second, parallel sync (manual
+        // trigger + background sync) to pass its own early check and insert
+        // first. Mirrors the subscriptions guard below.
+        let raceDuplicate = false;
+        await expo.withTransactionAsync(async () => {
+          const stillMissing = await db
+            .select({ id: transactions.id })
+            .from(transactions)
+            .where(eq(transactions.gmail_message_id, message.id))
+            .limit(1);
+          if (stillMissing.length > 0) {
+            raceDuplicate = true;
+            return;
+          }
+          await db.insert(transactions).values({
+            amount: parsed.amount,
+            merchant: parsed.merchant,
+            category_id: matchedCategoryId,
+            source_id: null,
+            gmail_message_id: message.id,
+            parsed_by:
+              outcome.parsedBy === PARSED_BY.GEMINI
+                ? PARSED_BY.GEMINI
+                : PARSED_BY.REGEX,
+            date: fallbackDate,
+            // store the original email body so the user can see exactly what was parsed
+            note,
+            type: parsed.type,
+            source_type: "synced",
+          });
         });
+
+        if (raceDuplicate) {
+          result.skipped++;
+          result.emailLogs.push({
+            id: message.id,
+            from,
+            subject,
+            parsedBy: outcome.parsedBy,
+            status: EMAIL_LOG_STATUS.DUPLICATE,
+          });
+          continue;
+        }
 
         // Auto-create a subscription row when Gemini flags the email as
         // recurring — skip if one already exists for the same merchant + cycle
@@ -453,10 +496,12 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
       }
     }
 
-    await updateConfig(
-      CONFIG_KEYS.GMAIL_LAST_SYNCED_AT,
-      new Date().toISOString(),
-    );
+    if (!listQueryFailed) {
+      await updateConfig(
+        CONFIG_KEYS.GMAIL_LAST_SYNCED_AT,
+        new Date().toISOString(),
+      );
+    }
 
     return result;
   });

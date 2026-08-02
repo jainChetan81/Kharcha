@@ -1,5 +1,5 @@
 import type { Parser } from "./types";
-import { parseAmount, parseAxisDate, today } from "./utils";
+import { parseAmount, parseAxisDate, today, withGuard } from "./utils";
 
 const indusindUpiDebit: Parser = (text) => {
   const amountMatch = text.match(/Debited for INR ([\d,]+\.?\d*)/i);
@@ -50,4 +50,4 @@ export const INDUSIND_PARSERS: Parser[] = [
   indusindUpiDebit,
   indusindUpiCredit,
   indusindImpsCredit,
-];
+].map(withGuard);

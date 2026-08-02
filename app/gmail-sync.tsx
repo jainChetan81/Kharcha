@@ -31,6 +31,30 @@ const SyncResultsSheet = lazy(() =>
   })),
 );
 
+type BadgeTone =
+  | "positive"
+  | "warning"
+  | "negative"
+  | "info"
+  | "muted"
+  | "primary";
+
+// Tone → static NativeWind classes. Values must be literal strings (not
+// runtime template interpolation) so the Tailwind/NativeWind build step can
+// see them — see CLAUDE.md: "nativewind classes only, no inline style prop".
+// The bg-*/15 opacity mirrors the old `${color}22` hex-alpha hack. `info`
+// mirrors COLORS.BADGE_BLUE (lib/constants.ts) — no matching Tailwind token
+// exists yet, so it's inlined as an arbitrary value instead of adding one
+// for a single caller.
+const BADGE_TONE_CLASSES: Record<BadgeTone, { bg: string; text: string }> = {
+  positive: { bg: "bg-positive/15", text: "text-positive" },
+  warning: { bg: "bg-warning/15", text: "text-warning" },
+  negative: { bg: "bg-negative/15", text: "text-negative-text" },
+  info: { bg: "bg-[#1d4ed826]", text: "text-[#1d4ed8]" },
+  muted: { bg: "bg-muted-foreground/15", text: "text-muted-foreground" },
+  primary: { bg: "bg-primary/15", text: "text-primary-text" },
+};
+
 export default function GmailSyncScreen() {
   const {
     connected,
@@ -142,7 +166,7 @@ export default function GmailSyncScreen() {
                 <Button
                   className="h-12 rounded-xl bg-primary"
                   onPress={handleSync}
-                  disabled={busy || noActiveBanks || !autoRefreshEnabled}
+                  disabled={busy || noActiveBanks}
                 >
                   {syncing ? (
                     <ActivityIndicator
@@ -167,8 +191,8 @@ export default function GmailSyncScreen() {
                 }
               />
               <SwitchRow
-                label="Enable Gmail Sync"
-                description="Turn off to pause all Gmail syncing — manual and automatic."
+                label="Auto-sync on refresh"
+                description="When off, pulling to refresh on Home or History won't check Gmail. Sync Now above always works."
                 value={autoRefreshEnabled}
                 onValueChange={toggleAutoRefresh}
               />
@@ -259,19 +283,19 @@ export default function GmailSyncScreen() {
                 label="Added"
                 count={syncResult.added}
                 icon="✅"
-                color={COLORS.POSITIVE}
+                tone="positive"
               />
               <StatLine
                 label="Duplicates skipped"
                 count={syncResult.skipped}
                 icon="⚠️"
-                color={COLORS.WARNING}
+                tone="warning"
               />
               <StatLine
                 label="Failed"
                 count={syncResult.failed}
                 icon="❌"
-                color={COLORS.DANGER}
+                tone="negative"
               />
             </View>
 
@@ -305,40 +329,36 @@ function StatLine({
   label,
   count,
   icon,
-  color,
+  tone,
 }: {
   label: string;
   count: number;
   icon: string;
-  color: string;
+  tone: BadgeTone;
 }) {
+  const { bg, text } = BADGE_TONE_CLASSES[tone];
   return (
     <View className="mb-2 flex-row items-center gap-3 rounded-xl bg-background px-4 py-3">
       <Text className="text-base">{icon}</Text>
       <Text className="flex-1 text-sm font-medium text-foreground">
         {label}
       </Text>
-      <View
-        className="rounded-full px-2 py-0.5"
-        style={{ backgroundColor: `${color}22` }}
-      >
-        <Text className="text-[11px] font-semibold" style={{ color }}>
-          {count}
-        </Text>
+      <View className={cn("rounded-full px-2 py-0.5", bg)}>
+        <Text className={cn("text-[11px] font-semibold", text)}>{count}</Text>
       </View>
     </View>
   );
 }
 
-function Badge({ text, color }: { text: string; color: string }) {
+function Badge({ text, tone }: { text: string; tone: BadgeTone }) {
+  const { bg, text: textClass } = BADGE_TONE_CLASSES[tone];
   return (
-    <View
-      className="rounded-full px-2 py-0.5"
-      style={{ backgroundColor: `${color}22` }}
-    >
+    <View className={cn("rounded-full px-2 py-0.5", bg)}>
       <Text
-        className="text-[10px] font-bold uppercase tracking-wide"
-        style={{ color }}
+        className={cn(
+          "text-[10px] font-bold uppercase tracking-wide",
+          textClass,
+        )}
       >
         {text}
       </Text>
@@ -347,23 +367,23 @@ function Badge({ text, color }: { text: string; color: string }) {
 }
 
 function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
-  const statusColor: Record<EmailLog["status"], string> = {
-    [EMAIL_LOG_STATUS.ADDED]: COLORS.POSITIVE,
-    [EMAIL_LOG_STATUS.DUPLICATE]: COLORS.WARNING,
-    [EMAIL_LOG_STATUS.FAILED]: COLORS.DANGER,
-    [EMAIL_LOG_STATUS.NOT_TRANSACTION]: COLORS.MUTED,
+  const statusColor: Record<EmailLog["status"], BadgeTone> = {
+    [EMAIL_LOG_STATUS.ADDED]: "positive",
+    [EMAIL_LOG_STATUS.DUPLICATE]: "warning",
+    [EMAIL_LOG_STATUS.FAILED]: "negative",
+    [EMAIL_LOG_STATUS.NOT_TRANSACTION]: "muted",
   };
   const parsedLabel = log.parsedBy === "gemini" ? "ai" : log.parsedBy;
-  const parsedColor =
+  const parsedColor: BadgeTone =
     log.parsedBy === "regex"
-      ? COLORS.BADGE_BLUE
+      ? "info"
       : log.parsedBy === "gemini"
-        ? COLORS.PRIMARY
-        : COLORS.DANGER;
-  const confidenceColor: Record<"high" | "medium" | "low", string> = {
-    high: COLORS.POSITIVE,
-    medium: COLORS.WARNING,
-    low: COLORS.DANGER,
+        ? "primary"
+        : "negative";
+  const confidenceColor: Record<"high" | "medium" | "low", BadgeTone> = {
+    high: "positive",
+    medium: "warning",
+    low: "negative",
   };
   const statusLabel =
     log.status === EMAIL_LOG_STATUS.NOT_TRANSACTION ? "not txn" : log.status;
@@ -377,14 +397,11 @@ function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
         >
           {bankName}
         </Text>
-        <Badge text={parsedLabel} color={parsedColor} />
+        <Badge text={parsedLabel} tone={parsedColor} />
         {log.confidence && (
-          <Badge
-            text={log.confidence}
-            color={confidenceColor[log.confidence]}
-          />
+          <Badge text={log.confidence} tone={confidenceColor[log.confidence]} />
         )}
-        <Badge text={statusLabel} color={statusColor[log.status]} />
+        <Badge text={statusLabel} tone={statusColor[log.status]} />
       </View>
       {log.subject ? (
         <Text

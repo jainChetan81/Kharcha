@@ -1552,23 +1552,24 @@ export async function updateTransaction(
     } else if (params.reimbursableAmount !== undefined) {
       updates.reimbursable_amount = params.reimbursableAmount;
     }
-    const [existingRow] = await db
-      .select({
-        source_type: transactions.source_type,
-        holding_id: transactions.holding_id,
-      })
-      .from(transactions)
-      .where(eq(transactions.id, id))
-      .limit(1);
-    if (params.sourceType !== undefined) {
-      const current = existingRow?.source_type ?? "manual";
-      const next = params.sourceType;
-      const editable = (v: SourceType) => v === "manual" || v === "transfer";
-      if (editable(current) && editable(next)) {
-        updates.source_type = next;
-      }
-    }
     await expo.withTransactionAsync(async () => {
+      const [existingRow] = await db
+        .select({
+          source_type: transactions.source_type,
+          holding_id: transactions.holding_id,
+        })
+        .from(transactions)
+        .where(eq(transactions.id, id))
+        .limit(1);
+      if (params.sourceType !== undefined) {
+        const current = existingRow?.source_type ?? "manual";
+        const next = params.sourceType;
+        const editable = (v: SourceType) => v === "manual" || v === "transfer";
+        if (editable(current) && editable(next)) {
+          updates.source_type = next;
+        }
+      }
+
       await db.update(transactions).set(updates).where(eq(transactions.id, id));
 
       if (params.tagIds !== undefined) {
@@ -1620,6 +1621,9 @@ export async function deleteTransaction(id: number) {
         .from(transactions)
         .where(eq(transactions.id, id))
         .limit(1);
+      await db
+        .delete(transactionTags)
+        .where(eq(transactionTags.transaction_id, id));
       await db.delete(transactions).where(eq(transactions.id, id));
       if (existing?.holding_id) {
         await safeRecomputeHolding(existing.holding_id, {
@@ -1638,7 +1642,10 @@ export async function deleteTransaction(id: number) {
 
 export async function clearAllTransactions() {
   try {
-    return await db.delete(transactions);
+    return await expo.withTransactionAsync(async () => {
+      await db.delete(transactionTags);
+      await db.delete(transactions);
+    });
   } catch (error) {
     logFirebaseError(error, {
       error_type: ERROR_TYPE.DB,
@@ -1958,9 +1965,8 @@ export async function findDuplicateTransaction(
 ): Promise<boolean> {
   try {
     const target = new Date(date);
-    const day = 24 * 60 * 60 * 1000;
-    const from = new Date(target.getTime() - day).toISOString().slice(0, 10);
-    const to = new Date(target.getTime() + day).toISOString().slice(0, 10);
+    const from = format(subDays(target, 1), DATE_ISO_FORMAT);
+    const to = format(addDays(target, 1), DATE_ISO_FORMAT);
     const rows = await db
       .select({ id: transactions.id })
       .from(transactions)

@@ -1,10 +1,10 @@
 import { TRANSACTION_TYPE } from "@/lib/constants";
 import {
   DATE_REGEX,
-  fallbackNow,
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // "Your A/c no. XXXXXXXX1234 is debited for Rs.1500.00 on 01APR25"
@@ -27,7 +27,7 @@ export const sbiDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "SBI Debit",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
@@ -50,9 +50,9 @@ export const sbiCredit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "SBI Credit",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.INCOME,
   };
 };
 
-export const SBI_PARSERS: Parser[] = [sbiDebit, sbiCredit];
+export const SBI_PARSERS: Parser[] = [sbiDebit, sbiCredit].map(withGuard);

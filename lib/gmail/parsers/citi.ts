@@ -1,11 +1,11 @@
 import { TRANSACTION_TYPE } from "@/lib/constants";
 import {
   DATE_REGEX,
-  fallbackNow,
   MERCHANT_REGEX,
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // "Your Citi Credit Card XX1234 has been charged INR 2,500.00 at MERCHANT on DD/MM/YYYY"
@@ -25,9 +25,9 @@ export const citiCardDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "Citi Card Payment",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
 
-export const CITI_PARSERS: Parser[] = [citiCardDebit];
+export const CITI_PARSERS: Parser[] = [citiCardDebit].map(withGuard);

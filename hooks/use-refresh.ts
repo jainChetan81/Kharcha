@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAutoRefreshPrefs } from "@/hooks/use-auto-refresh-prefs";
 import { useMiniSync, useMiniSyncConfig } from "@/hooks/use-mini-sync";
 import { useGoogleAuth } from "@/lib/gmail/auth";
 import { syncGmailTransactions } from "@/lib/gmail/sync";
@@ -32,6 +33,7 @@ export function formatMiniSyncResult(result: {
 export function useSyncRefresh() {
   const queryClient = useQueryClient();
   const { isConnected } = useGoogleAuth();
+  const { data: autoRefreshPrefs } = useAutoRefreshPrefs();
   const { enabled: miniSyncEnabled } = useMiniSyncConfig();
   const miniSync = useMiniSync();
   const [refreshing, setRefreshing] = useState(false);
@@ -41,6 +43,10 @@ export function useSyncRefresh() {
     isConnected().then(setGmailConnected);
   }, [isConnected]);
 
+  // Default true while the query is still loading, matching
+  // readAutoRefreshPrefs' "unset = on" semantics.
+  const gmailAutoSyncEnabled = autoRefreshPrefs?.gmail ?? true;
+
   const inFlight = useRef(false);
   const onRefresh = useCallback(async () => {
     if (inFlight.current) return;
@@ -49,7 +55,7 @@ export function useSyncRefresh() {
     try {
       const tasks: Promise<void>[] = [];
 
-      if (gmailConnected) {
+      if (gmailConnected && gmailAutoSyncEnabled) {
         tasks.push(
           (async () => {
             try {
@@ -93,7 +99,13 @@ export function useSyncRefresh() {
       inFlight.current = false;
       setRefreshing(false);
     }
-  }, [queryClient, gmailConnected, miniSyncEnabled, miniSync]);
+  }, [
+    queryClient,
+    gmailConnected,
+    gmailAutoSyncEnabled,
+    miniSyncEnabled,
+    miniSync,
+  ]);
 
   return { refreshing, onRefresh, gmailConnected };
 }

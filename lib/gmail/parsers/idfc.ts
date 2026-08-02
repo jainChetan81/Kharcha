@@ -1,11 +1,11 @@
 import { TRANSACTION_TYPE } from "@/lib/constants";
 import {
   DATE_REGEX,
-  fallbackNow,
   MERCHANT_REGEX,
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // "Your IDFC FIRST Bank Credit Card ending 1234 was used for Rs.2500 at MERCHANT on DD-MM-YYYY"
@@ -24,7 +24,7 @@ export const idfcCardDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "IDFC Card Payment",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
@@ -46,9 +46,11 @@ export const idfcCredit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "IDFC Credit",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.INCOME,
   };
 };
 
-export const IDFC_PARSERS: Parser[] = [idfcCardDebit, idfcCredit];
+export const IDFC_PARSERS: Parser[] = [idfcCardDebit, idfcCredit].map(
+  withGuard,
+);

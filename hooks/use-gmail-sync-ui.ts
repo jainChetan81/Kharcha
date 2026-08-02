@@ -13,6 +13,8 @@ import { useGoogleAuth } from "@/lib/gmail/auth";
 import type { SyncResult } from "@/lib/gmail/sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
+const GMAIL_VERIFY_TIMEOUT_MS = 15_000;
+
 type BankWithEmails = ReturnType<typeof useBanksWithEmails>["data"] extends
   | infer T
   | undefined
@@ -123,6 +125,11 @@ export function useGmailSyncUi(): UseGmailSyncUiReturn {
 
   async function handleVerify() {
     setVerifying(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      GMAIL_VERIFY_TIMEOUT_MS,
+    );
     try {
       const token = await getValidAccessToken();
       if (!token) {
@@ -131,15 +138,35 @@ export function useGmailSyncUi(): UseGmailSyncUiReturn {
       }
       const res = await fetch(`${GMAIL_API.MESSAGES}?maxResults=1`, {
         headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
       });
-      if (!res.ok) {
+      // Only 401/403 actually means the token is invalid. Anything else
+      // (5xx, 429, or any other non-ok status) is not proof the session
+      // expired — don't force a disconnect over it.
+      if (res.status === 401 || res.status === 403) {
         await handleSessionExpired();
+        return;
+      }
+      if (!res.ok) {
+        showErrorToast(
+          "Verification failed",
+          `Gmail returned ${res.status}. Try again.`,
+        );
         return;
       }
 
       const profileRes = await fetch(GMAIL_API.PROFILE, {
         headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
       });
+      // Same auth-failure check as the messages request above — the two
+      // calls share the same token, so a 401/403 here is just as much
+      // proof of an expired session, and shouldn't be silently swallowed
+      // into a false "Connection verified".
+      if (profileRes.status === 401 || profileRes.status === 403) {
+        await handleSessionExpired();
+        return;
+      }
       if (profileRes.ok) {
         const profile = await profileRes.json();
         setEmail(profile.emailAddress);
@@ -147,30 +174,47 @@ export function useGmailSyncUi(): UseGmailSyncUiReturn {
 
       logEvent(FIREBASE_EVENTS.GMAIL_VERIFIED);
       showSuccessToast("Connection verified");
-    } catch {
-      await handleSessionExpired();
+    } catch (err) {
+      // Network failure, timeout/abort, or a JSON parse error land here.
+      // None of these prove the Gmail session expired — surface them as an
+      // ordinary failure instead of disconnecting the user.
+      if (
+        err instanceof Error &&
+        (err.name === "AbortError" || err.name === "TimeoutError")
+      ) {
+        showErrorToast(
+          "Verification timed out",
+          "Check your connection and try again",
+        );
+      } else {
+        showErrorToast("Verification failed", err);
+      }
     } finally {
+      clearTimeout(timeoutId);
       setVerifying(false);
     }
   }
 
   async function handleUpdateSyncFrom(date: Date) {
     setSyncFromDate(date);
+    // CONFIG_KEYS.GMAIL_LAST_SYNCED_AT doubles as "next sync's cursor" (read
+    // by lib/gmail/sync.ts) and "last synced" display value. Writing the
+    // user's picked date here correctly moves the cursor, but must NOT touch
+    // `lastSynced` — picking a date doesn't mean a sync happened.
     await gmailSyncConfig.updateSyncFromDate(date);
-    setLastSynced(date.toISOString());
   }
 
   async function handleSync() {
     try {
       const response = await gmailSyncMutation.mutateAsync();
-      if (response.result.nobanks) {
-        showErrorToast("No active banks", "Add a bank in settings to sync");
-        return;
-      }
 
-      setLastSynced(
-        (await getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT)) ?? null,
-      );
+      // Every successful sync writes CONFIG_KEYS.GMAIL_LAST_SYNCED_AT to
+      // "now" (lib/gmail/sync.ts) — that's both the "last synced" display
+      // value and the cursor the next sync will read. Refresh both local
+      // pieces of state from it so "Fetch emails after" doesn't go stale.
+      const syncedAt = await getConfig(CONFIG_KEYS.GMAIL_LAST_SYNCED_AT);
+      setLastSynced(syncedAt ?? null);
+      if (syncedAt) setSyncFromDate(new Date(syncedAt));
 
       setSyncResult(response.result);
       setShowResults(true);
@@ -199,7 +243,7 @@ export function useGmailSyncUi(): UseGmailSyncUiReturn {
     lastSynced,
     activeBanks,
     noActiveBanks,
-    autoRefreshEnabled: autoRefreshPrefs?.gmail ?? false,
+    autoRefreshEnabled: autoRefreshPrefs?.gmail ?? true,
     toggleAutoRefresh,
     syncResult,
     showResults,

@@ -1,6 +1,6 @@
 import { and, asc, eq, sql } from "drizzle-orm";
-import { db } from "./connection";
-import { sources } from "./schema";
+import expo, { db } from "./connection";
+import { sources, subscriptions, transactions } from "./schema";
 import type { Source } from "./types";
 
 export async function getAllSources(): Promise<Source[]> {
@@ -38,7 +38,21 @@ export async function addSource(name: string) {
 }
 
 export async function deleteSource(id: number) {
-  return db
-    .delete(sources)
-    .where(and(eq(sources.id, id), eq(sources.is_default, 0)));
+  await expo.withTransactionAsync(async () => {
+    await db
+      .update(transactions)
+      .set({ source_id: null })
+      .where(eq(transactions.source_id, id));
+    await db
+      .update(transactions)
+      .set({ destination_source_id: null })
+      .where(eq(transactions.destination_source_id, id));
+    await db
+      .update(subscriptions)
+      .set({ source_id: null })
+      .where(eq(subscriptions.source_id, id));
+    await db
+      .delete(sources)
+      .where(and(eq(sources.id, id), eq(sources.is_default, 0)));
+  });
 }

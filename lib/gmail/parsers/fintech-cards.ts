@@ -1,10 +1,10 @@
 import { TRANSACTION_TYPE } from "@/lib/constants";
 import {
   DATE_REGEX,
-  fallbackNow,
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // --- Slice ---
@@ -27,7 +27,7 @@ export const sliceDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "Slice Payment",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
@@ -52,7 +52,7 @@ export const oneCardDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "OneCard Payment",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
@@ -80,11 +80,11 @@ export const uniCardDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "Uni Card Payment",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
 
-export const SLICE_PARSERS: Parser[] = [sliceDebit];
-export const ONECARD_PARSERS: Parser[] = [oneCardDebit];
-export const UNI_PARSERS: Parser[] = [uniCardDebit];
+export const SLICE_PARSERS: Parser[] = [sliceDebit].map(withGuard);
+export const ONECARD_PARSERS: Parser[] = [oneCardDebit].map(withGuard);
+export const UNI_PARSERS: Parser[] = [uniCardDebit].map(withGuard);

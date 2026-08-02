@@ -10,7 +10,12 @@ export type AutoRefreshPrefs = {
 export async function readAutoRefreshPrefs(): Promise<AutoRefreshPrefs> {
   const gmail = await getConfig(CONFIG_KEYS.GMAIL_SYNC_USER_ENABLED);
   return {
-    gmail: gmail === BOOL_FLAG.ON,
+    // Default to enabled when the user has never touched the toggle (same
+    // pattern as useMiniSyncConfig). The config key is never seeded
+    // anywhere else, so an "unset = off" read would silently disable Gmail
+    // auto-sync on pull-to-refresh for every existing user the moment this
+    // preference starts being consulted for real.
+    gmail: gmail !== BOOL_FLAG.OFF,
   };
 }
 

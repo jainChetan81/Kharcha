@@ -1,11 +1,11 @@
 import { TRANSACTION_TYPE } from "@/lib/constants";
 import {
   DATE_REGEX,
-  fallbackNow,
   MERCHANT_REGEX,
   type Parser,
   parseAmount,
   parseIndianDate,
+  withGuard,
 } from "./utils";
 
 // "Your HSBC Credit Card ending 1234 has been used for INR 2,500.00 at MERCHANT on DD/MM/YYYY"
@@ -24,9 +24,9 @@ export const hsbcCardDebit: Parser = (body) => {
   return {
     amount: parseAmount(amountStr),
     merchant: merchantMatch ? merchantMatch[1].trim() : "HSBC Card Payment",
-    date: dateMatch ? parseIndianDate(dateMatch[1]) : fallbackNow(),
+    date: dateMatch ? parseIndianDate(dateMatch[1]) : null,
     type: TRANSACTION_TYPE.EXPENSE,
   };
 };
 
-export const HSBC_PARSERS: Parser[] = [hsbcCardDebit];
+export const HSBC_PARSERS: Parser[] = [hsbcCardDebit].map(withGuard);
