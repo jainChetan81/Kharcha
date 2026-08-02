@@ -15,6 +15,7 @@ import { DateHeader, TransactionItem } from "@/components/transaction-item";
 import { TransactionSkeleton } from "@/components/transaction-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
+import { QueryErrorState } from "@/components/ui/query-error-state";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
@@ -39,6 +40,7 @@ export default function ReimbursementsScreen() {
     hasNextPage,
     isFetchingNextPage,
     isLoading,
+    error,
     markReimbursed,
     markPending,
   } = useReimbursementList();
@@ -188,6 +190,12 @@ export default function ReimbursementsScreen() {
             ListEmptyComponent={
               isLoading ? (
                 <TransactionSkeleton count={10} />
+              ) : error ? (
+                <QueryErrorState
+                  title="Couldn't load reimbursements"
+                  error={error}
+                  inList
+                />
               ) : (
                 <EmptyState
                   icon={Receipt}

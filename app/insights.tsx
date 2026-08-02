@@ -9,7 +9,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { ChevronLeft, ChevronRight, Receipt } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import {
   ComponentErrorBoundary,
   ScreenError,
@@ -27,6 +27,7 @@ import { Text } from "@/components/ui/text";
 import { WrapStats } from "@/components/wrap-stats";
 import { useCurrency } from "@/hooks/use-currency";
 import { useInsightsData } from "@/hooks/use-insights-data";
+import { useRefresh } from "@/hooks/use-refresh";
 import {
   DATE_ISO_FORMAT,
   MONTH_FORMAT,
@@ -34,7 +35,7 @@ import {
 } from "@/lib/constants";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 import { historyHref } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { cn, getRefreshControlProps } from "@/lib/utils";
 
 export default function InsightsScreen() {
   const { format: fmt } = useCurrency();
@@ -49,6 +50,7 @@ export default function InsightsScreen() {
     ? undefined
     : format(endOfMonth(selectedDate), DATE_ISO_FORMAT);
   const data = useInsightsData(selectedMonth, prevMonth, asOf);
+  const { refreshing, onRefresh } = useRefresh();
 
   useEffect(() => {
     logEvent(FIREBASE_EVENTS.INSIGHTS_VIEWED);
@@ -66,6 +68,9 @@ export default function InsightsScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={SCROLL_BOTTOM_PADDING}
+        refreshControl={
+          <RefreshControl {...getRefreshControlProps(refreshing, onRefresh)} />
+        }
       >
         <View className="mt-2 flex-row items-center justify-between px-6">
           <Pressable
@@ -106,6 +111,7 @@ export default function InsightsScreen() {
             <QueryErrorState
               title="Couldn't load insights"
               error={data.error}
+              onRetry={onRefresh}
             />
           </View>
         ) : data.hasData ? (

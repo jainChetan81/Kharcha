@@ -95,9 +95,13 @@ export async function deleteHoldingCascade(id: number): Promise<void> {
 
 /**
  * Recompute a holding's running units, avg_cost, and invested from its
- * linked transactions. Single source of truth — the buy/sell handler calls
- * this after each mutation, and a manual "recompute" button can repair
- * drift caused by edited or deleted transactions.
+ * linked transactions. Single source of truth — the buy/sell/delete
+ * handlers call this (via safeRecomputeHolding) after each mutation, so
+ * drift self-corrects automatically. There is currently no manual recovery
+ * UI: this function is not re-exported from lib/db/index.ts, and
+ * safeRecomputeHolding (the only caller) swallows failures into Crashlytics
+ * rather than surfacing them to the user. If drift becomes an observed
+ * problem, that's the gap to close — not this comment.
  *
  * Accounting rules:
  *   buy       → units += tx.units; invested += amount; avg_cost = invested/units

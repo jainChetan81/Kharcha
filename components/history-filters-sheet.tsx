@@ -233,6 +233,7 @@ export default function HistoryFiltersSheet({
                   items={allTags}
                   selectedIds={draftTagIds}
                   onChange={onDraftTagIdsChange}
+                  addLabel="New tag"
                 />
               </View>
             </>

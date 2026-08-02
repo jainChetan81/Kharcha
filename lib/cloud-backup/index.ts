@@ -109,7 +109,10 @@ export async function backupNow(): Promise<BackupSummary> {
         const r = await uploadBackupToICloud(bytes);
         modifiedTime = r.modifiedTime;
       } else if (provider === "gdrive") {
-        const r = await uploadBackupToDrive(bytes);
+        const knownFileId = await getConfig(
+          CONFIG_KEYS.CLOUD_BACKUP_LAST_FILE_ID,
+        );
+        const r = await uploadBackupToDrive(bytes, knownFileId);
         modifiedTime = r.modifiedTime;
         fileId = r.fileId;
       } else {

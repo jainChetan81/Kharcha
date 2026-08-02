@@ -311,6 +311,7 @@ export default function HistoryScreen() {
                   title="Couldn't load transactions"
                   error={error}
                   inList
+                  onRetry={onRefresh}
                 />
               ) : (
                 <EmptyState

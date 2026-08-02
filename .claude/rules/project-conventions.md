@@ -9,7 +9,7 @@
 - No global state store — queries handle caching and invalidation
 
 ## Styling
-- NativeWind classes only, no inline `style` prop (exception: native components like DateTimePicker)
+- NativeWind classes only, no inline `style` prop (exceptions: native components like DateTimePicker; and runtime-computed values with no static NativeWind equivalent — dynamic hex colors, numeric heights/insets from props or `useSafeAreaInsets()` — keep these narrowly scoped and comment why)
 - Use `cn()` from `@/lib/utils` for conditional classes
 - Color constants in `lib/constants.ts` (`COLORS.*`) for non-className contexts (Switch trackColor, etc.)
 - Use semantic color classes: `text-foreground`, `text-muted-foreground`, `bg-card`, `bg-primary`

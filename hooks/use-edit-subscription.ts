@@ -18,7 +18,11 @@ export function useEditSubscription() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const subscriptionId = Number(id);
 
-  const { data: subscription, isLoading } = useSubscriptionById(subscriptionId);
+  const {
+    data: subscription,
+    isLoading,
+    error,
+  } = useSubscriptionById(subscriptionId);
   const updateMutation = useUpdateSubscription();
   const deleteMutation = useDeleteSubscription();
   const toggleMutation = useToggleSubscription();
@@ -93,6 +97,7 @@ export function useEditSubscription() {
   return {
     subscription,
     isLoading,
+    error,
     form,
     categories,
     sources,

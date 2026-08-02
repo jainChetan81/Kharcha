@@ -1,4 +1,8 @@
-import type { ReactFormExtendedApi } from "@tanstack/react-form";
+import type {
+  FormAsyncValidateOrFn,
+  FormValidateOrFn,
+  ReactFormExtendedApi,
+} from "@tanstack/react-form";
 import { Pressable, View } from "react-native";
 import { ChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
@@ -16,34 +20,29 @@ import { sanitizeDecimalInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { TransactionFormValues } from "./transaction-form";
 
-// TanStack Form's public type has 12 validator generics that don't meaningfully
-// constrain the field rendering we do here. Widening them to `any` at the
-// boundary avoids 200-char type signatures without weakening the field-name
-// / value typing TransactionForm sees at the call site.
+// TanStack Form's public type has 12 validator generics. TransactionForm's
+// useForm({ defaultValues, onSubmit }) call passes no validators — its
+// `onSubmit` is the submit handler (typed via `value`/`formApi`/`meta`,
+// unrelated to the TOnSubmit *validator* generic below) — so every one of
+// these 11 positions is uninferred and TypeScript widens each to its own
+// declared bound: `FormValidateOrFn<T> | undefined` for the sync
+// validators, `FormAsyncValidateOrFn<T> | undefined` for the async ones,
+// and `unknown` for TSubmitMeta (no default on useForm's own signature).
+// Confirmed against the real inferred type of `form` via a typecheck
+// failure — this is not a guess.
 type TxFormApi = ReactFormExtendedApi<
   TransactionFormValues,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any
+  FormValidateOrFn<TransactionFormValues> | undefined, // onMount
+  FormValidateOrFn<TransactionFormValues> | undefined, // onChange
+  FormAsyncValidateOrFn<TransactionFormValues> | undefined, // onChangeAsync
+  FormValidateOrFn<TransactionFormValues> | undefined, // onBlur
+  FormAsyncValidateOrFn<TransactionFormValues> | undefined, // onBlurAsync
+  FormValidateOrFn<TransactionFormValues> | undefined, // onSubmit (validator)
+  FormAsyncValidateOrFn<TransactionFormValues> | undefined, // onSubmitAsync
+  FormValidateOrFn<TransactionFormValues> | undefined, // onDynamic
+  FormAsyncValidateOrFn<TransactionFormValues> | undefined, // onDynamicAsync
+  FormAsyncValidateOrFn<TransactionFormValues> | undefined, // onServer
+  unknown // submitMeta
 >;
 
 const KIND_OPTIONS: { key: InvestmentKindType; label: string }[] = [

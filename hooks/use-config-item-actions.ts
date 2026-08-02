@@ -42,7 +42,11 @@ export function useConfigItemActions<T extends { id: number }>({
   function move(index: number, direction: -1 | 1) {
     const updates = reorder(items, index, direction);
     if (!updates) return;
-    reorderMutation.mutate(updates);
+    reorderMutation.mutate(updates, {
+      onError: (err) => {
+        showErrorToast("Failed to reorder", err);
+      },
+    });
   }
 
   return { handleDelete, move };

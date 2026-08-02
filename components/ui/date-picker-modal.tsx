@@ -1,8 +1,8 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, View } from "react-native";
 import { ComponentErrorBoundary } from "@/components/error-boundary";
+import { Text } from "@/components/ui/text";
 import { COLORS } from "@/lib/constants";
-import { Text } from "./text";
 
 const DateTimePicker = lazy(
   () => import("@react-native-community/datetimepicker"),
@@ -13,6 +13,75 @@ function PickerLoader() {
     <View className="items-center justify-center py-16">
       <ActivityIndicator size="small" color={COLORS.PRIMARY} />
     </View>
+  );
+}
+
+// Shared chrome for all three picker modals below: the transparent backdrop,
+// the rounded-top header row (Cancel / optional Clear / Done-or-Next), and
+// the error-boundary + Suspense wrapper around the actual spinner. Each
+// modal keeps its own tempDate/step state and useEffect — only the JSX
+// chrome moves here.
+function PickerModalShell({
+  visible,
+  title,
+  onCancel,
+  onClear,
+  doneLabel,
+  onDone,
+  children,
+}: {
+  visible: boolean;
+  title: string;
+  onCancel: () => void;
+  onClear?: () => void;
+  doneLabel: string;
+  onDone: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <Pressable
+        className="flex-1 bg-black/50"
+        onPress={onCancel}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
+      <View className="rounded-t-2xl bg-card">
+        <View className="flex-row items-center justify-between border-b border-border px-5 py-3">
+          <Pressable onPress={onCancel} accessibilityRole="button" hitSlop={8}>
+            <Text className="text-base font-medium text-muted-foreground">
+              Cancel
+            </Text>
+          </Pressable>
+          <Text className="text-base font-semibold text-foreground">
+            {title}
+          </Text>
+          <View className="flex-row items-center gap-4">
+            {onClear && (
+              <Pressable
+                onPress={onClear}
+                accessibilityRole="button"
+                hitSlop={8}
+              >
+                <Text className="text-base font-medium text-negative-text">
+                  Clear
+                </Text>
+              </Pressable>
+            )}
+            <Pressable onPress={onDone} accessibilityRole="button" hitSlop={8}>
+              <Text className="text-base font-semibold text-primary-text">
+                {doneLabel}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+        <ComponentErrorBoundary onDismiss={onCancel}>
+          <Suspense fallback={<PickerLoader />}>
+            <View className="items-center pb-6">{children}</View>
+          </Suspense>
+        </ComponentErrorBoundary>
+      </View>
+    </Modal>
   );
 }
 
@@ -47,66 +116,27 @@ export function DatePickerModal({
   }, [visible]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <Pressable
-        className="flex-1 bg-black/50"
-        onPress={onCancel}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
+    <PickerModalShell
+      visible={visible}
+      title={title}
+      onCancel={onCancel}
+      onClear={onClear}
+      doneLabel="Done"
+      onDone={() => onConfirm(tempDate)}
+    >
+      <DateTimePicker
+        value={tempDate}
+        mode="date"
+        display="spinner"
+        themeVariant="dark"
+        textColor={COLORS.WHITE}
+        maximumDate={maximumDate}
+        minimumDate={minimumDate}
+        onChange={(_event, selectedDate) => {
+          if (selectedDate) setTempDate(selectedDate);
+        }}
       />
-      <View className="rounded-t-2xl bg-card">
-        <View className="flex-row items-center justify-between border-b border-border px-5 py-3">
-          <Pressable onPress={onCancel} accessibilityRole="button" hitSlop={8}>
-            <Text className="text-base font-medium text-muted-foreground">
-              Cancel
-            </Text>
-          </Pressable>
-          <Text className="text-base font-semibold text-foreground">
-            {title}
-          </Text>
-          <View className="flex-row items-center gap-4">
-            {onClear && (
-              <Pressable
-                onPress={onClear}
-                accessibilityRole="button"
-                hitSlop={8}
-              >
-                <Text className="text-base font-medium text-negative-text">
-                  Clear
-                </Text>
-              </Pressable>
-            )}
-            <Pressable
-              onPress={() => onConfirm(tempDate)}
-              accessibilityRole="button"
-              hitSlop={8}
-            >
-              <Text className="text-base font-semibold text-primary-text">
-                Done
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-        <ComponentErrorBoundary onDismiss={onCancel}>
-          <Suspense fallback={<PickerLoader />}>
-            <View className="items-center pb-6">
-              <DateTimePicker
-                value={tempDate}
-                mode="date"
-                display="spinner"
-                themeVariant="dark"
-                textColor={COLORS.WHITE}
-                maximumDate={maximumDate}
-                minimumDate={minimumDate}
-                onChange={(_event, selectedDate) => {
-                  if (selectedDate) setTempDate(selectedDate);
-                }}
-              />
-            </View>
-          </Suspense>
-        </ComponentErrorBoundary>
-      </View>
-    </Modal>
+    </PickerModalShell>
   );
 }
 
@@ -131,51 +161,24 @@ export function TimePickerModal({
   }, [visible]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <Pressable
-        className="flex-1 bg-black/50"
-        onPress={onCancel}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
+    <PickerModalShell
+      visible={visible}
+      title={title}
+      onCancel={onCancel}
+      doneLabel="Done"
+      onDone={() => onConfirm(tempDate)}
+    >
+      <DateTimePicker
+        value={tempDate}
+        mode="time"
+        display="spinner"
+        themeVariant="dark"
+        textColor={COLORS.WHITE}
+        onChange={(_event, selectedDate) => {
+          if (selectedDate) setTempDate(selectedDate);
+        }}
       />
-      <View className="rounded-t-2xl bg-card">
-        <View className="flex-row items-center justify-between border-b border-border px-5 py-3">
-          <Pressable onPress={onCancel} accessibilityRole="button" hitSlop={8}>
-            <Text className="text-base font-medium text-muted-foreground">
-              Cancel
-            </Text>
-          </Pressable>
-          <Text className="text-base font-semibold text-foreground">
-            {title}
-          </Text>
-          <Pressable
-            onPress={() => onConfirm(tempDate)}
-            accessibilityRole="button"
-            hitSlop={8}
-          >
-            <Text className="text-base font-semibold text-primary-text">
-              Done
-            </Text>
-          </Pressable>
-        </View>
-        <ComponentErrorBoundary onDismiss={onCancel}>
-          <Suspense fallback={<PickerLoader />}>
-            <View className="items-center pb-6">
-              <DateTimePicker
-                value={tempDate}
-                mode="time"
-                display="spinner"
-                themeVariant="dark"
-                textColor={COLORS.WHITE}
-                onChange={(_event, selectedDate) => {
-                  if (selectedDate) setTempDate(selectedDate);
-                }}
-              />
-            </View>
-          </Suspense>
-        </ComponentErrorBoundary>
-      </View>
-    </Modal>
+    </PickerModalShell>
   );
 }
 
@@ -219,65 +222,26 @@ export function DateTimePickerModal({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <Pressable
-        className="flex-1 bg-black/50"
-        onPress={onCancel}
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
+    <PickerModalShell
+      visible={visible}
+      title={step === "date" ? "Select Date" : "Select Time"}
+      onCancel={onCancel}
+      onClear={onClear}
+      doneLabel={step === "date" ? "Next" : "Done"}
+      onDone={handleNext}
+    >
+      <DateTimePicker
+        value={tempDate}
+        mode={step}
+        display="spinner"
+        themeVariant="dark"
+        textColor={COLORS.WHITE}
+        maximumDate={maximumDate}
+        minimumDate={minimumDate}
+        onChange={(_event, selectedDate) => {
+          if (selectedDate) setTempDate(selectedDate);
+        }}
       />
-      <View className="rounded-t-2xl bg-card">
-        <View className="flex-row items-center justify-between border-b border-border px-5 py-3">
-          <Pressable onPress={onCancel} accessibilityRole="button" hitSlop={8}>
-            <Text className="text-base font-medium text-muted-foreground">
-              Cancel
-            </Text>
-          </Pressable>
-          <Text className="text-base font-semibold text-foreground">
-            {step === "date" ? "Select Date" : "Select Time"}
-          </Text>
-          <View className="flex-row items-center gap-4">
-            {onClear && (
-              <Pressable
-                onPress={onClear}
-                accessibilityRole="button"
-                hitSlop={8}
-              >
-                <Text className="text-base font-medium text-negative-text">
-                  Clear
-                </Text>
-              </Pressable>
-            )}
-            <Pressable
-              onPress={handleNext}
-              accessibilityRole="button"
-              hitSlop={8}
-            >
-              <Text className="text-base font-semibold text-primary-text">
-                {step === "date" ? "Next" : "Done"}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-        <ComponentErrorBoundary onDismiss={onCancel}>
-          <Suspense fallback={<PickerLoader />}>
-            <View className="items-center pb-6">
-              <DateTimePicker
-                value={tempDate}
-                mode={step}
-                display="spinner"
-                themeVariant="dark"
-                textColor={COLORS.WHITE}
-                maximumDate={maximumDate}
-                minimumDate={minimumDate}
-                onChange={(_event, selectedDate) => {
-                  if (selectedDate) setTempDate(selectedDate);
-                }}
-              />
-            </View>
-          </Suspense>
-        </ComponentErrorBoundary>
-      </View>
-    </Modal>
+    </PickerModalShell>
   );
 }

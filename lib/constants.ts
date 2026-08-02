@@ -210,6 +210,21 @@ export const INLINE_ADD_COPY = {
   },
 } as const;
 
+export const CATEGORY_LIST_COPY = {
+  [TRANSACTION_TYPE.EXPENSE]: {
+    headerTitle: "Expense Categories",
+    description:
+      "Buckets you tag spending against. Reorder to control how they appear in the Add screen. The default category is locked.",
+    addLabel: "Add Expense Category",
+  },
+  [TRANSACTION_TYPE.INCOME]: {
+    headerTitle: "Income Categories",
+    description:
+      "Buckets you tag incoming money against — salary, refunds, gifts. Reorder to control picker order.",
+    addLabel: "Add Income Category",
+  },
+} as const;
+
 export const COLORS = {
   PRIMARY: "#7c3aed",
   WARNING: "#f59e0b",

@@ -46,9 +46,9 @@ finding — the swipe-to-delete stale-closure bug — is **plan 001** below.
 | 008 | AI parsing and mini-sync pipeline hardening | P2 | M | MED | — (soft: `app/_layout.tsx`, see note) | IN PROGRESS (all 6 steps code complete, manual smoke tests pending) |
 | 010 | Transaction and subscription form correctness | P2 | M | LOW | — | IN PROGRESS (all 7 steps code complete, manual smoke tests pending) |
 | 013 | Security and data-handling hardening | P2 | S | LOW | — (soft: `app/_layout.tsx`, `lib/db/subscriptions.ts`, see note) | IN PROGRESS (all 5 steps code complete — Crashlytics decision point implemented per plan's own recommendation, Option B — manual smoke tests pending) |
-| 009 | Fix silent error swallowing in Drive backup lookup; reuse stored file id on upload | P3 | S | LOW | — | TODO |
-| 011 | Feature-completeness and empty-state gaps | P3 | M | LOW | — | TODO |
-| 012 | UI component deduplication and consistency | P3 | L | MED | — | TODO |
+| 009 | Fix silent error swallowing in Drive backup lookup; reuse stored file id on upload | P3 | S | LOW | — | IN PROGRESS (all 3 steps code complete, manual smoke test pending) |
+| 011 | Feature-completeness and empty-state gaps | P3 | M | LOW | — | IN PROGRESS (all 6 steps code complete, manual smoke tests pending) |
+| 012 | UI component deduplication and consistency | P3 | L | MED | — | IN PROGRESS (all 5 steps code complete — steps 1/2 scoped down per documented deviations from plan drift, see below — manual smoke tests + step 5.2 visual check pending) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale).
 
@@ -115,6 +115,25 @@ hard way:
   has the identical bare-spinner-forever gap as `app/holding/[id].tsx`
   (audit only mentioned it as supporting evidence for a different finding,
   not its own line item).
+- **Plan 012's Step 1 execution found a conflict with plan 006** (already
+  merged by the time 012 was executed): migrating `app/config/tags.tsx`
+  and `components/transaction-form.tsx`'s "New Tag" sheet to
+  `InlineAddSheet` would reintroduce the exact double-toast bug plan 006
+  fixed, since `useAddTag`'s own `onError` already toasts and
+  `InlineAddSheet` toasts unconditionally on catch. Left those two sites'
+  `BottomSheet` structure as-is (the plan's own documented Option-B escape
+  hatch); migrated only the 3 sites confirmed to have no competing
+  `onError` (categories x2, sources). Still applied the independent
+  `isNew` bug fix to `transaction-form.tsx`'s tag-add site.
+- **Plan 012's Step 2 `addLabel="tag"` suggestion was wrong**: `ChipPicker`
+  substitutes `addLabel` verbatim into both the button text (`+ {addLabel
+  ?? "New"}`) and the a11y label (`` `Add ${addLabel ?? "new"}` ``), so
+  `"tag"` would have rendered `"+ tag"` / `"Add tag"`, not the original
+  hardcoded `"+ New tag"` / `"Add new tag"`. Used `addLabel="New tag"`
+  instead — exact match on the visible button text; the a11y label ends up
+  `"Add New tag"` (differs only in casing from the original `"Add new
+  tag"`), chosen over a `.toLowerCase()`'d label to avoid changing the 7
+  pre-existing `ChipPicker` callers' capitalized a11y text.
 - **Plan 008 initially dropped a finding by mistake** (a drafting-prompt
   gap on my part, not a re-verification result) — audit finding index 42
   (mini-sync/Gmail-sync hand-rolled cache invalidation duplicating
