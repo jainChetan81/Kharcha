@@ -16,7 +16,7 @@ import {
   CATEGORY_LIST_COPY,
   SCROLL_BOTTOM_PADDING,
   TOAST_COPY,
-  TRANSACTION_TYPE,
+  type TRANSACTION_TYPE,
 } from "@/lib/constants";
 
 export function CategoryListScreen({
