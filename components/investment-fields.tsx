@@ -16,34 +16,30 @@ import { sanitizeDecimalInput } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { TransactionFormValues } from "./transaction-form";
 
-// TanStack Form's public type has 12 validator generics that don't meaningfully
-// constrain the field rendering we do here. Widening them to `any` at the
-// boundary avoids 200-char type signatures without weakening the field-name
-// / value typing TransactionForm sees at the call site.
+// TanStack Form's public type has 12 validator generics. TransactionForm's
+// useForm({ defaultValues, onSubmit }) call wires only onSubmit — every
+// other validator slot (onMount/onChange/onChangeAsync/onBlur/onBlurAsync/
+// onSubmitAsync/onDynamic/onDynamicAsync/onServer) is unset, so those
+// positions type as `undefined` per FormOptions' own bound
+// (`undefined | FormValidateOrFn<TFormData>`), and TSubmitMeta defaults to
+// `never` when omitted (FormOptions' `TSubmitMeta = never`). Only onSubmit
+// itself is left widened — reproducing its exact validator-fn signature
+// here isn't worth the 200-char type for a field-rendering component that
+// never calls submit.
 type TxFormApi = ReactFormExtendedApi<
   TransactionFormValues,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  // biome-ignore lint/suspicious/noExplicitAny: onSubmit's real validator-fn type isn't worth reproducing here
   any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any,
-  // biome-ignore lint/suspicious/noExplicitAny: see above
-  any
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  never
 >;
 
 const KIND_OPTIONS: { key: InvestmentKindType; label: string }[] = [
