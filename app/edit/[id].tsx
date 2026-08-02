@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import type { TransactionFormValues } from "@/components/transaction-form";
+import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import {
   useDeleteTransaction,
@@ -39,10 +40,23 @@ export default function EditTransactionScreen() {
 
   const { data: transaction, isLoading } = useTransactionById(transactionId);
 
-  if (isLoading || !transaction) {
+  if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={COLORS.PRIMARY} />
+      </View>
+    );
+  }
+
+  if (!transaction) {
+    return (
+      <View className="flex-1 bg-background">
+        <ScreenHeader title="Edit Transaction" />
+        <View className="flex-1 items-center justify-center px-6">
+          <Text className="text-center text-sm text-muted-foreground">
+            Transaction not found. It may have been deleted.
+          </Text>
+        </View>
       </View>
     );
   }

@@ -34,10 +34,23 @@ export default function HoldingDetailScreen() {
   const reopenMutation = useReopenHolding();
   const deleteMutation = useDeleteHoldingCascade();
 
-  if (isLoading || !holding) {
+  if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={COLORS.PRIMARY} />
+      </View>
+    );
+  }
+
+  if (!holding) {
+    return (
+      <View className="flex-1 bg-background">
+        <ScreenHeader title="Holding" />
+        <View className="flex-1 items-center justify-center px-6">
+          <Text className="text-center text-sm text-muted-foreground">
+            Holding not found. Go back and pick another.
+          </Text>
+        </View>
       </View>
     );
   }
