@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ChipPicker } from "@/components/ui/chip-picker";
 import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
+import { QueryErrorState } from "@/components/ui/query-error-state";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import { useEditSubscription } from "@/hooks/use-edit-subscription";
@@ -29,6 +30,7 @@ export default function EditSubscriptionScreen() {
   const {
     subscription,
     isLoading,
+    error,
     form,
     categories,
     sources,
@@ -40,6 +42,15 @@ export default function EditSubscriptionScreen() {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={COLORS.PRIMARY} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 bg-background">
+        <ScreenHeader title="Edit Subscription" />
+        <QueryErrorState title="Couldn't load subscription" error={error} />
       </View>
     );
   }

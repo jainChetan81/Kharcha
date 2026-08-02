@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { ScreenError } from "@/components/error-boundary";
 import type { TransactionFormValues } from "@/components/transaction-form";
+import { QueryErrorState } from "@/components/ui/query-error-state";
 import { ScreenHeader } from "@/components/ui/screen-header";
 import { Text } from "@/components/ui/text";
 import {
@@ -38,12 +39,25 @@ export default function EditTransactionScreen() {
   const updateMutation = useUpdateTransaction(transactionId);
   const deleteMutation = useDeleteTransaction();
 
-  const { data: transaction, isLoading } = useTransactionById(transactionId);
+  const {
+    data: transaction,
+    isLoading,
+    error,
+  } = useTransactionById(transactionId);
 
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator color={COLORS.PRIMARY} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 bg-background">
+        <ScreenHeader title="Edit Transaction" />
+        <QueryErrorState title="Couldn't load transaction" error={error} />
       </View>
     );
   }
