@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   AccessibilityInfo,
+  ActivityIndicator,
   findNodeHandle,
   KeyboardAvoidingView,
   type KeyboardTypeOptions,
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { COLORS } from "@/lib/constants";
+import { sanitizeDecimalInput } from "@/lib/format";
 import { isIOS } from "@/lib/utils";
 
 type BottomSheetBaseProps = {
@@ -50,6 +52,7 @@ export function BottomSheet(props: BottomSheetProps) {
   const isFormMode = !!props.onSave;
 
   const [value, setValue] = useState(props.defaultValue ?? "");
+  const [isSaving, setIsSaving] = useState(false);
   const contentRef = useRef<View>(null);
 
   // Move VoiceOver focus into the sheet when it opens so the user isn't left
@@ -71,6 +74,7 @@ export function BottomSheet(props: BottomSheetProps) {
   useEffect(() => {
     if (visible) {
       setValue(props.defaultValue ?? "");
+      setIsSaving(false);
     }
   }, [visible]);
 
@@ -81,8 +85,18 @@ export function BottomSheet(props: BottomSheetProps) {
   async function handleSave() {
     if (!props.onSave) return;
     const trimmed = value.trim();
-    if (!trimmed) return;
-    await props.onSave(trimmed);
+    if (!trimmed || isSaving) return;
+    setIsSaving(true);
+    try {
+      await props.onSave(trimmed);
+    } catch {
+      // Consumers are expected to report their own errors (e.g. via
+      // showErrorToast) inside onSave. This catch exists only so a
+      // consumer that forgets to guard doesn't leave an unhandled
+      // promise rejection here.
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const content = (
@@ -107,7 +121,7 @@ export function BottomSheet(props: BottomSheetProps) {
                   props.keyboardType === "numeric" ||
                   props.keyboardType === "decimal-pad"
                 ) {
-                  setValue(v.replace(/[^0-9.]/g, ""));
+                  setValue(sanitizeDecimalInput(v));
                 } else {
                   setValue(v);
                 }
@@ -130,13 +144,18 @@ export function BottomSheet(props: BottomSheetProps) {
                 className="h-12 flex-1 rounded-xl bg-primary"
                 onPress={handleSave}
                 disabled={
+                  isSaving ||
                   !value.trim() ||
                   (props.validate ? !props.validate(value) : false)
                 }
               >
-                <Text className="text-sm font-semibold text-primary-foreground">
-                  {props.submitLabel}
-                </Text>
+                {isSaving ? (
+                  <ActivityIndicator color={COLORS.WHITE} />
+                ) : (
+                  <Text className="text-sm font-semibold text-primary-foreground">
+                    {props.submitLabel}
+                  </Text>
+                )}
               </Button>
             </View>
           </>

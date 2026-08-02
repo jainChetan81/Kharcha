@@ -14,8 +14,9 @@ import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useEditSubscription } from "@/hooks/use-edit-subscription";
-import { COLORS } from "@/lib/constants";
-import { formatBillingDays, parseBillingDays } from "@/lib/db/subscriptions";
+import { formatBillingDays, parseBillingDays } from "@/hooks/use-subscriptions";
+import { COLORS, TRANSACTION_TYPE } from "@/lib/constants";
+import { sanitizeDecimalInput } from "@/lib/format";
 import { cn, isIOS } from "@/lib/utils";
 import {
   amountStringSchema,
@@ -120,7 +121,7 @@ export default function EditSubscriptionScreen() {
                 keyboardType="decimal-pad"
                 value={field.state.value}
                 onChangeText={(v) => {
-                  field.handleChange(v.replace(/[^0-9.]/g, ""));
+                  field.handleChange(sanitizeDecimalInput(v));
                 }}
                 className="h-14 text-2xl font-bold"
                 placeholderTextColor={COLORS.MUTED}
@@ -146,21 +147,23 @@ export default function EditSubscriptionScreen() {
           </Text>
         </View>
 
-        <form.Field name="categoryId">
-          {(field) => (
-            <View className="mb-5">
-              <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
-                Category
-              </Text>
-              <ChipPicker
-                items={categories}
-                selectedId={field.state.value}
-                onSelect={(id) => field.handleChange(id)}
-                allLabel="None"
-              />
-            </View>
-          )}
-        </form.Field>
+        {subscription.type !== TRANSACTION_TYPE.INVESTMENT && (
+          <form.Field name="categoryId">
+            {(field) => (
+              <View className="mb-5">
+                <Text className="mb-1.5 text-sm font-medium text-muted-foreground">
+                  Category
+                </Text>
+                <ChipPicker
+                  items={categories}
+                  selectedId={field.state.value}
+                  onSelect={(id) => field.handleChange(id)}
+                  allLabel="None"
+                />
+              </View>
+            )}
+          </form.Field>
+        )}
 
         <form.Field name="sourceId">
           {(field) => (

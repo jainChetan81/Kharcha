@@ -8,8 +8,8 @@ import {
   getMonthlySummary,
   getPreviousMonthSpendAtDay,
   getTodaySpend,
+  getTotalMonthlyBudget,
 } from "@/lib/db";
-import { getBudgets } from "@/lib/db/budgets";
 import { getConfig } from "@/lib/db/config";
 import { CURRENCIES, type CurrencyCode } from "@/lib/format";
 
@@ -42,7 +42,7 @@ export async function buildWidgetPayload(): Promise<WidgetData> {
     insights,
     todaySpend,
     currencyCode,
-    budgets,
+    totalBudget,
     activeTag,
   ] = await Promise.all([
     getMonthlySummary(yearMonth),
@@ -50,7 +50,7 @@ export async function buildWidgetPayload(): Promise<WidgetData> {
     getMonthlyInsights(year, month),
     getTodaySpend(),
     getConfig(CONFIG_KEYS.CURRENCY),
-    getBudgets(),
+    getTotalMonthlyBudget(),
     getActiveTag(),
   ]);
 
@@ -73,10 +73,7 @@ export async function buildWidgetPayload(): Promise<WidgetData> {
     daysElapsed: insights.daysElapsed,
     daysInMonth: insights.daysInMonth,
     todaySpend,
-    totalBudget:
-      budgets.length > 0 && budgets.length >= breakdown.length
-        ? budgets.reduce((sum, b) => sum + b.amount, 0)
-        : null,
+    totalBudget: totalBudget > 0 ? totalBudget : null,
     previousMonthSpendAtThisPoint: prevSpend,
     activeTagName: activeTag?.name ?? null,
     lastUpdated: new Date().toISOString(),

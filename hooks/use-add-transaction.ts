@@ -36,7 +36,12 @@ import {
 import { safeRecomputeHolding } from "@/lib/db";
 import { getConfig, updateConfig } from "@/lib/db/config";
 import type { Source } from "@/lib/db/types";
-import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
+import {
+  ERROR_TYPE,
+  FIREBASE_EVENTS,
+  logEvent,
+  logFirebaseError,
+} from "@/lib/firebase";
 import type { GeminiParsedTransaction } from "@/lib/gemini/client";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 
@@ -144,9 +149,14 @@ export function useAddTransaction(): UseAddTransactionReturn {
 
   useEffect(() => {
     let alive = true;
-    getConfig(CONFIG_KEYS.AI_HINT_DISMISSED).then((v) => {
-      if (alive) setHintDismissed(v === "1");
-    });
+    getConfig(CONFIG_KEYS.AI_HINT_DISMISSED)
+      .then((v) => {
+        if (alive) setHintDismissed(v === "1");
+      })
+      .catch(() => {
+        // Config read failed — don't block the app, leave the hint dismissed
+        // (the safer default: better to hide a helpful hint than to throw).
+      });
     return () => {
       alive = false;
     };
@@ -334,18 +344,30 @@ export function useAddTransaction(): UseAddTransactionReturn {
     }
 
     if (value.type === TRANSACTION_TYPE.EXPENSE && value.categoryId) {
-      const budget = await getBudgetForCategory(value.categoryId);
-      if (budget) {
-        const yearMonth = value.date.slice(0, 7);
-        const spent = await getCategorySpent(value.categoryId, yearMonth);
-        const totalSpent = spent + Number(value.amount);
-        if (totalSpent >= budget) {
-          showErrorToast(`⚠️ ${value.merchant || "Category"} budget exceeded`);
-        } else if (totalSpent >= budget * BUDGET_CRITICAL_THRESHOLD) {
-          showErrorToast(
-            `⚠️ Approaching ${value.merchant || "category"} budget`,
-          );
+      try {
+        const budget = await getBudgetForCategory(value.categoryId);
+        if (budget) {
+          const yearMonth = value.date.slice(0, 7);
+          const spent = await getCategorySpent(value.categoryId, yearMonth);
+          const totalSpent = spent + Number(value.amount);
+          if (totalSpent >= budget) {
+            showErrorToast(`⚠️ ${value.merchant || "Category"} budget exceeded`);
+          } else if (totalSpent >= budget * BUDGET_CRITICAL_THRESHOLD) {
+            showErrorToast(
+              `⚠️ Approaching ${value.merchant || "category"} budget`,
+            );
+          }
         }
+      } catch (error) {
+        // Non-critical: the transaction already saved and already showed its
+        // own success toast. A budget-check failure must never surface as
+        // "Failed to save" or skip the setAiParsedBy/router.back() below —
+        // mirrors safeRecomputeHolding's swallow-and-report pattern
+        // (lib/db/holdings.ts).
+        logFirebaseError(error, {
+          error_type: ERROR_TYPE.DB,
+          operation: "budgetThresholdCheck",
+        });
       }
     }
 
@@ -354,32 +376,44 @@ export function useAddTransaction(): UseAddTransactionReturn {
   }
 
   async function handleTransactionSubmit(value: TransactionFormValues) {
-    try {
-      const merchant = value.merchant?.trim();
-      // Skip duplicate check when no merchant is provided — merchant is the
-      // strongest dedupe signal, and date+amount alone produce too many
-      // false positives (e.g. multiple ₹100 cash expenses on the same day).
-      if (merchant) {
-        const isDuplicate = await findDuplicateTransaction(
+    const merchant = value.merchant?.trim();
+    // Skip duplicate check when no merchant is provided — merchant is the
+    // strongest dedupe signal, and date+amount alone produce too many
+    // false positives (e.g. multiple ₹100 cash expenses on the same day).
+    if (merchant) {
+      let isDuplicate: boolean;
+      try {
+        isDuplicate = await findDuplicateTransaction(
           value.date,
           Number(value.amount),
           merchant,
         );
-        if (isDuplicate) {
-          pendingTxRef.current = value;
-          setDupSheetVisible(true);
-          return;
-        }
+      } catch (err) {
+        showErrorToast(FAILED_TO_SAVE, err);
+        return;
       }
+      if (isDuplicate) {
+        pendingTxRef.current = value;
+        setDupSheetVisible(true);
+        return;
+      }
+    }
+    try {
       await commitTransaction(value);
-    } catch (err) {
-      showErrorToast(FAILED_TO_SAVE, err);
+    } catch {
+      // useInsertTransaction's onError already toasted "Transaction failed".
     }
   }
 
   async function handleSubscriptionSubmit(value: SubscriptionFormSubmitValue) {
     try {
       await addSubMutation.mutateAsync(value);
+    } catch {
+      // useAddSubscription's onError already toasted
+      // "Subscription update failed".
+      return;
+    }
+    try {
       await processSubscriptions();
       await queryClient.invalidateQueries();
       showSuccessToast(
@@ -404,8 +438,8 @@ export function useAddTransaction(): UseAddTransactionReturn {
     if (value) {
       try {
         await commitTransaction(value);
-      } catch (err) {
-        showErrorToast(FAILED_TO_SAVE, err);
+      } catch {
+        // useInsertTransaction's onError already toasted "Transaction failed".
       }
     }
   }

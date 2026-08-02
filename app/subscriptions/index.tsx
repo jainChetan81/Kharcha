@@ -25,6 +25,8 @@ import { Text } from "@/components/ui/text";
 import { useCurrency } from "@/hooks/use-currency";
 import { useRefresh } from "@/hooks/use-refresh";
 import {
+  formatBillingDays,
+  parseBillingDays,
   type SubscriptionAuditRow,
   type SubscriptionCandidate,
   type SubscriptionRow,
@@ -44,10 +46,9 @@ import {
   SCROLL_BOTTOM_PADDING,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { formatBillingDays, parseBillingDays } from "@/lib/db/subscriptions";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 import { historyHref, parseDate } from "@/lib/format";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { showSuccessToast } from "@/lib/toast";
 import { getRefreshControlProps } from "@/lib/utils";
 
 export default function SubscriptionsScreen() {
@@ -82,8 +83,9 @@ export default function SubscriptionsScreen() {
         try {
           await deleteMutation.mutateAsync(sub.id);
           showSuccessToast("Subscription deleted");
-        } catch (err) {
-          showErrorToast("Failed", err);
+        } catch {
+          // useDeleteSubscription's onError already toasted
+          // "Subscription update failed".
         }
       },
     );

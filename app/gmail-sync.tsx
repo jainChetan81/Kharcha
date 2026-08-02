@@ -14,7 +14,7 @@ import { StepCard } from "@/components/ui/step-card";
 import { SwitchRow } from "@/components/ui/switch-row";
 import { Text } from "@/components/ui/text";
 import { useGmailSyncUi } from "@/hooks/use-gmail-sync-ui";
-import { copyMaskedToClipboard } from "@/lib/clipboard";
+import { copyMaskedToClipboard, maskSensitivePii } from "@/lib/clipboard";
 import {
   COLORS,
   EMAIL_LOG_STATUS,
@@ -458,7 +458,7 @@ function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
               </Pressable>
             </View>
             <Text className="text-[10px] text-foreground" selectable>
-              {log.body}
+              {maskSensitivePii(log.body)}
             </Text>
           </View>
         )}

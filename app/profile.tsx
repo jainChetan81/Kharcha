@@ -44,7 +44,7 @@ import {
 } from "@/hooks/use-transactions";
 import { COLORS, SCREENS, SCROLL_BOTTOM_PADDING } from "@/lib/constants";
 import { getInitials } from "@/lib/format";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { showSuccessToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 export default function ProfileScreen() {
@@ -246,21 +246,7 @@ export default function ProfileScreen() {
           <Icon as={Trash2} className="size-4 text-negative-text" />
         </Pressable>
         <Pressable
-          onPress={async () => {
-            try {
-              const seeded = await seedMutation.mutateAsync();
-              if (seeded) {
-                showSuccessToast("Sample data loaded");
-              } else {
-                showErrorToast(
-                  "Data already exists",
-                  "Clear all transactions first",
-                );
-              }
-            } catch (err) {
-              showErrorToast("Failed to load sample data", err);
-            }
-          }}
+          onPress={() => seedMutation.mutate()}
           accessibilityRole="button"
           className="mx-5 mb-2 flex-row items-center rounded-xl border border-border bg-card px-4 py-3"
         >

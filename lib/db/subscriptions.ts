@@ -340,7 +340,6 @@ export async function processSubscriptions(): Promise<string[]> {
             subscription_id: sub.id,
             holding_id: sub.holding_id,
             kind: sub.investment_kind ?? INVESTMENT_KIND.BUY,
-            amount: sub.amount,
           });
         }
 

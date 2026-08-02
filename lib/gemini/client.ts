@@ -197,6 +197,12 @@ function errorResult(
   return { parsed: null, raw, error, errorMessage };
 }
 
+const GEMINI_RETRY_DELAY_MS = 1_000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function callGemini<T>(
   userContent: string,
   schema: object,
@@ -207,6 +213,13 @@ async function callGemini<T>(
 
   const first = await callGeminiOnce<T>(userContent, schema);
   if (first.error && TRANSIENT_ERRORS.includes(first.error)) {
+    // RATE_LIMITED means the server explicitly asked us to slow down —
+    // retrying instantly defeats the point. SERVICE_UNAVAILABLE/TIMEOUT keep
+    // retrying immediately: a fixed pause won't fix a real outage, and the
+    // user is watching a spinner on this flow.
+    if (first.error === GEMINI_ERROR.RATE_LIMITED) {
+      await delay(GEMINI_RETRY_DELAY_MS);
+    }
     return callGeminiOnce<T>(userContent, schema);
   }
   return first;
@@ -393,9 +406,10 @@ function resolveInrAmount(parsed: {
   original_amount: number;
   amount_inr: number | null;
 }): number {
-  if (parsed.currency === "INR") return parsed.amount;
+  const currency = parsed.currency.trim().toUpperCase();
+  if (currency === "INR") return parsed.amount;
   if (parsed.amount_inr !== null) return parsed.amount_inr;
-  const rate = FALLBACK_FX_RATES[parsed.currency];
+  const rate = FALLBACK_FX_RATES[currency];
   if (!rate) return parsed.amount;
   return Math.round(parsed.original_amount * rate * 100) / 100;
 }

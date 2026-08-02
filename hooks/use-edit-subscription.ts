@@ -12,7 +12,7 @@ import {
 import { showDeleteConfirm } from "@/lib/alerts";
 import { TRANSACTION_TYPE } from "@/lib/constants";
 import { parseBillingDays } from "@/lib/db/subscriptions";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { showSuccessToast } from "@/lib/toast";
 
 export function useEditSubscription() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -61,8 +61,9 @@ export function useEditSubscription() {
         });
         showSuccessToast("Subscription updated");
         router.back();
-      } catch (err) {
-        showErrorToast("Failed to update", err);
+      } catch {
+        // useUpdateSubscription's onError already toasted
+        // "Subscription update failed".
       }
     },
   });
@@ -81,8 +82,9 @@ export function useEditSubscription() {
           await deleteMutation.mutateAsync(subscriptionId);
           showSuccessToast("Subscription deleted");
           router.back();
-        } catch (err) {
-          showErrorToast("Failed to delete", err);
+        } catch {
+          // useDeleteSubscription's onError already toasted
+          // "Subscription update failed".
         }
       },
     );

@@ -4,10 +4,12 @@ import {
   addSubscription,
   deleteSubscription,
   detectRecurringMerchants,
+  formatBillingDays,
   getActiveSubscriptionsTotal,
   getSubscriptionById,
   getSubscriptions,
   getUnusedSubscriptions,
+  parseBillingDays,
   processSubscriptions,
   type SubscriptionAuditRow,
   type SubscriptionCandidate,
@@ -21,8 +23,9 @@ import { showErrorToast } from "@/lib/toast";
 import { useInvalidateTransactions } from "./use-transactions";
 
 export type { SubscriptionAuditRow, SubscriptionCandidate, SubscriptionRow };
-// Re-export for imperative calls
-export { processSubscriptions };
+// Re-export for imperative calls and pure helpers (screens must not
+// import lib/db/ directly)
+export { formatBillingDays, parseBillingDays, processSubscriptions };
 
 function useInvalidateSubscriptions() {
   const queryClient = useQueryClient();

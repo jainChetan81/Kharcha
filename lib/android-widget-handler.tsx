@@ -1,3 +1,4 @@
+import { File, Paths } from "expo-file-system";
 import type { WidgetTaskHandlerProps } from "react-native-android-widget";
 import { requestWidgetUpdate } from "react-native-android-widget";
 import {
@@ -15,26 +16,17 @@ const WIDGET_MEDIUM = "KharchaMediumWidget";
 const HANDLER_DEBOUNCE_MS = 400;
 const lastRenderedAt = new Map<string, number>();
 
-function getCachePath(): string | null {
-  try {
-    const FileSystem = require("expo-file-system") as {
-      documentDirectory: string | null;
-    };
-    if (!FileSystem.documentDirectory) return null;
-    return `${FileSystem.documentDirectory}widget-data.json`;
-  } catch {
-    return null;
-  }
+const CACHE_FILENAME = "widget-data.json";
+
+function getCacheFile(): File {
+  return new File(Paths.document, CACHE_FILENAME);
 }
 
 async function readCachedWidgetData(): Promise<AndroidWidgetData | null> {
   try {
-    const path = getCachePath();
-    if (!path) return null;
-    const FileSystem = require("expo-file-system") as {
-      readAsStringAsync: (path: string) => Promise<string>;
-    };
-    const json = await FileSystem.readAsStringAsync(path);
+    const file = getCacheFile();
+    if (!file.exists) return null;
+    const json = await file.text();
     return JSON.parse(json) as AndroidWidgetData;
   } catch {
     return null;
@@ -43,12 +35,7 @@ async function readCachedWidgetData(): Promise<AndroidWidgetData | null> {
 
 async function writeCachedWidgetData(data: AndroidWidgetData): Promise<void> {
   try {
-    const path = getCachePath();
-    if (!path) return;
-    const FileSystem = require("expo-file-system") as {
-      writeAsStringAsync: (path: string, data: string) => Promise<void>;
-    };
-    await FileSystem.writeAsStringAsync(path, JSON.stringify(data));
+    getCacheFile().write(JSON.stringify(data));
   } catch {
     // non-critical
   }

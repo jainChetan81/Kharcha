@@ -40,9 +40,8 @@ import {
 } from "@/lib/db";
 import { getBudgetForCategory, getCategorySpent } from "@/lib/db/budgets";
 import { deleteConfig } from "@/lib/db/config";
-import { env } from "@/lib/env";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
-import { pushTransactionToMini } from "@/lib/mini-sync";
+import { isConfigured, pushTransactionToMini } from "@/lib/mini-sync";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { syncWidgetData } from "@/lib/widget";
 
@@ -405,8 +404,7 @@ export function useInsertTransaction() {
       if (
         isManualEntry &&
         isPushableType &&
-        env.MINI_API_URL &&
-        env.MINI_API_TOKEN &&
+        isConfigured() &&
         variables.merchant
       ) {
         // Best-effort, fire-and-forget push: the error is never surfaced to
@@ -487,8 +485,9 @@ export function useClearTransactionsWithConfirm() {
             try {
               await mutation.mutateAsync();
               showSuccessToast("All transactions deleted");
-            } catch (err) {
-              showErrorToast("Failed", err);
+            } catch {
+              // useClearAllTransactions's onError already toasted
+              // "Transaction failed".
             }
           },
         },
@@ -529,7 +528,8 @@ export function useSwipeDelete() {
       await deleteMutation.mutateAsync(item.id);
       showSuccessToast("Transaction deleted");
     } catch {
-      showErrorToast("Failed to delete");
+      // useDeleteTransaction's onError already toasted "Transaction failed"
+      // (and fired the error haptic) — don't toast again here.
     }
   };
 }
@@ -538,9 +538,13 @@ export function useSeedSampleData() {
   const invalidate = useInvalidateTransactions();
   return useMutation({
     mutationFn: seedSampleData,
-    onSuccess: () => {
-      invalidate();
-      showSuccessToast("Sample data seeded");
+    onSuccess: (seeded) => {
+      if (seeded) {
+        invalidate();
+        showSuccessToast("Sample data seeded");
+      } else {
+        showErrorToast("Data already exists", "Clear all transactions first");
+      }
     },
     onError: (err) => {
       showErrorToast("Sample data failed", err);

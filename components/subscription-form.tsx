@@ -1,5 +1,4 @@
 import { useForm } from "@tanstack/react-form";
-import { useQuery } from "@tanstack/react-query";
 import {
   ActivityIndicator,
   Pressable,
@@ -13,15 +12,15 @@ import { FieldError } from "@/components/ui/field-error";
 import { FormLabel } from "@/components/ui/form-label";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { useCategoriesByType } from "@/hooks/use-categories";
 import { useAllHoldings } from "@/hooks/use-holdings";
 import { useInlineAdders } from "@/hooks/use-inline-adders";
+import { useAllSources } from "@/hooks/use-sources";
 import {
   COLORS,
   isUnitlessInstrument,
-  QUERY_KEYS,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { getAllSources, getCategoriesByType } from "@/lib/db";
 import { formatBillingDays } from "@/lib/db/subscriptions";
 import { sanitizeDecimalInput } from "@/lib/format";
 import { showErrorToast } from "@/lib/toast";
@@ -67,15 +66,10 @@ export function SubscriptionForm({
   const { data: allHoldings = [] } = useAllHoldings();
   const openHoldings = allHoldings.filter((h) => h.is_closed === 0);
 
-  const { data: categories = [] } = useQuery({
-    queryKey: [QUERY_KEYS.CATEGORIES, TRANSACTION_TYPE.EXPENSE],
-    queryFn: () => getCategoriesByType(TRANSACTION_TYPE.EXPENSE),
-  });
-
-  const { data: sources = [] } = useQuery({
-    queryKey: [QUERY_KEYS.SOURCES],
-    queryFn: getAllSources,
-  });
+  const { data: categories = [] } = useCategoriesByType(
+    TRANSACTION_TYPE.EXPENSE,
+  );
+  const { data: sources = [] } = useAllSources();
 
   const form = useForm({
     defaultValues: {

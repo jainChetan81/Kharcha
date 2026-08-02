@@ -21,8 +21,20 @@ const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
 // AI parsing is optional — a missing key degrades gracefully
 // (callGemini returns NO_API_KEY), so we don't block startup with an alert.
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? "";
-// Mini sync (personal Mac mini pipeline). Optional — if either value is empty,
-// the feature is treated as not configured and degrades to a no-op.
+// Mini sync (personal Mac mini pipeline). Optional — if either value is
+// empty, the feature is treated as not configured and degrades to a no-op.
+// MINI_API_TOKEN ships in the client bundle exactly like GEMINI_API_KEY
+// above (EXPO_PUBLIC_* is inlined into the JS, extractable from a built
+// IPA/APK) — and it is the more dangerous of the two secrets: it grants
+// both read access (GET /transactions returns the full parsed SMS /
+// transaction history, lib/mini-sync.ts's fetchMiniTransactions) and write
+// access (POST /transactions can push fabricated rows, pushTransactionToMini)
+// to the user's personal sync pipeline, not just a rate-limited AI call.
+// Acceptable ONLY because the mini server is tailnet-only — "the mini is
+// canonical, the app is a client, nothing is exposed off the tailnet"
+// (docs/V3_SPEC.md) — a leaked token is unusable to anyone not already on
+// that Tailscale network. If the mini is ever exposed off-tailnet, this
+// token needs real scoping (short-lived, rotatable) before that happens.
 const MINI_API_URL = process.env.EXPO_PUBLIC_MINI_API_URL ?? "";
 const MINI_API_TOKEN = process.env.EXPO_PUBLIC_MINI_API_TOKEN ?? "";
 export const env = {

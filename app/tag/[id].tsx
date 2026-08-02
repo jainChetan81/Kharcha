@@ -24,12 +24,11 @@ import {
   DATE_DISPLAY_FORMAT,
   DATE_TIME_FORMAT,
   editScreen,
-  TAG_SCOPE_COPY,
 } from "@/lib/constants";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
 import { buildListData, type ListItem } from "@/lib/format";
 import { tagStatus } from "@/lib/tag-status";
-import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { showSuccessToast } from "@/lib/toast";
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -271,8 +270,9 @@ function TagDetailLoaded({
             await updateMutation.mutateAsync({ id: tagId, ...values });
             setEditVisible(false);
             showSuccessToast("Schedule updated");
-          } catch (err) {
-            showErrorToast(TAG_SCOPE_COPY.failedToUpdate, err);
+          } catch {
+            // useUpdateSchedule's onError already toasted
+            // "Failed to update schedule".
           }
         }}
       />

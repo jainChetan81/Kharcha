@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInvalidateTransactions } from "@/hooks/use-transactions";
 import { CONFIG_KEYS, QUERY_KEYS } from "@/lib/constants";
 import { getAllConfig, updateConfig } from "@/lib/db/config";
-import { env } from "@/lib/env";
 import { FIREBASE_EVENTS, logEvent } from "@/lib/firebase";
-import { syncMiniTransactions } from "@/lib/mini-sync";
+import {
+  deriveMiniSyncEnabled,
+  isConfigured,
+  syncMiniTransactions,
+} from "@/lib/mini-sync";
 
 export function useMiniSyncConfig() {
   const queryClient = useQueryClient();
@@ -20,13 +24,9 @@ export function useMiniSyncConfig() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CONFIG] }),
   });
 
-  const configured = Boolean(env.MINI_API_URL) && Boolean(env.MINI_API_TOKEN);
+  const configured = isConfigured();
   const enabledFlag = raw?.[CONFIG_KEYS.MINI_SYNC_ENABLED];
-  // Default to enabled when the mini env vars are configured and the user
-  // hasn't explicitly toggled it off. This avoids needing a settings screen
-  // in v1 while still letting a future toggle disable the feature.
-  const enabled =
-    enabledFlag === "1" || (enabledFlag === undefined && configured);
+  const enabled = deriveMiniSyncEnabled(configured, enabledFlag);
   const lastId = raw?.[CONFIG_KEYS.MINI_SYNC_LAST_ID] ?? null;
 
   const setEnabled = async (value: boolean): Promise<void> => {
@@ -36,18 +36,10 @@ export function useMiniSyncConfig() {
     });
   };
 
-  const setLastId = async (id: number): Promise<void> => {
-    await mutation.mutateAsync({
-      key: CONFIG_KEYS.MINI_SYNC_LAST_ID,
-      value: String(id),
-    });
-  };
-
   return {
     enabled,
     lastId,
     setEnabled,
-    setLastId,
   };
 }
 
@@ -55,7 +47,7 @@ export function useMiniSyncConfig() {
 // re-walks the mini from the beginning (used by the home-screen sync button)
 // — safe because the pull path dedupes per row.
 export function useMiniSync(options?: { full?: boolean }) {
-  const queryClient = useQueryClient();
+  const invalidateTransactions = useInvalidateTransactions();
   const full = options?.full ?? false;
 
   return useMutation({
@@ -73,25 +65,7 @@ export function useMiniSync(options?: { full?: boolean }) {
       logEvent(FIREBASE_EVENTS.MINI_SYNC_COMPLETED, {
         count: String(data.result.added),
       });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TRANSACTIONS] });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TRANSACTIONS_PAGINATED],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.MONTHLY_SUMMARY],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.CATEGORY_BREAKDOWN],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.REIMBURSEMENT_SUMMARY],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TAG_BREAKDOWN],
-      });
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TAG_BREAKDOWN_ALL_TIME],
-      });
+      invalidateTransactions();
     },
     onError: () => {
       logEvent(FIREBASE_EVENTS.MINI_SYNC_FAILED);

@@ -1,6 +1,7 @@
 import { View } from "react-native";
 import { Text } from "@/components/ui/text";
 import type { InsightsData } from "@/hooks/use-insights-data";
+import { getSpendingChangeTone } from "@/lib/spending-change";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -99,22 +100,12 @@ function renderBadge(
   if (change === null || change === "new") {
     return { label: "First month tracking", tone: "muted" };
   }
-  if (change === "huge-up") {
-    return { label: `↑ vs ${prevMonthLabel}`, tone: "up" };
-  }
-  if (change === "huge-down") {
-    return { label: `↓ vs ${prevMonthLabel}`, tone: "down" };
-  }
-  if (change < 0) {
-    return {
-      label: `↓${Math.abs(change)}% vs ${prevMonthLabel}`,
-      tone: "down",
-    };
-  }
-  if (change > 0) {
-    return { label: `↑${change}% vs ${prevMonthLabel}`, tone: "up" };
-  }
-  return { label: `Same as ${prevMonthLabel}`, tone: "muted" };
+  const tone = getSpendingChangeTone(change);
+  if (change === "huge-up") return { label: `↑ vs ${prevMonthLabel}`, tone };
+  if (change === "huge-down") return { label: `↓ vs ${prevMonthLabel}`, tone };
+  if (tone === "muted") return { label: `Same as ${prevMonthLabel}`, tone };
+  const arrow = tone === "up" ? "↑" : "↓";
+  return { label: `${arrow}${Math.abs(change)}% vs ${prevMonthLabel}`, tone };
 }
 
 function renderTopCategory(data: InsightsData, fmt: (n: number) => string) {
