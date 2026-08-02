@@ -351,19 +351,22 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
           continue;
         }
 
+        // Captured into a local so TypeScript's null-narrowing survives
+        // inside the withTransactionAsync closure below — `outcome.parsed`
+        // itself re-widens to `ParsedTransaction | null` across a closure
+        // boundary even though it's never reassigned.
+        const parsed = outcome.parsed;
+
         const trimmedBody = body.trim();
         const note = trimmedBody
           ? trimmedBody.slice(0, MAX_NOTE_CHARS)
           : GMAIL_SYNC_NOTE;
 
-        const matchedCategoryId = matchCategoryId(
-          outcome.parsed.category,
-          outcome.parsed.type,
-        );
+        const matchedCategoryId = matchCategoryId(parsed.category, parsed.type);
 
         // If the parsed date is null, use the email's internalDate as fallback
-        const fallbackDate = outcome.parsed.date
-          ? outcome.parsed.date
+        const fallbackDate = parsed.date
+          ? parsed.date
           : msgData.internalDate
             ? format(new Date(Number(msgData.internalDate)), "yyyy-MM-dd")
             : format(new Date(), "yyyy-MM-dd");
@@ -386,8 +389,8 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             return;
           }
           await db.insert(transactions).values({
-            amount: outcome.parsed.amount,
-            merchant: outcome.parsed.merchant,
+            amount: parsed.amount,
+            merchant: parsed.merchant,
             category_id: matchedCategoryId,
             source_id: null,
             gmail_message_id: message.id,
@@ -398,7 +401,7 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
             date: fallbackDate,
             // store the original email body so the user can see exactly what was parsed
             note,
-            type: outcome.parsed.type,
+            type: parsed.type,
             source_type: "synced",
           });
         });
