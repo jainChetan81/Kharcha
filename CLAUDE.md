@@ -55,7 +55,7 @@ personal expense tracking app for ios + android (react native / expo).
 
 ## conventions
 
-- nativewind classes only, no inline `style` prop. use `cn()` from `@/lib/utils` for conditional/dynamic classes. only exception: third-party native components (e.g. DateTimePicker) that don't support className
+- nativewind classes only, no inline `style` prop. use `cn()` from `@/lib/utils` for conditional/dynamic classes. exceptions: third-party native components (e.g. DateTimePicker) that don't support className; and runtime-computed values with no static nativewind equivalent (dynamic hex colors, numeric heights/insets from props or `useSafeAreaInsets()`) — keep these narrowly scoped and comment why
 - no any types
 - functional components only
 - tanstack query for all data fetching
