@@ -849,8 +849,8 @@ export function TransactionForm({
               }
               setNewTagSheetVisible(false);
               showSuccessToast("Tag added");
-            } catch (err) {
-              showErrorToast("Failed to add tag", err);
+            } catch {
+              // useAddTag's onError already toasted.
             }
           }}
         />
