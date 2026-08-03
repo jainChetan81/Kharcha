@@ -47,6 +47,7 @@ Mini project: `~/apps/kharcha-mini` (separate repo, Bun + TypeScript, not this o
 
 ### 3. mini: access — ✅ live
 - API on `127.0.0.1:8300`, bearer-token auth (Keychain-stored, `kharcha-mini-api-token`), `tailscale serve` (tailnet-only, **never funnel** — this bit us once already, see known limitations)
+  - **superseded 2026-08-03:** the bearer token is gone (kharcha-mini `f2ceec3`, `df2d3ac`). Every route is open and an `Authorization` header is ignored rather than validated. The tailnet boundary is now the whole of the access control, which makes the never-funnel rule above load-bearing rather than merely advisable. The rest of this document stands as the 2026-07-15 record.
 - `net-watchdog.sh` extended to guard port 8300 against a funnel rule
 - daily telegram digest via hermes: **drafted, not applied** (`scripts/digest-telegram.sh` + proposed `jobs.json` entry exist in the mini repo, review before wiring into the live hermes config)
 - dropped from v1 per plan: `POST /sync/run` on-demand trigger (marginal value over the 15-min poll)

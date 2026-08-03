@@ -127,7 +127,6 @@ the app's paste sheet (and any future notification-forwarding path) calls the mi
 
 ```
 POST /parse
-Authorization: Bearer <existing kharcha-mini-api-token>
 Content-Type: application/json
 
 { "text": "<raw pasted SMS/notification/email snippet>",
@@ -146,7 +145,7 @@ response `200`:
 - runs the same pipeline as ingestion (guard → regex → alias → AI → cross-check) minus the allowlist (pasted text has no sender). `is_transaction: false` returns `200` with `parsed.is_transaction: false` — the app shows "not a transaction", it is not an error.
 - `store: false` (the paste-sheet default): pure function, nothing persisted, no guid. the app shows the preview, the user confirms/edits, and the confirmed transaction is saved locally + pushed via the existing `POST /transactions` — the normal push/dedupe path. this avoids double-insert and keeps the mini's transactions table free of speculative rows.
 - `store: true` reserved for future headless callers (notification forwarder) that want parse+persist in one hop; guid is `parse-<sha256(text)>` for idempotency.
-- errors: `401` bad token, `400` empty/oversized text (cap 4000 chars), `502` when both AI and regex produced nothing usable (`{"error":"UNPARSEABLE"}`), `503` over daily budget cap.
+- errors: `400` empty/oversized text (cap 4000 chars), `502` when both AI and regex produced nothing usable (`{"error":"UNPARSEABLE"}`), `503` over daily budget cap. No `401` — the mini has no auth (kharcha-mini `f2ceec3`, `df2d3ac`): every route is open and an `Authorization` header is ignored rather than validated, so `/parse` inherits that model and the tailnet boundary is the whole of the access control. If the mini is ever exposed off-tailnet, auth returns across every route at once, `/parse` included, and this bullet needs rewriting alongside `lib/env.ts`.
 
 **app-side behavior:**
 

@@ -34,9 +34,14 @@ const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? "";
 // the access control — reachability is authorisation. If the mini is ever
 // exposed off the tailnet, it needs real auth again before that happens,
 // and this app needs a credential to send with it.
+// `??` not `||`, so the documented opt-out above stays reachable: an unset var
+// inlines to undefined and takes the default, while an explicitly empty
+// EXPO_PUBLIC_MINI_API_URL survives as "" and disables the feature via
+// isConfigured(). `||` would swallow the empty string and make opting out
+// impossible.
 const DEFAULT_MINI_API_URL = "https://mini.bullhead-mine.ts.net:8300";
 const MINI_API_URL =
-  process.env.EXPO_PUBLIC_MINI_API_URL || DEFAULT_MINI_API_URL;
+  process.env.EXPO_PUBLIC_MINI_API_URL ?? DEFAULT_MINI_API_URL;
 export const env = {
   GOOGLE_IOS_CLIENT_ID: warnIfMissing(
     "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID",
