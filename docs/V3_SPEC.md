@@ -150,7 +150,7 @@ response `200`:
 
 **app-side behavior:**
 
-- new `lib/mini-parse.ts`: thin fetch wrapper, same env config (`MINI_API_URL`, `MINI_API_TOKEN`), 15s timeout, no retry (the user is staring at a spinner; fail fast).
+- new `lib/mini-parse.ts`: thin fetch wrapper, same env config (`MINI_API_URL` — the mini dropped bearer auth in kharcha-mini f2ceec3/df2d3ac, so there is no token to send), 15s timeout, no retry (the user is staring at a spinner; fail fast).
 - **offline / off-tailnet degradation:** on network error or timeout, the paste sheet falls back to the app's local `lib/parsers/` regex fast-path (which is kept for exactly this) and labels the result "parsed offline — lower accuracy". if regex also fails, the sheet drops into the manual-entry form with the raw text pre-filled in the note. no queued retry — pasting again when back on the tailnet is the retry.
 - **what stays in the app:** `lib/parsers/` (offline fallback), the paste sheet UI, manual entry, local db + sync client, insights. **what goes:** `lib/gemini/`, `EXPO_PUBLIC_GEMINI_API_KEY`, and — once phase 3 has soaked — the frozen gmail sync + oauth (the v2 "remove later" list finally executes, contingent on step-5-not-needed holding).
 
