@@ -64,8 +64,13 @@ function emptyResult(): MiniSyncResult {
   return { added: 0, skipped: 0, failed: 0 };
 }
 
+// The mini server dropped bearer auth entirely (kharcha-mini f2ceec3,
+// df2d3ac): every route is open and an incoming Authorization header is
+// ignored rather than validated, so there is no 401 to react to. Access
+// control is now purely the tailnet boundary. "Configured" therefore means
+// nothing more than knowing where the mini is.
 export function isConfigured(): boolean {
-  return Boolean(env.MINI_API_URL) && Boolean(env.MINI_API_TOKEN);
+  return Boolean(env.MINI_API_URL);
 }
 
 // Shared by the settings hook (reads getAllConfig()'s cache, where an unset
@@ -107,7 +112,6 @@ async function fetchMiniTransactions(since: number | null): Promise<unknown[]> {
   try {
     const response = await fetch(url.toString(), {
       headers: {
-        Authorization: `Bearer ${env.MINI_API_TOKEN}`,
         "Content-Type": "application/json",
       },
       signal: controller.signal,
@@ -365,7 +369,6 @@ export async function pushTransactionToMini(
     const response = await fetch(`${env.MINI_API_URL}/transactions`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${env.MINI_API_TOKEN}`,
         "Content-Type": "application/json",
       },
       signal: controller.signal,

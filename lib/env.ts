@@ -21,22 +21,27 @@ const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
 // AI parsing is optional — a missing key degrades gracefully
 // (callGemini returns NO_API_KEY), so we don't block startup with an alert.
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? "";
-// Mini sync (personal Mac mini pipeline). Optional — if either value is
-// empty, the feature is treated as not configured and degrades to a no-op.
-// MINI_API_TOKEN ships in the client bundle exactly like GEMINI_API_KEY
-// above (EXPO_PUBLIC_* is inlined into the JS, extractable from a built
-// IPA/APK) — and it is the more dangerous of the two secrets: it grants
-// both read access (GET /transactions returns the full parsed SMS /
-// transaction history, lib/mini-sync.ts's fetchMiniTransactions) and write
-// access (POST /transactions can push fabricated rows, pushTransactionToMini)
-// to the user's personal sync pipeline, not just a rate-limited AI call.
-// Acceptable ONLY because the mini server is tailnet-only — "the mini is
-// canonical, the app is a client, nothing is exposed off the tailnet"
-// (docs/V3_SPEC.md) — a leaked token is unusable to anyone not already on
-// that Tailscale network. If the mini is ever exposed off-tailnet, this
-// token needs real scoping (short-lived, rotatable) before that happens.
-const MINI_API_URL = process.env.EXPO_PUBLIC_MINI_API_URL ?? "";
-const MINI_API_TOKEN = process.env.EXPO_PUBLIC_MINI_API_TOKEN ?? "";
+// Mini sync (personal Mac mini pipeline). Optional — if the URL is empty the
+// feature is treated as not configured and degrades to a no-op.
+// The URL is committed rather than kept in .env.local: it is a Tailscale
+// MagicDNS name resolvable only from inside this tailnet, so it discloses
+// nothing usable to a reader of this repo, and hardcoding it means a fresh
+// checkout needs no configuration at all. Override via
+// EXPO_PUBLIC_MINI_API_URL when pointing at a different host.
+// There is no token: the mini dropped bearer auth entirely (kharcha-mini
+// f2ceec3, df2d3ac). Every route is open and an Authorization header is
+// ignored rather than validated. The tailnet boundary is now the whole of
+// the access control — reachability is authorisation. If the mini is ever
+// exposed off the tailnet, it needs real auth again before that happens,
+// and this app needs a credential to send with it.
+// `??` not `||`, so the documented opt-out above stays reachable: an unset var
+// inlines to undefined and takes the default, while an explicitly empty
+// EXPO_PUBLIC_MINI_API_URL survives as "" and disables the feature via
+// isConfigured(). `||` would swallow the empty string and make opting out
+// impossible.
+const DEFAULT_MINI_API_URL = "https://mini.bullhead-mine.ts.net:8300";
+const MINI_API_URL =
+  process.env.EXPO_PUBLIC_MINI_API_URL ?? DEFAULT_MINI_API_URL;
 export const env = {
   GOOGLE_IOS_CLIENT_ID: warnIfMissing(
     "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID",
@@ -48,5 +53,4 @@ export const env = {
   ),
   GEMINI_API_KEY,
   MINI_API_URL,
-  MINI_API_TOKEN,
 } as const;
