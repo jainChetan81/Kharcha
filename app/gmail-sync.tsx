@@ -46,14 +46,14 @@ type BadgeTone =
 // mirrors COLORS.BADGE_BLUE (lib/constants.ts) — no matching Tailwind token
 // exists yet, so it's inlined as an arbitrary value instead of adding one
 // for a single caller.
-const BADGE_TONE_CLASSES: Record<BadgeTone, { bg: string; text: string }> = {
+const BADGE_TONE_CLASSES = {
   positive: { bg: "bg-positive/15", text: "text-positive" },
   warning: { bg: "bg-warning/15", text: "text-warning" },
   negative: { bg: "bg-negative/15", text: "text-negative-text" },
   info: { bg: "bg-[#1d4ed826]", text: "text-[#1d4ed8]" },
   muted: { bg: "bg-muted-foreground/15", text: "text-muted-foreground" },
   primary: { bg: "bg-primary/15", text: "text-primary-text" },
-};
+} satisfies Record<BadgeTone, { bg: string; text: string }>;
 
 export default function GmailSyncScreen() {
   const {
@@ -367,12 +367,12 @@ function Badge({ text, tone }: { text: string; tone: BadgeTone }) {
 }
 
 function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
-  const statusColor: Record<EmailLog["status"], BadgeTone> = {
+  const statusColor = {
     [EMAIL_LOG_STATUS.ADDED]: "positive",
     [EMAIL_LOG_STATUS.DUPLICATE]: "warning",
     [EMAIL_LOG_STATUS.FAILED]: "negative",
     [EMAIL_LOG_STATUS.NOT_TRANSACTION]: "muted",
-  };
+  } satisfies Record<EmailLog["status"], BadgeTone>;
   const parsedLabel = log.parsedBy === "gemini" ? "ai" : log.parsedBy;
   const parsedColor: BadgeTone =
     log.parsedBy === "regex"
@@ -380,11 +380,11 @@ function EmailLogRow({ log, bankName }: { log: EmailLog; bankName: string }) {
       : log.parsedBy === "gemini"
         ? "primary"
         : "negative";
-  const confidenceColor: Record<"high" | "medium" | "low", BadgeTone> = {
+  const confidenceColor = {
     high: "positive",
     medium: "warning",
     low: "negative",
-  };
+  } satisfies Record<"high" | "medium" | "low", BadgeTone>;
   const statusLabel =
     log.status === EMAIL_LOG_STATUS.NOT_TRANSACTION ? "not txn" : log.status;
 

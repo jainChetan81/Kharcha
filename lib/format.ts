@@ -32,15 +32,15 @@ export function historyHref(params: HistoryHrefParams = {}): string {
 
 export type CurrencyCode = "INR" | "USD" | "GBP" | "EUR";
 
-export const CURRENCIES: Record<
-  CurrencyCode,
-  { symbol: string; name: string; locale: string }
-> = {
+export const CURRENCIES = {
   INR: { symbol: "₹", name: "Indian Rupee", locale: "en-IN" },
   USD: { symbol: "$", name: "US Dollar", locale: "en-US" },
   GBP: { symbol: "£", name: "British Pound", locale: "en-GB" },
   EUR: { symbol: "€", name: "Euro", locale: "de-DE" },
-};
+} satisfies Record<
+  CurrencyCode,
+  { symbol: string; name: string; locale: string }
+>;
 
 export function formatCurrency(n: number, code: CurrencyCode = "INR") {
   const { symbol, locale } = CURRENCIES[code];

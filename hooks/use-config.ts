@@ -20,6 +20,7 @@ export function useConfig() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CONFIG] }),
   });
 
+  // SAFETY: currency is written only via the currency picker (CurrencyCode) or the "INR" seed.
   const currency = (raw?.[CONFIG_KEYS.CURRENCY] ?? "INR") as CurrencyCode;
   const userName = raw?.[CONFIG_KEYS.USER_NAME] ?? "User";
 

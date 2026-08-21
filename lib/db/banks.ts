@@ -55,11 +55,11 @@ export async function getActiveBanksWithEmails(): Promise<BankWithEmails[]> {
 }
 
 export async function addBank(name: string, parserKey: string | null = null) {
-  const existing = (await db
+  const existing = await db
     .select()
     .from(banks)
     .where(sql`lower(${banks.name}) = lower(${name})`)
-    .limit(1)) as Bank[];
+    .limit(1);
   if (existing.length > 0) {
     throw new Error(`Bank "${name}" already exists`);
   }
@@ -77,11 +77,11 @@ export async function setBankActive(bankId: number, active: boolean) {
 }
 
 export async function addBankEmail(bankId: number, email: string) {
-  const existing = (await db
+  const existing = await db
     .select()
     .from(bankEmails)
     .where(sql`lower(${bankEmails.email}) = lower(${email})`)
-    .limit(1)) as BankEmail[];
+    .limit(1);
   if (existing.length > 0) {
     throw new Error(`Email "${email}" is already in use`);
   }
@@ -91,24 +91,21 @@ export async function addBankEmail(bankId: number, email: string) {
 }
 
 export async function deleteBankEmail(emailId: number) {
-  const [row] = (await db
+  const [row] = await db
     .select()
     .from(bankEmails)
-    .where(eq(bankEmails.id, emailId))) as BankEmail[];
+    .where(eq(bankEmails.id, emailId));
   if (!row) return;
-  const remaining = (await db
+  const remaining = await db
     .select()
     .from(bankEmails)
-    .where(eq(bankEmails.bank_id, row.bank_id))) as BankEmail[];
+    .where(eq(bankEmails.bank_id, row.bank_id));
   if (remaining.length <= 1) return;
   return db.delete(bankEmails).where(eq(bankEmails.id, emailId));
 }
 
 export async function deleteBank(bankId: number) {
-  const [row] = (await db
-    .select()
-    .from(banks)
-    .where(eq(banks.id, bankId))) as Bank[];
+  const [row] = await db.select().from(banks).where(eq(banks.id, bankId));
   if (!row || row.is_default === 1) return;
   await db.delete(bankEmails).where(eq(bankEmails.bank_id, bankId));
   return db.delete(banks).where(eq(banks.id, bankId));

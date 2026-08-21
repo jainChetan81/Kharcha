@@ -126,7 +126,12 @@ export default function EditSubscriptionScreen() {
                 placeholderTextColor={COLORS.MUTED}
                 accessibilityLabel="Name"
               />
-              <FieldError errors={field.state.meta.errors as string[]} />
+              <FieldError
+                errors={
+                  // SAFETY: the validators on this field only return string errors
+                  field.state.meta.errors as string[]
+                }
+              />
             </View>
           )}
         </form.Field>
@@ -152,7 +157,12 @@ export default function EditSubscriptionScreen() {
                 placeholderTextColor={COLORS.MUTED}
                 accessibilityLabel="Amount"
               />
-              <FieldError errors={field.state.meta.errors as string[]} />
+              <FieldError
+                errors={
+                  // SAFETY: the validators on this field only return string errors
+                  field.state.meta.errors as string[]
+                }
+              />
             </View>
           )}
         </form.Field>

@@ -65,11 +65,11 @@ export const ERROR_TYPE = {
 export type ErrorType = (typeof ERROR_TYPE)[keyof typeof ERROR_TYPE];
 
 export function logFirebaseError(
-  error: unknown,
+  cause: unknown,
   context: { error_type: ErrorType } & Record<string, string>,
 ): void {
   if (__DEV__) {
-    console.error("[Firebase]", error, context);
+    console.error("[Firebase]", cause, context);
     return;
   }
   import("@react-native-firebase/crashlytics")
@@ -78,7 +78,7 @@ export function logFirebaseError(
       for (const [key, value] of Object.entries(context)) {
         crash.setAttribute(key, value);
       }
-      const err = error instanceof Error ? error : new Error(String(error));
+      const err = cause instanceof Error ? cause : new Error(String(cause));
       crash.recordError(err);
     })
     .catch(() => {});

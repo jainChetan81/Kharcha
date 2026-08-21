@@ -17,10 +17,7 @@ import { categories, tags, transactions, transactionTags } from "./schema";
 import type { Tag, TagBreakdownRow, TagLite } from "./types";
 
 export async function getAllTags(): Promise<Tag[]> {
-  return db
-    .select()
-    .from(tags)
-    .orderBy(asc(tags.sort_order), asc(tags.name)) as Promise<Tag[]>;
+  return db.select().from(tags).orderBy(asc(tags.sort_order), asc(tags.name));
 }
 
 export async function addTag(name: string) {
