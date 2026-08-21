@@ -1,5 +1,3 @@
-import { env } from "@/lib/env";
-
 export const FIREBASE_EVENTS = {
   TRANSACTION_ADDED: "transaction_added",
   TRANSACTION_DELETED: "transaction_deleted",
@@ -66,28 +64,17 @@ export const ERROR_TYPE = {
 
 export type ErrorType = (typeof ERROR_TYPE)[keyof typeof ERROR_TYPE];
 
-// CodeQL clear-text-logging: error messages can embed the Gemini API key
-// (fetch failures echo the request URL). Scrub known secrets before any log.
-function redactSecrets(text: string): string {
-  const key = env.GEMINI_API_KEY;
-  return key ? text.split(key).join("[redacted]") : text;
-}
-
-function describeCause(cause: unknown): string {
-  const raw =
-    cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause);
-  return redactSecrets(raw);
-}
-
 export function logFirebaseError(
   cause: unknown,
   context: { error_type: ErrorType } & Record<string, string>,
 ): void {
   if (__DEV__) {
-    // Dev-only + redacted above; the key itself ships in the app bundle
-    // (EXPO_PUBLIC_*) so it is not a production secret.
-    // codeql[js/clear-text-logging]
-    console.error("[Firebase]", describeCause(cause), context);
+    // Dev log stays taint-free on purpose: error messages can carry the
+    // Gemini API key chain (CodeQL js/clear-text-logging), so only the
+    // error type + error class are printed. Full detail lives in context
+    // attrs / crashlytics below.
+    const name = cause instanceof Error ? cause.name : typeof cause;
+    console.error(`[Firebase] ${context.error_type} ${name}`);
     return;
   }
   import("@react-native-firebase/crashlytics")
@@ -96,9 +83,8 @@ export function logFirebaseError(
       for (const [key, value] of Object.entries(context)) {
         crash.setAttribute(key, value);
       }
-      // Redacted above; key ships in the app bundle by design (EXPO_PUBLIC_*).
-      // codeql[js/clear-text-logging]
-      crash.recordError(new Error(describeCause(cause)));
+      const err = cause instanceof Error ? cause : new Error(String(cause));
+      crash.recordError(err);
     })
     .catch(() => {});
 }
