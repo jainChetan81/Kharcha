@@ -25,7 +25,8 @@ export function useCategoriesByType(
     queryFn: () =>
       type === "all"
         ? getAllCategories()
-        : getCategoriesByType(type as "income" | "expense"),
+        : // SAFETY: ternary excludes "all", leaving only the two category types.
+          getCategoriesByType(type as "income" | "expense"),
     enabled,
   });
 }

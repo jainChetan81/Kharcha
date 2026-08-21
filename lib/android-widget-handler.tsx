@@ -27,6 +27,7 @@ async function readCachedWidgetData(): Promise<AndroidWidgetData | null> {
     const file = getCacheFile();
     if (!file.exists) return null;
     const json = await file.text();
+    // SAFETY: file is written by lib/widget.ts buildWidgetPayload with this exact shape.
     return JSON.parse(json) as AndroidWidgetData;
   } catch {
     return null;

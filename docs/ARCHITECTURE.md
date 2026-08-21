@@ -156,7 +156,7 @@ gmail API message -> bank-specific regex parser -> extract (amount, date, mercha
                   -> insert with source_type='synced'
 ```
 
-12 bank parsers in `lib/gmail/parsers/`. gemini AI in `lib/gemini/`. see [GMAIL_SYNC.md](GMAIL_SYNC.md) for full details.
+11 bank parsers in `lib/gmail/parsers/` (plus an SMS fast-path in `lib/parsers/`). gemini AI in `lib/gemini/`. see [GMAIL_SYNC.md](GMAIL_SYNC.md) for full details.
 
 ---
 

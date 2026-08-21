@@ -94,7 +94,9 @@ export function parseIndianDate(raw: string, rawTime?: string): string | null {
       try {
         const d = parse(`${cleaned} ${timeStr}`, `${fmt} HH:mm:ss`, new Date());
         if (!Number.isNaN(d.getTime())) return format(d, DATE_TIME_FORMAT);
-      } catch {}
+      } catch {
+        // date-fns parse throws on format mismatch — try the next format.
+      }
     }
   }
 
@@ -105,7 +107,9 @@ export function parseIndianDate(raw: string, rawTime?: string): string | null {
         ? parse(cleaned, fmt, new Date())
         : parse(nospace, fmt, new Date());
       if (!Number.isNaN(d.getTime())) return format(d, DATE_TIME_FORMAT);
-    } catch {}
+    } catch {
+      // date-fns parse throws on format mismatch — try the next format.
+    }
   }
   return null;
 }

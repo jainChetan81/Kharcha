@@ -17,7 +17,10 @@ export async function getBudgets(): Promise<BudgetRow[]> {
     .leftJoin(categories, eq(budgets.category_id, categories.id));
 
   return rows.map((r) => ({
+    // SAFETY: id is the primary key column, declared non-null in schema.ts.
     id: r.id as number,
+    // SAFETY: budget rows are only ever written via setBudget, which always
+    // supplies category_id (the unique FK used as upsert target).
     category_id: r.category_id as number,
     category_name: r.category_name ?? "Other",
     amount: r.amount,

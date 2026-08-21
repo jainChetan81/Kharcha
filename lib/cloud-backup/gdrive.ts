@@ -78,6 +78,8 @@ async function findExistingBackup(token: string): Promise<string | null> {
     if (isScopeError(res.status, text)) throw new DriveScopeMissingError();
     throw new Error(`Drive list failed: ${res.status} ${text}`);
   }
+  // SAFETY: Drive REST response decoded against the shape we request via the
+  // `fields=searchParams` above (files(id,name,modifiedTime)).
   const data = (await res.json()) as { files?: Array<{ id: string }> };
   return data.files?.[0]?.id ?? null;
 }
@@ -132,6 +134,8 @@ async function uploadMultipart(
     }
     throw new Error(`Drive upload failed: ${res.status} ${text}`);
   }
+  // SAFETY: a successful multipart upload responds with the created/patched
+  // file resource, whose `id` is required by the Drive API.
   const json = (await res.json()) as { id: string };
   return json.id;
 }
@@ -172,12 +176,14 @@ export async function getLatestDriveBackup(): Promise<DriveBackupFile | null> {
     if (isScopeError(res.status, text)) throw new DriveScopeMissingError();
     throw new Error(`Drive list failed: ${res.status} ${text}`);
   }
+  // SAFETY: Drive REST response decoded against the shape we request via the
+  // `fields=searchParams` above (files(id,name,modifiedTime,size)).
   const data = (await res.json()) as { files?: DriveBackupFile[] };
   const file = data.files?.[0];
   if (!file) return null;
   return {
     ...file,
-    size: typeof file.size === "string" ? Number(file.size) : (file.size ?? 0),
+    size: Number(file.size ?? 0),
   };
 }
 

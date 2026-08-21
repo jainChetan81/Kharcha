@@ -60,6 +60,10 @@ const miniApiEnvelopeSchema = z.object({
   transactions: z.array(z.unknown()),
 });
 
+// Best-effort id recovery from a row that failed full validation — used only
+// for log attribution and cursor capping, never trusted as a transaction.
+const miniRowIdSchema = z.object({ id: z.number() });
+
 function emptyResult(): MiniSyncResult {
   return { added: 0, skipped: 0, failed: 0 };
 }
@@ -208,13 +212,8 @@ async function runMiniSync(options?: {
       const parsedRow = miniTransactionSchema.safeParse(rawRow);
       if (!parsedRow.success) {
         result.failed++;
-        const idGuess =
-          typeof rawRow === "object" &&
-          rawRow !== null &&
-          "id" in rawRow &&
-          typeof (rawRow as { id: unknown }).id === "number"
-            ? (rawRow as { id: number }).id
-            : null;
+        const parsedId = miniRowIdSchema.safeParse(rawRow);
+        const idGuess = parsedId.success ? parsedId.data.id : null;
         logFirebaseError(new Error("Invalid mini transaction row shape"), {
           error_type: ERROR_TYPE.SYNC,
           operation: "mini_sync",

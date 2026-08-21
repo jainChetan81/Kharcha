@@ -70,10 +70,7 @@ export function parseBillingDays(
       const parsed = JSON.parse(rawJson);
       if (Array.isArray(parsed)) {
         const days = parsed
-          .filter(
-            (n): n is number =>
-              typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 31,
-          )
+          .filter((n) => Number.isInteger(n) && n >= 1 && n <= 31)
           .sort((a, b) => a - b);
         const unique = Array.from(new Set(days));
         if (unique.length > 0) return unique;
@@ -101,14 +98,14 @@ export function formatBillingDays(
 }
 
 export async function getSubscriptions(): Promise<SubscriptionRow[]> {
-  return (await subscriptionSelect()) as SubscriptionRow[];
+  return subscriptionSelect();
 }
 
 export async function getSubscriptionById(
   id: number,
 ): Promise<SubscriptionRow | null> {
   const rows = await subscriptionSelect().where(eq(subscriptions.id, id));
-  return (rows[0] as SubscriptionRow) ?? null;
+  return rows[0] ?? null;
 }
 
 export type SubscriptionMutationInput = {
@@ -579,5 +576,5 @@ export async function getUnusedSubscriptions(): Promise<
       sql`MAX(${transactions.date}) IS NULL OR MAX(${transactions.date}) < ${cutoff}`,
     );
 
-  return rows as SubscriptionAuditRow[];
+  return rows;
 }

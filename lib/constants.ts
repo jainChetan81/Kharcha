@@ -89,7 +89,7 @@ export const INSTRUMENT_TYPE = {
 export type InstrumentTypeType =
   (typeof INSTRUMENT_TYPE)[keyof typeof INSTRUMENT_TYPE];
 
-export const INSTRUMENT_LABEL: Record<InstrumentTypeType, string> = {
+export const INSTRUMENT_LABEL = {
   stock: "Stock",
   mutual_fund: "Mutual Fund",
   etf: "ETF",
@@ -99,7 +99,7 @@ export const INSTRUMENT_LABEL: Record<InstrumentTypeType, string> = {
   crypto: "Crypto",
   bond: "Bond",
   other: "Other",
-};
+} satisfies Record<InstrumentTypeType, string>;
 
 /**
  * Instruments that don't expose a unit count to the user (lump-sum corpus).
@@ -318,7 +318,13 @@ export const GMAIL_SYNC_NOTE = "synced from gmail";
 
 export const OTHER_CATEGORY_LABEL = "Other";
 
-export const DEVICE_TYPE_NAME: Record<number, string> = {
+// Keyed by expo-device's numeric Device.deviceType codes at runtime, so the
+// index signature must survive (named owner contract instead of Record).
+interface DeviceTypeNameByCode {
+  [deviceType: number]: string;
+}
+
+export const DEVICE_TYPE_NAME: DeviceTypeNameByCode = {
   0: "Unknown",
   1: "Phone",
   2: "Tablet",

@@ -66,7 +66,7 @@ export async function runMigrations(): Promise<void> {
 }
 ```
 
-Runs generated SQL files from `drizzle/` in order. This is the primary migration mechanism for schema changes tracked by `drizzle-kit`. The `drizzle/migrations.js` file is hand-maintained: after each `pnpm drizzle:generate` run, add the new SQL import to its `migrations` map. Until the first migration is registered it exports an empty journal, so `migrate()` is a no-op and the inline `CREATE TABLE IF NOT EXISTS` path in `initDB()` keeps the app bootable. Errors from `migrate()` itself are **not** swallowed.
+Runs generated SQL files from `drizzle/` in order. This is the primary migration mechanism for schema changes tracked by `drizzle-kit`. The `drizzle/migrations.js` file is **auto-generated** by `pnpm drizzle:generate` — never edit it by hand; regenerate instead. Errors from `migrate()` itself are **not** swallowed.
 
 Metro bundles `.sql` files as strings via `metro.config.js` (`config.resolver.sourceExts.push("sql")`).
 
@@ -109,7 +109,7 @@ useEffect(() => {
 }, []);
 ```
 
-Inside `initDB()`, the inline `CREATE TABLE IF NOT EXISTS` statements run first (creating tables if they don't exist), then Drizzle migrations apply any pending schema changes on top.
+Inside `initDB()`, the generated Drizzle migrations run **first**, applying any pending schema changes; the inline `CREATE TABLE IF NOT EXISTS` statements then run as a fresh-install safety net (no-ops when tables already exist).
 
 **Result**: Database schema stays in sync across all devices automatically.
 

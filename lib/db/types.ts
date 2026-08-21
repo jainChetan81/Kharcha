@@ -23,7 +23,6 @@ export type BankWithEmails = Bank & { emails: BankEmail[] };
 export type Tag = InferSelectModel<typeof tags>;
 export type Holding = InferSelectModel<typeof holdings>;
 export type InstrumentType = NonNullable<Holding["instrument_type"]>;
-export type InvestmentKind = "buy" | "sell" | "dividend" | "interest";
 
 export type PortfolioSummary = {
   invested: number;
@@ -55,11 +54,6 @@ export type TagBreakdownRow = {
   total: number;
   count: number;
   percentage: number;
-};
-
-export type MonthlySummary = {
-  total_income: number;
-  total_expenses: number;
 };
 
 export type CategoryBreakdownRow = {

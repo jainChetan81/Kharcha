@@ -16,10 +16,7 @@ import {
   ComponentErrorBoundary,
   ScreenError,
 } from "@/components/error-boundary";
-import {
-  durationEnd,
-  QuickDurationSheet,
-} from "@/components/quick-duration-sheet";
+import { QuickDurationSheet } from "@/components/quick-duration-sheet";
 import { TagAppearanceSheet } from "@/components/tag-appearance-sheet";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -51,6 +48,7 @@ import {
   tagScreen,
 } from "@/lib/constants";
 import type { Tag } from "@/lib/db/types";
+import { durationEnd } from "@/lib/tag-duration";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -262,6 +260,7 @@ export default function TagsScreen() {
                       endNowMutation.mutate({
                         id: tag.id,
                         name: tag.name,
+                        // SAFETY: guarded by `tag.start_date` in the render condition above.
                         startAt: tag.start_date as string,
                       })
                     }

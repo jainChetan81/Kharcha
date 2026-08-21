@@ -4,6 +4,8 @@ import { budgets, categories, subscriptions, transactions } from "./schema";
 import type { Category } from "./types";
 
 export async function getAllCategories(): Promise<Category[]> {
+  // SAFETY: rows come straight from the categories table whose columns are
+  // declared in schema.ts and make up the Category select model.
   return db
     .select()
     .from(categories)
@@ -13,6 +15,8 @@ export async function getAllCategories(): Promise<Category[]> {
 export async function getCategoriesByType(
   type: "income" | "expense",
 ): Promise<Category[]> {
+  // SAFETY: rows come straight from the categories table whose columns are
+  // declared in schema.ts and make up the Category select model.
   return db
     .select()
     .from(categories)

@@ -19,7 +19,7 @@ pnpm install
 pnpm start
 ```
 
-requirements: node >= 22.19.0 · pnpm >= 9.0.0 · ios simulator or expo go
+requirements: node >= 22.19.0 · pnpm >= 9.0.0 · ios simulator or android emulator (development build — custom native plugins, expo go not supported)
 
 ---
 
@@ -52,78 +52,92 @@ app/                          screens (expo-router file-based)
   index.tsx                   home — ring, cards, projected spend, insights, budgets, breakdown, transactions
   add.tsx                     add transaction or subscription (switch toggle, duplicate detection)
   edit/[id].tsx               edit transaction
-  history.tsx                 paginated list, filters, search, swipe-to-delete, export csv
-  config.tsx                  categories, sources (reorder with up/down arrows)
-  profile.tsx                 name, currency, gmail, app lock, budgets, subscriptions
-  budgets.tsx                 per-category budget limits
-  subscriptions/index.tsx     recurring subscriptions list
-  subscriptions/audit.tsx     find unused subscriptions (>90 days since billing)
   edit-subscription/[id].tsx  edit subscription
+  history.tsx                 paginated list, filters, search, swipe-to-delete, export csv
+  insights.tsx                spending trends, heatmap, monthly wrap
+  portfolio.tsx               holdings overview
+  reimbursements.tsx          reimbursable expense tracking
+  tag/[id].tsx                tag detail + scoped transactions
+  config/                     categories (expense/income), sources, tags, currency
+  budgets.tsx                 per-category budget limits
+  subscriptions/index.tsx     recurring subscriptions list (+ unused-subscription audit section)
+  holding/[id].tsx            holding detail
   gmail-sync.tsx              gmail oauth + sync screen with verify + results
   export.tsx                  json backup export/import
   settings/banks.tsx          manage bank parsers
   settings/_layout.tsx        settings stack layout
+  profile.tsx                 name, currency, app lock, cloud backup, about links
   about.tsx                   app/device info
 
 components/
   transaction-form.tsx        shared add/edit form (lockType prop for subscriptions)
   subscription-form.tsx       subscription creation with day picker
-  transaction-item.tsx        swipeable row with GMAIL/SUB badges, date headers
+  transaction-item.tsx        swipeable row with badges, date headers
   duplicate-transaction-sheet.tsx  potential duplicate warning before save
   parse-message-sheet.tsx     AI-parsed email preview before save
   sync-results-sheet.tsx      added/duplicate/failed counts after sync
   export-sheet.tsx            export format options
+  import-preview-sheet.tsx    backup import preview
+  history-filters-sheet.tsx   advanced history filters
   period-picker.tsx           date range picker with presets
   currency-picker.tsx         currency selection
   locked-screen.tsx           biometric lock screen
+  boot-error-screen.tsx       db/boot failure fallback with retry
   error-boundary.tsx          crash recovery fallback
-  ui/                         button, icon, input, text, chip-picker, bottom-sheet,
-                              date-picker-modal, field-error, screen-header,
-                              section-header, info-row
+  monthly-wrap-gate.tsx       end-of-month wrap prompt
+  spending-heatmap.tsx        calendar heatmap of daily spend
+  quick-start-tag-sheet.tsx / quick-duration-sheet.tsx  ⚡ tag start flow
+  add-holding-sheet.tsx / investment-fields.tsx         portfolio entry
+  ui/                         27 primitives — button, icon, input, text, chip-picker,
+                              bottom-sheet, date-picker-modal, segmented-control,
+                              stacked-bar, empty-state, screen-header, …
 
-hooks/                        all data access — screens never call useQuery directly
+hooks/                        all data access — screens never call useQuery directly (31 hooks)
   use-transactions.ts         queries + mutations + swipe-delete + invalidation
-  use-categories.ts           category queries + mutations
-  use-sources.ts              source queries + mutations
-  use-budgets.ts              budget queries + mutations
-  use-subscriptions.ts        subscription queries + mutations + toggle
+  use-home-data.ts            home screen aggregation
+  use-insights-data.ts        insights screen data
+  use-history-filters.ts      filter state for history
+  use-categories.ts / use-sources.ts / use-budgets.ts / use-subscriptions.ts
+  use-tags.ts / use-tag-sheets.tsx / use-holdings.ts
+  use-mini-sync.ts            mini server pull/push sync
+  use-cloud-backup.ts / use-cloud-backup-ui.ts    gdrive + icloud backup
+  use-gmail-sync.ts / use-gmail-sync-ui.ts        gmail sync state
   use-banks.ts                bank parser queries + mutations
-  use-config.ts               currency, userName
-  use-currency.ts             { currency, format } helper
-  use-refresh.ts              pull-to-refresh (invalidates all queries)
-  use-stats.ts                data stats for about screen
-  use-sync-state.ts           gmail sync state
-  use-debounce.ts             generic debounce (used by history search)
-  use-app-lock.ts             biometric authentication state
+  use-config.ts / use-currency.ts / use-refresh.ts / use-stats.ts
+  use-debounce.ts / use-app-lock.ts / use-app-update.ts / use-auto-refresh-prefs.ts
 
 lib/db/
   schema.ts                   drizzle tables + inferred types (InferSelectModel)
   connection.ts               sqlite connection + drizzle migrations runner
-  index.ts                    initDB (inline CREATE TABLE safety net), seeds, transaction queries
+  index.ts                    initDB (migrations first, inline CREATE TABLE safety net), seeds, transaction queries
   types.ts                    shared types (TransactionRow, etc.)
-  config.ts                   key-value config (currency, userName, gmail_*, app_lock_*)
-  budgets.ts                  budget queries + getCategorySpent
-  subscriptions.ts            subscription queries + processSubscriptions
-  categories.ts               category CRUD + reordering
-  sources.ts                  source CRUD + reordering
+  config.ts                   key-value config (currency, userName, mini_*, app_lock_*)
+  budgets.ts / subscriptions.ts / categories.ts / sources.ts
   banks.ts                    bank + bank_emails CRUD
-  stats.ts                    getDataStats (parallel queries)
-  backup.ts                   export/import database as JSON
+  holdings.ts                 investment holdings CRUD
+  tags.ts                     tags + transaction_tags CRUD
+  stats.ts / backup.ts / files.ts / inspect.ts
 
-lib/gmail/
+lib/gmail/                    frozen fallback capture path (see V2_MINI_PLAN.md)
   auth.ts                     useGoogleAuth hook (oauth, token refresh, secure store)
-  parsers/                    bank email parsers (11 banks, see below)
+  parsers/                    bank email parsers (11 banks)
   sync.ts                     gmail API fetch + parse + dedup + insert
 
-lib/gemini/                   gemini AI fallback for unrecognized email formats
-lib/export/                   csv export for history
+lib/parsers/                  per-bank SMS regex fast-path for the AI-paste sheet
+lib/gemini/                   gemini AI fallback for unrecognized formats
+lib/mini-sync.ts              mini server sync (pull + push, two-tier dedupe)
+lib/cloud-backup/             gdrive + icloud database backup/restore
+lib/export/                   csv + json export
+lib/firebase/                 analytics, crashlytics, __DEV__-gated logging wrapper
 lib/
-  env.ts                      required env validation (alert on missing vars)
-  constants.ts                SCREENS, QUERY_KEYS, COLORS, CONFIG_KEYS, TOAST_TYPE, TRANSACTION_TYPE
-  toast.ts                    showErrorToast, showSuccessToast helpers
-  format.ts                   formatCurrency, parseDate, buildListData
+  env.ts                      required env validation
+  constants.ts                SCREENS, QUERY_KEYS, COLORS, CONFIG_KEYS, TOAST_TYPE, …
+  toast.ts / alerts.ts        toasts + native alert helpers
+  format.ts / date.ts         formatting + date helpers
+  tag-duration.ts / tag-status.ts   tag scope lifecycle
   utils.ts                    cn(), isIOS
   widget.ts                   iOS home screen widget data sync
+widgets/                      ios home-screen widget (swift)
 ```
 
 ---
@@ -168,19 +182,33 @@ sqlite <- drizzle-orm <- lib/db/*.ts <- hooks/use-*.ts <- screens
 
 **home screen** — spending ring, income/spent cards, projected spending range (low/high), monthly insights (top category trend, today's spend), category breakdown with budget-colored progress bars, upcoming subscriptions, recent transactions. fully scrollable.
 
+**tags** — #tag expenses into scopes (trips, projects) with start/end duration. new transactions auto-tag while a scope is active. tag detail screen with status badge + scoped transaction list.
+
+**portfolio & holdings** — track investments: holdings with units/avg cost, portfolio overview screen, per-holding detail. investment subscriptions feed holdings.
+
+**insights** — dedicated insights screen: spending heatmap, top-category trends, monthly wrap (end-of-month recap card).
+
+**reimbursements** — mark expenses as reimbursable and track what's owed back.
+
+**mini sync** — sms/server-based capture via the kharcha-mini companion (`lib/mini-sync.ts`). primary transaction source per [docs/V2_MINI_PLAN.md](docs/V2_MINI_PLAN.md). two-tier dedupe (`mini_transaction_id` primary, heuristic fallback). wired into pull-to-refresh + app foreground.
+
+**cloud backup** — database backup/restore to google drive (android) + icloud (ios). restore re-runs migrations + column back-fills automatically.
+
+**sms paste parsing** — paste any bank sms into the add flow: local regex fast-path (`lib/parsers/`) for known banks, gemini AI fallback otherwise.
+
 **ios home screen widget** — current month expenses, category breakdown percentages, projected spend range, today's spend. syncs via app groups on startup and foreground.
 
 **ios quick actions** — long-press app icon for "Add Expense", "Transactions", or "Budgets".
 
 **budgets** — per-category limits. bars go purple -> orange (75%) -> red (100%+). budget warning toasts on add.
 
-**subscriptions** — recurring expenses with billing day (1-31). auto-creates transactions on app launch via `processSubscriptions()`. pause/resume toggle. subscription audit to find unused subscriptions (>90 days since last billing).
+**subscriptions** — recurring expenses with billing day (1-31). auto-creates transactions on app launch via `processSubscriptions()`. pause/resume toggle. unused-subscription audit (>90 days since last billing) inside the subscriptions screen.
 
 **transfers** — move money between sources with destination tracking.
 
 **multi-currency** — INR/USD/GBP/EUR and more. stored in config table. `useCurrency()` hook provides `format()` everywhere.
 
-**gmail sync** — on-device oauth -> gmail API -> parse bank emails -> dedup -> insert. supports 11 banks: axis, hdfc, icici, sbi, kotak, indusind, standard chartered, idfc, citi, hsbc, fintech cards. gemini AI fallback for unrecognized formats. see [docs/GMAIL_SYNC.md](docs/GMAIL_SYNC.md).
+**gmail sync (frozen fallback)** — on-device oauth -> gmail API -> parse bank emails -> dedup -> insert. 11 banks: axis, hdfc, icici, sbi, kotak, indusind, standard chartered, idfc, citi, hsbc, fintech cards. gemini AI fallback for unrecognized formats. kept working but frozen behind the mini pipeline — see [docs/V2_MINI_PLAN.md](docs/V2_MINI_PLAN.md) and [docs/GMAIL_SYNC.md](docs/GMAIL_SYNC.md).
 
 **duplicate detection** — warns before saving if a transaction with the same date + amount + note already exists.
 
@@ -192,7 +220,7 @@ sqlite <- drizzle-orm <- lib/db/*.ts <- hooks/use-*.ts <- screens
 
 **export/import** — full database backup as JSON. import restores all tables.
 
-**config** — manage categories (income/expense) and sources (payment methods). reorder with up/down arrows. mark defaults.
+**config** — manage expense/income categories, sources (payment methods), tags, and currency. reorder with up/down arrows. mark defaults.
 
 ---
 

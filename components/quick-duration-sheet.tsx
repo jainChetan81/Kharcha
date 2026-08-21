@@ -6,8 +6,6 @@ import {
   type DurationKey,
 } from "@/lib/tag-duration";
 
-export { durationEnd } from "@/lib/tag-duration";
-
 type QuickDurationSheetProps = {
   visible: boolean;
   onClose: () => void;

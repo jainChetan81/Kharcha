@@ -172,7 +172,9 @@ const TRANSIENT_ERRORS: GeminiErrorType[] = [
   GEMINI_ERROR.TIMEOUT,
 ];
 
-function validateGeminiTransaction(raw: unknown): string | null {
+function validateGeminiTransaction(
+  raw: GeminiParsedTransaction & { is_transaction: boolean },
+): string | null {
   const result = geminiTransactionSchema.safeParse(raw);
   if (!result.success) {
     return result.error.issues.map((i) => i.message).join(", ");
@@ -205,7 +207,7 @@ function delay(ms: number): Promise<void> {
 
 async function callGemini<T>(
   userContent: string,
-  schema: object,
+  schema: ReturnType<typeof buildResponseSchema>,
 ): Promise<CallResult<T>> {
   if (!env.GEMINI_API_KEY) {
     return errorResult(GEMINI_ERROR.NO_API_KEY, "GEMINI_API_KEY is not set");
@@ -227,7 +229,7 @@ async function callGemini<T>(
 
 async function callGeminiOnce<T>(
   userContent: string,
-  schema: object,
+  schema: ReturnType<typeof buildResponseSchema>,
 ): Promise<CallResult<T>> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
@@ -272,6 +274,8 @@ async function callGeminiOnce<T>(
       );
     }
 
+    // SAFETY: generateContent replies with a JSON envelope; every field read
+    // below is optional-chained, so a shape mismatch degrades to undefined.
     const data = (await response.json()) as GeminiApiResponse;
     const candidate = data.candidates?.[0];
     const raw: string | null =
@@ -294,9 +298,14 @@ async function callGeminiOnce<T>(
     }
 
     try {
+      // SAFETY: raw is model output constrained by responseSchema; the parsed
+      // value is re-validated by geminiTransactionSchema before any field is
+      // trusted.
       const parsed = JSON.parse(raw) as T;
       return { parsed, raw };
     } catch (parseErr) {
+      // SAFETY: JSON.parse throws Error instances; message is read through an
+      // optional chain so exotic throwables fall back to "unknown".
       const message =
         (parseErr as { message?: string } | null)?.message ?? "unknown";
       return errorResult(
@@ -306,7 +315,10 @@ async function callGeminiOnce<T>(
       );
     }
   } catch (err) {
+    // SAFETY: fetch/abort failures surface as Error instances; name is read
+    // through an optional chain so a missing field can't throw.
     const name = (err as { name?: string } | null)?.name;
+    // SAFETY: same Error-shape assumption as above, for message.
     const message =
       (err as { message?: string } | null)?.message ?? String(err);
     if (name === "AbortError" || name === "TimeoutError") {
@@ -387,7 +399,7 @@ export async function parseWithGemini(
 // this, a "$23.60 Claude AI" charge would be saved as ₹23.60 (the 2026-07-17
 // audit found 23 such rows). Rates are approximate by design; USD confirmed
 // by the owner on 2026-07-17.
-const FALLBACK_FX_RATES: Record<string, number> = {
+const FALLBACK_FX_RATES = {
   USD: 102,
   EUR: 110,
   GBP: 129,
@@ -398,7 +410,7 @@ const FALLBACK_FX_RATES: Record<string, number> = {
   SGD: 76,
   AUD: 66,
   CAD: 73,
-};
+} satisfies Record<string, number>;
 
 function resolveInrAmount(parsed: {
   amount: number;
@@ -409,7 +421,12 @@ function resolveInrAmount(parsed: {
   const currency = parsed.currency.trim().toUpperCase();
   if (currency === "INR") return parsed.amount;
   if (parsed.amount_inr !== null) return parsed.amount_inr;
-  const rate = FALLBACK_FX_RATES[currency];
+  // SAFETY: the `in` check proves currency names a key declared above; the
+  // assertion restores that literal-key type for the indexed read.
+  const rate =
+    currency in FALLBACK_FX_RATES
+      ? FALLBACK_FX_RATES[currency as keyof typeof FALLBACK_FX_RATES]
+      : undefined;
   if (!rate) return parsed.amount;
   return Math.round(parsed.original_amount * rate * 100) / 100;
 }
