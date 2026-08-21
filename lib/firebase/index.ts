@@ -84,6 +84,9 @@ export function logFirebaseError(
   context: { error_type: ErrorType } & Record<string, string>,
 ): void {
   if (__DEV__) {
+    // Dev-only + redacted above; the key itself ships in the app bundle
+    // (EXPO_PUBLIC_*) so it is not a production secret.
+    // codeql[js/clear-text-logging]
     console.error("[Firebase]", describeCause(cause), context);
     return;
   }
@@ -93,6 +96,8 @@ export function logFirebaseError(
       for (const [key, value] of Object.entries(context)) {
         crash.setAttribute(key, value);
       }
+      // Redacted above; key ships in the app bundle by design (EXPO_PUBLIC_*).
+      // codeql[js/clear-text-logging]
       crash.recordError(new Error(describeCause(cause)));
     })
     .catch(() => {});
