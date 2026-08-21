@@ -1,3 +1,5 @@
+import { env } from "@/lib/env";
+
 export const FIREBASE_EVENTS = {
   TRANSACTION_ADDED: "transaction_added",
   TRANSACTION_DELETED: "transaction_deleted",
@@ -64,12 +66,25 @@ export const ERROR_TYPE = {
 
 export type ErrorType = (typeof ERROR_TYPE)[keyof typeof ERROR_TYPE];
 
+// CodeQL clear-text-logging: error messages can embed the Gemini API key
+// (fetch failures echo the request URL). Scrub known secrets before any log.
+function redactSecrets(text: string): string {
+  const key = env.GEMINI_API_KEY;
+  return key ? text.split(key).join("[redacted]") : text;
+}
+
+function describeCause(cause: unknown): string {
+  const raw =
+    cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause);
+  return redactSecrets(raw);
+}
+
 export function logFirebaseError(
   cause: unknown,
   context: { error_type: ErrorType } & Record<string, string>,
 ): void {
   if (__DEV__) {
-    console.error("[Firebase]", cause, context);
+    console.error("[Firebase]", describeCause(cause), context);
     return;
   }
   import("@react-native-firebase/crashlytics")
@@ -78,8 +93,7 @@ export function logFirebaseError(
       for (const [key, value] of Object.entries(context)) {
         crash.setAttribute(key, value);
       }
-      const err = cause instanceof Error ? cause : new Error(String(cause));
-      crash.recordError(err);
+      crash.recordError(new Error(describeCause(cause)));
     })
     .catch(() => {});
 }
