@@ -71,10 +71,8 @@ export function logFirebaseError(
   if (__DEV__) {
     // Dev log stays taint-free on purpose: error messages can carry the
     // Gemini API key chain (CodeQL js/clear-text-logging), so only the
-    // error type + error class are printed. Full detail lives in context
-    // attrs / crashlytics below.
-    const name = cause instanceof Error ? cause.name : typeof cause;
-    console.error(`[Firebase] ${context.error_type} ${name}`);
+    // statically-typed error category is printed.
+    console.error(`[Firebase] ${context.error_type}`);
     return;
   }
   import("@react-native-firebase/crashlytics")
