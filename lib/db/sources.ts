@@ -4,9 +4,7 @@ import { sources, subscriptions, transactions } from "./schema";
 import type { Source } from "./types";
 
 export async function getAllSources(): Promise<Source[]> {
-  return db.select().from(sources).orderBy(asc(sources.sort_order)) as Promise<
-    Source[]
-  >;
+  return db.select().from(sources).orderBy(asc(sources.sort_order));
 }
 
 export async function updateSourceOrder(

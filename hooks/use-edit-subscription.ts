@@ -36,8 +36,8 @@ export function useEditSubscription() {
     defaultValues: {
       name: subscription?.name ?? "",
       amount: subscription ? String(subscription.amount) : "",
-      categoryId: (subscription?.category_id ?? null) as number | null,
-      sourceId: (subscription?.source_id ?? null) as number | null,
+      categoryId: subscription?.category_id ?? null,
+      sourceId: subscription?.source_id ?? null,
     },
     onSubmit: async ({ value }) => {
       if (!subscription) return;

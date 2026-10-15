@@ -4,7 +4,7 @@ import {
   isUnitlessInstrument,
   TRANSACTION_TYPE,
 } from "@/lib/constants";
-import { ERROR_TYPE, logFirebaseError } from "@/lib/firebase";
+import { ERROR_TYPE, type ErrorType, logFirebaseError } from "@/lib/firebase";
 import expo, { db } from "./connection";
 import {
   holdings,
@@ -12,20 +12,13 @@ import {
   transactions,
   transactionTags,
 } from "./schema";
-import type {
-  Holding,
-  InstrumentType,
-  InvestmentKind,
-  PortfolioSummary,
-} from "./types";
+import type { Holding, InstrumentType, PortfolioSummary } from "./types";
 
 export async function getAllHoldings(): Promise<Holding[]> {
   return db
     .select()
     .from(holdings)
-    .orderBy(asc(holdings.is_closed), asc(holdings.sort_order)) as Promise<
-    Holding[]
-  >;
+    .orderBy(asc(holdings.is_closed), asc(holdings.sort_order));
 }
 
 export async function getHolding(id: number): Promise<Holding | null> {
@@ -34,7 +27,7 @@ export async function getHolding(id: number): Promise<Holding | null> {
     .from(holdings)
     .where(eq(holdings.id, id))
     .limit(1);
-  return (row as Holding | undefined) ?? null;
+  return row ?? null;
 }
 
 export async function addHolding(input: {
@@ -139,7 +132,7 @@ export async function recomputeHoldingFromTransactions(
   let invested = 0;
 
   for (const row of rows) {
-    const kind = row.kind as InvestmentKind | null;
+    const kind = row.kind;
     if (!kind) continue;
     const rawAmt = Number(row.amount);
     const rawU = Number(row.units);
@@ -206,20 +199,23 @@ export async function safeRecomputeHolding(
   try {
     await recomputeHoldingFromTransactions(id);
   } catch (error) {
-    logFirebaseError(error, {
+    const details: { error_type: ErrorType } & Record<string, string> = {
       error_type: ERROR_TYPE.DB,
       operation: context.operation,
       holding_id: String(id),
-      ...(context.source ? { source: context.source } : {}),
-    });
+    };
+    if (context.source) {
+      details.source = context.source;
+    }
+    logFirebaseError(error, details);
   }
 }
 
 export async function getPortfolioSummary(): Promise<PortfolioSummary> {
-  const rows = (await db
+  const rows = await db
     .select()
     .from(holdings)
-    .where(eq(holdings.is_closed, 0))) as Holding[];
+    .where(eq(holdings.is_closed, 0));
   let invested = 0;
   for (const h of rows) {
     invested += h.invested ?? 0;

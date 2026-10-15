@@ -93,7 +93,12 @@ export function TagScheduleSheet({
               placeholderTextColor={COLORS.MUTED}
               autoFocus
             />
-            <FieldError errors={field.state.meta.errors as string[]} />
+            <FieldError
+              errors={
+                // SAFETY: the validators on this field only return string errors
+                field.state.meta.errors as string[]
+              }
+            />
           </View>
         )}
       </form.Field>
@@ -144,7 +149,12 @@ export function TagScheduleSheet({
         )}
       </form.Subscribe>
 
-      <form.Subscribe selector={(s) => s.fieldMeta.endAt?.errors as string[]}>
+      <form.Subscribe
+        selector={(s) =>
+          // SAFETY: the validators on these fields only return string errors
+          s.fieldMeta.endAt?.errors as string[]
+        }
+      >
         {(errs) => <FieldError errors={errs ?? []} />}
       </form.Subscribe>
 

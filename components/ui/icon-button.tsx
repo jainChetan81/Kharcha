@@ -6,12 +6,12 @@ import { cn } from "@/lib/utils";
 type IconButtonTone = "default" | "muted" | "primary" | "negative";
 type IconButtonVariant = "ghost" | "card";
 
-const TONE_CLASS: Record<IconButtonTone, string> = {
+const TONE_CLASS = {
   default: "text-foreground",
   muted: "text-muted-foreground",
   primary: "text-primary-text",
   negative: "text-negative-text",
-};
+} satisfies Record<IconButtonTone, string>;
 
 type IconButtonProps = {
   icon: LucideIcon;

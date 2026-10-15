@@ -108,6 +108,7 @@ export function ParseMessageSheet({
       }
       onParsed(result.parsed, messageText);
     } catch (err) {
+      // SAFETY: Gemini client rejects with Error; fall back to String() for exotic throws.
       setParseError(
         (err as { message?: string } | null)?.message ?? String(err),
       );

@@ -52,21 +52,38 @@ type TextVariantProps = VariantProps<typeof textVariants>;
 
 type TextVariant = NonNullable<TextVariantProps["variant"]>;
 
-const ROLE: Partial<Record<TextVariant, Role>> = {
+// Total over TextVariant so lookups with any variant key stay defined.
+const ROLE = {
   h1: "heading",
   h2: "heading",
   h3: "heading",
   h4: "heading",
+  // SAFETY: both are valid react-native Role values on web
   blockquote: Platform.select({ web: "blockquote" as Role }),
+  // SAFETY: valid react-native Role value on web
   code: Platform.select({ web: "code" as Role }),
-};
+  default: undefined,
+  p: undefined,
+  lead: undefined,
+  large: undefined,
+  small: undefined,
+  muted: undefined,
+} satisfies Record<TextVariant, Role | undefined>;
 
-const ARIA_LEVEL: Partial<Record<TextVariant, string>> = {
+const ARIA_LEVEL = {
   h1: "1",
   h2: "2",
   h3: "3",
   h4: "4",
-};
+  default: undefined,
+  p: undefined,
+  blockquote: undefined,
+  code: undefined,
+  lead: undefined,
+  large: undefined,
+  small: undefined,
+  muted: undefined,
+} satisfies Partial<Record<TextVariant, string>>;
 
 const TextClassContext = React.createContext<string | undefined>(undefined);
 

@@ -38,15 +38,15 @@ export function useCloudBackupUi(): UseCloudBackupUiReturn {
     ? `Last backed up ${formatDistanceToNow(new Date(latest.modifiedTime), { addSuffix: true })}`
     : "No backup yet";
 
-  function reportBackupError(err: unknown, fallbackTitle: string) {
-    if (err instanceof DriveScopeMissingError) {
+  function reportBackupError(cause: unknown, fallbackTitle: string) {
+    if (cause instanceof DriveScopeMissingError) {
       showErrorToast(
         "Reconnect Google",
         "Drive permission missing — sign in again in Gmail Sync.",
       );
       return;
     }
-    showErrorToast(fallbackTitle, err);
+    showErrorToast(fallbackTitle, cause);
   }
 
   async function handleToggle(next: boolean) {

@@ -12,9 +12,9 @@ function announce(title: string, subtitle?: string) {
   );
 }
 
-export function showErrorToast(title: string, err?: unknown) {
+export function showErrorToast(title: string, cause?: unknown) {
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-  const subtitle = err ? String(err) : undefined;
+  const subtitle = cause ? String(cause) : undefined;
   Toast.show({
     type: TOAST_TYPE.ERROR,
     text1: title,

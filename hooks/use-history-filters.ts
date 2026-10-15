@@ -126,6 +126,7 @@ export function useHistoryFilters() {
       setSourceTypeFilter(params.source_type);
     }
     if (params.preset) {
+      // SAFETY: runtime-validated by the includes() check on the next line.
       const p = params.preset as PeriodPresetType;
       if (Object.values(PERIOD_PRESET).includes(p)) {
         setPeriodPreset(p);

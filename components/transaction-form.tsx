@@ -44,6 +44,7 @@ import {
   searchMerchants,
   type TagLite,
 } from "@/lib/db";
+import { ERROR_TYPE, logFirebaseError } from "@/lib/firebase";
 import { parseDate, sanitizeDecimalInput } from "@/lib/format";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -158,8 +159,11 @@ export function TransactionForm({
         showSuccessToast(`${filled.join(" & ")} set from history ✨`);
       }
     } catch (err) {
-      // Best-effort feature — swallow DB errors so the form stays usable.
-      console.warn("autoFillFromMerchant failed:", err);
+      // Best-effort feature — log and swallow DB errors so the form stays usable.
+      logFirebaseError(err, {
+        error_type: ERROR_TYPE.DB,
+        operation: "autoFillFromMerchant",
+      });
     }
   }
 
@@ -342,7 +346,11 @@ export function TransactionForm({
                 className="h-14 text-2xl font-bold"
                 placeholderTextColor={COLORS.MUTED}
               />
-              <FieldError errors={field.state.meta.errors as string[]} />
+              <FieldError
+                // SAFETY: every validator on this form returns plain strings
+                // via validateField, so meta.errors holds string messages.
+                errors={field.state.meta.errors as string[]}
+              />
             </View>
           )}
         </form.Field>
@@ -522,7 +530,12 @@ export function TransactionForm({
                   }}
                   addLabel="New source"
                 />
-                <FieldError errors={field.state.meta.errors as string[]} />
+                <FieldError
+                  // SAFETY: every validator on this form returns plain
+                  // strings via validateField, so meta.errors holds string
+                  // messages.
+                  errors={field.state.meta.errors as string[]}
+                />
               </View>
             ) : null
           }
@@ -553,7 +566,12 @@ export function TransactionForm({
                   }}
                   addLabel="New source"
                 />
-                <FieldError errors={field.state.meta.errors as string[]} />
+                <FieldError
+                  // SAFETY: every validator on this form returns plain
+                  // strings via validateField, so meta.errors holds string
+                  // messages.
+                  errors={field.state.meta.errors as string[]}
+                />
               </View>
             )}
           </form.Field>
@@ -594,7 +612,12 @@ export function TransactionForm({
                     className="size-5 text-muted-foreground"
                   />
                 </Pressable>
-                <FieldError errors={field.state.meta.errors as string[]} />
+                <FieldError
+                  // SAFETY: every validator on this form returns plain
+                  // strings via validateField, so meta.errors holds string
+                  // messages.
+                  errors={field.state.meta.errors as string[]}
+                />
 
                 <Suspense fallback={null}>
                   <DateTimePickerModal
@@ -764,6 +787,9 @@ export function TransactionForm({
                               placeholderTextColor={COLORS.MUTED}
                             />
                             <FieldError
+                              // SAFETY: every validator on this form returns
+                              // plain strings via validateField, so meta.errors
+                              // holds string messages.
                               errors={amountField.state.meta.errors as string[]}
                             />
                             <Text className="mt-1 text-xs text-muted-foreground">
@@ -885,6 +911,9 @@ export function TransactionForm({
                 onPress={async () => {
                   await form.handleSubmit();
                   if (form.state.canSubmit === false) {
+                    // SAFETY: every validator on this form returns plain
+                    // strings via validateField, so fieldMeta errors hold
+                    // strings.
                     const allErrors = Object.values(form.state.fieldMeta)
                       .flatMap((m) => (m as { errors: string[] }).errors)
                       .filter(Boolean);

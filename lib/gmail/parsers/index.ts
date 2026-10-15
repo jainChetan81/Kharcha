@@ -33,7 +33,13 @@ export interface ParseOutcome {
   geminiError?: GeminiErrorType;
 }
 
-const PARSER_MAP: Record<string, Parser[]> = {
+// Looked up by a runtime parser_key string from the DB, so the index
+// signature must survive (named owner contract instead of Record).
+interface ParserMap {
+  [parserKey: string]: Parser[];
+}
+
+const PARSER_MAP: ParserMap = {
   axis: AXIS_PARSERS,
   citi: CITI_PARSERS,
   hdfc: HDFC_PARSERS,

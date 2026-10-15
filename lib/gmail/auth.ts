@@ -166,6 +166,8 @@ export function useGoogleAuth() {
       );
       return true;
     } catch (error: unknown) {
+      // SAFETY: the Google Sign-In SDK rejects with its native error object,
+      // which carries a string `code` identifying the failure reason.
       const err = error as { code?: string };
       if (err.code === gsi.statusCodes.SIGN_IN_CANCELLED) return false;
       if (err.code === gsi.statusCodes.IN_PROGRESS) return false;
@@ -222,7 +224,9 @@ export function useGoogleAuth() {
       if (gsi) {
         try {
           await gsi.GoogleSignin.signOut();
-        } catch {}
+        } catch {
+          // Best-effort — token deletion below proceeds regardless.
+        }
       }
     }
     await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.ACCESS_TOKEN);

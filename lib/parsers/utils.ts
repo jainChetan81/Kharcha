@@ -54,7 +54,12 @@ export function parseAxisDate(rawDate: string): string {
 }
 
 export function parseHdfcDate(rawDate: string): string {
-  const months: Record<string, string> = {
+  // Looked up by a runtime month token from the parsed date, so the string
+  // index signature must survive (named owner contract instead of Record).
+  interface MonthTable {
+    [month: string]: string;
+  }
+  const months: MonthTable = {
     jan: "01",
     feb: "02",
     mar: "03",

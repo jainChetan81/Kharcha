@@ -123,10 +123,9 @@ function stripHtml(html: string): string {
 // transaction body. Pull text/plain when present, fall back to stripped HTML.
 // Returns { body, decodeFailed } so the caller can distinguish a malformed
 // MIME payload (log as DECODE_ERROR) from a legitimately unparseable body.
-function extractBody(payload: GmailPart | undefined): {
-  body: string;
-  decodeFailed: boolean;
-} {
+type ExtractedBody = { body: string; decodeFailed: boolean };
+
+function extractBody(payload: GmailPart | undefined): ExtractedBody {
   if (!payload) return { body: "", decodeFailed: false };
   const plain = findPartData(payload, "text/plain");
   if (plain) {
@@ -238,6 +237,8 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
         if (!listResponse.ok) {
           throw new Error(`Gmail list query failed: ${listResponse.status}`);
         }
+        // SAFETY: Gmail list responses carry `{ messages?: { id: string }[] }`;
+        // a missing array is tolerated via the `?? []` fallback below.
         const listData = (await listResponse.json()) as {
           messages?: { id: string }[];
         };
@@ -284,6 +285,8 @@ export async function syncGmailTransactions(): Promise<SyncResult> {
           throw new Error(`Gmail message fetch failed: ${msgResponse.status}`);
         }
         const msgData = await msgResponse.json();
+        // SAFETY: msgData is Gmail's full-format message JSON; payload headers
+        // are name/value pairs and extractHeader tolerates a missing array.
         const headers = msgData.payload?.headers as
           | { name: string; value: string }[]
           | undefined;

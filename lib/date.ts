@@ -13,10 +13,9 @@ import {
   type PeriodPresetType,
 } from "@/lib/constants";
 
-export function getPresetRange(preset: PeriodPresetType): {
-  from: string;
-  to: string;
-} {
+type PresetRange = { from: string; to: string };
+
+export function getPresetRange(preset: PeriodPresetType): PresetRange {
   const now = new Date();
   const fmt = (d: Date) => format(d, DATE_ISO_FORMAT);
   switch (preset) {

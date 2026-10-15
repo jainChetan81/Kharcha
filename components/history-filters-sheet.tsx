@@ -29,13 +29,13 @@ const TYPE_FILTERS = Object.values(TRANSACTION_TYPE);
 const SOURCE_TYPE_FILTERS = Object.values(SOURCE_TYPE);
 const REIMBURSEMENT_FILTERS = Object.values(REIMBURSEMENT_FILTER);
 
-const REIMBURSEMENT_LABELS: Record<ReimbursementFilterType, string> = {
+const REIMBURSEMENT_LABELS = {
   [REIMBURSEMENT_FILTER.ALL]: "All",
   [REIMBURSEMENT_FILTER.PENDING]: "Pending",
   [REIMBURSEMENT_FILTER.REIMBURSED]: "Reimbursed",
-};
+} satisfies Record<ReimbursementFilterType, string>;
 
-const PRESET_LABELS: Record<PeriodPresetType, string> = {
+const PRESET_LABELS = {
   [PERIOD_PRESET.TODAY]: "Today",
   [PERIOD_PRESET.THIS_WEEK]: "This Week",
   [PERIOD_PRESET.LAST_7_DAYS]: "Last 7 Days",
@@ -43,7 +43,7 @@ const PRESET_LABELS: Record<PeriodPresetType, string> = {
   [PERIOD_PRESET.LAST_MONTH]: "Last Month",
   [PERIOD_PRESET.THIS_YEAR]: "This Year",
   [PERIOD_PRESET.CUSTOM]: "Custom",
-};
+} satisfies Record<PeriodPresetType, string>;
 
 interface HistoryFiltersSheetProps {
   visible: boolean;

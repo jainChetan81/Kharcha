@@ -75,13 +75,11 @@ export function SubscriptionForm({
     defaultValues: {
       name: defaultValues?.name ?? "",
       amount: defaultValues?.amount ?? "",
-      billingDays: (defaultValues?.billingDays ?? []) as number[],
-      categoryId: (defaultValues?.categoryId ?? null) as number | null,
-      sourceId: (defaultValues?.sourceId ?? null) as number | null,
-      type: (defaultValues?.type ?? TRANSACTION_TYPE.EXPENSE) as
-        | "expense"
-        | "investment",
-      holdingId: (defaultValues?.holdingId ?? null) as number | null,
+      billingDays: defaultValues?.billingDays ?? [],
+      categoryId: defaultValues?.categoryId ?? null,
+      sourceId: defaultValues?.sourceId ?? null,
+      type: defaultValues?.type ?? TRANSACTION_TYPE.EXPENSE,
+      holdingId: defaultValues?.holdingId ?? null,
       defaultUnits: defaultValues?.defaultUnits ?? "",
     },
     onSubmit: async ({ value }) => {
@@ -132,7 +130,11 @@ export function SubscriptionForm({
               onChangeText={(v) => field.handleChange(v)}
               placeholderTextColor={COLORS.MUTED}
             />
-            <FieldError errors={field.state.meta.errors as string[]} />
+            <FieldError
+              // SAFETY: every validator on this form returns plain strings
+              // via validateField, so meta.errors holds string messages.
+              errors={field.state.meta.errors as string[]}
+            />
           </View>
         )}
       </form.Field>
@@ -158,7 +160,11 @@ export function SubscriptionForm({
               className="h-14 text-2xl font-bold"
               placeholderTextColor={COLORS.MUTED}
             />
-            <FieldError errors={field.state.meta.errors as string[]} />
+            <FieldError
+              // SAFETY: every validator on this form returns plain strings
+              // via validateField, so meta.errors holds string messages.
+              errors={field.state.meta.errors as string[]}
+            />
           </View>
         )}
       </form.Field>
@@ -219,7 +225,11 @@ export function SubscriptionForm({
                   Renews on {formatBillingDays(selectedDays)} of every month
                 </Text>
               )}
-              <FieldError errors={field.state.meta.errors as string[]} />
+              <FieldError
+                // SAFETY: every validator on this form returns plain strings
+                // via validateField, so meta.errors holds string messages.
+                errors={field.state.meta.errors as string[]}
+              />
             </View>
           );
         }}
@@ -291,7 +301,12 @@ export function SubscriptionForm({
                       onAddNew={adders.openHolding}
                       addLabel="New holding"
                     />
-                    <FieldError errors={field.state.meta.errors as string[]} />
+                    <FieldError
+                      // SAFETY: every validator on this form returns plain
+                      // strings via validateField, so meta.errors holds
+                      // string messages.
+                      errors={field.state.meta.errors as string[]}
+                    />
                   </View>
                 )}
               </form.Field>
@@ -380,6 +395,8 @@ export function SubscriptionForm({
             onPress={async () => {
               await form.handleSubmit();
               if (form.state.canSubmit === false) {
+                // SAFETY: every validator on this form returns plain strings
+                // via validateField, so fieldMeta errors hold strings.
                 const allErrors = Object.values(form.state.fieldMeta)
                   .flatMap((m) => (m as { errors: string[] }).errors)
                   .filter(Boolean);

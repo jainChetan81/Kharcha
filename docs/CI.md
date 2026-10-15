@@ -247,9 +247,11 @@ pnpm run deps:check    # expo dependency compatibility check
 ### Database
 
 ```bash
-pnpm dlx drizzle-kit studio  # open drizzle studio (browse db)
-pnpm dlx drizzle-kit migrate # run migrations
+pnpm drizzle:studio           # open drizzle studio (browse db)
+pnpm drizzle:generate         # generate migration after schema change
 ```
+
+migrations run automatically on app launch (`initDB()`) — no manual migrate step. see [docs/DRIZZLE.md](DRIZZLE.md).
 
 ---
 
@@ -315,8 +317,8 @@ Set these in **Settings → Secrets and variables → Actions**:
 ### How to Get `EXPO_TOKEN`
 
 1. Create [Expo account](https://expo.dev)
-2. Run `expo login`
-3. Generate token: `expo tokens create`
+2. Go to **expo.dev → Account Settings → Access Tokens**
+3. Create a new token
 4. Add to GitHub secrets
 
 ### Local Development (No Secrets Needed)
@@ -359,9 +361,9 @@ pnpm run local-ci
 
 **Problem**: Expo dependency mismatch
 
-**Solution**: Run expo check and fix
+**Solution**: Run expo doctor and fix
 ```bash
-pnpm check
+pnpm doctor
 # Follow recommendations, then:
 pnpm run local-ci
 ```

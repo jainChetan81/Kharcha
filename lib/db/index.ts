@@ -49,10 +49,7 @@ import {
 import { getTagsForTransactions } from "./tags";
 import type {
   BiggestTransaction,
-  CategoryBreakdownRow,
-  MerchantBreakdownRow,
   MonthlyInsights,
-  MonthlySummary,
   TransactionRow,
 } from "./types";
 
@@ -63,7 +60,6 @@ export type {
   CategoryBreakdownRow,
   MerchantBreakdownRow,
   MonthlyInsights,
-  MonthlySummary,
   Source,
   Tag,
   TagBreakdownRow,
@@ -1119,11 +1115,15 @@ async function attachTagsToRows(
   return rows.map((row) => ({
     ...row,
     tags: tagMap.get(row.id) ?? [],
-  })) as TransactionRow[];
+  }));
 }
 
 export async function getRecentTransactions(limit = 20) {
   try {
+    // SAFETY: transactionSelect deliberately omits gmail_message_id,
+    // mini_transaction_id, and reference_number from its projection; list
+    // consumers never read those columns, so the narrower row is asserted to
+    // the tagless TransactionRow shape shared with attachTagsToRows.
     const rows = (await transactionSelect()
       .orderBy(desc(transactions.date), desc(transactions.created_at))
       .limit(limit)) as Omit<TransactionRow, "tags">[];
@@ -1139,6 +1139,8 @@ export async function getRecentTransactions(limit = 20) {
 
 export async function getMonthTransactions(yearMonth: string, limit = 10) {
   try {
+    // SAFETY: same partial projection as getRecentTransactions — the three
+    // provenance columns are omitted and never read on this path.
     const rows = (await transactionSelect()
       .where(sql`strftime('%Y-%m', ${transactions.date}) = ${yearMonth}`)
       .orderBy(desc(transactions.date), desc(transactions.created_at))
@@ -1168,7 +1170,7 @@ export async function getMonthlySummary(yearMonth: string) {
           sql`${transactions.type} != 'investment'`,
         ),
       );
-    return result[0] as MonthlySummary;
+    return result[0];
   } catch (error) {
     logFirebaseError(error, {
       error_type: ERROR_TYPE.DB,
@@ -1238,11 +1240,11 @@ export async function getTransactionCount(yearMonth: string): Promise<number> {
 // streak built up through yesterday, matching how habit-tracker UIs behave.
 export async function getTrackingStreak(asOf?: string): Promise<number> {
   try {
-    const rows = (await db
+    const rows = await db
       .selectDistinct({
         day: sql<string>`substr(${transactions.date}, 1, 10)`,
       })
-      .from(transactions)) as { day: string }[];
+      .from(transactions);
     const days = new Set(rows.map((r) => r.day));
     const cursor = asOf ? new Date(`${asOf}T00:00:00`) : new Date();
     if (!days.has(format(cursor, DATE_ISO_FORMAT))) {
@@ -1354,6 +1356,8 @@ export async function getTransactionsPaginated(
       .limit(limit)
       .offset(offset);
 
+    // SAFETY: same partial projection as getRecentTransactions — the three
+    // provenance columns are omitted and never read on this path.
     const rows = (await query) as Omit<TransactionRow, "tags">[];
     return attachTagsToRows(rows);
   } catch (error) {
@@ -1373,12 +1377,14 @@ export async function getAllTransactionsFiltered(
 
 export async function getTransactionById(id: number) {
   try {
+    // SAFETY: same partial projection as getRecentTransactions — the three
+    // provenance columns are omitted and never read on this path.
     const result = (await transactionSelect().where(
       eq(transactions.id, id),
     )) as Omit<TransactionRow, "tags">[];
     if (!result[0]) return null;
     const [row] = await attachTagsToRows([result[0]]);
-    return row as TransactionRow;
+    return row;
   } catch (error) {
     logFirebaseError(error, {
       error_type: ERROR_TYPE.DB,
@@ -1480,6 +1486,24 @@ export async function insertTransaction(params: {
   }
 }
 
+type TransactionUpdates = {
+  type: "income" | "expense" | "transfer" | "investment";
+  amount: number;
+  merchant: string | null;
+  category_id: number | null;
+  source_id: number | null;
+  destination_source_id: number | null;
+  holding_id: number | null;
+  investment_kind: "buy" | "sell" | "dividend" | "interest" | null;
+  units: number | null;
+  date: string;
+  note: string | null;
+  source_type?: SourceType;
+  reimbursement_status?: "none" | "pending" | "reimbursed";
+  reimbursable_amount?: number | null;
+  reimbursed_at?: string | null;
+};
+
 export async function updateTransaction(
   id: number,
   params: {
@@ -1510,23 +1534,7 @@ export async function updateTransaction(
     // Only touch source_type when the caller explicitly provides it — otherwise
     // editing a Gmail-synced or subscription-generated transaction would wipe
     // its provenance marker and re-import on the next Gmail sync.
-    const updates: {
-      type: "income" | "expense" | "transfer" | "investment";
-      amount: number;
-      merchant: string | null;
-      category_id: number | null;
-      source_id: number | null;
-      destination_source_id: number | null;
-      holding_id: number | null;
-      investment_kind: "buy" | "sell" | "dividend" | "interest" | null;
-      units: number | null;
-      date: string;
-      note: string | null;
-      source_type?: SourceType;
-      reimbursement_status?: "none" | "pending" | "reimbursed";
-      reimbursable_amount?: number | null;
-      reimbursed_at?: string | null;
-    } = {
+    const updates: TransactionUpdates = {
       type: params.type,
       amount: params.amount,
       merchant: params.merchant,
@@ -1655,16 +1663,18 @@ export async function clearAllTransactions() {
   }
 }
 
+type ReimbursementUpdate = {
+  reimbursement_status: "none" | "pending" | "reimbursed";
+  reimbursed_at: string | null;
+  reimbursable_amount?: number | null;
+};
+
 export async function setReimbursementStatus(
   id: number,
   status: "none" | "pending" | "reimbursed",
 ) {
   try {
-    const updates: {
-      reimbursement_status: "none" | "pending" | "reimbursed";
-      reimbursed_at: string | null;
-      reimbursable_amount?: number | null;
-    } = {
+    const updates: ReimbursementUpdate = {
       reimbursement_status: status,
       reimbursed_at: status === "reimbursed" ? new Date().toISOString() : null,
     };
@@ -1782,7 +1792,7 @@ export async function getCategoryBreakdown(yearMonth: string) {
       total: r.total,
       count: r.count,
       percentage: monthTotal > 0 ? (r.total / monthTotal) * 100 : 0,
-    })) as CategoryBreakdownRow[];
+    }));
   } catch (error) {
     logFirebaseError(error, {
       error_type: ERROR_TYPE.DB,
@@ -1824,7 +1834,7 @@ export async function getMerchantBreakdown(yearMonth: string) {
       total: r.total,
       count: r.count,
       percentage: monthTotal > 0 ? (r.total / monthTotal) * 100 : 0,
-    })) as MerchantBreakdownRow[];
+    }));
   } catch (error) {
     logFirebaseError(error, {
       error_type: ERROR_TYPE.DB,

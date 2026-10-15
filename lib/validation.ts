@@ -148,9 +148,9 @@ export function firstZodError(error: z.ZodError): string {
  * Returns the error message string or undefined if valid.
  * Use in TanStack Form `validators.onSubmit`.
  */
-export function validateField<T>(
-  schema: z.ZodType<T>,
-  value: unknown,
+export function validateField<S extends z.ZodType>(
+  schema: S,
+  value: z.input<S>,
 ): string | undefined {
   const result = schema.safeParse(value);
   if (result.success) return undefined;

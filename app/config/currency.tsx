@@ -10,6 +10,9 @@ import { CURRENCIES, type CurrencyCode, useConfig } from "@/hooks/use-config";
 import { SCROLL_BOTTOM_PADDING } from "@/lib/constants";
 import { showErrorToast } from "@/lib/toast";
 
+// SAFETY: CURRENCIES is keyed by exactly the CurrencyCode union.
+const CURRENCY_CODES = Object.keys(CURRENCIES) as CurrencyCode[];
+
 export default function CurrencyScreen() {
   const { currency, updateCurrency } = useConfig();
 
@@ -38,7 +41,7 @@ export default function CurrencyScreen() {
           Applies to every transaction, old and new.
         </ScreenDescription>
 
-        {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => {
+        {CURRENCY_CODES.map((code) => {
           const selected = currency === code;
           return (
             <Pressable

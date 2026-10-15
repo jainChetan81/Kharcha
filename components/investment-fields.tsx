@@ -79,7 +79,12 @@ export function InvestmentFields({
               onAddNew={onAddNewHolding}
               addLabel="New holding"
             />
-            <FieldError errors={field.state.meta.errors as string[]} />
+            <FieldError
+              errors={
+                // SAFETY: the validators on this field only return string errors
+                field.state.meta.errors as string[]
+              }
+            />
           </View>
         )}
       </form.Field>
@@ -160,7 +165,12 @@ export function InvestmentFields({
                     }
                     placeholderTextColor={COLORS.MUTED}
                   />
-                  <FieldError errors={field.state.meta.errors as string[]} />
+                  <FieldError
+                    errors={
+                      // SAFETY: the validators on this field only return string errors
+                      field.state.meta.errors as string[]
+                    }
+                  />
                 </View>
               )}
             </form.Field>

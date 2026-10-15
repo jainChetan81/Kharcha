@@ -167,7 +167,10 @@ function CategoryDonut({
       ? slices[focusedIndex]
       : null;
 
-  const handleSlicePress = (_item: unknown, index: number) => {
+  const handleSlicePress = (
+    _item: { value: number; color: string },
+    index: number,
+  ) => {
     if (!interactive) return;
     const slice = slices[index];
     if (!slice) return;

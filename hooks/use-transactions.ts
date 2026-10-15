@@ -409,6 +409,7 @@ export function useInsertTransaction() {
       ) {
         // Best-effort, fire-and-forget push: the error is never surfaced to
         // the user. The next pull cycle can reconcile.
+        // SAFETY: isPushableType narrowed variables.type to income|expense above.
         void pushTransactionToMini({
           type: variables.type as "income" | "expense",
           amount: variables.amount,

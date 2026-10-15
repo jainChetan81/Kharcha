@@ -26,11 +26,11 @@ import { historyHref } from "@/lib/format";
 
 type Lens = "category" | "tag" | "merchant";
 
-const LENS_EMPTY_NOUN: Record<Lens, string> = {
+const LENS_EMPTY_NOUN = {
   category: "categories",
   tag: "tags",
   merchant: "merchants",
-};
+} satisfies Record<Lens, string>;
 
 type Row = {
   key: string;

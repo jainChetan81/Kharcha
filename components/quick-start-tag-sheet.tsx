@@ -38,6 +38,7 @@ export function QuickStartTagSheet({
   const form = useForm({
     defaultValues: {
       name: defaultName ?? "",
+      // SAFETY: "8h" is a member of the closed DurationKey union (lib/tag-duration).
       duration: "8h" as DurationKey,
     },
     onSubmit: async ({ value }) => {
@@ -85,7 +86,12 @@ export function QuickStartTagSheet({
               placeholderTextColor={COLORS.MUTED}
               autoFocus
             />
-            <FieldError errors={field.state.meta.errors as string[]} />
+            <FieldError
+              errors={
+                // SAFETY: the validators on this field only return string errors
+                field.state.meta.errors as string[]
+              }
+            />
           </View>
         )}
       </form.Field>

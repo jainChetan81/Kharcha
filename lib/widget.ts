@@ -56,6 +56,8 @@ export async function buildWidgetPayload(): Promise<WidgetData> {
 
   const prevSpend = await getPreviousMonthSpendAtDay(insights.daysElapsed);
 
+  // SAFETY: the currency config key is only written by the currency picker
+  // (CurrencyCode values) or seeded to "INR" on first launch (lib/db/index.ts).
   const code = (currencyCode ?? "INR") as CurrencyCode;
   const symbol = CURRENCIES[code]?.symbol ?? "₹";
 
@@ -81,6 +83,8 @@ export async function buildWidgetPayload(): Promise<WidgetData> {
 }
 
 async function syncIOS(payload: WidgetData): Promise<void> {
+  // SAFETY: expo exports requireNativeModule at runtime in this SDK; require()
+  // returns an untyped module so the used member shape is restated here.
   const { requireNativeModule } = require("expo") as {
     requireNativeModule: (name: string) => {
       setWidgetData: (json: string) => void;
@@ -91,6 +95,9 @@ async function syncIOS(payload: WidgetData): Promise<void> {
 }
 
 async function syncAndroid(payload: WidgetData): Promise<void> {
+  // SAFETY: the handler module statically exports updateAndroidWidgets taking
+  // AndroidWidgetData; WidgetData is a structural superset. require() keeps
+  // this Android-only module out of the iOS bundle.
   const { updateAndroidWidgets } = require("@/lib/android-widget-handler") as {
     updateAndroidWidgets: (data: typeof payload) => Promise<void>;
   };

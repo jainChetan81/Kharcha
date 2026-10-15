@@ -35,6 +35,8 @@ import type { BankWithEmails } from "@/lib/db/types";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { cn, isIOS } from "@/lib/utils";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function BanksScreen() {
   const { data: banks = [], isLoading } = useBanksWithEmails();
   const addBank = useAddBank();
@@ -50,8 +52,7 @@ export default function BanksScreen() {
   const [newBankEmail, setNewBankEmail] = useState("");
   const [addingEmail, setAddingEmail] = useState(false);
 
-  const isValidEmail = (e: string) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
+  const isValidEmail = (e: string) => EMAIL_REGEX.test(e.trim());
 
   function toggleExpand(id: number) {
     setExpanded((s) => {
